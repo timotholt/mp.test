@@ -43,7 +43,10 @@ async function connect() {
       localStorage.setItem('sessionId', room.sessionId);
     }
 
-    statusEl.textContent = 'Connected';
+    // IDENTITY INFO: show runId, roomId and our session/user id (easy to remove later)
+    const selfId = room.sessionId;
+    statusEl.textContent = `Connected | runId=${runId} | roomId=${room.id} | you=${name} (${selfId.slice(0,6)})`;
+    log(`[info] connected room=${room.id} run=${runId} you=${name} (${selfId})`);
     // DEBUG: temporary instrumentation - connected (remove after verifying flow)
     console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
 

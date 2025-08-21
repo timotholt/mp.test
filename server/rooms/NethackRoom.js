@@ -45,6 +45,8 @@ class NethackRoom extends Room {
     this.setState(new GameState());
     this.state.runId = options.runId || `run-${Math.random().toString(36).slice(2, 8)}`;
     this.setMetadata({ runId: this.state.runId });
+    // INFO: room identity (easy to remove later)
+    console.log('[info] room created', { roomId: this.roomId, runId: this.state.runId });
 
     // Password policy: require a password. First creator can set it.
     const initialPass = options.roomPass;
@@ -106,10 +108,10 @@ class NethackRoom extends Room {
       p.name = options?.name || 'Hero';
       p.x = 0; p.y = 0; p.online = true;
       this.state.players.set(id, p);
-      this.state.log.push(`${p.name} joined`);
+      this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
     } else {
       p.online = true;
-      this.state.log.push(`${p.name} rejoined`);
+      this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
     }
   }
 
@@ -128,7 +130,7 @@ class NethackRoom extends Room {
 
     if (p) {
       p.online = false;
-      this.state.log.push(`${p.name} left`);
+      this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
     }
   }
 
@@ -158,7 +160,7 @@ class NethackRoom extends Room {
         p.y += delta[1];
         // DEBUG: temporary instrumentation - server applied command (remove after verifying flow)
         console.log('[DEBUG server] applied', { userId: cmd.userId, dir, pos: [p.x, p.y] });
-        this.state.log.push(`${p.name} moved ${dir} -> (${p.x},${p.y})`);
+        this.state.log.push(`${p.name}#${p.id.slice(0,6)} moved ${dir} -> (${p.x},${p.y})`);
         break;
       }
       // TODO: combat, inventory, actions, etc.
