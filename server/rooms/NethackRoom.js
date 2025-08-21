@@ -27,14 +27,14 @@ defineTypes(Player, {
 class GameState extends Schema {
   constructor() {
     super();
-    this.runId = '';
+    this.gameId = '';
     this.players = new MapSchema();
     this.log = new ArraySchema();
   }
 }
 
 defineTypes(GameState, {
-  runId: 'string',
+  gameId: 'string',
   players: { map: Player },
   log: ['string'],
 });
@@ -43,10 +43,10 @@ class NethackRoom extends Room {
   onCreate(options) {
     // Initialize state and metadata
     this.setState(new GameState());
-    this.state.runId = options.runId || `run-${Math.random().toString(36).slice(2, 8)}`;
-    this.setMetadata({ runId: this.state.runId });
+    this.state.gameId = options.gameId || `game-${Math.random().toString(36).slice(2, 8)}`;
+    this.setMetadata({ gameId: this.state.gameId });
     // INFO: room identity (easy to remove later)
-    console.log('[info] room created', { roomId: this.roomId, runId: this.state.runId });
+    console.log('[info] room created', { roomId: this.roomId, gameId: this.state.gameId });
 
     // Password policy: require a password. First creator can set it.
     const initialPass = options.roomPass;
@@ -76,7 +76,7 @@ class NethackRoom extends Room {
     // Periodic autosave hook (placeholder for DB persistence)
     this.clock.setInterval(() => {
       // TODO: save snapshot to DB
-      // console.debug('[autosave]', this.state.runId, new Date().toISOString());
+      // console.debug('[autosave]', this.state.gameId, new Date().toISOString());
     }, 15_000);
   }
 

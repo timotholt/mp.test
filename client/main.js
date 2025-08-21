@@ -1,5 +1,5 @@
 // Minimal Colyseus client (Vite) - plain JS
-// Connects, prompts for runId and room password, and sends arrow-key movement inputs.
+// Connects, prompts for gameId and room password, and sends arrow-key movement inputs.
 
 import * as Colyseus from 'colyseus.js';
 
@@ -10,14 +10,14 @@ const log = (line) => { logEl.textContent += line + '\n'; };
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
 
-const storedRunId = localStorage.getItem('runId') || '';
+const storedGameId = localStorage.getItem('gameId') || '';
 const storedName = localStorage.getItem('name') || '';
 
-const runId = storedRunId || (prompt('Run ID (new or existing):') || 'run-1');
+const gameId = storedGameId || (prompt('Game ID (new or existing):') || 'game-1');
 const roomPass = prompt('Room password:') || '';
 const name = storedName || (prompt('Name:') || 'Hero');
 
-localStorage.setItem('runId', runId);
+localStorage.setItem('gameId', gameId);
 localStorage.setItem('name', name);
 
 let room;
@@ -38,15 +38,15 @@ async function connect() {
 
     if (!room) {
       statusEl.textContent = 'Joining...';
-      room = await client.joinOrCreate('nethack', { runId, roomPass, name });
+      room = await client.joinOrCreate('nethack', { gameId, roomPass, name });
       localStorage.setItem('roomId', room.id);
       localStorage.setItem('sessionId', room.sessionId);
     }
 
-    // IDENTITY INFO: show runId, roomId and our session/user id (easy to remove later)
+    // IDENTITY INFO: show gameId, roomId and our session/user id (easy to remove later)
     const selfId = room.sessionId;
-    statusEl.textContent = `Connected | runId=${runId} | roomId=${room.id} | you=${name} (${selfId.slice(0,6)})`;
-    log(`[info] connected room=${room.id} run=${runId} you=${name} (${selfId})`);
+    statusEl.textContent = `Connected | gameId=${gameId} | roomId=${room.id} | you=${name} (${selfId.slice(0,6)})`;
+    log(`[info] connected room=${room.id} game=${gameId} you=${name} (${selfId})`);
     // DEBUG: temporary instrumentation - connected (remove after verifying flow)
     console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
 

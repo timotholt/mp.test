@@ -14,8 +14,8 @@ const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer }),
 });
 
-// Define our authoritative room. We filter by runId to group instances by run.
-gameServer.define('nethack', NethackRoom).filterBy(['runId']);
+// Define our authoritative room. We filter by gameId to group instances by game.
+gameServer.define('nethack', NethackRoom).filterBy(['gameId']);
 
 httpServer.listen(PORT, () => {
   console.log(`Colyseus listening on ws://localhost:${PORT}`);
