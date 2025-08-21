@@ -1,0 +1,22 @@
+{
+  "name": "mp.test",
+  "private": true,
+  "scripts": {
+    "server": "node server/index.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "both": "concurrently -n server,client -c green,cyan \"npm:server\" \"npm:dev\""
+  },
+  "dependencies": {
+    "vite": "^6.3.5",
+    "colyseus": "^0.15.0",
+    "@colyseus/ws-transport": "^0.15.0",
+    "@colyseus/schema": "^2.0.0",
+    "colyseus.js": "^0.15.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
