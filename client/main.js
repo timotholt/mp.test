@@ -58,6 +58,15 @@ async function connect() {
     // DEBUG: temporary instrumentation - log stream (remove after verifying flow)
     room.state.log.onAdd((value) => { console.log('[DEBUG client] log.onAdd', value); log(value); });
 
+    // Wire dungeon map updates from server (placeholder message type)
+    room.onMessage('dungeonMap', (mapString) => {
+      if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
+        window.radianceCascades.setDungeonMap(mapString);
+      } else {
+        console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Ignoring for now.');
+      }
+    });
+
     // Handle disconnect
     room.onLeave((code) => { statusEl.textContent = 'Disconnected (' + code + ')'; });
 
@@ -82,3 +91,109 @@ async function connect() {
 }
 
 connect();
+
+// --- ASCII Dungeon Renderer integration (dynamic, no HTML changes) ---
+// We load vendor scripts in order, then mount the renderer into a
+// programmatically-created container under #app, and wire camera input.
+// Keeping it minimal and self-contained.
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = (e) => reject(new Error('Failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function setupAsciiRenderer() {
+  try {
+    const base = '/vendor/ascii-dungeon/ascii-dungeon';
+    // Load in the same order as vendor example
+    await loadScript(`${base}/interactivity-setup.js`);
+    await loadScript(`${base}/ascii-texture.js`);
+    await loadScript(`${base}/ascii-gi-helpers.js`);
+    await loadScript(`${base}/ascii-gi.js`);
+
+    // Create container if not present (no HTML edits)
+    const app = document.getElementById('app');
+    let container = document.getElementById('rc-canvas');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'rc-canvas';
+      app.appendChild(container);
+    }
+
+    // Pick a sensible default size; DPR handled by RC props
+    const width = 512;
+    const height = 512;
+
+    // RC is declared by vendor scripts as a global. It may not be on window,
+    // so use a safe lookup that works with declarative globals.
+    const RCClass = (typeof RC !== 'undefined') ? RC : window.RC;
+    const rc = new RCClass({
+      id: 'rc-canvas',
+      width: width,
+      height: height,
+      dpr: 1.0,
+      canvasScale: 1.0,
+    });
+    window.radianceCascades = rc; // expose for debugging/devtools
+
+    // Minimal camera controls (mouse): pan + wheel zoom
+    const canvas = rc.canvas;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      // Adjust sensitivity a bit; use zoom-aware scaling similar to vendor example
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      const zoomFactor = 1.0 / Math.sqrt(rc.camera.zoomLevel || 1.0);
+      rc.panCamera(-dx * zoomFactor, -dy * zoomFactor);
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      canvas.style.cursor = 'grab';
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      rc.zoomCamera(factor, x, y);
+    }, { passive: false });
+
+    // Optional: keyboard zoom
+    window.addEventListener('keydown', (e) => {
+      if (e.key === '+') rc.zoomCamera(1.1, 0.5, 0.5);
+      if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
+    });
+  } catch (e) {
+    console.error('[ASCII renderer] setup failed:', e);
+  }
+}
+
+// Defer until DOM is ready so we can attach under #app
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupAsciiRenderer);
+} else {
+  setupAsciiRenderer();
+}
