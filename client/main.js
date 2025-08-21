@@ -44,22 +44,29 @@ async function connect() {
     }
 
     statusEl.textContent = 'Connected';
+    // DEBUG: temporary instrumentation - connected (remove after verifying flow)
+    console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
 
     // Observe players
     room.state.players.onAdd = (player, key) => { log(`+ ${player.name} (${key}) @ ${player.x},${player.y}`); };
     room.state.players.onRemove = (_, key) => { log(`- player ${key}`); };
 
     // Observe server log
-    room.state.log.onAdd = (value) => log(value);
+    // DEBUG: temporary instrumentation - log stream (remove after verifying flow)
+    room.state.log.onAdd = (value) => { console.log('[DEBUG client] log.onAdd', value); log(value); };
 
     // Handle disconnect
     room.onLeave((code) => { statusEl.textContent = 'Disconnected (' + code + ')'; });
 
     // Send arrow-key movement
     window.addEventListener('keydown', (e) => {
+      // DEBUG: temporary instrumentation - keydown (remove after verifying flow)
+      console.log('[DEBUG client] keydown', e.key);
       const map = { ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E' };
       const dir = map[e.key];
       if (dir) {
+        // DEBUG: temporary instrumentation - send move (remove after verifying flow)
+        console.log('[DEBUG client] send move', dir);
         room.send('input', { type: 'move', dir });
         e.preventDefault();
       }

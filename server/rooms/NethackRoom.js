@@ -63,6 +63,8 @@ class NethackRoom extends Room {
       if (!payload || typeof payload !== 'object') return;
       const { type, ...rest } = payload;
       if (typeof type !== 'string') return;
+      // DEBUG: temporary instrumentation - server received input (remove after verifying flow)
+      console.log('[DEBUG server] onMessage input', { sessionId: client.sessionId, type, rest });
       this.commandQueue.push({ userId: client.auth?.userId || client.sessionId, type, data: rest });
     });
 
@@ -154,6 +156,8 @@ class NethackRoom extends Room {
         if (!delta) return;
         p.x += delta[0];
         p.y += delta[1];
+        // DEBUG: temporary instrumentation - server applied command (remove after verifying flow)
+        console.log('[DEBUG server] applied', { userId: cmd.userId, dir, pos: [p.x, p.y] });
         this.state.log.push(`${p.name} moved ${dir} -> (${p.x},${p.y})`);
         break;
       }
