@@ -138,7 +138,10 @@ class NethackRoom extends Room {
       }
       // Not starting: only host's second cancel should unready himself and close modal client-side
       if (isHost) {
+        const wasReady = !!p.ready;
         p.ready = false;
+        // Log transition to not ready for chat visibility
+        try { if (wasReady) this.state.log.push(`${p.name} is not ready`); } catch (_) {}
         this.broadcastStartConfirmToReady();
       }
     });
