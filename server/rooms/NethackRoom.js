@@ -16,18 +16,63 @@ const { buildPositionColorMap } = require('./gamecode/render');
 const { Entity, Location } = require('./gamecode/entity');
 const { addEntity, removeEntity } = require('./gamecode/occupancy');
 
+// --- Selection constants (easily changeable) ---
+// Factions: top row in the modal
+const FACTIONS = [
+  { key: 'crimson', name: 'Crimson Legion', icon: '🟥' },
+  { key: 'azure', name: 'Azure Covenant', icon: '🟦' },
+  { key: 'iron', name: 'Iron Collective', icon: '⬛' },
+  { key: 'radiant', name: 'Radiant Order', icon: '🟨' },
+];
+
+// Classes (Roles): bottom row in the modal
+const CLASSES = [
+  { key: 'gene', name: 'Gene Warden', icon: '⚔️', desc: 'Commands lots of soldiers' },
+  { key: 'soul', name: 'Soul Warden', icon: '✨', desc: 'Commands dimensional powers' },
+  { key: 'machine', name: 'Machine Warden', icon: '🤖', desc: 'Machines & engineering' },
+  { key: 'faith', name: 'Faith Warden', icon: '✝️', desc: 'Godlike powers' },
+];
+
+// Loadouts per faction (keys mirror FACTIONS keys)
+const LOADOUTS_BY_FACTION = {
+  crimson: [
+    { key: 'close', name: 'Close Combat' },
+    { key: 'mid', name: 'Medium Range' },
+    { key: 'long', name: 'Long Range' },
+  ],
+  azure: [
+    { key: 'area', name: 'Area Effect' },
+    { key: 'dps', name: 'DPS' },
+  ],
+  iron: [
+    { key: 'robots', name: 'Robots' },
+    { key: 'vehicles', name: 'Vehicles' },
+  ],
+  radiant: [
+    { key: 'zealot', name: 'Zealot (Close Combat)' },
+    { key: 'summoning', name: 'Summoning (Angels)' },
+  ],
+};
+
 class Player extends Entity {
   constructor() {
     super();
     this.kind = 'player';
     this.online = true;
     this.ready = false;
+    // Selection fields
+    this.faction = '';
+    this.classKey = '';
+    this.loadout = '';
   }
 }
 
 defineTypes(Player, {
   online: 'boolean',
   ready: 'boolean',
+  faction: 'string',
+  classKey: 'string',
+  loadout: 'string',
 });
 
 class GameState extends Schema {
@@ -76,6 +121,26 @@ class NethackRoom extends Room {
     this.confirmOpenForHost = false; // track if host confirm is currently open on client
     this._startTimer = null; // countdown interval handle
 
+    // --- Helpers for selection flow ---
+    const selectionComplete = (pl) => !!(pl && pl.faction && pl.classKey && pl.loadout);
+    const buildFCLPayload = (uid) => {
+      const p = this.state.players.get(uid);
+      const selectedFaction = (p && p.faction) || '';
+      const loadouts = LOADOUTS_BY_FACTION[selectedFaction] || [];
+      return {
+        factions: FACTIONS,
+        classes: CLASSES,
+        loadouts,
+        selection: { faction: p?.faction || '', classKey: p?.classKey || '', loadout: p?.loadout || '' },
+        complete: selectionComplete(p),
+      };
+    };
+    const sendFCLTo = (uid) => {
+      const c = this.userClients?.get(uid);
+      if (!c) return;
+      try { c.send('showFCLSelect', buildFCLPayload(uid)); } catch (e) { console.warn('showFCLSelect send failed', e); }
+    };
+
     // Input handler (clients send small intents only; server is authoritative)
     this.onMessage('input', (client, payload) => {
       if (!payload || typeof payload !== 'object') return;
@@ -97,12 +162,69 @@ class NethackRoom extends Room {
       this.beginCountdown();
     });
 
+    // Selection messages (per-player)
+    this.onMessage('chooseFaction', (client, payload) => {
+      const uid = client.auth?.userId || client.sessionId;
+      const p = this.state.players.get(uid);
+      if (!p) return;
+      const key = String(payload?.key || '').trim();
+      if (!FACTIONS.some(f => f.key === key)) return;
+      const changed = p.faction !== key;
+      p.faction = key;
+      if (changed) p.loadout = '';
+      // No dependency resets from faction currently
+      try { this.state.log.push(`${p.name} chose faction ${key}`); } catch (_) {}
+      sendFCLTo(uid);
+    });
+
+    this.onMessage('chooseClass', (client, payload) => {
+      const uid = client.auth?.userId || client.sessionId;
+      const p = this.state.players.get(uid);
+      if (!p) return;
+      const key = String(payload?.key || '').trim();
+      if (!CLASSES.some(c => c.key === key)) return;
+      p.classKey = key;
+      try { this.state.log.push(`${p.name} chose class ${key}`); } catch (_) {}
+      // If now complete, dismiss via complete flag once
+      const complete = selectionComplete(p);
+      const c = this.userClients?.get(uid);
+      if (c) {
+        try { c.send('showFCLSelect', { ...buildFCLPayload(uid), complete }); } catch (e) {}
+      }
+    });
+
+    this.onMessage('chooseLoadout', (client, payload) => {
+      const uid = client.auth?.userId || client.sessionId;
+      const p = this.state.players.get(uid);
+      if (!p) return;
+      const key = String(payload?.key || '').trim();
+      const allowed = LOADOUTS_BY_FACTION[p.faction] || [];
+      if (!allowed.some(l => l.key === key)) return;
+      p.loadout = key;
+      try { this.state.log.push(`${p.name} chose loadout ${key}`); } catch (_) {}
+      const complete = selectionComplete(p);
+      const c = this.userClients?.get(uid);
+      if (c) {
+        try { c.send('showFCLSelect', { ...buildFCLPayload(uid), complete }); } catch (e) {}
+      }
+    });
+
     // Players toggle ready; host ready triggers confirmation modal
     this.onMessage('setReady', (client, payload) => {
       const uid = client.auth?.userId || client.sessionId;
       const p = this.state.players.get(uid);
       if (!p) return;
       const next = !!(payload && payload.ready);
+      // Gate readiness on selection completion
+      if (next) {
+        const complete = !!(p.faction && p.classKey && p.loadout);
+        if (!complete) {
+          try { this.state.log.push(`${p.name} must choose faction, class, and loadout first`); } catch (_) {}
+          // Prompt the player with selection modal
+          sendFCLTo(uid);
+          return; // do not set ready
+        }
+      }
       if (p.ready === next) {
         // no-op, but refresh confirm views to keep everyone in sync
         this.broadcastStartConfirmToReady();
@@ -247,6 +369,10 @@ class NethackRoom extends Room {
       }
       // Refresh confirm views for ready players (host + others)
       this.broadcastStartConfirmToReady();
+      // If player has not completed selection, prompt them
+      if (!(p.faction && p.classKey && p.loadout)) {
+        try { client.send('showFCLSelect', { ...buildFCLPayload(id), complete: false }); } catch (_) {}
+      }
     } else {
       p.online = true;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
@@ -265,6 +391,10 @@ class NethackRoom extends Room {
       }
       // Refresh confirm views for ready players (host + others)
       this.broadcastStartConfirmToReady();
+      // If player is incomplete, prompt selection again (e.g., fresh browser)
+      if (!(p.faction && p.classKey && p.loadout)) {
+        try { client.send('showFCLSelect', { ...buildFCLPayload(id), complete: false }); } catch (_) {}
+      }
     }
   }
 

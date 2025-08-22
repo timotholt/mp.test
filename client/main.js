@@ -6,6 +6,7 @@ import { presentRoomCreateModal } from './modals/roomCreate.js';
 import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
 import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
+import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -431,7 +432,7 @@ if (currentRoute === APP_STATES.LOGIN) {
 // Known substates and their priority for preemption
 const SUBSTATES = {
   CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS',
-  CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER: 'CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER',
+  CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION: 'CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION',
   CURRENT_PLAYER_CHOOSING_CHARACTER_STATS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_STATS',
   CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT: 'CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT',
   WAITING_ON_GAME_START: 'WAITING_ON_GAME_START',
@@ -467,7 +468,7 @@ function priorityForSubstate(s) {
     case SUBSTATES.WAITING_ON_GAME_START:
       return PRIORITY.MEDIUM;
     case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS:
-    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER:
+    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION:
     case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_STATS:
     case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT:
     case SUBSTATES.CURRENT_PLAYER_QUEST_WINDOW:
@@ -716,6 +717,27 @@ function wireRoomEvents(r) {
         priority: PRIORITY.MEDIUM,
       });
     } catch (e) { console.warn('showGameConfirm handling failed', e); }
+  });
+
+  // Server-driven Faction/Class/Loadout selection modal (per-player)
+  r.onMessage('showFCLSelect', (payload) => {
+    try {
+      // If selection incomplete, ensure Ready button shows not ready
+      if (!payload?.complete) {
+        try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
+      }
+      presentFCLSelectModal({
+        factions: payload?.factions || [],
+        classes: payload?.classes || [],
+        loadouts: payload?.loadouts || [],
+        selection: payload?.selection || {},
+        complete: !!payload?.complete,
+        priority: PRIORITY.LOW,
+        onSelectFaction: (key) => { try { r.send('chooseFaction', { key }); } catch (_) {} },
+        onSelectClass: (key) => { try { r.send('chooseClass', { key }); } catch (_) {} },
+        onSelectLoadout: (key) => { try { r.send('chooseLoadout', { key }); } catch (_) {} },
+      });
+    } catch (e) { console.warn('showFCLSelect handling failed', e); }
   });
 
   r.onLeave((code) => {
