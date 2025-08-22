@@ -491,12 +491,29 @@ const client = new Colyseus.Client(endpoint);
 let room;
 let lastStateVersion = 0;
 
+// Only auto-reconnect on reload or back/forward, not on a fresh navigate/duplicated tab.
+function shouldAutoReconnect() {
+  try {
+    const navs = (typeof performance.getEntriesByType === 'function') ? performance.getEntriesByType('navigation') : null;
+    if (navs && navs[0] && typeof navs[0].type === 'string') {
+      return navs[0].type === 'reload' || navs[0].type === 'back_forward';
+    }
+  } catch (_) {}
+  try {
+    const PN = performance.navigation;
+    if (PN && typeof PN.type === 'number') {
+      return PN.type === PN.TYPE_RELOAD || PN.type === PN.TYPE_BACK_FORWARD;
+    }
+  } catch (_) {}
+  return false;
+}
+
 async function attemptReconnect() {
   try {
-    const savedRoomId = localStorage.getItem('roomId');
-    const savedSessionId = localStorage.getItem('sessionId');
+    const savedRoomId = sessionStorage.getItem('roomId');
+    const savedSessionId = sessionStorage.getItem('sessionId');
 
-    if (savedRoomId && savedSessionId) {
+    if (savedRoomId && savedSessionId && shouldAutoReconnect()) {
       statusEl.textContent = 'Reconnecting...';
       try {
         // Avoid getting stuck if reconnect hangs (e.g., server restarted)
@@ -585,8 +602,8 @@ function renderRooms(rooms) {
 
 async function afterJoin(r) {
   room = r;
-  localStorage.setItem('roomId', room.id);
-  localStorage.setItem('sessionId', room.sessionId);
+  sessionStorage.setItem('roomId', room.id);
+  sessionStorage.setItem('sessionId', room.sessionId);
   window.room = room;
   // reset room UI binding for this new room
   try { roomUIBound = false; } catch (_) {}
