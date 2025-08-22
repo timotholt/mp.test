@@ -13,39 +13,19 @@ const { applyCommand: applyGameCommand } = require('./gamecode/commands');
 const { placePlayer } = require('./gamecode/playerPlacement');
 const { initPlayer } = require('./gamecode/initPlayer');
 const { buildPositionColorMap } = require('./gamecode/render');
+const { Entity, Location } = require('./gamecode/entity');
+const { addEntity, removeEntity } = require('./gamecode/occupancy');
 
-class Location extends Schema {
+class Player extends Entity {
   constructor() {
     super();
-    this.x = 0;
-    this.y = 0;
-    this.level = 0;
-  }
-}
-
-class Player extends Schema {
-  constructor() {
-    super();
-    this.id = '';
-    this.name = '';
+    this.kind = 'player';
     this.online = true;
-    this.currentLocation = new Location();
-    this.lastLocation = new Location();
   }
 }
-
-defineTypes(Location, {
-  x: 'number',
-  y: 'number',
-  level: 'number',
-});
 
 defineTypes(Player, {
-  id: 'string',
-  name: 'string',
   online: 'boolean',
-  currentLocation: Location,
-  lastLocation: Location,
 });
 
 class GameState extends Schema {
@@ -170,6 +150,8 @@ class NethackRoom extends Room {
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
       // Track client for targeted messages
       this.userClients.set(id, client);
+      // Index occupancy
+      addEntity(this, p);
       // Send initial render assets: color map then dungeon FOV (stubbed to full map)
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
@@ -185,6 +167,8 @@ class NethackRoom extends Room {
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
       // Update mapping in case of reconnection
       this.userClients.set(id, client);
+      // Ensure occupancy is indexed (idempotent)
+      addEntity(this, p);
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
         client.send('dungeonMap', calculateFOV(p, this.dungeonMap, { players: this.state.players }));
@@ -213,6 +197,7 @@ class NethackRoom extends Room {
     if (p) {
       p.online = false;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
+      removeEntity(this, p);
     }
     // Drop mapping for targeted messages
     this.userClients.delete(id);
