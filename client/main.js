@@ -4,6 +4,7 @@
 import * as Colyseus from 'colyseus.js';
 import { presentRoomCreateModal } from './modals/roomCreate.js';
 import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
+import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 
 const statusEl = document.getElementById('status');
@@ -546,18 +547,36 @@ function renderRooms(rooms) {
   rooms.forEach((r) => {
     const row = document.createElement('div');
     const meta = r.metadata || {};
-    row.textContent = `${meta.name || r.roomId} | ${r.clients}/${meta.maxPlayers || r.maxClients || '?'}${meta.private ? ' (private)' : ''}`;
+    row.textContent = `${meta.name || r.roomId} | ${r.clients}/${meta.maxPlayers || r.maxClients || '?' }${meta.private ? ' (private)' : ''}`;
     const btn = document.createElement('button');
     btn.textContent = 'Join';
     btn.style.marginLeft = '8px';
     btn.onclick = async () => {
       const playerName = localStorage.getItem('name') || prompt('Name?') || 'Hero';
-      let pass = '';
-      if (meta.private) pass = prompt('Room password?') || '';
-      try {
-        const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pass });
-        await afterJoin(rj);
-      } catch (e) { console.warn('join failed', e); }
+      if (meta.private) {
+        presentRoomPromptPassword({
+          roomName: meta.name || r.roomId,
+          onSubmit: async (pwd) => {
+            try {
+              const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pwd || '' });
+              await afterJoin(rj);
+              return true; // close modal
+            } catch (e) {
+              const msg = (e && (e.message || e)) + '';
+              if (msg.includes('Invalid password') || msg.includes('Room requires password')) {
+                return false; // wrong password, keep modal open
+              }
+              throw new Error(typeof msg === 'string' ? msg : 'Join failed');
+            }
+          },
+          onCancel: () => {}
+        });
+      } else {
+        try {
+          const rj = await client.joinById(r.roomId, { name: playerName });
+          await afterJoin(rj);
+        } catch (e) { console.warn('join failed', e); }
+      }
     };
     row.appendChild(btn);
     roomsListEl.appendChild(row);
