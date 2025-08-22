@@ -51,7 +51,11 @@ async function connect() {
     console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
 
     // Observe players (Schema v2 signal-style)
-    room.state.players.onAdd((player, key) => { log(`+ ${player.name} (${key}) @ ${player.x},${player.y}`); });
+    room.state.players.onAdd((player, key) => {
+      const lx = player.currentLocation?.x;
+      const ly = player.currentLocation?.y;
+      log(`+ ${player.name} (${key}) @ ${lx},${ly}`);
+    });
     room.state.players.onRemove((_, key) => { log(`- player ${key}`); });
 
     // Observe server log (Schema v2 signal-style)

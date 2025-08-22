@@ -10,24 +10,40 @@ const { placeMonsters } = require('./gamecode/monsterPlacement');
 const { placeTreasures } = require('./gamecode/treasurePlacement');
 const { calculateFOV } = require('./gamecode/fov');
 const { applyCommand: applyGameCommand } = require('./gamecode/commands');
+const { placePlayer } = require('./gamecode/playerPlacement');
+
+class Location extends Schema {
+  constructor() {
+    super();
+    this.x = 0;
+    this.y = 0;
+    this.level = 0;
+  }
+}
 
 class Player extends Schema {
   constructor() {
     super();
     this.id = '';
     this.name = '';
-    this.x = 0;
-    this.y = 0;
     this.online = true;
+    this.currentLocation = new Location();
+    this.lastLocation = new Location();
   }
 }
+
+defineTypes(Location, {
+  x: 'number',
+  y: 'number',
+  level: 'number',
+});
 
 defineTypes(Player, {
   id: 'string',
   name: 'string',
-  x: 'number',
-  y: 'number',
   online: 'boolean',
+  currentLocation: Location,
+  lastLocation: Location,
 });
 
 class GameState extends Schema {
@@ -124,7 +140,9 @@ class NethackRoom extends Room {
       p = new Player();
       p.id = id;
       p.name = options?.name || 'Hero';
-      p.x = 0; p.y = 0; p.online = true;
+      p.online = true;
+      // Place the player at a walkable spawn
+      placePlayer(this, p);
       this.state.players.set(id, p);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
       // Track client for targeted messages
