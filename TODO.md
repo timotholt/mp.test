@@ -1,31 +1,31 @@
 # Hack40k TODO
 
-Last updated: 2025-08-21 19:58 PT
+Last updated: 2025-08-22
 
 ## High-Priority Next Actions
-- [ ] Client: LOGIN screen with “Welcome to Hack40k” + OK -> route to LOBBY
-- [ ] Client: LOBBY screen: list rooms via client.getAvailableRooms('nethack'), poll refresh, Create Private Room button, chat/player stubs
-- [ ] Client: Adjust connection flow to not auto-join; use client.create / joinById from lobby
+- [x] Client: LOGIN screen with “Welcome to Hack40k” + OK -> route to LOBBY
+- [x] Client: LOBBY screen: list rooms via client.getAvailableRooms('nethack'), poll refresh, Create Private Room button, chat/player stubs
+- [x] Client: Adjust connection flow to not auto-join; use client.create / joinById from lobby
 - [ ] Server: Room metadata + host designation + password/limits for lobby list
 - [ ] Server: Ready-state tracking; when all ready, host gets modal “All players ready” -> start game
 
 ## Client Tasks (Pending)
-- [ ] Add LOGIN screen (APP_STATES.LOGIN) and button to proceed to LOBBY
-- [ ] Implement LOBBY screen (APP_STATES.LOBBY):
-  - [ ] Rooms list with refresh (client.getAvailableRooms('nethack'))
-  - [ ] Create Private Room button
-  - [ ] Chat window stub
-  - [ ] Player list stub
-- [ ] Create room-create modal module in a separate file:
+- [x] Add LOGIN screen (APP_STATES.LOGIN) and button to proceed to LOBBY
+- [x] Implement LOBBY screen (APP_STATES.LOBBY):
+  - [x] Rooms list with refresh (client.getAvailableRooms('nethack'))
+  - [x] Create Private Room button
+  - [x] Chat window stub
+  - [x] Player list stub
+- [x] Create room-create modal module in a separate file:
   - File: `client/modals/roomCreate.js`
   - Fields: name, turn length (s), password, max players
   - On submit: `client.create('nethack', { name, turnLength, roomPass, maxPlayers, private: true })`
 - [ ] ROOM screen (APP_STATES.ROOM):
-  - [ ] Player list (from `room.state.players`)
-  - [ ] Chat stub (send `room.send('chat',{ text })`)
+  - [x] Player list (from `room.state.players`)
+  - [x] Chat stub (receive-only; shows server state.log)
   - [ ] Character setup: simple OK dialogs for class/chapter/equipment (defaults)
-  - [ ] “READY TO PLAY” button -> `room.send('player:ready')`
-- [ ] Adjust connect flow: do not auto-join in `client/main.js`; only join/create from lobby selection
+  - [x] “READY TO PLAY” button UI (local toggle; server wiring pending)
+- [x] Adjust connect flow: do not auto-join in `client/main.js`; only join/create from lobby selection
 
 ## Server Tasks (Pending)
 - [ ] App-state broadcast schema `{ state, substate, payload?, version }` (increment version)
@@ -44,6 +44,11 @@ Last updated: 2025-08-21 19:58 PT
 - [x] Wire `room.onMessage('appState')` to route + present substate overlays
 - [x] Input gating: only allow movement during `GAMEPLAY_ACTIVE` with no blocking modal
 - [x] Preserve ASCII renderer instance; mount during gameplay screens only
+ - [x] LOGIN screen + route to LOBBY
+ - [x] LOBBY basics (room list polling + create room modal hook)
+ - [x] Separate `client/modals/roomCreate.js` and expose `OverlayManager` globally
+ - [x] Adjusted connect flow: reconnect attempt on load; no auto-join; join/create via lobby
+ - [x] Stop lobby polling when leaving LOBBY to avoid timer leaks
 
 ## Key Files
 - Client router/overlays: `client/main.js`

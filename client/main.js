@@ -2,6 +2,8 @@
 // Connects, prompts for gameId and room password, and sends arrow-key movement inputs.
 
 import * as Colyseus from 'colyseus.js';
+import { presentRoomCreateModal } from './modals/roomCreate.js';
+import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -35,6 +37,55 @@ function makeScreen(id, initFn) {
   return el;
 }
 
+// -------------------- Room UI Helpers --------------------
+function bindRoomUIEventsOnce() {
+  if (!room || roomUIBound) return;
+  roomUIBound = true;
+  try {
+    room.state.players.onAdd(() => { renderRoomPlayers(); });
+    room.state.players.onRemove(() => { renderRoomPlayers(); });
+  } catch (_) {}
+  try {
+    room.state.log.onAdd((value) => {
+      appendChatLine(String(value));
+    });
+  } catch (_) {}
+}
+
+function renderRoomPlayers() {
+  if (!roomPlayersEl || !room) return;
+  try {
+    roomPlayersEl.innerHTML = '';
+    // MapSchema supports forEach
+    room.state.players.forEach((p, id) => {
+      const line = document.createElement('div');
+      const nm = p.name || 'Hero';
+      const off = p.online === false ? ' (offline)' : '';
+      line.textContent = `${nm}${off}`;
+      roomPlayersEl.appendChild(line);
+    });
+  } catch (_) {}
+}
+
+function refreshRoomChat() {
+  if (!roomChatListEl || !room) return;
+  try {
+    roomChatListEl.innerHTML = '';
+    const arr = room.state.log || [];
+    const start = Math.max(0, arr.length - 100);
+    for (let i = start; i < arr.length; i++) {
+      appendChatLine(String(arr[i]));
+    }
+  } catch (_) {}
+}
+
+function appendChatLine(line) {
+  if (!roomChatListEl) return;
+  const div = document.createElement('div');
+  div.textContent = line;
+  roomChatListEl.appendChild(div);
+  roomChatListEl.scrollTop = roomChatListEl.scrollHeight;
+}
 function hideAllScreens() {
   for (const el of screens.values()) el.style.display = 'none';
 }
@@ -59,12 +110,133 @@ function setRoute(route, payload = {}) {
   toggleRenderer(showRC);
   // Allow movement input only during active gameplay and without blocking modals
   window.__canSendGameplayInput = (route === APP_STATES.GAMEPLAY_ACTIVE);
+  // Stop lobby polling if we left the lobby
+  if (route !== APP_STATES.LOBBY) {
+    try { stopLobbyPolling(); } catch (_) {}
+  }
+  // Ensure login modal/backdrop when entering LOGIN
+  if (route === APP_STATES.LOGIN) {
+    try { showLoginBackdrop(); } catch (_) {}
+    try { presentLoginModal(); } catch (_) {}
+  }
 }
 
-// Register minimal placeholder screens (improve later)
-makeScreen(APP_STATES.LOGIN, (el) => { el.textContent = 'Login Screen'; });
-makeScreen(APP_STATES.LOBBY, (el) => { el.textContent = 'Lobby Screen'; });
-makeScreen(APP_STATES.ROOM, (el) => { el.textContent = 'Room Screen'; });
+// Register screens
+let lobbyPollId = null;
+let roomsListEl = null;
+let createRoomBtn = null;
+// ROOM UI refs
+let roomPlayersEl = null;
+let roomChatListEl = null;
+let roomChatInputEl = null;
+let roomReadyBtn = null;
+let roomUIBound = false;
+
+makeScreen(APP_STATES.LOGIN, (el) => {
+  // Clear screen content; we use a modal over the full-screen renderer backdrop
+  el.innerHTML = '';
+  showLoginBackdrop();
+  presentLoginModal();
+});
+
+makeScreen(APP_STATES.LOBBY, (el) => {
+  el.innerHTML = '';
+  const header = document.createElement('div');
+  header.textContent = 'Lobby';
+  const actions = document.createElement('div');
+  createRoomBtn = document.createElement('button');
+  createRoomBtn.textContent = 'Create Private Room';
+  actions.appendChild(createRoomBtn);
+  roomsListEl = document.createElement('div');
+  roomsListEl.id = 'lobby-rooms';
+  roomsListEl.style.marginTop = '8px';
+  const stubs = document.createElement('div');
+  stubs.style.marginTop = '12px';
+  stubs.innerHTML = '<div>[chat stub]</div><div>[player list stub]</div>';
+  el.appendChild(header);
+  el.appendChild(actions);
+  el.appendChild(roomsListEl);
+  el.appendChild(stubs);
+  el.update = () => { startLobbyPolling(); };
+  createRoomBtn.onclick = () => {
+    presentRoomCreateModal({
+      onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
+        const cname = localStorage.getItem('name') || 'Hero';
+        try {
+          const newRoom = await client.create('nethack', {
+            name, turnLength, roomPass, maxPlayers, private: !!roomPass, hostName: cname,
+          });
+          await afterJoin(newRoom);
+        } catch (e) {
+          console.warn('create failed', e);
+        }
+      }
+    });
+  };
+});
+
+makeScreen(APP_STATES.ROOM, (el) => {
+  el.innerHTML = '';
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.gap = '8px';
+  const title = document.createElement('div');
+  title.textContent = 'Room';
+  header.appendChild(title);
+  roomReadyBtn = document.createElement('button');
+  roomReadyBtn.textContent = 'Ready';
+  roomReadyBtn.dataset.ready = 'false';
+  roomReadyBtn.onclick = () => {
+    // Toggle local ready flag (server handling to be added later)
+    const now = roomReadyBtn.dataset.ready !== 'true';
+    roomReadyBtn.dataset.ready = now ? 'true' : 'false';
+    roomReadyBtn.textContent = now ? 'Unready' : 'Ready';
+    // Optional future hook: room?.send('ready', { ready: now });
+  };
+  header.appendChild(roomReadyBtn);
+  const players = document.createElement('div');
+  players.id = 'room-players';
+  const playersTitle = document.createElement('div');
+  playersTitle.textContent = 'Players';
+  playersTitle.style.marginTop = '8px';
+  roomPlayersEl = document.createElement('div');
+  roomPlayersEl.id = 'room-players-list';
+  const chat = document.createElement('div');
+  chat.id = 'room-chat';
+  const chatTitle = document.createElement('div');
+  chatTitle.textContent = 'Chat / Log';
+  chatTitle.style.marginTop = '12px';
+  roomChatListEl = document.createElement('div');
+  roomChatListEl.id = 'room-chat-list';
+  roomChatListEl.style.maxHeight = '200px';
+  roomChatListEl.style.overflowY = 'auto';
+  const chatInputRow = document.createElement('div');
+  chatInputRow.style.marginTop = '6px';
+  roomChatInputEl = document.createElement('input');
+  roomChatInputEl.type = 'text';
+  roomChatInputEl.placeholder = 'Chat coming soon…';
+  roomChatInputEl.disabled = true; // server chat not implemented yet
+  const chatSend = document.createElement('button');
+  chatSend.textContent = 'Send';
+  chatSend.disabled = true;
+  chatInputRow.appendChild(roomChatInputEl);
+  chatInputRow.appendChild(chatSend);
+  el.appendChild(header);
+  el.appendChild(players);
+  players.appendChild(playersTitle);
+  players.appendChild(roomPlayersEl);
+  el.appendChild(chat);
+  chat.appendChild(chatTitle);
+  chat.appendChild(roomChatListEl);
+  chat.appendChild(chatInputRow);
+
+  el.update = () => {
+    try { bindRoomUIEventsOnce(); } catch (_) {}
+    try { renderRoomPlayers(); } catch (_) {}
+    try { refreshRoomChat(); } catch (_) {}
+  };
+});
 makeScreen(APP_STATES.GAMEPLAY_ACTIVE, (el) => { el.textContent = 'Gameplay Active'; });
 makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paused'; });
 
@@ -79,6 +251,8 @@ const PRIORITY = {
   HIGH: 90,             // player dead, kicked
   CRITICAL: 100,        // server shutdown/reboot
 };
+// Expose for modal modules
+window.PRIORITY = PRIORITY;
 
 let overlayEl = null;
 function ensureOverlay() {
@@ -141,29 +315,6 @@ const OverlayManager = (() => {
       b.style.marginRight = '8px';
       b.addEventListener('click', () => selectAction(top, a));
       btnRow.appendChild(b);
-    });
-
-    // --- Server-driven app state & modal handling ---
-    let lastStateVersion = 0;
-    room.onMessage('appState', (msg) => {
-      try { console.log('[DEBUG client] appState', msg); } catch (_) {}
-      if (typeof msg?.version === 'number' && msg.version < lastStateVersion) return;
-      if (typeof msg?.version === 'number') lastStateVersion = msg.version;
-      const { state, substate, payload } = msg || {};
-      if (state) setRoute(state, payload || {});
-      if (substate) presentSubstate(substate, payload || {}); else OverlayManager.clearBelow(PRIORITY.CRITICAL + 1);
-    });
-
-    // Generic modal channel (server can present/dismiss arbitrary modal)
-    room.onMessage('modal', (msg) => {
-      const { command, id, text, actions, priority, blockInput } = msg || {};
-      if (command === 'present') {
-        OverlayManager.present({ id, text, actions, priority: priority ?? PRIORITY.MEDIUM, blockInput: blockInput !== false });
-      } else if (command === 'dismiss' && id) {
-        OverlayManager.dismiss(id);
-      } else if (command === 'clearBelow') {
-        OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM);
-      }
     });
     // If modal blocks input, disable gameplay input
     window.__canSendGameplayInput = (currentRoute === APP_STATES.GAMEPLAY_ACTIVE) && !top.blockInput;
@@ -238,6 +389,14 @@ const OverlayManager = (() => {
 
   return { present, dismiss, clearBelow, top, isBlockingInput };
 })();
+
+// Expose OverlayManager for external modules (room create modal)
+window.OverlayManager = OverlayManager;
+// If we are currently on the LOGIN route and the initial attempt to present the
+// login modal happened before OverlayManager existed, present it now.
+if (currentRoute === APP_STATES.LOGIN) {
+  try { presentLoginModal(); } catch (_) {}
+}
 
 // Known substates and their priority for preemption
 const SUBSTATES = {
@@ -322,19 +481,10 @@ function defaultActionsFor(substate) {
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
 
-const storedGameId = localStorage.getItem('gameId') || '';
-const storedName = localStorage.getItem('name') || '';
-
-const gameId = storedGameId || (prompt('Game ID (new or existing):') || 'game-1');
-const roomPass = prompt('Room password:') || '';
-const name = storedName || (prompt('Name:') || 'Hero');
-
-localStorage.setItem('gameId', gameId);
-localStorage.setItem('name', name);
-
 let room;
+let lastStateVersion = 0;
 
-async function connect() {
+async function attemptReconnect() {
   try {
     const savedRoomId = localStorage.getItem('roomId');
     const savedSessionId = localStorage.getItem('sessionId');
@@ -342,107 +492,18 @@ async function connect() {
     if (savedRoomId && savedSessionId) {
       statusEl.textContent = 'Reconnecting...';
       try {
-        room = await client.reconnect(savedRoomId, savedSessionId);
+        // Avoid getting stuck if reconnect hangs (e.g., server restarted)
+        const timeoutMs = 3000;
+        const r = await Promise.race([
+          client.reconnect(savedRoomId, savedSessionId),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('reconnect timeout')), timeoutMs))
+        ]);
+        await afterJoin(r);
+        return; // done
       } catch (_) {
         // fallthrough to join
       }
     }
-
-    if (!room) {
-      statusEl.textContent = 'Joining...';
-      room = await client.joinOrCreate('nethack', { gameId, roomPass, name });
-      localStorage.setItem('roomId', room.id);
-      localStorage.setItem('sessionId', room.sessionId);
-    }
-
-    // IDENTITY INFO: show gameId, roomId and our session/user id (easy to remove later)
-    const selfId = room.sessionId;
-    statusEl.textContent = `Connected | gameId=${gameId} | roomId=${room.id} | you=${name} (${selfId.slice(0,6)})`;
-    log(`[info] connected room=${room.id} game=${gameId} you=${name} (${selfId})`);
-    // DEBUG: temporary instrumentation - connected (remove after verifying flow)
-    console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
-    // Expose room for modalAction messages
-    window.room = room;
-
-    // Observe players (Schema v2 signal-style)
-    room.state.players.onAdd((player, key) => {
-      const lx = player.currentLocation?.x;
-      const ly = player.currentLocation?.y;
-      const ll = player.currentLocation?.level ?? 0;
-      log(`+ ${player.name} (${key}) @ ${lx}/${ly}/${ll}`);
-    });
-    room.state.players.onRemove((_, key) => { log(`- player ${key}`); });
-
-    // Observe server log (Schema v2 signal-style)
-    // DEBUG: temporary instrumentation - log stream (remove after verifying flow)
-    room.state.log.onAdd((value) => { console.log('[DEBUG client] log.onAdd', value); log(value); });
-
-    // Wire dungeon map updates from server (placeholder message type)
-    room.onMessage('dungeonMap', (mapString) => {
-      try {
-        const lines = typeof mapString === 'string' ? mapString.split('\n').length : 0;
-        console.log('[DEBUG client] received dungeonMap', { chars: mapString?.length, lines, preview: (typeof mapString === 'string' ? mapString.slice(0, 80) : '') });
-      } catch (_) {}
-      if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
-        console.log('[DEBUG client] applying dungeonMap to renderer');
-        window.radianceCascades.setDungeonMap(mapString);
-      } else {
-        console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Caching.');
-        window.__pendingDungeonMap = mapString;
-      }
-    });
-
-    // Wire per-position color map from server (JSON string)
-    room.onMessage('positionColorMap', (mapString) => {
-      try {
-        const parsed = JSON.parse(mapString);
-        console.log('[DEBUG client] received positionColorMap', { entries: Object.keys(parsed).length });
-      } catch (e) {
-        console.warn('[DEBUG client] invalid positionColorMap JSON', e);
-      }
-      if (window.radianceCascades && window.radianceCascades.surface && typeof window.radianceCascades.surface.setPositionColorMap === 'function') {
-        console.log('[DEBUG client] applying positionColorMap to renderer');
-        window.radianceCascades.surface.setPositionColorMap(mapString);
-      } else {
-        console.warn('[ASCII renderer] Received positionColorMap before renderer ready. Caching.');
-        window.__pendingPositionColorMap = mapString;
-      }
-    });
-
-    // Wire character color map from server (JSON string)
-    room.onMessage('characterColorMap', (mapString) => {
-      try {
-        // Validate JSON early for logging
-        const parsed = JSON.parse(mapString);
-        console.log('[DEBUG client] received characterColorMap', { keys: Object.keys(parsed).length });
-      } catch (e) {
-        console.warn('[DEBUG client] invalid characterColorMap JSON', e);
-      }
-      if (window.radianceCascades && window.radianceCascades.surface && typeof window.radianceCascades.surface.setCharacterColorMap === 'function') {
-        console.log('[DEBUG client] applying characterColorMap to renderer');
-        window.radianceCascades.surface.setCharacterColorMap(mapString);
-      } else {
-        console.warn('[ASCII renderer] Received characterColorMap before renderer ready. Caching.');
-        window.__pendingCharacterColorMap = mapString;
-      }
-    });
-
-    // Handle disconnect
-    room.onLeave((code) => { statusEl.textContent = 'Disconnected (' + code + ')'; });
-
-    // Send arrow-key movement
-    window.addEventListener('keydown', (e) => {
-      // DEBUG: temporary instrumentation - keydown (remove after verifying flow)
-      console.log('[DEBUG client] keydown', e.key);
-      const map = { ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E' };
-      const dir = map[e.key];
-      if (dir) {
-        // DEBUG: temporary instrumentation - send move (remove after verifying flow)
-        console.log('[DEBUG client] send move', dir);
-        room.send('input', { type: 'move', dir });
-        e.preventDefault();
-      }
-    });
   } catch (err) {
     statusEl.textContent = 'Failed to connect';
     console.error(err);
@@ -450,7 +511,134 @@ async function connect() {
   }
 }
 
-connect();
+function startLobby() {
+  statusEl.textContent = 'In Lobby';
+  setRoute(APP_STATES.LOBBY);
+}
+// Expose for login modal to call directly
+window.startLobby = startLobby;
+
+function startLobbyPolling() {
+  if (lobbyPollId) return;
+  const fetchRooms = async () => {
+    try {
+      const list = await client.getAvailableRooms('nethack');
+      renderRooms(list || []);
+    } catch (e) {
+      console.warn('getAvailableRooms failed', e);
+    }
+  };
+  fetchRooms();
+  lobbyPollId = setInterval(fetchRooms, 4000);
+}
+
+function stopLobbyPolling() { if (lobbyPollId) { clearInterval(lobbyPollId); lobbyPollId = null; } }
+
+function renderRooms(rooms) {
+  if (!roomsListEl) return;
+  roomsListEl.innerHTML = '';
+  rooms.forEach((r) => {
+    const row = document.createElement('div');
+    const meta = r.metadata || {};
+    row.textContent = `${meta.name || r.roomId} | ${r.clients}/${meta.maxPlayers || r.maxClients || '?'}${meta.private ? ' (private)' : ''}`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Join';
+    btn.style.marginLeft = '8px';
+    btn.onclick = async () => {
+      const playerName = localStorage.getItem('name') || prompt('Name?') || 'Hero';
+      let pass = '';
+      if (meta.private) pass = prompt('Room password?') || '';
+      try {
+        const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pass });
+        await afterJoin(rj);
+      } catch (e) { console.warn('join failed', e); }
+    };
+    row.appendChild(btn);
+    roomsListEl.appendChild(row);
+  });
+}
+
+async function afterJoin(r) {
+  room = r;
+  localStorage.setItem('roomId', room.id);
+  localStorage.setItem('sessionId', room.sessionId);
+  window.room = room;
+  // reset room UI binding for this new room
+  try { roomUIBound = false; } catch (_) {}
+  wireRoomEvents(room);
+  const selfId = room.sessionId;
+  const pname = localStorage.getItem('name') || 'Hero';
+  statusEl.textContent = `Connected | roomId=${room.id} | you=${pname} (${selfId.slice(0,6)})`;
+  setRoute(APP_STATES.ROOM);
+}
+
+function wireRoomEvents(r) {
+  lastStateVersion = 0;
+  // Players
+  try {
+    r.state.players.onAdd((player, key) => {
+      const lx = player.currentLocation?.x; const ly = player.currentLocation?.y; const ll = player.currentLocation?.level ?? 0;
+      log(`+ ${player.name} (${key}) @ ${lx}/${ly}/${ll}`);
+    });
+    r.state.players.onRemove((_, key) => { log(`- player ${key}`); });
+  } catch (_) {}
+
+  // Server log
+  try { r.state.log.onAdd((value) => { log(value); }); } catch (_) {}
+
+  // Maps & colors
+  r.onMessage('dungeonMap', (mapString) => {
+    if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
+      window.radianceCascades.setDungeonMap(mapString);
+    } else { window.__pendingDungeonMap = mapString; }
+  });
+  r.onMessage('positionColorMap', (mapString) => {
+    if (window.radianceCascades?.surface?.setPositionColorMap) {
+      window.radianceCascades.surface.setPositionColorMap(mapString);
+    } else { window.__pendingPositionColorMap = mapString; }
+  });
+  r.onMessage('characterColorMap', (mapString) => {
+    if (window.radianceCascades?.surface?.setCharacterColorMap) {
+      window.radianceCascades.surface.setCharacterColorMap(mapString);
+    } else { window.__pendingCharacterColorMap = mapString; }
+  });
+
+  // App state and modal pipeline
+  r.onMessage('appState', (msg) => {
+    try { console.log('[DEBUG client] appState', msg); } catch (_) {}
+    if (typeof msg?.version === 'number' && msg.version < lastStateVersion) return;
+    if (typeof msg?.version === 'number') lastStateVersion = msg.version;
+    const { state, substate, payload } = msg || {};
+    if (state) setRoute(state, payload || {});
+    if (substate) presentSubstate(substate, payload || {}); else OverlayManager.clearBelow(PRIORITY.CRITICAL + 1);
+  });
+  r.onMessage('modal', (msg) => {
+    const { command, id, text, actions, priority, blockInput } = msg || {};
+    if (command === 'present') {
+      OverlayManager.present({ id, text, actions, priority: priority ?? PRIORITY.MEDIUM, blockInput: blockInput !== false });
+    } else if (command === 'dismiss' && id) {
+      OverlayManager.dismiss(id);
+    } else if (command === 'clearBelow') {
+      OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM);
+    }
+  });
+
+  r.onLeave((code) => {
+    statusEl.textContent = 'Disconnected (' + code + ')';
+    room = null;
+    startLobby();
+  });
+}
+ 
+// Gameplay movement input (guarded)
+window.addEventListener('keydown', (e) => {
+  const map = { ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E' };
+  const dir = map[e.key];
+  if (!dir) return;
+  if (!room || !window.__canSendGameplayInput) return;
+  e.preventDefault();
+  room.send('input', { type: 'move', dir });
+});
 
 // --- ASCII Dungeon Renderer integration (dynamic, no HTML changes) ---
 // We load vendor scripts in order, then mount the renderer into a
@@ -484,12 +672,18 @@ async function setupAsciiRenderer() {
     if (!container) {
       container = document.createElement('div');
       container.id = 'rc-canvas';
+      container.style.display = 'none'; // hidden by default; router toggles when needed
+      container.style.position = 'fixed';
+      container.style.inset = '0';
+      container.style.width = '100vw';
+      container.style.height = '100vh';
+      container.style.zIndex = '1';
       app.appendChild(container);
     }
 
-    // Pick a sensible default size; DPR handled by RC props
-    const width = 512;
-    const height = 512;
+    // Fullscreen size; DPR handled by RC props
+    const width = Math.max(320, window.innerWidth || 1024);
+    const height = Math.max(240, window.innerHeight || 768);
 
     // RC is declared by vendor scripts as a global. It may not be on window,
     // so use a safe lookup that works with declarative globals.
@@ -499,7 +693,6 @@ async function setupAsciiRenderer() {
       width: width,
       height: height,
       dpr: 1.0,
-      canvasScale: 1.0,
     });
     window.radianceCascades = rc; // expose for debugging/devtools
     // Ensure renderer starts even if IntersectionObserver doesn't fire
@@ -587,3 +780,8 @@ if (document.readyState === 'loading') {
 } else {
   setupAsciiRenderer();
 }
+
+// Initial entry: try reconnect; if none, go to login
+attemptReconnect().catch(() => {}).finally(() => {
+  if (!room) setRoute(APP_STATES.LOGIN);
+});

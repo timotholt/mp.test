@@ -48,7 +48,8 @@ class NethackRoom extends Room {
     // Initialize state and metadata
     this.setState(new GameState());
     this.state.gameId = options.gameId || `game-${Math.random().toString(36).slice(2, 8)}`;
-    this.setMetadata({ gameId: this.state.gameId });
+    this.isPrivate = !!options.private;
+    this.setMetadata({ gameId: this.state.gameId, private: this.isPrivate });
     // INFO: room identity (easy to remove later)
     console.log('[info] room created', { roomId: this.roomId, gameId: this.state.gameId });
 
@@ -113,10 +114,18 @@ class NethackRoom extends Room {
   async onAuth(client, options) {
     const { roomPass } = options || {};
 
-    // If no password is set yet (brand new room), set it now
+    // If no password is set yet (brand new room), handle based on privacy
     if (!this.roomPassHash) {
-      if (!roomPass) throw new Error('Room requires password');
-      this.roomPassHash = bcrypt.hashSync(roomPass, 8);
+      if (this.isPrivate) {
+        if (!roomPass) throw new Error('Room requires password');
+        this.roomPassHash = bcrypt.hashSync(roomPass, 8);
+      } else {
+        // Public room: no password required
+        return {
+          userId: options.userId || client.sessionId,
+          name: options.name || 'Hero',
+        };
+      }
     }
 
     const ok = await bcrypt.compare(roomPass || '', this.roomPassHash);
