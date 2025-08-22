@@ -9,6 +9,13 @@ Last updated: 2025-08-22
 - [ ] Server: Room metadata + host designation + password/limits for lobby list
 - [ ] Server: Ready-state tracking; when all ready, host gets modal “All players ready” -> start game
 
+// Persistence & Auth (new)
+- [ ] Auth: Supabase client auth (OAuth + email/password) and server JWT verification in `NethackRoom.onAuth()`
+- [ ] Persistence: create Supabase tables `games`, `game_players`, `game_characters`, `game_state_snapshots`
+- [ ] Server: Whole-world autosave every 10s (configurable), latest-only restore, retain N recent snapshots
+- [ ] Server: Offline freeze by default; on rejoin resume alive character at saved position
+- [ ] Server: Death/respawn flow using room-scoped per-life `game_characters` (FCL lives here)
+
 ## Client Tasks (Pending)
 - [x] Add LOGIN screen (APP_STATES.LOGIN) and button to proceed to LOBBY
 - [x] Implement LOBBY screen (APP_STATES.LOBBY):
@@ -38,6 +45,19 @@ Last updated: 2025-08-22
 - [ ] Ready-state tracking; when all players ready -> send host modal “All players ready” (HIGH/CRITICAL)
 - [ ] Start game on host confirmation -> broadcast `appState { state: GAMEPLAY_ACTIVE }`
 
+## Persistence & Autosave
+- **Characters are room-scoped:** FCL is stored on `game_characters` per life; no global characters.
+- **Offline freeze:** On leave, keep character alive with `offline=true`; resume on rejoin if `died_at IS NULL`.
+- **Whole-world snapshots:** Save the entire game world as JSON into `game_state_snapshots.state_json` every 10s (configurable). Includes dungeon levels/tiles, entities (players/monsters/treasures), simple room flags/timers. Recompute occupancy on restore to avoid circular refs.
+- **Anti save-scum:** Load the latest snapshot only; keep retention of N recent versions for safety, but never expose manual selection.
+- **Restore path:** On room create, attempt to load latest snapshot for `gameId`; if none, generate dungeon and write an initial snapshot.
+
+### Config (env)
+- `AUTOSAVE_ENABLED` (default: true)
+- `AUTOSAVE_INTERVAL_MS` (default: 10000)
+- `AUTOSAVE_RETENTION` (default: 3)
+- `ALLOW_MANUAL_RESTORE` (default: false)
+
 ## Completed (Client)
 - [x] Micro-router using plain DOM with screens and `setRoute()` in `client/main.js`
 - [x] OverlayManager with priority stack (LOW/MEDIUM/HIGH/CRITICAL)
@@ -55,6 +75,8 @@ Last updated: 2025-08-22
 - Room-create modal (to add): `client/modals/roomCreate.js`
 - Server room: `server/rooms/NethackRoom.js`
 - Entity & occupancy (server): `server/rooms/gamecode/entity.js`, `server/rooms/gamecode/occupancy.js`
+ - Serializer (to add): `server/rooms/gamecode/serialization.js` (snapshotWorld/restoreWorld)
+ - Supabase persistence (to add): `server/persistence/supabase.js` (save/load snapshots, tables)
 
 ## Test Checklist
 - [ ] Login -> Lobby route works; lobby lists rooms and refreshes

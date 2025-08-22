@@ -16,6 +16,15 @@ const { buildPositionColorMap } = require('./gamecode/render');
 const { Entity, Location } = require('./gamecode/entity');
 const { addEntity, removeEntity } = require('./gamecode/occupancy');
 
+const { snapshotWorld, restoreWorld } = require('./gamecode/serialization');
+const { saveSnapshot, loadLatestSnapshot } = require('../persistence/supabase');
+
+// Autosave configuration (env with defaults)
+const AUTOSAVE_ENABLED = (process.env.AUTOSAVE_ENABLED ?? 'true') !== 'false';
+const AUTOSAVE_INTERVAL_MS = parseInt(process.env.AUTOSAVE_INTERVAL_MS || '10000', 10);
+const AUTOSAVE_RETENTION = parseInt(process.env.AUTOSAVE_RETENTION || '3', 10);
+const ALLOW_MANUAL_RESTORE = (process.env.ALLOW_MANUAL_RESTORE ?? 'false') === 'true';
+
 // --- Selection constants (easily changeable) ---
 // Factions: top row in the modal
 const FACTIONS = [
@@ -271,11 +280,17 @@ class NethackRoom extends Room {
     // Process queued inputs at a steady cadence
     this.clock.setInterval(() => this.processCommands(), 100);
 
-    // Periodic autosave hook (placeholder for DB persistence)
-    this.clock.setInterval(() => {
-      // TODO: save snapshot to DB
-      // console.debug('[autosave]', this.state.gameId, new Date().toISOString());
-    }, 15_000);
+    // Periodic autosave (configurable)
+    if (AUTOSAVE_ENABLED && AUTOSAVE_INTERVAL_MS > 0) {
+      this.clock.setInterval(() => {
+        try {
+          const snap = snapshotWorld(this);
+          if (snap) {
+            Promise.resolve(saveSnapshot(this.state.gameId, snap, AUTOSAVE_RETENTION)).catch(() => {});
+          }
+        } catch (_) {}
+      }, AUTOSAVE_INTERVAL_MS);
+    }
 
     // --- Dungeon setup (modularized) ---
     // Generate dungeon (currently returns default map)
@@ -302,6 +317,51 @@ class NethackRoom extends Room {
       [0.8, 0.4, 1.0], // purple
     ];
     this.nextColorIdx = 0;
+    
+    // Attempt to restore latest snapshot (world primitives + offline players)
+    (async () => {
+      try {
+        const latest = await loadLatestSnapshot(this.state.gameId);
+        if (latest && latest.data) {
+          const { players } = restoreWorld(this, latest.data);
+          if (Array.isArray(players)) {
+            players.forEach((pl) => {
+              try {
+                if (!pl || !pl.id) return;
+                // If already present (shouldn't be on fresh room), skip
+                if (this.state.players.has(pl.id)) return;
+                const p = new Player();
+                p.id = pl.id;
+                p.name = pl.name || 'Hero';
+                p.ready = !!pl.ready;
+                p.online = false; // offline until they rejoin
+                p.faction = pl.faction || '';
+                p.classKey = pl.classKey || '';
+                p.loadout = pl.loadout || '';
+                p.glyph = pl.glyph || '@';
+                p.blocksMovement = pl.blocksMovement !== false;
+                if (pl.currentLocation) {
+                  p.currentLocation.x = pl.currentLocation.x | 0;
+                  p.currentLocation.y = pl.currentLocation.y | 0;
+                  p.currentLocation.level = pl.currentLocation.level | 0;
+                }
+                if (pl.lastLocation) {
+                  p.lastLocation.x = pl.lastLocation.x | 0;
+                  p.lastLocation.y = pl.lastLocation.y | 0;
+                  p.lastLocation.level = pl.lastLocation.level | 0;
+                }
+                this.state.players.set(p.id, p);
+                // Re-index occupancy
+                addEntity(this, p);
+              } catch (_) {}
+            });
+            try { this.state.log.push('[autosave] world restored'); } catch (_) {}
+          }
+        }
+      } catch (e) {
+        // fail-quietly, world stays fresh
+      }
+    })();
   }
 
   async onAuth(client, options) {

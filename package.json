@@ -9,12 +9,15 @@
     "both": "concurrently -n server,client -c green,cyan \"npm:server\" \"npm:dev\""
   },
   "dependencies": {
-    "vite": "^6.3.5",
-    "colyseus": "^0.15.0",
-    "@colyseus/ws-transport": "^0.15.0",
     "@colyseus/schema": "^2.0.0",
+    "@colyseus/ws-transport": "^0.15.0",
+    "@supabase/supabase-js": "^2.56.0",
+    "bcryptjs": "^2.4.3",
+    "colyseus": "^0.15.0",
     "colyseus.js": "^0.15.0",
-    "bcryptjs": "^2.4.3"
+    "dotenv": "^17.2.1",
+    "jose": "^6.0.13",
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

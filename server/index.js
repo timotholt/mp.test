@@ -1,5 +1,7 @@
 // Simple Colyseus server (CommonJS) - authoritative backend
 // Run with: npm run server
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const http = require('http');
 const { Server } = require('colyseus');
