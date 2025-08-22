@@ -68,7 +68,26 @@ async function connect() {
         console.log('[DEBUG client] applying dungeonMap to renderer');
         window.radianceCascades.setDungeonMap(mapString);
       } else {
-        console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Ignoring for now.');
+        console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Caching.');
+        window.__pendingDungeonMap = mapString;
+      }
+    });
+
+    // Wire character color map from server (JSON string)
+    room.onMessage('characterColorMap', (mapString) => {
+      try {
+        // Validate JSON early for logging
+        const parsed = JSON.parse(mapString);
+        console.log('[DEBUG client] received characterColorMap', { keys: Object.keys(parsed).length });
+      } catch (e) {
+        console.warn('[DEBUG client] invalid characterColorMap JSON', e);
+      }
+      if (window.radianceCascades && window.radianceCascades.surface && typeof window.radianceCascades.surface.setCharacterColorMap === 'function') {
+        console.log('[DEBUG client] applying characterColorMap to renderer');
+        window.radianceCascades.surface.setCharacterColorMap(mapString);
+      } else {
+        console.warn('[ASCII renderer] Received characterColorMap before renderer ready. Caching.');
+        window.__pendingCharacterColorMap = mapString;
       }
     });
 
@@ -151,6 +170,23 @@ async function setupAsciiRenderer() {
     if (typeof rc.load === 'function') {
       console.log('[DEBUG client] calling rc.load()');
       rc.load();
+    }
+
+    // Apply any pending assets received before renderer was ready
+    // Important: set dungeon map before color maps so render has valid data
+    if (window.__pendingDungeonMap && typeof rc.setDungeonMap === 'function') {
+      try {
+        console.log('[DEBUG client] applying pending dungeonMap');
+        rc.setDungeonMap(window.__pendingDungeonMap);
+      } catch (_) {}
+      window.__pendingDungeonMap = undefined;
+    }
+    if (window.__pendingCharacterColorMap && rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
+      try {
+        console.log('[DEBUG client] applying pending characterColorMap');
+        rc.surface.setCharacterColorMap(window.__pendingCharacterColorMap);
+      } catch (_) {}
+      window.__pendingCharacterColorMap = undefined;
     }
 
     // Minimal camera controls (mouse): pan + wheel zoom

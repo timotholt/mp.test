@@ -78,6 +78,32 @@ class NethackRoom extends Room {
       // TODO: save snapshot to DB
       // console.debug('[autosave]', this.state.gameId, new Date().toISOString());
     }, 15_000);
+
+    // --- Dungeon + FOV stubs ---
+    // Minimal hard-coded dungeon and a basic character color map.
+    // FOV is currently the entire dungeon (stub), but the delivery pipeline works per-player.
+    this.dungeonMap = [
+      '####################',
+      '#.............~~~~~#',
+      '#..####..####..~~~~#',
+      '#..#  #..#  #..,.,.#',
+      '#..#  +==+  #......#',
+      '#..####..####......#',
+      '#..................#',
+      '####################',
+    ].join('\n');
+
+    this.characterColorMap = {
+      '#': [0.75, 0.75, 0.75],
+      '.': [0.35, 0.35, 0.35],
+      ',': [0.10, 0.70, 0.10],
+      '~': [0.20, 0.40, 1.00],
+      '+': [0.90, 0.75, 0.20],
+      '=': [0.85, 0.55, 0.15],
+    };
+
+    // Track connected clients by userId so we can send per-player FOV updates
+    this.userClients = new Map();
   }
 
   async onAuth(client, options) {
@@ -109,11 +135,28 @@ class NethackRoom extends Room {
       p.x = 0; p.y = 0; p.online = true;
       this.state.players.set(id, p);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
-      // DEBUG: note current behavior regarding dungeon map delivery
-      console.log('[DEBUG server] onJoin: player joined; dungeonMap sending is NOT implemented yet');
+      // Track client for targeted messages
+      this.userClients.set(id, client);
+      // Send initial render assets: color map then dungeon FOV (stubbed to full map)
+      try {
+        client.send('characterColorMap', JSON.stringify(this.characterColorMap));
+        client.send('dungeonMap', this.getFOVFor(p));
+        console.log('[DEBUG server] onJoin: sent characterColorMap and dungeonMap to client', { id });
+      } catch (e) {
+        console.warn('[DEBUG server] onJoin: failed to send initial maps', e);
+      }
     } else {
       p.online = true;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
+      // Update mapping in case of reconnection
+      this.userClients.set(id, client);
+      try {
+        client.send('characterColorMap', JSON.stringify(this.characterColorMap));
+        client.send('dungeonMap', this.getFOVFor(p));
+        console.log('[DEBUG server] onJoin(rejoin): resent characterColorMap and dungeonMap', { id });
+      } catch (e) {
+        console.warn('[DEBUG server] onJoin(rejoin): failed to send maps', e);
+      }
     }
   }
 
@@ -134,6 +177,8 @@ class NethackRoom extends Room {
       p.online = false;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
     }
+    // Drop mapping for targeted messages
+    this.userClients.delete(id);
   }
 
   processCommands() {
@@ -163,12 +208,26 @@ class NethackRoom extends Room {
         // DEBUG: temporary instrumentation - server applied command (remove after verifying flow)
         console.log('[DEBUG server] applied', { userId: cmd.userId, dir, pos: [p.x, p.y] });
         this.state.log.push(`${p.name}#${p.id.slice(0,6)} moved ${dir} -> (${p.x},${p.y})`);
+        // Send updated FOV for this player (currently whole map)
+        const c = this.userClients.get(cmd.userId);
+        if (c) {
+          try {
+            c.send('dungeonMap', this.getFOVFor(p));
+          } catch (e) {
+            console.warn('[DEBUG server] failed to send updated FOV', { userId: cmd.userId }, e);
+          }
+        }
         break;
       }
       // TODO: combat, inventory, actions, etc.
       default:
         break; // ignore unknown
     }
+  }
+
+  // Stub FOV: return the entire dungeon for now. Later, compute visibility based on player pos.
+  getFOVFor(player) {
+    return this.dungeonMap;
   }
 }
 

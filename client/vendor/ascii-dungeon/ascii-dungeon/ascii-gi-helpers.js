@@ -534,7 +534,10 @@ class AsciiCanvas {
   setCharacterColorMap(mapString) {
     try {
       this.characterColorMap = JSON.parse(mapString);
-      this.renderDungeon(this.dungeonMap);
+      // Only re-render if we have a dungeon map already
+      if (typeof this.dungeonMap === 'string') {
+        this.renderDungeon(this.dungeonMap);
+      }
     } catch (error) {
       console.error("Invalid character color map JSON:", error);
     }
@@ -1070,9 +1073,16 @@ class DungeonRenderer extends BaseSurface {
 #.....................#................≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡#+#############
 #############################################################################`;
 
-      this.setDungeonMap(exampleDungeon);
+      // Only set the example dungeon if no map has been set yet (e.g., by the server)
+      if (!this.surface || !this.surface.dungeonMap) {
+        this.setDungeonMap(exampleDungeon);
+      } else {
+        try { console.log('[DEBUG renderer] load(): map already present, skipping example'); } catch (_) {}
+      }
       this.initialized = true;
       try { console.log('[DEBUG renderer] load() complete, initialized=true'); } catch (_) {}
+      // Ensure we draw a frame now that the font texture is ready
+      try { this.renderPass(); } catch (_) {}
     });
   }
 
