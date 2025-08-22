@@ -4,6 +4,12 @@
 const { Room } = require('colyseus');
 const bcrypt = require('bcryptjs');
 const { Schema, type, MapSchema, ArraySchema, defineTypes } = require('@colyseus/schema');
+const { generateDungeon } = require('./gamecode/dungeonGenerator');
+const { getDefaultCharacterColorMap } = require('./gamecode/colors');
+const { placeMonsters } = require('./gamecode/monsterPlacement');
+const { placeTreasures } = require('./gamecode/treasurePlacement');
+const { calculateFOV } = require('./gamecode/fov');
+const { applyCommand: applyGameCommand } = require('./gamecode/commands');
 
 class Player extends Schema {
   constructor() {
@@ -79,28 +85,14 @@ class NethackRoom extends Room {
       // console.debug('[autosave]', this.state.gameId, new Date().toISOString());
     }, 15_000);
 
-    // --- Dungeon + FOV stubs ---
-    // Minimal hard-coded dungeon and a basic character color map.
-    // FOV is currently the entire dungeon (stub), but the delivery pipeline works per-player.
-    this.dungeonMap = [
-      '####################',
-      '#.............~~~~~#',
-      '#..####..####..~~~~#',
-      '#..#  #..#  #..,.,.#',
-      '#..#  +==+  #......#',
-      '#..####..####......#',
-      '#..................#',
-      '####################',
-    ].join('\n');
-
-    this.characterColorMap = {
-      '#': [0.75, 0.75, 0.75],
-      '.': [0.35, 0.35, 0.35],
-      ',': [0.10, 0.70, 0.10],
-      '~': [0.20, 0.40, 1.00],
-      '+': [0.90, 0.75, 0.20],
-      '=': [0.85, 0.55, 0.15],
-    };
+    // --- Dungeon setup (modularized) ---
+    // Generate dungeon (currently returns default map)
+    this.dungeonMap = generateDungeon(options?.dungeon || {});
+    // Default colors for characters/tiles
+    this.characterColorMap = getDefaultCharacterColorMap();
+    // Future: place monsters/treasures (stubs return empty arrays)
+    this.monsters = placeMonsters(this.dungeonMap, options?.monsters || {});
+    this.treasures = placeTreasures(this.dungeonMap, options?.treasures || {});
 
     // Track connected clients by userId so we can send per-player FOV updates
     this.userClients = new Map();
@@ -140,7 +132,7 @@ class NethackRoom extends Room {
       // Send initial render assets: color map then dungeon FOV (stubbed to full map)
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
-        client.send('dungeonMap', this.getFOVFor(p));
+        client.send('dungeonMap', calculateFOV(p, this.dungeonMap));
         console.log('[DEBUG server] onJoin: sent characterColorMap and dungeonMap to client', { id });
       } catch (e) {
         console.warn('[DEBUG server] onJoin: failed to send initial maps', e);
@@ -152,7 +144,7 @@ class NethackRoom extends Room {
       this.userClients.set(id, client);
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
-        client.send('dungeonMap', this.getFOVFor(p));
+        client.send('dungeonMap', calculateFOV(p, this.dungeonMap));
         console.log('[DEBUG server] onJoin(rejoin): resent characterColorMap and dungeonMap', { id });
       } catch (e) {
         console.warn('[DEBUG server] onJoin(rejoin): failed to send maps', e);
@@ -195,39 +187,13 @@ class NethackRoom extends Room {
   }
 
   applyCommand(cmd) {
-    const p = this.state.players.get(cmd.userId);
-    if (!p) return;
-
-    switch (cmd.type) {
-      case 'move': {
-        const dir = cmd.data?.dir; // 'N' | 'S' | 'E' | 'W'
-        const delta = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }[dir];
-        if (!delta) return;
-        p.x += delta[0];
-        p.y += delta[1];
-        // DEBUG: temporary instrumentation - server applied command (remove after verifying flow)
-        console.log('[DEBUG server] applied', { userId: cmd.userId, dir, pos: [p.x, p.y] });
-        this.state.log.push(`${p.name}#${p.id.slice(0,6)} moved ${dir} -> (${p.x},${p.y})`);
-        // Send updated FOV for this player (currently whole map)
-        const c = this.userClients.get(cmd.userId);
-        if (c) {
-          try {
-            c.send('dungeonMap', this.getFOVFor(p));
-          } catch (e) {
-            console.warn('[DEBUG server] failed to send updated FOV', { userId: cmd.userId }, e);
-          }
-        }
-        break;
-      }
-      // TODO: combat, inventory, actions, etc.
-      default:
-        break; // ignore unknown
-    }
+    // Delegate to modular command handler
+    return applyGameCommand(this, cmd);
   }
 
-  // Stub FOV: return the entire dungeon for now. Later, compute visibility based on player pos.
+  // Backwards-compatible wrapper (use calculateFOV instead)
   getFOVFor(player) {
-    return this.dungeonMap;
+    return calculateFOV(player, this.dungeonMap);
   }
 }
 
