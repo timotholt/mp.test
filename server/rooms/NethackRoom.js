@@ -176,7 +176,7 @@ class NethackRoom extends Room {
         // Public room: no password required
         return {
           userId: options.userId || client.sessionId,
-          name: options.name || options.hostName || 'Hero',
+          name: options.hostName || options.name || 'Hero',
         };
       }
     }
@@ -187,7 +187,7 @@ class NethackRoom extends Room {
     // Minimal identity (no JWT yet). You can integrate JWT later.
     return {
       userId: options.userId || client.sessionId,
-      name: options.name || options.hostName || 'Hero',
+      name: options.hostName || options.name || 'Hero',
     };
   }
 
