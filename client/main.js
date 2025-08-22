@@ -7,6 +7,318 @@ const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };
 
+// -------------------- Micro Router (plain DOM) --------------------
+// Screens are simple divs under #app, shown/hidden by route.
+const APP_STATES = {
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  LOBBY: 'LOBBY',
+  ROOM: 'ROOM',
+  GAMEPLAY_ACTIVE: 'GAMEPLAY_ACTIVE',
+  GAMEPLAY_PAUSED: 'GAMEPLAY_PAUSED',
+};
+
+const appRoot = document.getElementById('app');
+const screens = new Map();
+let currentRoute = null;
+
+function makeScreen(id, initFn) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.style.display = 'none';
+    appRoot.appendChild(el);
+  }
+  if (typeof initFn === 'function') initFn(el);
+  screens.set(id, el);
+  return el;
+}
+
+function hideAllScreens() {
+  for (const el of screens.values()) el.style.display = 'none';
+}
+
+function toggleRenderer(visible) {
+  const rc = document.getElementById('rc-canvas');
+  if (!rc) return;
+  rc.style.display = visible ? '' : 'none';
+}
+
+function setRoute(route, payload = {}) {
+  currentRoute = route;
+  hideAllScreens();
+  const el = screens.get(route);
+  if (el) {
+    el.style.display = '';
+    if (typeof el.update === 'function') el.update(payload);
+  } else {
+    console.warn('[router] no screen for', route);
+  }
+  const showRC = route === APP_STATES.GAMEPLAY_ACTIVE || route === APP_STATES.GAMEPLAY_PAUSED;
+  toggleRenderer(showRC);
+  // Allow movement input only during active gameplay and without blocking modals
+  window.__canSendGameplayInput = (route === APP_STATES.GAMEPLAY_ACTIVE);
+}
+
+// Register minimal placeholder screens (improve later)
+makeScreen(APP_STATES.LOGIN, (el) => { el.textContent = 'Login Screen'; });
+makeScreen(APP_STATES.LOBBY, (el) => { el.textContent = 'Lobby Screen'; });
+makeScreen(APP_STATES.ROOM, (el) => { el.textContent = 'Room Screen'; });
+makeScreen(APP_STATES.GAMEPLAY_ACTIVE, (el) => { el.textContent = 'Gameplay Active'; });
+makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paused'; });
+
+// Default route until server tells us otherwise
+setRoute(APP_STATES.LOGIN);
+
+// -------------------- Overlay Manager (priority modals) --------------------
+// Supports dynamic server-driven modals with priority and actions (yes/no/1..9)
+const PRIORITY = {
+  LOW: 10,              // character creation steps, quest window
+  MEDIUM: 50,           // game paused, waiting states
+  HIGH: 90,             // player dead, kicked
+  CRITICAL: 100,        // server shutdown/reboot
+};
+
+let overlayEl = null;
+function ensureOverlay() {
+  if (!overlayEl) {
+    overlayEl = document.createElement('div');
+    overlayEl.id = 'overlay';
+    overlayEl.style.position = 'absolute';
+    overlayEl.style.left = '0';
+    overlayEl.style.top = '0';
+    overlayEl.style.right = '0';
+    overlayEl.style.bottom = '0';
+    overlayEl.style.display = 'none';
+    overlayEl.style.pointerEvents = 'auto';
+    overlayEl.style.background = 'rgba(0,0,0,0.5)';
+    overlayEl.style.color = '#fff';
+    overlayEl.style.padding = '16px';
+    overlayEl.style.zIndex = '9999';
+    // Create inner content box for basic layout
+    const inner = document.createElement('div');
+    inner.id = 'overlay-content';
+    inner.style.maxWidth = '640px';
+    inner.style.margin = '40px auto';
+    inner.style.background = 'rgba(0,0,0,0.8)';
+    inner.style.border = '1px solid #444';
+    inner.style.padding = '16px';
+    inner.style.boxShadow = '0 0 12px rgba(0,0,0,0.6)';
+    overlayEl.appendChild(inner);
+    // Ensure appRoot is positioned for overlay stacking
+    appRoot.style.position = appRoot.style.position || 'relative';
+    appRoot.appendChild(overlayEl);
+  }
+  return overlayEl;
+}
+
+const OverlayManager = (() => {
+  const stack = []; // { id, priority, text, actions, blockInput, hotkeyMap }
+
+  function renderTop() {
+    const el = ensureOverlay();
+    if (stack.length === 0) {
+      el.style.display = 'none';
+      el.querySelector('#overlay-content').innerHTML = '';
+      // Recompute input gate when overlays change
+      window.__canSendGameplayInput = (currentRoute === APP_STATES.GAMEPLAY_ACTIVE);
+      return;
+    }
+    const top = stack[stack.length - 1];
+    el.style.display = '';
+    const content = el.querySelector('#overlay-content');
+    content.innerHTML = '';
+    const p = document.createElement('div');
+    p.textContent = top.text || '[modal]';
+    content.appendChild(p);
+    const btnRow = document.createElement('div');
+    btnRow.style.marginTop = '12px';
+    content.appendChild(btnRow);
+    (top.actions || []).forEach((a, idx) => {
+      const b = document.createElement('button');
+      b.textContent = a.label || a.id || ('Option ' + (idx + 1));
+      b.style.marginRight = '8px';
+      b.addEventListener('click', () => selectAction(top, a));
+      btnRow.appendChild(b);
+    });
+
+    // --- Server-driven app state & modal handling ---
+    let lastStateVersion = 0;
+    room.onMessage('appState', (msg) => {
+      try { console.log('[DEBUG client] appState', msg); } catch (_) {}
+      if (typeof msg?.version === 'number' && msg.version < lastStateVersion) return;
+      if (typeof msg?.version === 'number') lastStateVersion = msg.version;
+      const { state, substate, payload } = msg || {};
+      if (state) setRoute(state, payload || {});
+      if (substate) presentSubstate(substate, payload || {}); else OverlayManager.clearBelow(PRIORITY.CRITICAL + 1);
+    });
+
+    // Generic modal channel (server can present/dismiss arbitrary modal)
+    room.onMessage('modal', (msg) => {
+      const { command, id, text, actions, priority, blockInput } = msg || {};
+      if (command === 'present') {
+        OverlayManager.present({ id, text, actions, priority: priority ?? PRIORITY.MEDIUM, blockInput: blockInput !== false });
+      } else if (command === 'dismiss' && id) {
+        OverlayManager.dismiss(id);
+      } else if (command === 'clearBelow') {
+        OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM);
+      }
+    });
+    // If modal blocks input, disable gameplay input
+    window.__canSendGameplayInput = (currentRoute === APP_STATES.GAMEPLAY_ACTIVE) && !top.blockInput;
+  }
+
+  function selectAction(modal, action) {
+    // Inform server about the chosen action
+    try {
+      if (window.room) {
+        window.room.send('modalAction', { modalId: modal.id, actionId: action.id });
+      }
+    } catch (e) { console.warn('modalAction send failed', e); }
+    // Dismiss the current modal
+    dismiss(modal.id);
+  }
+
+  function present({ id, priority = PRIORITY.LOW, text = '', actions = [], blockInput = true, hotkeys = {} }) {
+    // Remove any existing modal with same id
+    for (let i = stack.length - 1; i >= 0; i--) {
+      if (stack[i].id === id) stack.splice(i, 1);
+    }
+    // Insert keeping stack sorted by priority (ascending), but top is last
+    const modal = { id, priority, text, actions, blockInput, hotkeys };
+    const idx = stack.findIndex(m => m.priority > priority);
+    if (idx === -1) stack.push(modal); else stack.splice(idx, 0, modal);
+    renderTop();
+  }
+
+  function dismiss(id) {
+    const i = stack.findIndex(m => m.id === id);
+    if (i !== -1) stack.splice(i, 1);
+    renderTop();
+  }
+
+  function clearBelow(priority) {
+    for (let i = stack.length - 1; i >= 0; i--) {
+      if (stack[i].priority < priority) stack.splice(i, 1);
+    }
+    renderTop();
+  }
+
+  function top() { return stack[stack.length - 1] || null; }
+
+  function isBlockingInput() {
+    const t = top();
+    return !!(t && t.blockInput);
+  }
+
+  // Keyboard hotkeys for the top modal
+  window.addEventListener('keydown', (e) => {
+    const t = top();
+    if (!t) return;
+    // map numeric keys 1..9 to actions by index
+    const num = parseInt(e.key, 10);
+    if (!isNaN(num) && num >= 1 && num <= (t.actions || []).length) {
+      e.preventDefault();
+      selectAction(t, t.actions[num - 1]);
+      return;
+    }
+    // y/n convenience
+    if ((e.key === 'y' || e.key === 'Y') && (t.actions || [])[0]) {
+      e.preventDefault();
+      selectAction(t, t.actions[0]);
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && (t.actions || [])[1]) {
+      e.preventDefault();
+      selectAction(t, t.actions[1]);
+      return;
+    }
+  });
+
+  return { present, dismiss, clearBelow, top, isBlockingInput };
+})();
+
+// Known substates and their priority for preemption
+const SUBSTATES = {
+  CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS',
+  CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER: 'CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER',
+  CURRENT_PLAYER_CHOOSING_CHARACTER_STATS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_STATS',
+  CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT: 'CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT',
+  WAITING_ON_GAME_START: 'WAITING_ON_GAME_START',
+  GAME_PAUSED_OTHER_PLAYER_IN_MENU: 'GAME_PAUSED_OTHER_PLAYER_IN_MENU',
+  CURRENT_PLAYER_DEAD: 'CURRENT_PLAYER_DEAD',
+  OTHER_PLAYER_DEAD: 'OTHER_PLAYER_DEAD',
+  CURRENT_PLAYER_DISCONNECTED: 'CURRENT_PLAYER_DISCONNECTED',
+  OTHER_PLAYER_DISCONNECTED: 'OTHER_PLAYER_DISCONNECTED',
+  CURRENT_PLAYER_REJOINING: 'CURRENT_PLAYER_REJOINING',
+  OTHER_PLAYER_REJOINING: 'OTHER_PLAYER_REJOINING',
+  CURRENT_PLAYER_KICKED: 'CURRENT_PLAYER_KICKED',
+  OTHER_PLAYER_KICKED: 'OTHER_PLAYER_KICKED',
+  SERVER_SHUTDOWN: 'SERVER_SHUTDOWN',
+  SERVER_REBOOT: 'SERVER_REBOOT',
+  CURRENT_PLAYER_QUEST_WINDOW: 'CURRENT_PLAYER_QUEST_WINDOW',
+};
+
+function priorityForSubstate(s) {
+  switch (s) {
+    case SUBSTATES.SERVER_SHUTDOWN:
+    case SUBSTATES.SERVER_REBOOT:
+      return PRIORITY.CRITICAL;
+    case SUBSTATES.CURRENT_PLAYER_KICKED:
+    case SUBSTATES.OTHER_PLAYER_KICKED:
+    case SUBSTATES.CURRENT_PLAYER_DEAD:
+    case SUBSTATES.OTHER_PLAYER_DEAD:
+      return PRIORITY.HIGH;
+    case SUBSTATES.GAME_PAUSED_OTHER_PLAYER_IN_MENU:
+    case SUBSTATES.CURRENT_PLAYER_DISCONNECTED:
+    case SUBSTATES.OTHER_PLAYER_DISCONNECTED:
+    case SUBSTATES.CURRENT_PLAYER_REJOINING:
+    case SUBSTATES.OTHER_PLAYER_REJOINING:
+    case SUBSTATES.WAITING_ON_GAME_START:
+      return PRIORITY.MEDIUM;
+    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS:
+    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_CHAPTER:
+    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_STATS:
+    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT:
+    case SUBSTATES.CURRENT_PLAYER_QUEST_WINDOW:
+    default:
+      return PRIORITY.LOW;
+  }
+}
+
+function presentSubstate(substate, payload = {}) {
+  const prio = priorityForSubstate(substate);
+  // Clear any lower-priority modals so higher priority takes precedence
+  OverlayManager.clearBelow(prio);
+  const text = payload.text || `[${substate}]`;
+  const actions = Array.isArray(payload.actions) ? payload.actions : defaultActionsFor(substate);
+  const blockInput = payload.blockInput !== false; // block by default
+  OverlayManager.present({ id: substate, priority: prio, text, actions, blockInput });
+}
+
+function defaultActionsFor(substate) {
+  switch (substate) {
+    case SUBSTATES.SERVER_SHUTDOWN:
+    case SUBSTATES.SERVER_REBOOT:
+      return [{ id: 'ok', label: 'OK' }];
+    case SUBSTATES.CURRENT_PLAYER_KICKED:
+      return [{ id: 'dismiss', label: 'OK' }];
+    case SUBSTATES.CURRENT_PLAYER_DEAD:
+      return [
+        { id: 'respawn', label: 'Respawn' },
+        { id: 'spectate', label: 'Spectate' },
+      ];
+    case SUBSTATES.WAITING_ON_GAME_START:
+      return [{ id: 'ready', label: 'Ready' }];
+    default:
+      return [
+        { id: 'yes', label: 'Yes' },
+        { id: 'no', label: 'No' },
+      ];
+  }
+}
+
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
 
@@ -49,6 +361,8 @@ async function connect() {
     log(`[info] connected room=${room.id} game=${gameId} you=${name} (${selfId})`);
     // DEBUG: temporary instrumentation - connected (remove after verifying flow)
     console.log('[DEBUG client] connected', { roomId: room.id, sessionId: room.sessionId });
+    // Expose room for modalAction messages
+    window.room = room;
 
     // Observe players (Schema v2 signal-style)
     room.state.players.onAdd((player, key) => {
