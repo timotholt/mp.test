@@ -366,7 +366,10 @@ class NethackRoom extends Room {
   }
 
   clearCountdownTimer() {
-    if (this._startTimer) { this.clock.clearInterval(this._startTimer); this._startTimer = null; }
+    if (this._startTimer) {
+      try { if (typeof this._startTimer.clear === 'function') this._startTimer.clear(); } catch (_) {}
+      this._startTimer = null;
+    }
   }
 
   // Backwards-compatible wrapper (use calculateFOV instead)
