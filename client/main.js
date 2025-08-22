@@ -54,7 +54,8 @@ async function connect() {
     room.state.players.onAdd((player, key) => {
       const lx = player.currentLocation?.x;
       const ly = player.currentLocation?.y;
-      log(`+ ${player.name} (${key}) @ ${lx},${ly}`);
+      const ll = player.currentLocation?.level ?? 0;
+      log(`+ ${player.name} (${key}) @ ${lx}/${ly}/${ll}`);
     });
     room.state.players.onRemove((_, key) => { log(`- player ${key}`); });
 
@@ -74,6 +75,23 @@ async function connect() {
       } else {
         console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Caching.');
         window.__pendingDungeonMap = mapString;
+      }
+    });
+
+    // Wire per-position color map from server (JSON string)
+    room.onMessage('positionColorMap', (mapString) => {
+      try {
+        const parsed = JSON.parse(mapString);
+        console.log('[DEBUG client] received positionColorMap', { entries: Object.keys(parsed).length });
+      } catch (e) {
+        console.warn('[DEBUG client] invalid positionColorMap JSON', e);
+      }
+      if (window.radianceCascades && window.radianceCascades.surface && typeof window.radianceCascades.surface.setPositionColorMap === 'function') {
+        console.log('[DEBUG client] applying positionColorMap to renderer');
+        window.radianceCascades.surface.setPositionColorMap(mapString);
+      } else {
+        console.warn('[ASCII renderer] Received positionColorMap before renderer ready. Caching.');
+        window.__pendingPositionColorMap = mapString;
       }
     });
 
@@ -191,6 +209,13 @@ async function setupAsciiRenderer() {
         rc.surface.setCharacterColorMap(window.__pendingCharacterColorMap);
       } catch (_) {}
       window.__pendingCharacterColorMap = undefined;
+    }
+    if (window.__pendingPositionColorMap && rc.surface && typeof rc.surface.setPositionColorMap === 'function') {
+      try {
+        console.log('[DEBUG client] applying pending positionColorMap');
+        rc.surface.setPositionColorMap(window.__pendingPositionColorMap);
+      } catch (_) {}
+      window.__pendingPositionColorMap = undefined;
     }
 
     // Minimal camera controls (mouse): pan + wheel zoom

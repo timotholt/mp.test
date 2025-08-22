@@ -11,6 +11,8 @@ const { placeTreasures } = require('./gamecode/treasurePlacement');
 const { calculateFOV } = require('./gamecode/fov');
 const { applyCommand: applyGameCommand } = require('./gamecode/commands');
 const { placePlayer } = require('./gamecode/playerPlacement');
+const { initPlayer } = require('./gamecode/initPlayer');
+const { buildPositionColorMap } = require('./gamecode/render');
 
 class Location extends Schema {
   constructor() {
@@ -112,6 +114,20 @@ class NethackRoom extends Room {
 
     // Track connected clients by userId so we can send per-player FOV updates
     this.userClients = new Map();
+
+    // Per-player colors for '@' overlays
+    this.playerColors = new Map();
+    this.colorPalette = [
+      [1.0, 0.2, 0.2], // red
+      [0.2, 1.0, 0.2], // green
+      [0.2, 0.6, 1.0], // blue-ish
+      [1.0, 1.0, 0.2], // yellow
+      [1.0, 0.4, 1.0], // magenta
+      [0.2, 1.0, 1.0], // cyan
+      [1.0, 0.6, 0.2], // orange
+      [0.8, 0.4, 1.0], // purple
+    ];
+    this.nextColorIdx = 0;
   }
 
   async onAuth(client, options) {
@@ -141,8 +157,15 @@ class NethackRoom extends Room {
       p.id = id;
       p.name = options?.name || 'Hero';
       p.online = true;
+      // Initialize player glyphs/metadata
+      initPlayer(p);
       // Place the player at a walkable spawn
       placePlayer(this, p);
+      // Assign a unique-ish color for this player
+      if (!this.playerColors.has(id)) {
+        const col = this.colorPalette[this.nextColorIdx++ % this.colorPalette.length];
+        this.playerColors.set(id, col);
+      }
       this.state.players.set(id, p);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
       // Track client for targeted messages
@@ -150,7 +173,9 @@ class NethackRoom extends Room {
       // Send initial render assets: color map then dungeon FOV (stubbed to full map)
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
-        client.send('dungeonMap', calculateFOV(p, this.dungeonMap));
+        client.send('dungeonMap', calculateFOV(p, this.dungeonMap, { players: this.state.players }));
+        const pcm = buildPositionColorMap(this.state.players, this.playerColors, p.currentLocation?.level ?? 0);
+        client.send('positionColorMap', JSON.stringify(pcm));
         console.log('[DEBUG server] onJoin: sent characterColorMap and dungeonMap to client', { id });
       } catch (e) {
         console.warn('[DEBUG server] onJoin: failed to send initial maps', e);
@@ -162,7 +187,9 @@ class NethackRoom extends Room {
       this.userClients.set(id, client);
       try {
         client.send('characterColorMap', JSON.stringify(this.characterColorMap));
-        client.send('dungeonMap', calculateFOV(p, this.dungeonMap));
+        client.send('dungeonMap', calculateFOV(p, this.dungeonMap, { players: this.state.players }));
+        const pcm = buildPositionColorMap(this.state.players, this.playerColors, p.currentLocation?.level ?? 0);
+        client.send('positionColorMap', JSON.stringify(pcm));
         console.log('[DEBUG server] onJoin(rejoin): resent characterColorMap and dungeonMap', { id });
       } catch (e) {
         console.warn('[DEBUG server] onJoin(rejoin): failed to send maps', e);
@@ -211,7 +238,7 @@ class NethackRoom extends Room {
 
   // Backwards-compatible wrapper (use calculateFOV instead)
   getFOVFor(player) {
-    return calculateFOV(player, this.dungeonMap);
+    return calculateFOV(player, this.dungeonMap, { players: this.state.players });
   }
 }
 
