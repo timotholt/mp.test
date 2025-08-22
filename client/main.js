@@ -40,6 +40,14 @@ function makeScreen(id, initFn) {
 }
 
 // -------------------- Room UI Helpers --------------------
+function setReadyButtonUI(isReady) {
+  if (!roomReadyBtn) return;
+  roomReadyBtn.dataset.ready = isReady ? 'true' : 'false';
+  // Checkbox-style labels: empty = not ready, filled = ready
+  roomReadyBtn.textContent = isReady ? '☑ Ready' : '☐ Ready';
+}
+// Expose for modal modules to sync button state on cancel/unready
+window.setReadyButtonUI = setReadyButtonUI;
 function bindRoomUIEventsOnce() {
   if (!room || roomUIBound) return;
   roomUIBound = true;
@@ -205,14 +213,16 @@ makeScreen(APP_STATES.ROOM, (el) => {
   title.textContent = 'Room';
   header.appendChild(title);
   roomReadyBtn = document.createElement('button');
-  roomReadyBtn.textContent = 'Ready';
-  roomReadyBtn.dataset.ready = 'false';
+  setReadyButtonUI(false); // default to not ready on room entry
   roomReadyBtn.onclick = () => {
     // Toggle local ready flag and notify server; server decides whether to show modal
     const now = roomReadyBtn.dataset.ready !== 'true';
-    roomReadyBtn.dataset.ready = now ? 'true' : 'false';
-    roomReadyBtn.textContent = now ? 'Unready' : 'Ready';
+    setReadyButtonUI(now);
     try { if (room) room.send('setReady', { ready: now }); } catch (_) {}
+    // Ensure visible feedback when unreadying locally
+    if (!now) {
+      try { appendChatLine('You are not ready'); } catch (_) {}
+    }
   };
   header.appendChild(roomReadyBtn);
   const players = document.createElement('div');
@@ -693,8 +703,16 @@ function wireRoomEvents(r) {
         countdown: (payload && typeof payload.countdown === 'number') ? payload.countdown : 0,
         youAreReady: !!payload?.youAreReady,
         onStart: () => { try { r.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
-        onCancel: () => { try { r.send('cancelStart'); } catch (_) {} },
-        onUnready: () => { try { r.send('setReady', { ready: false }); } catch (_) {} },
+        onCancel: () => {
+          try { r.send('cancelStart'); } catch (_) {}
+          // Host cancel should reflect as not ready when countdown isn't active; reset UI proactively
+          try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
+        },
+        onUnready: () => {
+          try { r.send('setReady', { ready: false }); } catch (_) {}
+          try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
+          try { appendChatLine('You are not ready'); } catch (_) {}
+        },
         priority: PRIORITY.MEDIUM,
       });
     } catch (e) { console.warn('showGameConfirm handling failed', e); }
