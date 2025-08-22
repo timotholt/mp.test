@@ -21,11 +21,13 @@ class Player extends Entity {
     super();
     this.kind = 'player';
     this.online = true;
+    this.ready = false;
   }
 }
 
 defineTypes(Player, {
   online: 'boolean',
+  ready: 'boolean',
 });
 
 class GameState extends Schema {
@@ -67,6 +69,7 @@ class NethackRoom extends Room {
 
     // Host/user management
     this.hostId = null; // first player to join becomes host
+    this.confirmOpenForHost = false; // track if host confirm is currently open on client
 
     // Input handler (clients send small intents only; server is authoritative)
     this.onMessage('input', (client, payload) => {
@@ -87,9 +90,41 @@ class NethackRoom extends Room {
       }
       try {
         console.log('[server] startGame accepted by host; broadcasting GAMEPLAY_ACTIVE');
+        this.confirmOpenForHost = false;
         this.broadcast('appState', { state: 'GAMEPLAY_ACTIVE' });
       } catch (e) {
         console.warn('[server] startGame broadcast failed', e);
+      }
+    });
+
+    // Players toggle ready; host ready triggers confirmation modal
+    this.onMessage('setReady', (client, payload) => {
+      const uid = client.auth?.userId || client.sessionId;
+      const p = this.state.players.get(uid);
+      if (!p) return;
+      const next = !!(payload && payload.ready);
+      if (p.ready === next) {
+        // no-op but still refresh if modal is open
+        if (this.confirmOpenForHost) this.sendStartConfirm({ open: false });
+        return;
+      }
+      p.ready = next;
+      // Log for debugging
+      try { this.state.log.push(`${p.name} is ${p.ready ? 'ready' : 'not ready'}`); } catch (_) {}
+      // If host toggled ready to true, open/refresh confirmation
+      if (uid === this.hostId && p.ready) {
+        this.sendStartConfirm({ open: true });
+      } else if (this.confirmOpenForHost) {
+        // keep host modal updated as others toggle
+        this.sendStartConfirm({ open: false });
+      }
+    });
+
+    // Host cancelled the start dialog
+    this.onMessage('cancelStart', (client) => {
+      const uid = client.auth?.userId || client.sessionId;
+      if (uid === this.hostId) {
+        this.confirmOpenForHost = false;
       }
     });
 
@@ -141,7 +176,7 @@ class NethackRoom extends Room {
         // Public room: no password required
         return {
           userId: options.userId || client.sessionId,
-          name: options.name || 'Hero',
+          name: options.name || options.hostName || 'Hero',
         };
       }
     }
@@ -152,7 +187,7 @@ class NethackRoom extends Room {
     // Minimal identity (no JWT yet). You can integrate JWT later.
     return {
       userId: options.userId || client.sessionId,
-      name: options.name || 'Hero',
+      name: options.name || options.hostName || 'Hero',
     };
   }
 
@@ -164,7 +199,8 @@ class NethackRoom extends Room {
       if (!this.hostId) this.hostId = id;
       p = new Player();
       p.id = id;
-      p.name = options?.name || 'Hero';
+      // Prefer authenticated name (from onAuth), fall back to join options
+      p.name = (client.auth && client.auth.name) || options?.name || 'Hero';
       p.online = true;
       // Initialize player glyphs/metadata
       initPlayer(p);
@@ -191,6 +227,10 @@ class NethackRoom extends Room {
       } catch (e) {
         console.warn('[DEBUG server] onJoin: failed to send initial maps', e);
       }
+      // If host confirm is open, refresh snapshot for host
+      if (this.confirmOpenForHost) {
+        try { this.sendStartConfirm({ open: false }); } catch (_) {}
+      }
     } else {
       p.online = true;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
@@ -206,6 +246,10 @@ class NethackRoom extends Room {
         console.log('[DEBUG server] onJoin(rejoin): resent characterColorMap and dungeonMap', { id });
       } catch (e) {
         console.warn('[DEBUG server] onJoin(rejoin): failed to send maps', e);
+      }
+      // If host confirm is open, refresh snapshot for host
+      if (this.confirmOpenForHost) {
+        try { this.sendStartConfirm({ open: false }); } catch (_) {}
       }
     }
   }
@@ -227,6 +271,10 @@ class NethackRoom extends Room {
       p.online = false;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
       removeEntity(this, p);
+      // If host confirm is open, refresh snapshot for host
+      if (this.confirmOpenForHost) {
+        try { this.sendStartConfirm({ open: false }); } catch (_) {}
+      }
     }
     // Drop mapping for targeted messages
     this.userClients.delete(id);
@@ -248,6 +296,22 @@ class NethackRoom extends Room {
   applyCommand(cmd) {
     // Delegate to modular command handler
     return applyGameCommand(this, cmd);
+  }
+
+  // Send or refresh the Start Game confirmation to the host with current state
+  sendStartConfirm({ open = false } = {}) {
+    if (!this.hostId) return;
+    const hostClient = this.userClients.get(this.hostId);
+    if (!hostClient) return;
+    const players = [];
+    try {
+      this.state.players.forEach((p, id) => {
+        players.push({ id, name: p?.name || 'Hero', ready: !!p?.ready, online: p?.online !== false });
+      });
+    } catch (_) {}
+    const canStart = (players.length > 0) && players.every(pl => pl.online && pl.ready);
+    try { hostClient.send('showGameConfirm', { players, canStart }); } catch (e) { console.warn('showGameConfirm send failed', e); }
+    if (open) this.confirmOpenForHost = true;
   }
 
   // Backwards-compatible wrapper (use calculateFOV instead)

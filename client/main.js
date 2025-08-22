@@ -44,8 +44,23 @@ function bindRoomUIEventsOnce() {
   if (!room || roomUIBound) return;
   roomUIBound = true;
   try {
-    room.state.players.onAdd(() => { renderRoomPlayers(); });
-    room.state.players.onRemove(() => { renderRoomPlayers(); });
+    room.state.players.onAdd((player) => {
+      // Re-render players list and refresh start confirm (if shown)
+      renderRoomPlayers();
+      try {
+        // Track per-player changes to keep confirm modal live-updating
+        if (player && typeof player.onChange === 'function') {
+          player.onChange(() => {
+            try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+      try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
+    });
+    room.state.players.onRemove(() => {
+      renderRoomPlayers();
+      try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
+    });
   } catch (_) {}
   try {
     room.state.log.onAdd((value) => {
@@ -67,6 +82,18 @@ function renderRoomPlayers() {
       roomPlayersEl.appendChild(line);
     });
   } catch (_) {}
+}
+
+// Snapshot current players for modals/UI that need a serializable view
+function getPlayersSnapshot() {
+  const arr = [];
+  try {
+    if (!room || !room.state || !room.state.players) return arr;
+    room.state.players.forEach((p, id) => {
+      arr.push({ id, name: p?.name || 'Hero', ready: !!p?.ready, online: p?.online !== false });
+    });
+  } catch (_) {}
+  return arr;
 }
 
 function refreshRoomChat() {
@@ -189,17 +216,11 @@ makeScreen(APP_STATES.ROOM, (el) => {
   roomReadyBtn.textContent = 'Ready';
   roomReadyBtn.dataset.ready = 'false';
   roomReadyBtn.onclick = () => {
-    // Toggle local ready flag (server handling to be added later)
+    // Toggle local ready flag and notify server; server decides whether to show modal
     const now = roomReadyBtn.dataset.ready !== 'true';
     roomReadyBtn.dataset.ready = now ? 'true' : 'false';
     roomReadyBtn.textContent = now ? 'Unready' : 'Ready';
-    // If host intends to start the game, present confirm modal from modals/
-    if (now) {
-      presentStartGameConfirm(
-        () => { try { room && room.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
-        () => { try { roomReadyBtn.dataset.ready = 'false'; roomReadyBtn.textContent = 'Ready'; } catch (_) {} }
-      );
-    }
+    try { if (room) room.send('setReady', { ready: now }); } catch (_) {}
   };
   header.appendChild(roomReadyBtn);
   const players = document.createElement('div');
@@ -663,6 +684,19 @@ function wireRoomEvents(r) {
     } else if (command === 'clearBelow') {
       OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM);
     }
+  });
+
+  // Server-driven start game confirmation (host only)
+  r.onMessage('showGameConfirm', (payload) => {
+    try {
+      presentStartGameConfirm({
+        players: (payload && Array.isArray(payload.players)) ? payload.players : getPlayersSnapshot(),
+        canStart: typeof payload?.canStart === 'boolean' ? payload.canStart : undefined,
+        onStart: () => { try { r.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
+        onCancel: () => { try { r.send('cancelStart'); } catch (_) {} },
+        priority: PRIORITY.MEDIUM,
+      });
+    } catch (e) { console.warn('showGameConfirm handling failed', e); }
   });
 
   r.onLeave((code) => {
