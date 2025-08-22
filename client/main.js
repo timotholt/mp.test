@@ -47,19 +47,11 @@ function bindRoomUIEventsOnce() {
     room.state.players.onAdd((player) => {
       // Re-render players list and refresh start confirm (if shown)
       renderRoomPlayers();
-      try {
-        // Track per-player changes to keep confirm modal live-updating
-        if (player && typeof player.onChange === 'function') {
-          player.onChange(() => {
-            try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
-          });
-        }
-      } catch (_) {}
-      try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
+      // Server will push 'showGameConfirm' with fresh snapshot; no local modal refresh needed
     });
     room.state.players.onRemove(() => {
       renderRoomPlayers();
-      try { if (window.__confirmStartOpen) presentStartGameConfirm({ players: getPlayersSnapshot() }); } catch (_) {}
+      // Server will push 'showGameConfirm' updates if needed
     });
   } catch (_) {}
   try {
@@ -673,6 +665,10 @@ function wireRoomEvents(r) {
     if (typeof msg?.version === 'number') lastStateVersion = msg.version;
     const { state, substate, payload } = msg || {};
     if (state) setRoute(state, payload || {});
+    // Ensure start-confirm modal is dismissed when gameplay starts
+    if (state === APP_STATES.GAMEPLAY_ACTIVE) {
+      try { OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
+    }
     if (substate) presentSubstate(substate, payload || {}); else OverlayManager.clearBelow(PRIORITY.CRITICAL + 1);
   });
   r.onMessage('modal', (msg) => {
@@ -686,14 +682,19 @@ function wireRoomEvents(r) {
     }
   });
 
-  // Server-driven start game confirmation (host only)
+  // Server-driven start game confirmation (host and ready players)
   r.onMessage('showGameConfirm', (payload) => {
     try {
       presentStartGameConfirm({
         players: (payload && Array.isArray(payload.players)) ? payload.players : getPlayersSnapshot(),
         canStart: typeof payload?.canStart === 'boolean' ? payload.canStart : undefined,
+        isHost: !!(payload && (payload.isHost || (payload.hostId && payload.hostId === r.sessionId))),
+        starting: !!payload?.starting,
+        countdown: (payload && typeof payload.countdown === 'number') ? payload.countdown : 0,
+        youAreReady: !!payload?.youAreReady,
         onStart: () => { try { r.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
         onCancel: () => { try { r.send('cancelStart'); } catch (_) {} },
+        onUnready: () => { try { r.send('setReady', { ready: false }); } catch (_) {} },
         priority: PRIORITY.MEDIUM,
       });
     } catch (e) { console.warn('showGameConfirm handling failed', e); }

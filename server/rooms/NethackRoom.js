@@ -36,6 +36,8 @@ class GameState extends Schema {
     this.gameId = '';
     this.players = new MapSchema();
     this.log = new ArraySchema();
+    this.starting = false;      // server-driven start countdown active
+    this.countdown = 0;         // seconds remaining
   }
 }
 
@@ -43,6 +45,8 @@ defineTypes(GameState, {
   gameId: 'string',
   players: { map: Player },
   log: ['string'],
+  starting: 'boolean',
+  countdown: 'number',
 });
 
 class NethackRoom extends Room {
@@ -70,6 +74,7 @@ class NethackRoom extends Room {
     // Host/user management
     this.hostId = null; // first player to join becomes host
     this.confirmOpenForHost = false; // track if host confirm is currently open on client
+    this._startTimer = null; // countdown interval handle
 
     // Input handler (clients send small intents only; server is authoritative)
     this.onMessage('input', (client, payload) => {
@@ -81,20 +86,15 @@ class NethackRoom extends Room {
       this.commandQueue.push({ userId: client.auth?.userId || client.sessionId, type, data: rest });
     });
 
-    // Host can start the game at any time (no need to wait for max players)
+    // Host can start at any time: triggers a 5s server-driven countdown
     this.onMessage('startGame', (client) => {
       const uid = client.auth?.userId || client.sessionId;
       if (!this.hostId || uid !== this.hostId) {
         console.log('[server] startGame rejected: not host', { uid, hostId: this.hostId });
         return;
       }
-      try {
-        console.log('[server] startGame accepted by host; broadcasting GAMEPLAY_ACTIVE');
-        this.confirmOpenForHost = false;
-        this.broadcast('appState', { state: 'GAMEPLAY_ACTIVE' });
-      } catch (e) {
-        console.warn('[server] startGame broadcast failed', e);
-      }
+      if (this.state.starting) return; // already counting down
+      this.beginCountdown();
     });
 
     // Players toggle ready; host ready triggers confirmation modal
@@ -104,27 +104,42 @@ class NethackRoom extends Room {
       if (!p) return;
       const next = !!(payload && payload.ready);
       if (p.ready === next) {
-        // no-op but still refresh if modal is open
-        if (this.confirmOpenForHost) this.sendStartConfirm({ open: false });
+        // no-op, but refresh confirm views to keep everyone in sync
+        this.broadcastStartConfirmToReady();
         return;
       }
       p.ready = next;
       // Log for debugging
       try { this.state.log.push(`${p.name} is ${p.ready ? 'ready' : 'not ready'}`); } catch (_) {}
-      // If host toggled ready to true, open/refresh confirmation
-      if (uid === this.hostId && p.ready) {
-        this.sendStartConfirm({ open: true });
-      } else if (this.confirmOpenForHost) {
-        // keep host modal updated as others toggle
-        this.sendStartConfirm({ open: false });
+      // Update confirm displays for all ready players
+      this.broadcastStartConfirmToReady();
+      // If someone un-readies during countdown, stop it
+      if (this.state.starting && !p.ready) {
+        this.stopCountdown('player_unready');
+        this.broadcastStartConfirmToReady();
       }
     });
 
-    // Host cancelled the start dialog
+    // Host or any READY player can cancel starting. If starting=false and host calls cancel twice,
+    // second cancel will set host to unready (client invokes twice per spec).
     this.onMessage('cancelStart', (client) => {
       const uid = client.auth?.userId || client.sessionId;
-      if (uid === this.hostId) {
-        this.confirmOpenForHost = false;
+      const p = this.state.players.get(uid);
+      if (!p) return;
+      const isHost = uid === this.hostId;
+      // If countdown active, any READY player or host can stop it
+      if (this.state.starting) {
+        if (isHost || p.ready) {
+          this.stopCountdown('cancel');
+          // Keep host ready and modal open; others remain ready
+          this.broadcastStartConfirmToReady();
+        }
+        return;
+      }
+      // Not starting: only host's second cancel should unready himself and close modal client-side
+      if (isHost) {
+        p.ready = false;
+        this.broadcastStartConfirmToReady();
       }
     });
 
@@ -227,10 +242,8 @@ class NethackRoom extends Room {
       } catch (e) {
         console.warn('[DEBUG server] onJoin: failed to send initial maps', e);
       }
-      // If host confirm is open, refresh snapshot for host
-      if (this.confirmOpenForHost) {
-        try { this.sendStartConfirm({ open: false }); } catch (_) {}
-      }
+      // Refresh confirm views for ready players (host + others)
+      this.broadcastStartConfirmToReady();
     } else {
       p.online = true;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
@@ -247,10 +260,8 @@ class NethackRoom extends Room {
       } catch (e) {
         console.warn('[DEBUG server] onJoin(rejoin): failed to send maps', e);
       }
-      // If host confirm is open, refresh snapshot for host
-      if (this.confirmOpenForHost) {
-        try { this.sendStartConfirm({ open: false }); } catch (_) {}
-      }
+      // Refresh confirm views for ready players (host + others)
+      this.broadcastStartConfirmToReady();
     }
   }
 
@@ -271,10 +282,8 @@ class NethackRoom extends Room {
       p.online = false;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
       removeEntity(this, p);
-      // If host confirm is open, refresh snapshot for host
-      if (this.confirmOpenForHost) {
-        try { this.sendStartConfirm({ open: false }); } catch (_) {}
-      }
+      // Refresh confirm views for ready players (host + others)
+      this.broadcastStartConfirmToReady();
     }
     // Drop mapping for targeted messages
     this.userClients.delete(id);
@@ -298,20 +307,66 @@ class NethackRoom extends Room {
     return applyGameCommand(this, cmd);
   }
 
-  // Send or refresh the Start Game confirmation to the host with current state
-  sendStartConfirm({ open = false } = {}) {
-    if (!this.hostId) return;
-    const hostClient = this.userClients.get(this.hostId);
-    if (!hostClient) return;
+  // Helper: build a snapshot payload for confirm modal
+  buildConfirmPayload(forUserId) {
     const players = [];
     try {
       this.state.players.forEach((p, id) => {
         players.push({ id, name: p?.name || 'Hero', ready: !!p?.ready, online: p?.online !== false });
       });
     } catch (_) {}
-    const canStart = (players.length > 0) && players.every(pl => pl.online && pl.ready);
-    try { hostClient.send('showGameConfirm', { players, canStart }); } catch (e) { console.warn('showGameConfirm send failed', e); }
-    if (open) this.confirmOpenForHost = true;
+    return {
+      players,
+      hostId: this.hostId,
+      isHost: forUserId === this.hostId,
+      starting: !!this.state.starting,
+      countdown: this.state.countdown | 0,
+      canStart: true, // host can always start; client will disable for non-hosts
+      youAreReady: !!this.state.players.get(forUserId)?.ready,
+    };
+  }
+
+  // Send/refresh confirm to all ready players and the host (if ready)
+  broadcastStartConfirmToReady() {
+    const ids = [];
+    this.state.players.forEach((p, id) => { if (p.ready) ids.push(id); });
+    ids.forEach((id) => {
+      const c = this.userClients.get(id);
+      if (!c) return;
+      const payload = this.buildConfirmPayload(id);
+      try { c.send('showGameConfirm', payload); } catch (e) { console.warn('showGameConfirm send failed', e); }
+    });
+  }
+
+  // Begin a 5-second countdown; server-driven tick and broadcasts
+  beginCountdown() {
+    if (this._startTimer) return;
+    this.state.starting = true;
+    this.state.countdown = 5;
+    try { this.state.log.push('Starting in 5…'); } catch (_) {}
+    this.broadcastStartConfirmToReady();
+    this._startTimer = this.clock.setInterval(() => {
+      if (!this.state.starting) { this.clearCountdownTimer(); return; }
+      this.state.countdown = Math.max(0, (this.state.countdown | 0) - 1);
+      this.broadcastStartConfirmToReady();
+      if (this.state.countdown <= 0) {
+        this.stopCountdown('done');
+        // Enter gameplay
+        this.broadcast('appState', { state: 'GAMEPLAY_ACTIVE' });
+      }
+    }, 1000);
+  }
+
+  stopCountdown(reason) {
+    if (!this.state.starting && !this._startTimer) return;
+    this.state.starting = false;
+    this.state.countdown = 0;
+    this.clearCountdownTimer();
+    try { this.state.log.push(`Start cancelled${reason ? ' (' + reason + ')' : ''}`); } catch (_) {}
+  }
+
+  clearCountdownTimer() {
+    if (this._startTimer) { this.clock.clearInterval(this._startTimer); this._startTimer = null; }
   }
 
   // Backwards-compatible wrapper (use calculateFOV instead)

@@ -1,8 +1,8 @@
-// Start Game confirmation modal (host-only presentation, server-driven)
-// Exports: presentStartGameConfirm({ players, canStart, onStart, onCancel, priority })
+// Start Game confirmation modal (server-driven)
+// Exports: presentStartGameConfirm({ players, canStart, isHost, starting, countdown, youAreReady, onStart, onCancel, onUnready, priority })
 // Relies on global OverlayManager and window.PRIORITY set by client/main.js
 
-export function presentStartGameConfirm({ players = [], canStart = false, onStart, onCancel, priority } = {}) {
+export function presentStartGameConfirm({ players = [], canStart = false, isHost = false, starting = false, countdown = 0, youAreReady = false, onStart, onCancel, onUnready, priority } = {}) {
   try {
     const prio = (typeof priority === 'number') ? priority : ((window.PRIORITY && window.PRIORITY.MEDIUM) || 50);
     // Non-blocking so lobby/room UI remains interactive while we wait
@@ -13,7 +13,7 @@ export function presentStartGameConfirm({ players = [], canStart = false, onStar
 
     // Title
     const title = document.createElement('div');
-    title.textContent = 'Start game?';
+    title.textContent = starting ? `Starting in ${Math.max(0, countdown|0)}…` : 'Start game?';
     title.style.fontWeight = 'bold';
     content.appendChild(title);
 
@@ -45,38 +45,53 @@ export function presentStartGameConfirm({ players = [], canStart = false, onStar
 
     content.appendChild(table);
 
-    // Summary
+    // Summary (ready/total)
     const summary = document.createElement('div');
     summary.style.marginTop = '8px';
     const allReady = (total > 0) && (readyCount === total) && (players.every(p => p && p.online !== false));
     const allow = (typeof canStart === 'boolean') ? canStart : allReady;
-    summary.textContent = `${readyCount}/${total} ready` + (allow ? '' : ' — waiting for players...');
+    summary.textContent = `${readyCount}/${total} ready` + (starting ? ` — starting in ${Math.max(0, countdown|0)}…` : (allow ? '' : ' — waiting for players...'));
     content.appendChild(summary);
 
-    // Buttons
+    // Buttons (role-based)
     const row = document.createElement('div');
     row.style.marginTop = '10px';
 
-    const startBtn = document.createElement('button');
-    startBtn.textContent = 'Start';
-    startBtn.disabled = !allow;
-    startBtn.onclick = () => {
-      try { if (typeof onStart === 'function') onStart(); } catch (_) {}
-      try { window.__confirmStartOpen = false; } catch (_) {}
-      try { window.OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
-    };
+    if (isHost) {
+      // Host controls: Start (always allowed; disabled during countdown) and Cancel
+      const startBtn = document.createElement('button');
+      startBtn.textContent = 'Start';
+      startBtn.disabled = !!starting; // host can always start when not counting down
+      startBtn.onclick = () => {
+        try { if (typeof onStart === 'function') onStart(); } catch (_) {}
+      };
+      row.appendChild(startBtn);
 
-    const cancel = document.createElement('button');
-    cancel.textContent = 'Cancel';
-    cancel.style.marginLeft = '8px';
-    cancel.onclick = () => {
-      try { if (typeof onCancel === 'function') onCancel(); } catch (_) {}
-      try { window.__confirmStartOpen = false; } catch (_) {}
-      try { window.OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
-    };
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = starting ? 'Cancel countdown' : 'Cancel';
+      cancelBtn.style.marginLeft = '8px';
+      cancelBtn.onclick = () => {
+        try { if (typeof onCancel === 'function') onCancel(); } catch (_) {}
+        // If not actively counting down, close the modal locally
+        if (!starting) {
+          try { window.__confirmStartOpen = false; } catch (_) {}
+          try { window.OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
+        }
+      };
+      row.appendChild(cancelBtn);
+    } else if (youAreReady) {
+      // Ready players can unready (this cancels countdown if active)
+      const unreadyBtn = document.createElement('button');
+      unreadyBtn.textContent = starting ? 'Unready (cancel)' : 'Unready';
+      unreadyBtn.onclick = () => {
+        try { if (typeof onUnready === 'function') onUnready(); } catch (_) {}
+        // Unready means we won't receive further confirm updates; close locally
+        try { window.__confirmStartOpen = false; } catch (_) {}
+        try { window.OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
+      };
+      row.appendChild(unreadyBtn);
+    }
 
-    row.appendChild(startBtn);
-    row.appendChild(cancel);
     content.appendChild(row);
 
     // Mark open for dynamic refresh hooks
