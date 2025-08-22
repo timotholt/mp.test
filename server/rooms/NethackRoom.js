@@ -65,6 +65,9 @@ class NethackRoom extends Room {
     this.commandQueue = [];
     this.processing = false;
 
+    // Host/user management
+    this.hostId = null; // first player to join becomes host
+
     // Input handler (clients send small intents only; server is authoritative)
     this.onMessage('input', (client, payload) => {
       if (!payload || typeof payload !== 'object') return;
@@ -73,6 +76,21 @@ class NethackRoom extends Room {
       // DEBUG: temporary instrumentation - server received input (remove after verifying flow)
       console.log('[DEBUG server] onMessage input', { sessionId: client.sessionId, type, rest });
       this.commandQueue.push({ userId: client.auth?.userId || client.sessionId, type, data: rest });
+    });
+
+    // Host can start the game at any time (no need to wait for max players)
+    this.onMessage('startGame', (client) => {
+      const uid = client.auth?.userId || client.sessionId;
+      if (!this.hostId || uid !== this.hostId) {
+        console.log('[server] startGame rejected: not host', { uid, hostId: this.hostId });
+        return;
+      }
+      try {
+        console.log('[server] startGame accepted by host; broadcasting GAMEPLAY_ACTIVE');
+        this.broadcast('appState', { state: 'GAMEPLAY_ACTIVE' });
+      } catch (e) {
+        console.warn('[server] startGame broadcast failed', e);
+      }
     });
 
     // Process queued inputs at a steady cadence
@@ -142,6 +160,8 @@ class NethackRoom extends Room {
     const id = client.auth.userId;
     let p = this.state.players.get(id);
     if (!p) {
+      // First arrival becomes host
+      if (!this.hostId) this.hostId = id;
       p = new Player();
       p.id = id;
       p.name = options?.name || 'Hero';

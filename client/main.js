@@ -4,6 +4,7 @@
 import * as Colyseus from 'colyseus.js';
 import { presentRoomCreateModal } from './modals/roomCreate.js';
 import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
+import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -180,7 +181,6 @@ makeScreen(APP_STATES.ROOM, (el) => {
   const header = document.createElement('div');
   header.style.display = 'flex';
   header.style.alignItems = 'center';
-  header.style.gap = '8px';
   const title = document.createElement('div');
   title.textContent = 'Room';
   header.appendChild(title);
@@ -192,7 +192,13 @@ makeScreen(APP_STATES.ROOM, (el) => {
     const now = roomReadyBtn.dataset.ready !== 'true';
     roomReadyBtn.dataset.ready = now ? 'true' : 'false';
     roomReadyBtn.textContent = now ? 'Unready' : 'Ready';
-    // Optional future hook: room?.send('ready', { ready: now });
+    // If host intends to start the game, present confirm modal from modals/
+    if (now) {
+      presentStartGameConfirm(
+        () => { try { room && room.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
+        () => { try { roomReadyBtn.dataset.ready = 'false'; roomReadyBtn.textContent = 'Ready'; } catch (_) {} }
+      );
+    }
   };
   header.appendChild(roomReadyBtn);
   const players = document.createElement('div');
