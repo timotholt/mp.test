@@ -109,6 +109,8 @@ class NethackRoom extends Room {
       p.x = 0; p.y = 0; p.online = true;
       this.state.players.set(id, p);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} joined`);
+      // DEBUG: note current behavior regarding dungeon map delivery
+      console.log('[DEBUG server] onJoin: player joined; dungeonMap sending is NOT implemented yet');
     } else {
       p.online = true;
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);

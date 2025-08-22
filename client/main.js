@@ -60,7 +60,12 @@ async function connect() {
 
     // Wire dungeon map updates from server (placeholder message type)
     room.onMessage('dungeonMap', (mapString) => {
+      try {
+        const lines = typeof mapString === 'string' ? mapString.split('\n').length : 0;
+        console.log('[DEBUG client] received dungeonMap', { chars: mapString?.length, lines, preview: (typeof mapString === 'string' ? mapString.slice(0, 80) : '') });
+      } catch (_) {}
       if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
+        console.log('[DEBUG client] applying dungeonMap to renderer');
         window.radianceCascades.setDungeonMap(mapString);
       } else {
         console.warn('[ASCII renderer] Received dungeonMap before renderer ready. Ignoring for now.');
@@ -100,7 +105,8 @@ connect();
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = src;
+    // Cache-bust to ensure latest vendor scripts are fetched
+    s.src = `${src}?v=${Date.now()}`;
     s.async = true;
     s.onload = () => resolve();
     s.onerror = (e) => reject(new Error('Failed to load ' + src));
@@ -141,6 +147,11 @@ async function setupAsciiRenderer() {
       canvasScale: 1.0,
     });
     window.radianceCascades = rc; // expose for debugging/devtools
+    // Ensure renderer starts even if IntersectionObserver doesn't fire
+    if (typeof rc.load === 'function') {
+      console.log('[DEBUG client] calling rc.load()');
+      rc.load();
+    }
 
     // Minimal camera controls (mouse): pan + wheel zoom
     const canvas = rc.canvas;

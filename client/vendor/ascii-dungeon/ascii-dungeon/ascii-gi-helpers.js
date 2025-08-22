@@ -514,6 +514,10 @@ class AsciiCanvas {
   }
 
   setDungeonMap(dungeonMapString) {
+    try {
+      const lines = typeof dungeonMapString === 'string' ? dungeonMapString.split('\n').length : 0;
+      console.log('[DEBUG renderer] setDungeonMap called', { chars: dungeonMapString?.length, lines, preview: (typeof dungeonMapString === 'string' ? dungeonMapString.slice(0, 80) : '') });
+    } catch (_) {}
     this.dungeonMap = dungeonMapString;
     this.renderDungeon(this.dungeonMap);
   }
@@ -884,6 +888,9 @@ class DungeonRenderer extends BaseSurface {
     this.mapWidth = mapWidth;
     this.mapHeight = mapHeight;
     this.dungeonUniforms.mapSize = [mapWidth, mapHeight];
+    try {
+      console.log('[DEBUG renderer] updateAsciiViewTexture', { mapWidth, mapHeight, padding });
+    } catch (_) {}
 
     // Create a Uint8Array to hold RGBA data for each cell
     const data = new Uint8Array(mapWidth * mapHeight * 4);
@@ -908,7 +915,7 @@ class DungeonRenderer extends BaseSurface {
         } else if (this.surface.characterColorMap && this.surface.characterColorMap[char]) {
           color = this.surface.characterColorMap[char];
         } else {
-          color = [0.0, 0.0, 0.0]; // Default to black
+          color = [1.0, 1.0, 1.0]; // Default to white for visibility
         }
 
         // Calculate index in data array
@@ -1019,7 +1026,9 @@ class DungeonRenderer extends BaseSurface {
   }
 
   load() {
+    try { console.log('[DEBUG renderer] load() called'); } catch (_) {}
     this.renderer.font = this.renderer.createTextureFromImage(asciiBase64, () => {
+      try { console.log('[DEBUG renderer] font texture loaded, initializing example dungeon'); } catch (_) {}
       this.dungeonUniforms.asciiTexture = this.renderer.font;
 
       // Example dungeon map
@@ -1063,6 +1072,7 @@ class DungeonRenderer extends BaseSurface {
 
       this.setDungeonMap(exampleDungeon);
       this.initialized = true;
+      try { console.log('[DEBUG renderer] load() complete, initialized=true'); } catch (_) {}
     });
   }
 

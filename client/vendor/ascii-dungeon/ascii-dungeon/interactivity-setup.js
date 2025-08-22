@@ -182,9 +182,21 @@ function addSlider({
                      showValue = true,
                      initialSpanValue = undefined,
                    }) {
+  // If the target container doesn't exist (minimal UI), return a stub slider
+  const root = document.querySelector(`#${id}`);
+  if (!root) {
+    return {
+      value: options.value != null ? options.value : (options.min != null ? options.min : 0),
+      max: options.max != null ? options.max : 0,
+      min: options.min != null ? options.min : 0,
+      setSpan: () => {},
+      onUpdate,
+    };
+  }
+
   const div = document.createElement("div");
   div.style = `display: ${hidden ? "none" : "flex"}; align-items: center; gap: 8px`;
-  document.querySelector(`#${id}`).appendChild(div);
+  root.appendChild(div);
   div.append(`${name}`);
   const input = document.createElement("input");
   input.id = `${id}-${name.replace(" ", "-").toLowerCase()}-slider`;

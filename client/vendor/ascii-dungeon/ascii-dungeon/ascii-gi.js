@@ -515,7 +515,10 @@ class RC extends DistanceField {
     this.enableNearest = document.querySelector("#enable-nearest");
     this.bilinearFix = document.querySelector("#bilinear-fix");
     this.sunAngleSlider = document.querySelector("#rc-sun-angle-slider");
-    this.sunAngleSlider.disabled = true;
+    // Guard: slider may not be present in our minimal UI integration
+    if (this.sunAngleSlider) {
+      this.sunAngleSlider.disabled = true;
+    }
 
     this.falloffSlider = addSlider({
       id: "falloff-slider-container",
@@ -594,12 +597,13 @@ class RC extends DistanceField {
         rayInterval: this.rayIntervalSlider.value,
         intervalOverlap: this.intervalOverlapSlider.value,
         baseRayCount: Math.pow(4.0, this.baseRayCountSlider.value),
-        sunAngle: this.sunAngleSlider.value,
+        // If the sun angle slider isn't present, default to 0.0
+        sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
         srgb: this.falloffSlider.value,
         enableSun: false,
         firstCascadeIndex: 0,
-        bilinearFixEnabled: this.bilinearFix.checked,
+        bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
       },
       fragmentShader: rcFragmentShader,
     });
@@ -913,30 +917,36 @@ class RC extends DistanceField {
   }
 
   load() {
-    this.bilinearFix.addEventListener("input", () => {
-      this.rcUniforms.bilinearFixEnabled = this.bilinearFix.checked;
-      this.renderPass();
-    });
-    this.enableNearest.addEventListener("input", () => {
-      this.rcRenderTargets.forEach((r) => {
-        if (this.enableNearest.checked) {
-          r.updateFilters({
-            minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
-            magFilter: this.gl.NEAREST,
-          });
-        } else {
-          r.updateFilters({
-            minFilter: this.gl.LINEAR_MIPMAP_LINEAR,
-            magFilter: this.gl.LINEAR,
-          });
-        }
+    if (this.bilinearFix) {
+      this.bilinearFix.addEventListener("input", () => {
+        this.rcUniforms.bilinearFixEnabled = this.bilinearFix.checked;
         this.renderPass();
       });
-    });
-    this.sunAngleSlider.addEventListener("input", () => {
-      this.rcUniforms.sunAngle = this.sunAngleSlider.value;
-      this.renderPass();
-    });
+    }
+    if (this.enableNearest) {
+      this.enableNearest.addEventListener("input", () => {
+        this.rcRenderTargets.forEach((r) => {
+          if (this.enableNearest.checked) {
+            r.updateFilters({
+              minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+              magFilter: this.gl.NEAREST,
+            });
+          } else {
+            r.updateFilters({
+              minFilter: this.gl.LINEAR_MIPMAP_LINEAR,
+              magFilter: this.gl.LINEAR,
+            });
+          }
+          this.renderPass();
+        });
+      });
+    }
+    if (this.sunAngleSlider) {
+      this.sunAngleSlider.addEventListener("input", () => {
+        this.rcUniforms.sunAngle = this.sunAngleSlider.value;
+        this.renderPass();
+      });
+    }
     super.load();
   }
 }
