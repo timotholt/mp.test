@@ -468,7 +468,7 @@ function ensureFloatingControls() {
     // Vertical slider container
     vol.style.display = 'flex';
     vol.style.flexDirection = 'column';
-    vol.style.alignItems = 'center';
+    vol.style.alignItems = 'end';
     vol.style.justifyContent = 'center';
     // Size is controlled dynamically on hover
     const range = document.createElement('input');
@@ -493,14 +493,20 @@ function ensureFloatingControls() {
     function applyCollapsed() {
       try {
         vol.style.height = COLLAPSED_LEN + 'px';
-        vol.style.width = '24px';
+        vol.style.width = 'auto';
         range.style.width = COLLAPSED_LEN + 'px';
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
         // Stack vertically when not extended
         vol.style.flexDirection = 'column';
+        // Center contents in collapsed mode (expanded uses flex-end)
+        vol.style.alignItems = 'center';
+        // True center in collapsed column
+        range.style.left = '50%';
         range.style.marginRight = '0';
+        // Keep master column the same width as its holder so the track stays centered
+        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
         // Master adornments hidden when not extended
         if (masterLabel) masterLabel.style.display = 'none';
         if (masterVal) masterVal.style.display = 'none';
@@ -514,18 +520,23 @@ function ensureFloatingControls() {
         const extended = !!window.__volumeExtended;
         // Give extra height when extended to fit rows
         vol.style.height = (extended ? '200px' : (EXPANDED_LEN + 'px'));
-        // Let content define width when extended to keep spacing tight
+        // Let content define width in both modes to share the same layout math
         vol.style.width = extended ? 'auto' : '24px';
         range.style.width = EXPANDED_LEN + 'px';
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
         vol.style.padding = '10px 4px';
-        // Row layout when extended: Master (range) on the left, then panel (Game, Music, Voice)
-        vol.style.flexDirection = extended ? 'row' : 'column';
+        // Always use the 4-column layout rules; in single-hover, panel is hidden but layout matches
+        vol.style.flexDirection = 'row';
+        vol.style.alignItems = 'flex-end';
         // Avoid asymmetric margins so the slider stays visually centered
+        // Restore the tiny subpixel nudge used by the 4-slider layout
+        range.style.left = 'calc(50% + 1px)';
         range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
+        // Restore wider column in expanded view to match other sliders
+        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '40px';
         // Show Master adornments only in full extended mode
         if (masterLabel) masterLabel.style.display = extended ? '' : 'none';
         if (masterVal) masterVal.style.display = extended ? '' : 'none';
@@ -775,7 +786,15 @@ function ensureFloatingControls() {
         const volRect = vol.getBoundingClientRect();
         const holderRect = masterHolder.getBoundingClientRect();
         const left = Math.round((holderRect.left - volRect.left) + (holderRect.width / 2) - (toggle.offsetWidth / 2));
-        toggle.style.left = left + 'px';
+        const gutter = 4; // small spacing from the holder's top edge
+        const top = Math.round((holderRect.top - volRect.top) + gutter);
+        // Clamp inside container so moving cursor to the button doesn't exit hover area
+        const maxLeft = Math.max(0, (vol.clientWidth - toggle.offsetWidth - 2));
+        const maxTop = Math.max(0, (vol.clientHeight - toggle.offsetHeight - 2));
+        const clampedLeft = Math.max(2, Math.min(maxLeft, left));
+        const clampedTop = Math.max(2, Math.min(maxTop, top));
+        toggle.style.left = clampedLeft + 'px';
+        toggle.style.top = clampedTop + 'px';
       } catch (_) {}
     }
     try { window.addEventListener('resize', positionToggle); } catch (_) {}
