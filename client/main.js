@@ -466,6 +466,8 @@ function ensureFloatingControls() {
     vol.style.width = '44px';
     const range = document.createElement('input');
     range.type = 'range'; range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = (window.__volume ?? 1).toString();
+    // Initial hover tooltip with percent
+    try { range.title = String(Math.round(parseFloat(range.value) * 100)) + '%'; } catch (_) {}
     // Make slider vertical (up = louder)
     range.style.transform = 'rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
@@ -474,13 +476,31 @@ function ensureFloatingControls() {
     range.style.margin = '0';
     range.oninput = () => {
       window.__volume = parseFloat(range.value);
+      try { localStorage.setItem('volume', range.value); } catch (_) {}
       try { window.dispatchEvent(new CustomEvent('ui:volume', { detail: { volume: window.__volume } })); } catch (_) {}
+      try { range.title = String(Math.round(window.__volume * 100)) + '%'; } catch (_) {}
     };
+    // Mouse wheel to adjust volume when hovering
+    range.addEventListener('wheel', (e) => {
+      try {
+        e.preventDefault();
+        const step = parseFloat(range.step) || 0.02;
+        const dir = e.deltaY < 0 ? 1 : -1; // scroll up -> louder
+        const cur = parseFloat(range.value);
+        const next = Math.max(0, Math.min(1, cur + dir * step));
+        if (next !== cur) {
+          range.value = String(next);
+          range.oninput();
+        }
+      } catch (_) {}
+    }, { passive: false });
     // Keep in sync when volume changes elsewhere (e.g., Settings panel)
     window.addEventListener('ui:volume', (e) => {
       try {
         const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window.__volume;
         range.value = String(Math.max(0, Math.min(1, v)));
+        try { localStorage.setItem('volume', range.value); } catch (_) {}
+        try { range.title = String(Math.round(parseFloat(range.value) * 100)) + '%'; } catch (_) {}
       } catch (_) {}
     });
     vol.appendChild(range);

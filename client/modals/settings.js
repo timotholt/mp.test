@@ -263,8 +263,9 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   if (storageKey === 'volume') { rng.id = 'settings-master-volume'; val.id = 'settings-master-volume-val'; }
   try {
     const saved = parseFloat(localStorage.getItem(storageKey));
-    const fallback = (window[windowVarName] ?? (storageKey === 'volume' ? 1 : 1));
-    const v = Number.isFinite(saved) ? saved : fallback;
+    const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
+    const fallback = (storageKey === 'volume' ? 1 : 1);
+    const v = Number.isFinite(live) ? live : (Number.isFinite(saved) ? saved : fallback);
     rng.value = String(Math.max(0, Math.min(1, v)));
     window[windowVarName] = parseFloat(rng.value);
     const pct = String(Math.round(window[windowVarName] * 100)) + '%'; val.textContent = pct; rng.title = pct;
@@ -285,6 +286,17 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
       const pct = String(Math.round(val2 * 100)) + '%'; val.textContent = pct; rng.title = pct;
     } catch (_) {}
   };
+  // Mouse wheel support: scroll up increases, down decreases
+  rng.addEventListener('wheel', (e) => {
+    try {
+      e.preventDefault();
+      const step = parseFloat(rng.step) || 0.02;
+      const dir = e.deltaY < 0 ? 1 : -1;
+      const cur = parseFloat(rng.value);
+      const next = Math.max(0, Math.min(1, cur + dir * step));
+      if (next !== cur) { rng.value = String(next); rng.oninput(); }
+    } catch (_) {}
+  }, { passive: false });
   row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
   return row;
 }
