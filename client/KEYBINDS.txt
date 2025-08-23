@@ -1,0 +1,116 @@
+Nethack Keyboard Commands — Text List
+
+This is a plain-text transcription of the cheat sheet. Organization and groupings match the poster.
+
+Movement
+- y k u / h • l / b j n — move (8 directions)
+- < — staircase up
+- > — staircase down
+- m[dir] — move (prefix)
+- M[dir] — move far (run)
+- _ — travel
+- #jump — jump
+- ctrl-t — teleport
+- #ride — ride monster
+- alt-s — sit down
+- o — open door
+- c — close door
+- s — search secret doors/traps/monsters
+- #loot — loot box/bag
+- #untrap — untrap
+- alt-f — force a lock
+
+Exploration
+- ; — identify symbol
+- : — look around
+- . — rest
+- , — pick up
+- d — drop single
+- D — drop multi
+- / — identify
+- ^ — identify trap
+- \ — list discovered objects
+- #conduct — list challenges
+
+Other Action
+- a — use item (apply)
+- e — eat
+- p — pay
+- w — wipe
+- E — engrave
+- alt-w — write in the dust
+- t — chat (#chat)
+- ctrl-d — kick
+- C — name monster
+
+Inventory
+- i — inventory
+- A — adjust inventory
+- alt-a — #name
+- N — name object
+- ) — list weapons
+- [ — list armor
+- = — list rings
+- " — list amulet
+- ( — list tools
+- % — list food
+- $ — list gold
+- + — list spells
+
+Game Options
+- ctrl-x — player info
+- S — save
+- alt-q — quit
+- ctrl-a — redo
+- ctrl-p — repeat message
+- O — options
+- @ — toggle auto-pickup
+- v — display version
+- V — display history
+- X — explore mode
+- ? — help menu
+- & — explain command
+- # — extended commands
+- #? — extended commands help
+- ctrl-r — redraw the screen
+- ctrl-z — suspend (Unix only)
+- ! — boss key (shell)
+
+Magic
+- Z — cast spell
+- q — drink (quaff)
+- z — zap wand
+- p — pray
+- alt-d — dip
+- alt-r — rub
+- alt-o — offer (sacrifice)
+- alt-l — invoke
+- alt-t — turn undead
+- alt-m — special ability
+- a — break wand
+
+Fighting
+- F[dir] — fight
+- w — wield weapon
+- x — change weapons
+- #twoweapon — use two weapons
+- alt-e — view/raise skills (#enhance)
+- t — throw / shoot
+- f — fire
+- Q — ready quiver
+- f — fire quiver
+
+Clothing
+- W — wear armor
+- T — take off armor
+- A — remove multi
+- P — put on ring/amulet
+- R — remove ring/amulet
+
+Number_pad options (movement)
+- 7 8 9 / 4 • 6 / 1 2 3 — move (8 directions)
+- < — staircase up
+- > — staircase down
+- m[dir] — move
+- M[dir] — move far
+- _ — travel
