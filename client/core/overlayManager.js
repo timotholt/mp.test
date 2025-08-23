@@ -14,7 +14,7 @@ function ensureOverlay() {
   if (!overlayEl) {
     overlayEl = document.createElement('div');
     overlayEl.id = 'overlay';
-    overlayEl.style.position = 'absolute';
+    overlayEl.style.position = 'fixed';
     overlayEl.style.left = '0';
     overlayEl.style.top = '0';
     overlayEl.style.right = '0';
@@ -24,7 +24,7 @@ function ensureOverlay() {
     overlayEl.style.background = 'rgba(0,0,0,0.5)';
     overlayEl.style.color = '#fff';
     overlayEl.style.padding = '16px';
-    overlayEl.style.zIndex = '9999';
+    overlayEl.style.zIndex = '20000';
     const inner = document.createElement('div');
     inner.id = 'overlay-content';
     inner.style.maxWidth = '640px';
@@ -90,6 +90,12 @@ const OverlayManager = (() => {
     // Ensure dimming shade is visible while any modal is shown
     try { const shade = ensureScreenShade(); shade.style.display = ''; } catch (_) {}
     const content = el.querySelector('#overlay-content');
+    // If this modal uses external content management, do not touch the content area
+    if (top && top.external) {
+      const route = getRoute();
+      window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE) && !top.blockInput;
+      return;
+    }
     if (content) content.innerHTML = '';
     const p = document.createElement('div');
     p.textContent = top.text || '[modal]';
@@ -114,11 +120,11 @@ const OverlayManager = (() => {
     dismiss(modal.id);
   }
 
-  function present({ id, priority = PRIORITY.LOW, text = '', actions = [], blockInput = true, hotkeys = {} }) {
+  function present({ id, priority = PRIORITY.LOW, text = '', actions = [], blockInput = true, hotkeys = {}, external = false }) {
     for (let i = stack.length - 1; i >= 0; i--) {
       if (stack[i].id === id) stack.splice(i, 1);
     }
-    const modal = { id, priority, text, actions, blockInput, hotkeys };
+    const modal = { id, priority, text, actions, blockInput, hotkeys, external };
     const idx = stack.findIndex(m => m.priority > priority);
     if (idx === -1) stack.push(modal); else stack.splice(idx, 0, modal);
     renderTop();

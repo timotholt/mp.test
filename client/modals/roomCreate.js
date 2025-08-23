@@ -80,8 +80,9 @@ export function presentRoomCreateModal({ onSubmit } = {}) {
         maxPlayers: clampInt(parseInt(maxInput.value, 10), 1, 16) || 4,
       };
       try {
+        // Dismiss first so subsequent overlay re-render doesn't wipe the ROOM modal content
+        if (window.OverlayManager) window.OverlayManager.dismiss(id);
         if (typeof onSubmit === 'function') await onSubmit(payload);
-        window.OverlayManager && window.OverlayManager.dismiss(id);
       } catch (e) {
         console.warn('room create submit failed', e);
       }

@@ -8,41 +8,14 @@ import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
 import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
+import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };
 
 // -------------------- Micro Router (plain DOM) --------------------
-// Screens are simple divs under #app, shown/hidden by route.
-const APP_STATES = {
-  LOGIN: 'LOGIN',
-  LOGOUT: 'LOGOUT',
-  LOBBY: 'LOBBY',
-  ROOM: 'ROOM',
-  GAMEPLAY_ACTIVE: 'GAMEPLAY_ACTIVE',
-  GAMEPLAY_PAUSED: 'GAMEPLAY_PAUSED',
-};
-
-const appRoot = document.getElementById('app');
-const screens = new Map();
-let currentRoute = null;
-// Expose for overlay manager module
-window.APP_STATES = APP_STATES;
-window.__getCurrentRoute = () => currentRoute;
-
-function makeScreen(id, initFn) {
-  let el = document.getElementById(id);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = id;
-    el.style.display = 'none';
-    appRoot.appendChild(el);
-  }
-  if (typeof initFn === 'function') initFn(el);
-  screens.set(id, el);
-  return el;
-}
+// Router extracted to './core/router.js'. See imports above.
 
 // Derive a stable gameId from room name and host (URL override supported via ?gameId= or #gameId=)
 function deriveGameId(name, hostName) {
@@ -140,48 +113,7 @@ function appendChatLine(line) {
   roomChatListEl.appendChild(div);
   roomChatListEl.scrollTop = roomChatListEl.scrollHeight;
 }
-function hideAllScreens() {
-  for (const el of screens.values()) el.style.display = 'none';
-}
-
-function toggleRenderer(visible) {
-  const rc = document.getElementById('rc-canvas');
-  if (!rc) return;
-  // Always-on canvas per UI architecture rule: the renderer is always visible.
-  // We use a separate screen shade layer to dim the scene behind screens/modals.
-  rc.style.display = '';
-}
-
-function setRoute(route, payload = {}) {
-  currentRoute = route;
-  hideAllScreens();
-  const el = screens.get(route);
-  if (el) {
-    el.style.display = '';
-    if (typeof el.update === 'function') el.update(payload);
-  } else {
-    console.warn('[router] no screen for', route);
-  }
-  // Renderer is always visible; instead, toggle a dimming shade when a screen is active.
-  const showRC = true; // kept for compatibility with previous logic
-  toggleRenderer(showRC);
-  try {
-    const shade = ensureScreenShade();
-    const needsShade = route !== APP_STATES.GAMEPLAY_ACTIVE;
-    shade.style.display = needsShade ? '' : 'none';
-  } catch (_) {}
-  // Enable pointer interaction with renderer except on LOGIN backdrop
-  try {
-    const rc = document.getElementById('rc-canvas');
-    if (rc) rc.style.pointerEvents = (route === APP_STATES.LOGIN) ? 'none' : 'auto';
-  } catch (_) {}
-  // Allow movement input only during active gameplay and without blocking modals
-  window.__canSendGameplayInput = (route === APP_STATES.GAMEPLAY_ACTIVE);
-  // Stop lobby polling if we left the lobby
-  if (route !== APP_STATES.LOBBY) {
-    try { stopLobbyPolling(); } catch (_) {}
-  }
-}
+// Routing handled by imported setRoute/toggleRenderer in './core/router.js'
 
 // Register screens
 let lobbyPollId = null;
@@ -197,111 +129,129 @@ let roomUIBound = false;
 makeScreen(APP_STATES.LOGIN, (el) => {
   // Clear screen content; we use a modal over the full-screen renderer backdrop
   el.innerHTML = '';
+  // Ensure any lingering lobby modal is dismissed when returning to login
+  try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}
+  try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
   showLoginBackdrop();
   presentLoginModal();
 });
 
 makeScreen(APP_STATES.LOBBY, (el) => {
+  // Only present Lobby overlay when this route becomes active
   el.innerHTML = '';
-  const header = document.createElement('div');
-  header.textContent = 'Lobby';
-  const actions = document.createElement('div');
-  createRoomBtn = document.createElement('button');
-  createRoomBtn.textContent = 'Create Private Room';
-  actions.appendChild(createRoomBtn);
-  roomsListEl = document.createElement('div');
-  roomsListEl.id = 'lobby-rooms';
-  roomsListEl.style.marginTop = '8px';
-  const stubs = document.createElement('div');
-  stubs.style.marginTop = '12px';
-  stubs.innerHTML = '<div>[chat stub]</div><div>[player list stub]</div>';
-  el.appendChild(header);
-  el.appendChild(actions);
-  el.appendChild(roomsListEl);
-  el.appendChild(stubs);
-  el.update = () => { startLobbyPolling(); };
-  createRoomBtn.onclick = () => {
-    presentRoomCreateModal({
-      onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
-        const cname = localStorage.getItem('name') || 'Hero';
-        try {
-          const newRoom = await client.create('nethack', {
-            name,
-            turnLength,
-            roomPass,
-            maxPlayers,
-            private: !!roomPass,
-            hostName: cname,
-            // Pass a stable gameId so autosave restore can target the same world across restarts
-            gameId: deriveGameId(name, cname),
-          });
-          await afterJoin(newRoom);
-        } catch (e) {
-          console.warn('create failed', e);
-        }
-      }
-    });
+  el.update = () => {
+    try { OverlayManager.present({ id: 'LOBBY_MODAL', priority: PRIORITY.MEDIUM, text: 'Lobby', actions: [], blockInput: true, external: true }); } catch (_) {}
+    const overlay = document.getElementById('overlay');
+    const content = overlay ? overlay.querySelector('#overlay-content') : null;
+    if (content) {
+      content.innerHTML = '';
+      const header = document.createElement('div');
+      header.textContent = 'Lobby';
+      const actions = document.createElement('div');
+      createRoomBtn = document.createElement('button');
+      createRoomBtn.textContent = 'Create Private Room';
+      actions.appendChild(createRoomBtn);
+      roomsListEl = document.createElement('div');
+      roomsListEl.id = 'lobby-rooms';
+      roomsListEl.style.marginTop = '8px';
+      const stubs = document.createElement('div');
+      stubs.style.marginTop = '12px';
+      stubs.innerHTML = '<div>[chat stub]</div><div>[player list stub]</div>';
+      content.appendChild(header);
+      content.appendChild(actions);
+      content.appendChild(roomsListEl);
+      content.appendChild(stubs);
+      createRoomBtn.onclick = () => {
+        presentRoomCreateModal({
+          onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
+            const cname = localStorage.getItem('name') || 'Hero';
+            try {
+              const newRoom = await client.create('nethack', {
+                name,
+                turnLength,
+                roomPass,
+                maxPlayers,
+                private: !!roomPass,
+                hostName: cname,
+                gameId: deriveGameId(name, cname),
+              });
+              await afterJoin(newRoom);
+            } catch (e) {
+              console.warn('create failed', e);
+            }
+          }
+        });
+      };
+    }
+    startLobbyPolling();
   };
 });
 
 makeScreen(APP_STATES.ROOM, (el) => {
+  // Render Room UI inside an overlay so it appears above the shade/canvas
   el.innerHTML = '';
-  const header = document.createElement('div');
-  header.style.display = 'flex';
-  header.style.alignItems = 'center';
-  const title = document.createElement('div');
-  title.textContent = 'Room';
-  header.appendChild(title);
-  roomReadyBtn = document.createElement('button');
-  setReadyButtonUI(false); // default to not ready on room entry
-  roomReadyBtn.onclick = () => {
-    // Toggle local ready flag and notify server; server decides whether to show modal
-    const now = roomReadyBtn.dataset.ready !== 'true';
-    setReadyButtonUI(now);
-    try { if (room) room.send('setReady', { ready: now }); } catch (_) {}
-    // Ensure visible feedback when unreadying locally
-    if (!now) {
-      try { appendChatLine('You are not ready'); } catch (_) {}
-    }
-  };
-  header.appendChild(roomReadyBtn);
-  const players = document.createElement('div');
-  players.id = 'room-players';
-  const playersTitle = document.createElement('div');
-  playersTitle.textContent = 'Players';
-  playersTitle.style.marginTop = '8px';
-  roomPlayersEl = document.createElement('div');
-  roomPlayersEl.id = 'room-players-list';
-  const chat = document.createElement('div');
-  chat.id = 'room-chat';
-  const chatTitle = document.createElement('div');
-  chatTitle.textContent = 'Chat / Log';
-  chatTitle.style.marginTop = '12px';
-  roomChatListEl = document.createElement('div');
-  roomChatListEl.id = 'room-chat-list';
-  roomChatListEl.style.maxHeight = '200px';
-  roomChatListEl.style.overflowY = 'auto';
-  const chatInputRow = document.createElement('div');
-  chatInputRow.style.marginTop = '6px';
-  roomChatInputEl = document.createElement('input');
-  roomChatInputEl.type = 'text';
-  roomChatInputEl.placeholder = 'Chat coming soon…';
-  roomChatInputEl.disabled = true; // server chat not implemented yet
-  const chatSend = document.createElement('button');
-  chatSend.textContent = 'Send';
-  chatSend.disabled = true;
-  chatInputRow.appendChild(roomChatInputEl);
-  chatInputRow.appendChild(chatSend);
-  el.appendChild(header);
-  el.appendChild(players);
-  players.appendChild(playersTitle);
-  players.appendChild(roomPlayersEl);
-  el.appendChild(chat);
-  chat.appendChild(chatTitle);
-  chat.appendChild(roomChatListEl);
-  chat.appendChild(chatInputRow);
-
   el.update = () => {
+    try { OverlayManager.present({ id: 'ROOM_MODAL', priority: PRIORITY.MEDIUM, text: 'Room', actions: [], blockInput: true, external: true }); } catch (_) {}
+    const overlay = document.getElementById('overlay');
+    const content = overlay ? overlay.querySelector('#overlay-content') : null;
+    if (!content) return;
+    content.innerHTML = '';
+
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    const title = document.createElement('div');
+    title.textContent = 'Room';
+    header.appendChild(title);
+    roomReadyBtn = document.createElement('button');
+    setReadyButtonUI(false); // default to not ready on room entry
+    roomReadyBtn.onclick = () => {
+      const now = roomReadyBtn.dataset.ready !== 'true';
+      setReadyButtonUI(now);
+      try { if (room) room.send('setReady', { ready: now }); } catch (_) {}
+      if (now) { try { appendChatLine('You are ready'); } catch (_) {} }
+      if (!now) { try { appendChatLine('You are not ready'); } catch (_) {} }
+    };
+    header.appendChild(roomReadyBtn);
+
+    const players = document.createElement('div');
+    players.id = 'room-players';
+    const playersTitle = document.createElement('div');
+    playersTitle.textContent = 'Players';
+    playersTitle.style.marginTop = '8px';
+    roomPlayersEl = document.createElement('div');
+    roomPlayersEl.id = 'room-players-list';
+
+    const chat = document.createElement('div');
+    chat.id = 'room-chat';
+    const chatTitle = document.createElement('div');
+    chatTitle.textContent = 'Chat / Log';
+    chatTitle.style.marginTop = '12px';
+    roomChatListEl = document.createElement('div');
+    roomChatListEl.id = 'room-chat-list';
+    roomChatListEl.style.maxHeight = '200px';
+    roomChatListEl.style.overflowY = 'auto';
+    const chatInputRow = document.createElement('div');
+    chatInputRow.style.marginTop = '6px';
+    roomChatInputEl = document.createElement('input');
+    roomChatInputEl.type = 'text';
+    roomChatInputEl.placeholder = 'Chat coming soon…';
+    roomChatInputEl.disabled = true;
+    const chatSend = document.createElement('button');
+    chatSend.textContent = 'Send';
+    chatSend.disabled = true;
+    chatInputRow.appendChild(roomChatInputEl);
+    chatInputRow.appendChild(chatSend);
+
+    content.appendChild(header);
+    content.appendChild(players);
+    players.appendChild(playersTitle);
+    players.appendChild(roomPlayersEl);
+    content.appendChild(chat);
+    chat.appendChild(chatTitle);
+    chat.appendChild(roomChatListEl);
+    chat.appendChild(chatInputRow);
+
     try { bindRoomUIEventsOnce(); } catch (_) {}
     try { renderRoomPlayers(); } catch (_) {}
     try { refreshRoomChat(); } catch (_) {}
@@ -311,8 +261,6 @@ makeScreen(APP_STATES.ROOM, (el) => {
 makeScreen(APP_STATES.GAMEPLAY_ACTIVE, (el) => { el.textContent = 'Gameplay Active'; });
 makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paused'; });
 
-// Default route until server tells us otherwise
-setRoute(APP_STATES.LOGIN);
 
 // -------------------- Always-on Canvas Dimming Shade & UI Chrome --------------------
 function ensureScreenShade() {
@@ -330,6 +278,12 @@ function ensureScreenShade() {
   }
   return shade;
 }
+
+// Expose for router to use on initial navigation
+window.ensureScreenShade = ensureScreenShade;
+
+// Default route until server tells us otherwise (after shade is attached)
+setRoute(APP_STATES.LOGIN);
 
 // Lightweight theme support using CSS variables
 function ensureThemeSupport() {
@@ -664,6 +618,7 @@ function startLobbyPolling() {
 }
 
 function stopLobbyPolling() { if (lobbyPollId) { clearInterval(lobbyPollId); lobbyPollId = null; } }
+window.stopLobbyPolling = stopLobbyPolling;
 
 function renderRooms(rooms) {
   if (!roomsListEl) return;
@@ -718,6 +673,8 @@ async function afterJoin(r) {
   const selfId = room.sessionId;
   const pname = localStorage.getItem('name') || 'Hero';
   statusEl.textContent = `Connected | roomId=${room.id} | you=${pname} (${selfId.slice(0,6)})`;
+  // Close lobby modal on successful join
+  try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}
   setRoute(APP_STATES.ROOM);
 }
 
@@ -819,6 +776,11 @@ function wireRoomEvents(r) {
         onSelectFaction: (key) => { try { r.send('chooseFaction', { key }); } catch (_) {} },
         onSelectClass: (key) => { try { r.send('chooseClass', { key }); } catch (_) {} },
         onSelectLoadout: (key) => { try { r.send('chooseLoadout', { key }); } catch (_) {} },
+        onReady: () => {
+          try { r.send('setReady', { ready: true }); } catch (_) {}
+          try { setReadyButtonUI(true); } catch (_) {}
+          try { appendChatLine('You are ready'); } catch (_) {}
+        },
       });
     } catch (e) { console.warn('showFCLSelect handling failed', e); }
   });

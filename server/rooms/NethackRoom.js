@@ -194,12 +194,8 @@ class NethackRoom extends Room {
       if (!CLASSES.some(c => c.key === key)) return;
       p.classKey = key;
       try { this.state.log.push(`${p.name} chose class ${key}`); } catch (_) {}
-      // If now complete, dismiss via complete flag once
-      const complete = selectionComplete(p);
-      const c = this.userClients?.get(uid);
-      if (c) {
-        try { c.send('showFCLSelect', { ...buildFCLPayload(uid), complete }); } catch (e) {}
-      }
+      // Always refresh FCL without auto-dismissing; READY will advance flow
+      sendFCLTo(uid);
     });
 
     this.onMessage('chooseLoadout', (client, payload) => {
@@ -211,11 +207,8 @@ class NethackRoom extends Room {
       if (!allowed.some(l => l.key === key)) return;
       p.loadout = key;
       try { this.state.log.push(`${p.name} chose loadout ${key}`); } catch (_) {}
-      const complete = selectionComplete(p);
-      const c = this.userClients?.get(uid);
-      if (c) {
-        try { c.send('showFCLSelect', { ...buildFCLPayload(uid), complete }); } catch (e) {}
-      }
+      // Always refresh FCL without auto-dismissing; READY will advance flow
+      sendFCLTo(uid);
     });
 
     // Players toggle ready; host ready triggers confirmation modal
