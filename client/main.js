@@ -526,23 +526,22 @@ function ensureFloatingControls() {
         const extended = !!window.__volumeExtended;
         // Give extra height when extended to fit rows
         vol.style.height = (extended ? '200px' : (EXPANDED_LEN + 'px'));
-        // Let content define width in both modes to share the same layout math
-        vol.style.width = extended ? 'auto' : '24px';
+        // Keep width auto during hover expansion to avoid auto↔fixed jumps
+        vol.style.width = 'auto';
         range.style.width = EXPANDED_LEN + 'px';
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
         vol.style.padding = '10px 4px';
-        // Always use the 4-column layout rules; in single-hover, panel is hidden but layout matches
-        vol.style.flexDirection = 'row';
-        vol.style.alignItems = 'flex-end';
-        // Avoid asymmetric margins so the slider stays visually centered
-        // Restore the tiny subpixel nudge used by the 4-slider layout
-        range.style.left = 'calc(50% + 1px)';
+        // Avoid layout flip during hover; only switch when actually extended
+        vol.style.flexDirection = extended ? 'row' : 'column';
+        vol.style.alignItems = extended ? 'flex-end' : 'center';
+        // Keep slider horizontally centered to avoid lateral jump during animation
+        range.style.left = '50%';
         range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
-        // Restore wider column in expanded view to match other sliders
-        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '40px';
+        // Only widen master column when extended so non-extended hover keeps identical geometry
+        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = extended ? '40px' : '24px';
         // Show Master adornments only in full extended mode
         if (masterLabel) masterLabel.style.display = extended ? '' : 'none';
         if (masterVal) masterVal.style.display = extended ? '' : 'none';
@@ -634,6 +633,8 @@ function ensureFloatingControls() {
     masterLabel.style.display = 'none';
     const masterHolder = document.createElement('div');
     applyVolumeColStyles(masterCol, masterHolder, masterLabel, null);
+    // Smooth the holder height change so the centered slider doesn't pop
+    masterHolder.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease`;
     // Place the primary range inside the master holder so Master column structure
     // matches Game/Music/Voice columns.
     masterHolder.appendChild(range);
