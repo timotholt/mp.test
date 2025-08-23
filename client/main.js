@@ -548,7 +548,8 @@ function ensureFloatingControls() {
         } catch (_) {}
       }
     });
-    vol.appendChild(range);
+    // We'll append the master range inside masterHolder after it's created to keep
+    // all slider columns structurally identical (holder contains the input range).
 
     // Small toggle to expand into full set of sliders
     const toggle = document.createElement('button');
@@ -573,32 +574,52 @@ function ensureFloatingControls() {
     // Insert so it is a child; absolute position will place it over the range
     vol.appendChild(toggle);
 
+    // Shared helper: apply consistent styles to any volume column (Master/Game/Music/Voice)
+    // This keeps layout and typography uniform without duplicating style code.
+    function applyVolumeColStyles(col, holder, labelEl, valEl) {
+      try {
+        // Column container
+        col.style.display = 'flex';
+        col.style.flexDirection = 'column';
+        col.style.alignItems = 'center';
+        col.style.gap = '2px';
+        col.style.width = '50px';
+        // Label
+        if (labelEl) {
+          labelEl.style.fontSize = '11px';
+          labelEl.style.color = 'var(--ui-fg)';
+          labelEl.style.textAlign = 'center';
+        }
+        // Holder for rotated range
+        if (holder) {
+          holder.style.width = '18px';
+          holder.style.height = EXPANDED_LEN + 'px';
+          holder.style.display = 'flex';
+          holder.style.alignItems = 'center';
+          holder.style.justifyContent = 'center';
+          holder.style.position = 'relative';
+        }
+        // Value text
+        if (valEl) {
+          valEl.style.fontSize = '11px';
+          valEl.style.color = 'var(--ui-fg)';
+          valEl.style.textAlign = 'center';
+        }
+      } catch (_) {}
+    }
+
     // Master column: label, main vertical slider, % readout (shown only when extended)
     const masterCol = document.createElement('div');
-    masterCol.style.display = 'flex';
-    masterCol.style.flexDirection = 'column';
-    masterCol.style.alignItems = 'center';
-    masterCol.style.gap = '2px';
-    masterCol.style.width = '50px';
     const masterLabel = document.createElement('div');
     masterLabel.textContent = 'Master';
-    masterLabel.style.fontSize = '11px';
-    masterLabel.style.color = 'var(--ui-fg)';
-    masterLabel.style.textAlign = 'center';
     masterLabel.style.display = 'none';
     const masterHolder = document.createElement('div');
-    masterHolder.style.width = '18px';
-    masterHolder.style.height = EXPANDED_LEN + 'px';
-    masterHolder.style.display = 'flex';
-    masterHolder.style.alignItems = 'center';
-    masterHolder.style.justifyContent = 'center';
-    masterHolder.style.position = 'relative';
-    // Move the main range into the master holder
+    applyVolumeColStyles(masterCol, masterHolder, masterLabel, null);
+    // Place the primary range inside the master holder so Master column structure
+    // matches Game/Music/Voice columns.
     masterHolder.appendChild(range);
     const masterVal = document.createElement('div');
-    masterVal.style.fontSize = '11px';
-    masterVal.style.color = '#ccc';
-    masterVal.style.textAlign = 'center';
+    applyVolumeColStyles(masterCol, null, null, masterVal);
     masterVal.style.display = 'none';
     masterCol.appendChild(masterHolder);
     masterCol.appendChild(masterLabel);
@@ -624,17 +645,11 @@ function ensureFloatingControls() {
 
     const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
       const row = document.createElement('div');
-      row.style.display = 'flex'; row.style.flexDirection = 'column'; row.style.alignItems = 'center'; row.style.gap = '2px';
-      row.style.width = '50px'; // tighter equal column width
-      const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '11px'; lbl.style.color = 'var(--ui-fg)'; lbl.style.textAlign = 'center';
+      const lbl = document.createElement('label'); lbl.textContent = labelText;
       // Fixed-size holder to constrain rotated range footprint
       const holder = document.createElement('div');
-      holder.style.width = '18px';
-      holder.style.height = EXPANDED_LEN + 'px';
-      holder.style.display = 'flex';
-      holder.style.alignItems = 'center';
-      holder.style.justifyContent = 'center';
-      holder.style.position = 'relative';
+      // Apply shared column/label/holder styles for consistency
+      applyVolumeColStyles(row, holder, lbl, null);
       const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
       // Make these sliders vertical like the main one
       rng.style.transform = 'rotate(-90deg)';
@@ -644,7 +659,8 @@ function ensureFloatingControls() {
       rng.style.transition = 'width 120ms ease';
       rng.style.width = EXPANDED_LEN + 'px';
       holder.appendChild(rng);
-      const val = document.createElement('span'); val.style.textAlign = 'center'; val.style.color = '#ccc'; val.style.fontSize = '11px';
+      const val = document.createElement('span');
+      applyVolumeColStyles(row, null, null, val);
 
       if (useMasterBinding) {
         try {
