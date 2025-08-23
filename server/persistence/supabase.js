@@ -3,6 +3,8 @@
 
 const URL = process.env.SUPABASE_URL || '';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+// Canonical table name for persisted game state
+const TABLE_GAMESTATE = process.env.TABLE_GAMESTATE || 'gamestate';
 
 let _client = null;
 async function getClient() {
@@ -29,7 +31,7 @@ async function saveSnapshot(gameId, data, retention = 3) {
   try {
     const insert = [{ game_id: String(gameId), data: data }];
     const { data: rows, error } = await client
-      .from('game_state_snapshots')
+      .from(TABLE_GAMESTATE)
       .insert(insert)
       .select('id, created_at')
       .single();
@@ -39,7 +41,7 @@ async function saveSnapshot(gameId, data, retention = 3) {
     const keep = Math.max(0, retention | 0);
     if (keep >= 0) {
       const { data: oldRows, error: selErr } = await client
-        .from('game_state_snapshots')
+        .from(TABLE_GAMESTATE)
         .select('id, created_at')
         .eq('game_id', String(gameId))
         .order('created_at', { ascending: false })
@@ -47,7 +49,7 @@ async function saveSnapshot(gameId, data, retention = 3) {
       if (!selErr && Array.isArray(oldRows) && oldRows.length) {
         const ids = oldRows.map(r => r.id).filter(Boolean);
         if (ids.length) {
-          await client.from('game_state_snapshots').delete().in('id', ids);
+          await client.from(TABLE_GAMESTATE).delete().in('id', ids);
         }
       }
     }
@@ -63,7 +65,7 @@ async function loadLatestSnapshot(gameId) {
   if (!client) return null;
   try {
     const { data: rows, error } = await client
-      .from('game_state_snapshots')
+      .from(TABLE_GAMESTATE)
       .select('id, created_at, data')
       .eq('game_id', String(gameId))
       .order('created_at', { ascending: false })
