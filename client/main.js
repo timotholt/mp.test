@@ -246,6 +246,11 @@ makeScreen(APP_STATES.ROOM, (el) => {
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.alignItems = 'center';
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← Lobby';
+    backBtn.style.marginRight = '8px';
+    backBtn.onclick = () => { try { leaveRoomToLobby(); } catch (_) {} };
+    header.appendChild(backBtn);
     const title = document.createElement('div');
     title.textContent = 'Room';
     header.appendChild(title);
@@ -726,6 +731,23 @@ function startLobbyPolling() {
 
 function stopLobbyPolling() { if (lobbyPollId) { clearInterval(lobbyPollId); lobbyPollId = null; } }
 window.stopLobbyPolling = stopLobbyPolling;
+
+// Leave current room and return to Lobby
+async function leaveRoomToLobby() {
+  try {
+    if (room && typeof room.leave === 'function') {
+      await room.leave(true);
+    }
+  } catch (e) { try { console.warn('leave failed', e); } catch (_) {} }
+  try { sessionStorage.removeItem('roomId'); } catch (_) {}
+  try { sessionStorage.removeItem('sessionId'); } catch (_) {}
+  try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
+  try { statusEl.textContent = 'In Lobby'; } catch (_) {}
+  try { window.room = null; } catch (_) {}
+  try { room = null; } catch (_) {}
+  try { roomUIBound = false; } catch (_) {}
+  setRoute(APP_STATES.LOBBY);
+}
 
 function renderRooms(rooms) {
   if (!roomsListEl) return;
