@@ -2,6 +2,7 @@
 // Connects, prompts for gameId and room password, and sends arrow-key movement inputs.
 
 import * as Colyseus from 'colyseus.js';
+import OverlayManager, { PRIORITY } from './core/overlayManager.js';
 import { presentRoomCreateModal } from './modals/roomCreate.js';
 import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
 import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
@@ -26,6 +27,9 @@ const APP_STATES = {
 const appRoot = document.getElementById('app');
 const screens = new Map();
 let currentRoute = null;
+// Expose for overlay manager module
+window.APP_STATES = APP_STATES;
+window.__getCurrentRoute = () => currentRoute;
 
 function makeScreen(id, initFn) {
   let el = document.getElementById(id);
@@ -143,7 +147,9 @@ function hideAllScreens() {
 function toggleRenderer(visible) {
   const rc = document.getElementById('rc-canvas');
   if (!rc) return;
-  rc.style.display = visible ? '' : 'none';
+  // Always-on canvas per UI architecture rule: the renderer is always visible.
+  // We use a separate screen shade layer to dim the scene behind screens/modals.
+  rc.style.display = '';
 }
 
 function setRoute(route, payload = {}) {
@@ -156,18 +162,24 @@ function setRoute(route, payload = {}) {
   } else {
     console.warn('[router] no screen for', route);
   }
-  const showRC = route === APP_STATES.GAMEPLAY_ACTIVE || route === APP_STATES.GAMEPLAY_PAUSED;
+  // Renderer is always visible; instead, toggle a dimming shade when a screen is active.
+  const showRC = true; // kept for compatibility with previous logic
   toggleRenderer(showRC);
+  try {
+    const shade = ensureScreenShade();
+    const needsShade = route !== APP_STATES.GAMEPLAY_ACTIVE;
+    shade.style.display = needsShade ? '' : 'none';
+  } catch (_) {}
+  // Enable pointer interaction with renderer except on LOGIN backdrop
+  try {
+    const rc = document.getElementById('rc-canvas');
+    if (rc) rc.style.pointerEvents = (route === APP_STATES.LOGIN) ? 'none' : 'auto';
+  } catch (_) {}
   // Allow movement input only during active gameplay and without blocking modals
   window.__canSendGameplayInput = (route === APP_STATES.GAMEPLAY_ACTIVE);
   // Stop lobby polling if we left the lobby
   if (route !== APP_STATES.LOBBY) {
     try { stopLobbyPolling(); } catch (_) {}
-  }
-  // Ensure login modal/backdrop when entering LOGIN
-  if (route === APP_STATES.LOGIN) {
-    try { showLoginBackdrop(); } catch (_) {}
-    try { presentLoginModal(); } catch (_) {}
   }
 }
 
@@ -295,166 +307,193 @@ makeScreen(APP_STATES.ROOM, (el) => {
     try { refreshRoomChat(); } catch (_) {}
   };
 });
+
 makeScreen(APP_STATES.GAMEPLAY_ACTIVE, (el) => { el.textContent = 'Gameplay Active'; });
 makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paused'; });
 
 // Default route until server tells us otherwise
 setRoute(APP_STATES.LOGIN);
 
-// -------------------- Overlay Manager (priority modals) --------------------
-// Supports dynamic server-driven modals with priority and actions (yes/no/1..9)
-const PRIORITY = {
-  LOW: 10,              // character creation steps, quest window
-  MEDIUM: 50,           // game paused, waiting states
-  HIGH: 90,             // player dead, kicked
-  CRITICAL: 100,        // server shutdown/reboot
-};
-// Expose for modal modules
-window.PRIORITY = PRIORITY;
-
-let overlayEl = null;
-function ensureOverlay() {
-  if (!overlayEl) {
-    overlayEl = document.createElement('div');
-    overlayEl.id = 'overlay';
-    overlayEl.style.position = 'absolute';
-    overlayEl.style.left = '0';
-    overlayEl.style.top = '0';
-    overlayEl.style.right = '0';
-    overlayEl.style.bottom = '0';
-    overlayEl.style.display = 'none';
-    overlayEl.style.pointerEvents = 'auto';
-    overlayEl.style.background = 'rgba(0,0,0,0.5)';
-    overlayEl.style.color = '#fff';
-    overlayEl.style.padding = '16px';
-    overlayEl.style.zIndex = '9999';
-    // Create inner content box for basic layout
-    const inner = document.createElement('div');
-    inner.id = 'overlay-content';
-    inner.style.maxWidth = '640px';
-    inner.style.margin = '40px auto';
-    inner.style.background = 'rgba(0,0,0,0.8)';
-    inner.style.border = '1px solid #444';
-    inner.style.padding = '16px';
-    inner.style.boxShadow = '0 0 12px rgba(0,0,0,0.6)';
-    overlayEl.appendChild(inner);
-    // Ensure appRoot is positioned for overlay stacking
-    appRoot.style.position = appRoot.style.position || 'relative';
-    appRoot.appendChild(overlayEl);
+// -------------------- Always-on Canvas Dimming Shade & UI Chrome --------------------
+function ensureScreenShade() {
+  let shade = document.getElementById('screen-shade');
+  if (!shade) {
+    shade = document.createElement('div');
+    shade.id = 'screen-shade';
+    shade.style.position = 'fixed';
+    shade.style.inset = '0';
+    shade.style.background = 'rgba(0,0,0,0.5)';
+    shade.style.zIndex = '2000'; // below overlay (9999), above canvas (1)
+    shade.style.display = 'none';
+    shade.style.pointerEvents = 'none';
+    document.body.appendChild(shade);
   }
-  return overlayEl;
+  return shade;
 }
 
-const OverlayManager = (() => {
-  const stack = []; // { id, priority, text, actions, blockInput, hotkeyMap }
+// Lightweight theme support using CSS variables
+function ensureThemeSupport() {
+  if (document.getElementById('theme-style')) return;
+  const st = document.createElement('style');
+  st.id = 'theme-style';
+  st.textContent = `:root{
+    --ui-bg: rgba(0,0,0,0.8);
+    --ui-fg: #fff;
+    --ui-muted: #ccc;
+    --ui-accent: #4caf50;
+    --bar-bg: rgba(20,20,20,0.9);
+    --banner-bg: rgba(32,32,32,0.95);
+    --control-bg: rgba(0,0,0,0.6);
+    --control-border: #444;
+  }`;
+  document.head.appendChild(st);
+  window.setTheme = function(theme) {
+    // Simple placeholder for future themes
+    const dark = theme !== 'light';
+    document.documentElement.style.setProperty('--ui-bg', dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)');
+    document.documentElement.style.setProperty('--ui-fg', dark ? '#fff' : '#111');
+    document.documentElement.style.setProperty('--ui-muted', dark ? '#ccc' : '#333');
+    document.documentElement.style.setProperty('--bar-bg', dark ? 'rgba(20,20,20,0.9)' : 'rgba(240,240,240,0.9)');
+    document.documentElement.style.setProperty('--banner-bg', dark ? 'rgba(32,32,32,0.95)' : 'rgba(250,250,250,0.95)');
+    document.documentElement.style.setProperty('--control-bg', dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)');
+    document.documentElement.style.setProperty('--control-border', dark ? '#444' : '#bbb');
+  };
+}
 
-  function renderTop() {
-    const el = ensureOverlay();
-    if (stack.length === 0) {
-      el.style.display = 'none';
-      el.querySelector('#overlay-content').innerHTML = '';
-      // Recompute input gate when overlays change
-      window.__canSendGameplayInput = (currentRoute === APP_STATES.GAMEPLAY_ACTIVE);
-      return;
-    }
-    const top = stack[stack.length - 1];
-    el.style.display = '';
-    const content = el.querySelector('#overlay-content');
-    content.innerHTML = '';
-    const p = document.createElement('div');
-    p.textContent = top.text || '[modal]';
-    content.appendChild(p);
-    const btnRow = document.createElement('div');
-    btnRow.style.marginTop = '12px';
-    content.appendChild(btnRow);
-    (top.actions || []).forEach((a, idx) => {
-      const b = document.createElement('button');
-      b.textContent = a.label || a.id || ('Option ' + (idx + 1));
-      b.style.marginRight = '8px';
-      b.addEventListener('click', () => selectAction(top, a));
-      btnRow.appendChild(b);
+function ensureStatusBar() {
+  let bar = document.getElementById('hover-status-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'hover-status-bar';
+    bar.style.position = 'fixed';
+    bar.style.left = '0';
+    bar.style.right = '0';
+    bar.style.top = '0';
+    bar.style.height = '3em';
+    bar.style.display = 'none';
+    bar.style.alignItems = 'center';
+    bar.style.justifyContent = 'space-between';
+    bar.style.padding = '0 12px';
+    bar.style.background = 'var(--bar-bg)';
+    bar.style.color = 'var(--ui-fg)';
+    bar.style.zIndex = '9000';
+    const left = document.createElement('div');
+    left.id = 'status-left';
+    left.textContent = 'FPS: -- | PING: --';
+    const right = document.createElement('div');
+    right.id = 'status-right';
+    const gear = document.createElement('button');
+    gear.textContent = '⚙️';
+    gear.style.background = 'transparent';
+    gear.style.border = 'none';
+    gear.style.color = 'var(--ui-fg)';
+    gear.style.fontSize = '1.2em';
+    gear.style.cursor = 'pointer';
+    gear.onclick = () => {
+      try {
+        OverlayManager.present({ id: 'SETTINGS', priority: PRIORITY.MEDIUM, text: 'Settings (coming soon)', actions: [{ id: 'ok', label: 'OK' }], blockInput: false });
+      } catch (_) {}
+    };
+    right.appendChild(gear);
+    bar.appendChild(left); bar.appendChild(right);
+    document.body.appendChild(bar);
+
+    let hideTimer = null;
+    const requestHide = () => { if (hideTimer) clearTimeout(hideTimer); hideTimer = setTimeout(() => { bar.style.display = 'none'; }, 3000); };
+    window.addEventListener('mousemove', (e) => {
+      if (e.clientY <= 8) { bar.style.display = 'flex'; requestHide(); }
     });
-    // If modal blocks input, disable gameplay input
-    window.__canSendGameplayInput = (currentRoute === APP_STATES.GAMEPLAY_ACTIVE) && !top.blockInput;
   }
-
-  function selectAction(modal, action) {
-    // Inform server about the chosen action
-    try {
-      if (window.room) {
-        window.room.send('modalAction', { modalId: modal.id, actionId: action.id });
-      }
-    } catch (e) { console.warn('modalAction send failed', e); }
-    // Dismiss the current modal
-    dismiss(modal.id);
-  }
-
-  function present({ id, priority = PRIORITY.LOW, text = '', actions = [], blockInput = true, hotkeys = {} }) {
-    // Remove any existing modal with same id
-    for (let i = stack.length - 1; i >= 0; i--) {
-      if (stack[i].id === id) stack.splice(i, 1);
-    }
-    // Insert keeping stack sorted by priority (ascending), but top is last
-    const modal = { id, priority, text, actions, blockInput, hotkeys };
-    const idx = stack.findIndex(m => m.priority > priority);
-    if (idx === -1) stack.push(modal); else stack.splice(idx, 0, modal);
-    renderTop();
-  }
-
-  function dismiss(id) {
-    const i = stack.findIndex(m => m.id === id);
-    if (i !== -1) stack.splice(i, 1);
-    renderTop();
-  }
-
-  function clearBelow(priority) {
-    for (let i = stack.length - 1; i >= 0; i--) {
-      if (stack[i].priority < priority) stack.splice(i, 1);
-    }
-    renderTop();
-  }
-
-  function top() { return stack[stack.length - 1] || null; }
-
-  function isBlockingInput() {
-    const t = top();
-    return !!(t && t.blockInput);
-  }
-
-  // Keyboard hotkeys for the top modal
-  window.addEventListener('keydown', (e) => {
-    const t = top();
-    if (!t) return;
-    // map numeric keys 1..9 to actions by index
-    const num = parseInt(e.key, 10);
-    if (!isNaN(num) && num >= 1 && num <= (t.actions || []).length) {
-      e.preventDefault();
-      selectAction(t, t.actions[num - 1]);
-      return;
-    }
-    // y/n convenience
-    if ((e.key === 'y' || e.key === 'Y') && (t.actions || [])[0]) {
-      e.preventDefault();
-      selectAction(t, t.actions[0]);
-      return;
-    }
-    if ((e.key === 'n' || e.key === 'N') && (t.actions || [])[1]) {
-      e.preventDefault();
-      selectAction(t, t.actions[1]);
-      return;
-    }
-  });
-
-  return { present, dismiss, clearBelow, top, isBlockingInput };
-})();
-
-// Expose OverlayManager for external modules (room create modal)
-window.OverlayManager = OverlayManager;
-// If we are currently on the LOGIN route and the initial attempt to present the
-// login modal happened before OverlayManager existed, present it now.
-if (currentRoute === APP_STATES.LOGIN) {
-  try { presentLoginModal(); } catch (_) {}
+  return bar;
 }
+
+function ensureFloatingControls() {
+  let zoom = document.getElementById('zoom-controls');
+  if (!zoom) {
+    zoom = document.createElement('div');
+    zoom.id = 'zoom-controls';
+    zoom.style.position = 'fixed';
+    zoom.style.left = '12px';
+    zoom.style.bottom = '12px';
+    zoom.style.zIndex = '10001';
+    zoom.style.background = 'var(--control-bg)';
+    zoom.style.border = '1px solid var(--control-border)';
+    zoom.style.borderRadius = '6px';
+    zoom.style.padding = '6px';
+    const zin = document.createElement('button'); zin.textContent = '+'; zin.style.marginRight = '6px';
+    const zout = document.createElement('button'); zout.textContent = '-';
+    const applyZoom = (factor) => {
+      try {
+        if (window.radianceCascades && typeof window.radianceCascades.zoom === 'function') {
+          window.radianceCascades.zoom(factor);
+        } else {
+          window.dispatchEvent(new CustomEvent('ui:zoom', { detail: { factor } }));
+        }
+      } catch (_) {}
+    };
+    zin.onclick = () => applyZoom(1.1);
+    zout.onclick = () => applyZoom(0.9);
+    zoom.appendChild(zin); zoom.appendChild(zout);
+    document.body.appendChild(zoom);
+  }
+
+  let vol = document.getElementById('volume-control');
+  if (!vol) {
+    vol = document.createElement('div');
+    vol.id = 'volume-control';
+    vol.style.position = 'fixed';
+    vol.style.right = '12px';
+    vol.style.bottom = '12px';
+    vol.style.zIndex = '10001';
+    vol.style.background = 'var(--control-bg)';
+    vol.style.border = '1px solid var(--control-border)';
+    vol.style.borderRadius = '6px';
+    vol.style.padding = '6px';
+    const range = document.createElement('input');
+    range.type = 'range'; range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = (window.__volume ?? 1).toString();
+    range.oninput = () => {
+      window.__volume = parseFloat(range.value);
+      try { window.dispatchEvent(new CustomEvent('ui:volume', { detail: { volume: window.__volume } })); } catch (_) {}
+    };
+    vol.appendChild(range);
+    document.body.appendChild(vol);
+  }
+}
+
+function ensureBanner() {
+  let banner = document.getElementById('mini-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'mini-banner';
+    banner.style.position = 'fixed';
+    banner.style.top = '8px';
+    banner.style.left = '50%';
+    banner.style.transform = 'translateX(-50%)';
+    banner.style.width = '20%';
+    banner.style.minWidth = '240px';
+    banner.style.maxWidth = '480px';
+    banner.style.height = '2em';
+    banner.style.display = 'none';
+    banner.style.alignItems = 'center';
+    banner.style.justifyContent = 'center';
+    banner.style.background = 'var(--banner-bg)';
+    banner.style.color = 'var(--ui-fg)';
+    banner.style.border = '1px solid var(--control-border)';
+    banner.style.borderRadius = '6px';
+    banner.style.padding = '0 12px';
+    banner.style.zIndex = '9500'; // above hover status bar (9000), below overlay (9999)
+    document.body.appendChild(banner);
+
+    window.showBanner = function(msg = '', ms = 4000) {
+      try { banner.textContent = msg; banner.style.display = 'flex'; } catch (_) {}
+      if (window.__bannerTimer) clearTimeout(window.__bannerTimer);
+      window.__bannerTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} }, ms);
+    };
+  }
+  return banner;
+}
+
+// OverlayManager now lives in ./core/overlayManager.js and exposes window.OverlayManager and window.PRIORITY
 
 // Known substates and their priority for preemption
 const SUBSTATES = {
@@ -816,7 +855,7 @@ async function setupAsciiRenderer() {
     if (!container) {
       container = document.createElement('div');
       container.id = 'rc-canvas';
-      container.style.display = 'none'; // hidden by default; router toggles when needed
+      container.style.display = ''; // always visible per UI architecture
       container.style.position = 'fixed';
       container.style.inset = '0';
       container.style.width = '100vw';
@@ -844,6 +883,45 @@ async function setupAsciiRenderer() {
       console.log('[DEBUG client] calling rc.load()');
       rc.load();
     }
+
+    // Handle window resizing dynamically
+    window.addEventListener('resize', () => {
+      const w = Math.max(320, window.innerWidth || 1024);
+      const h = Math.max(240, window.innerHeight || 768);
+      try {
+        if (typeof rc.resize === 'function') rc.resize(w, h);
+      } catch (_) {}
+      try { container.style.width = '100vw'; container.style.height = '100vh'; } catch (_) {}
+    });
+
+    // FPS estimator for status bar (simple rAF-based)
+    (function fpsLoop(){
+      let last = performance.now(), frames = 0, acc = 0;
+      function tick(now){
+        const dt = now - last; last = now; frames++; acc += dt;
+        if (acc >= 1000) {
+          const fps = Math.round(frames * 1000 / acc);
+          frames = 0; acc = 0;
+          try {
+            const left = document.getElementById('status-left');
+            if (left) {
+              const txt = left.textContent || '';
+              const parts = txt.split('|');
+              left.textContent = `FPS: ${fps} | ${parts[1] ? parts[1].trim() : 'PING: --'}`;
+            }
+          } catch (_) {}
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+
+    // Ensure UI chrome exists
+    ensureThemeSupport();
+    ensureStatusBar();
+    ensureFloatingControls();
+    ensureBanner();
+    ensureScreenShade();
 
     // Apply any pending assets received before renderer was ready
     // Important: set dungeon map before color maps so render has valid data
