@@ -477,9 +477,11 @@ function ensureFloatingControls() {
     range.max = '1';
     range.step = String(DEFAULT_WHEEL_STEP);
     // Make slider vertical (up = louder)
-    range.style.position = 'relative';
+    range.style.position = 'absolute';
+    range.style.left = 'calc(50% + 1px)';
+    range.style.top = '50%';
     range.style.zIndex = '1';
-    range.style.transform = 'rotate(-90deg)';
+    range.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
     range.style.height = '24px';
     range.style.margin = '0';
@@ -583,7 +585,7 @@ function ensureFloatingControls() {
         col.style.flexDirection = 'column';
         col.style.alignItems = 'center';
         col.style.gap = '2px';
-        col.style.width = '50px';
+        col.style.width = '40px';
         // Label
         if (labelEl) {
           labelEl.style.fontSize = '11px';
@@ -592,7 +594,7 @@ function ensureFloatingControls() {
         }
         // Holder for rotated range
         if (holder) {
-          holder.style.width = '18px';
+          holder.style.width = '24px';
           holder.style.height = EXPANDED_LEN + 'px';
           holder.style.display = 'flex';
           holder.style.alignItems = 'center';
@@ -651,8 +653,11 @@ function ensureFloatingControls() {
       // Apply shared column/label/holder styles for consistency
       applyVolumeColStyles(row, holder, lbl, null);
       const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
-      // Make these sliders vertical like the main one
-      rng.style.transform = 'rotate(-90deg)';
+      // Make these sliders vertical like the main one and absolutely center them
+      rng.style.position = 'absolute';
+      rng.style.left = 'calc(50% + 1px)';
+      rng.style.top = '50%';
+      rng.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
       rng.style.transformOrigin = '50% 50%';
       rng.style.height = '24px';
       rng.style.margin = '0';
