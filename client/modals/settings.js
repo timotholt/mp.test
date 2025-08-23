@@ -1,3 +1,5 @@
+import { bindRangeToVolume, getVolume, setVolume, DEFAULT_WHEEL_STEP } from '../core/volume.js';
+
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
 // Tabs: Account, Profile, Display, Sound, Controls.
@@ -257,10 +259,34 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   const row = document.createElement('div');
   row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '8px';
   const lbl = document.createElement('label'); lbl.textContent = labelText + ':'; lbl.style.minWidth = '140px';
-  const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = '0.01'; rng.style.flex = '1';
+  const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP); rng.style.flex = '1';
   const val = document.createElement('span'); val.style.width = '46px'; val.style.textAlign = 'right'; val.style.color = '#ccc';
   // Give IDs to master volume row for external syncing
   if (storageKey === 'volume') { rng.id = 'settings-master-volume'; val.id = 'settings-master-volume-val'; }
+  // Use shared utility for master volume only
+  if (storageKey === 'volume') {
+    try {
+      const init = getVolume();
+      rng.value = String(init);
+      // Ensure runtime state is aligned but don't emit yet
+      setVolume(init, { silent: true });
+      const pct = String(Math.round(init * 100)) + '%';
+      val.textContent = pct; rng.title = pct;
+    } catch (_) {}
+    // Delegate input, wheel, and external sync to utility
+    bindRangeToVolume(rng, {
+      withWheel: true,
+      emitOnInit: false,
+      onRender: (v) => {
+        try {
+          const pct = String(Math.round(v * 100)) + '%';
+          val.textContent = pct; rng.title = pct;
+        } catch (_) {}
+      }
+    });
+    row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
+    return row;
+  }
   try {
     const saved = parseFloat(localStorage.getItem(storageKey));
     const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
@@ -290,7 +316,7 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   rng.addEventListener('wheel', (e) => {
     try {
       e.preventDefault();
-      const step = parseFloat(rng.step) || 0.02;
+      const step = parseFloat(rng.step) || DEFAULT_WHEEL_STEP;
       const dir = e.deltaY < 0 ? 1 : -1;
       const cur = parseFloat(rng.value);
       const next = Math.max(0, Math.min(1, cur + dir * step));

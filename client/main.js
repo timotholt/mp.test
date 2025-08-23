@@ -11,6 +11,7 @@ import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
+import { getVolume, setVolume, bindRangeToVolume, DEFAULT_WHEEL_STEP } from './core/volume.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -465,43 +466,25 @@ function ensureFloatingControls() {
     vol.style.height = '160px';
     vol.style.width = '44px';
     const range = document.createElement('input');
-    range.type = 'range'; range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = (window.__volume ?? 1).toString();
-    // Initial hover tooltip with percent
-    try { range.title = String(Math.round(parseFloat(range.value) * 100)) + '%'; } catch (_) {}
+    range.type = 'range';
+    range.min = '0';
+    range.max = '1';
+    range.step = String(DEFAULT_WHEEL_STEP);
     // Make slider vertical (up = louder)
     range.style.transform = 'rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
     range.style.width = '120px';
     range.style.height = '24px';
     range.style.margin = '0';
-    range.oninput = () => {
-      window.__volume = parseFloat(range.value);
-      try { localStorage.setItem('volume', range.value); } catch (_) {}
-      try { window.dispatchEvent(new CustomEvent('ui:volume', { detail: { volume: window.__volume } })); } catch (_) {}
-      try { range.title = String(Math.round(window.__volume * 100)) + '%'; } catch (_) {}
-    };
-    // Mouse wheel to adjust volume when hovering
-    range.addEventListener('wheel', (e) => {
-      try {
-        e.preventDefault();
-        const step = parseFloat(range.step) || 0.02;
-        const dir = e.deltaY < 0 ? 1 : -1; // scroll up -> louder
-        const cur = parseFloat(range.value);
-        const next = Math.max(0, Math.min(1, cur + dir * step));
-        if (next !== cur) {
-          range.value = String(next);
-          range.oninput();
-        }
-      } catch (_) {}
-    }, { passive: false });
-    // Keep in sync when volume changes elsewhere (e.g., Settings panel)
-    window.addEventListener('ui:volume', (e) => {
-      try {
-        const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window.__volume;
-        range.value = String(Math.max(0, Math.min(1, v)));
-        try { localStorage.setItem('volume', range.value); } catch (_) {}
-        try { range.title = String(Math.round(parseFloat(range.value) * 100)) + '%'; } catch (_) {}
-      } catch (_) {}
+    // Ensure runtime state matches persisted value without emitting
+    try { setVolume(getVolume(), { silent: true }); } catch (_) {}
+    // Bind to shared volume utility
+    bindRangeToVolume(range, {
+      withWheel: true,
+      emitOnInit: false,
+      onRender: (v) => {
+        try { range.title = String(Math.round(v * 100)) + '%'; } catch (_) {}
+      }
     });
     vol.appendChild(range);
     document.body.appendChild(vol);
