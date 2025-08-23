@@ -471,7 +471,7 @@ function ensureFloatingControls() {
     // Vertical slider container
     vol.style.display = 'flex';
     vol.style.flexDirection = 'column';
-    vol.style.alignItems = 'end';
+    vol.style.alignItems = 'flex-end';
     vol.style.justifyContent = 'center';
     // Size is controlled dynamically on hover
     const range = document.createElement('input');
