@@ -13,6 +13,9 @@ import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.
 import { createChatTabs } from './core/chatTabs.js';
 import { getVolume, setVolume, bindRangeToVolume, DEFAULT_WHEEL_STEP } from './core/volume.js';
 
+// Animation duration for floating volume control transitions (collapsed→expanded, expanded→extended)
+const FLOATING_VOL_ANIM_DUR = '4s';
+
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };
@@ -467,7 +470,7 @@ function ensureFloatingControls() {
     vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
     vol.style.padding = '2px';
-    vol.style.transition = 'height 120ms ease, width 120ms ease, background 120ms ease, border-color 120ms ease, padding 120ms ease';
+    vol.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease, width ${FLOATING_VOL_ANIM_DUR} ease, background ${FLOATING_VOL_ANIM_DUR} ease, border-color ${FLOATING_VOL_ANIM_DUR} ease, padding ${FLOATING_VOL_ANIM_DUR} ease`;
     // Vertical slider container
     vol.style.display = 'flex';
     vol.style.flexDirection = 'column';
@@ -488,7 +491,7 @@ function ensureFloatingControls() {
     range.style.transformOrigin = '50% 50%';
     range.style.height = '24px';
     range.style.margin = '0';
-    range.style.transition = 'width 120ms ease';
+    range.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
 
     // Hover-driven collapse/expand
     const COLLAPSED_LEN = 36;   // short control when idle
@@ -675,7 +678,7 @@ function ensureFloatingControls() {
       rng.style.transformOrigin = '50% 50%';
       rng.style.height = '24px';
       rng.style.margin = '0';
-      rng.style.transition = 'width 120ms ease';
+      rng.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
       rng.style.width = EXPANDED_LEN + 'px';
       holder.appendChild(rng);
       const val = document.createElement('span');
