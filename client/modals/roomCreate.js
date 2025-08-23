@@ -1,6 +1,7 @@
 // Room Create Modal (plain JS) - uses global OverlayManager from client/main.js
 // Exports a function to present a modal for creating a private room.
 // Fields: name, turnLength (s), password, maxPlayers.
+import { setRoute, APP_STATES } from '../core/router.js';
 
 export function presentRoomCreateModal({ onSubmit } = {}) {
   const id = 'CREATE_ROOM';
@@ -67,7 +68,11 @@ export function presentRoomCreateModal({ onSubmit } = {}) {
 
     const cancel = document.createElement('button');
     cancel.textContent = 'Cancel';
-    cancel.onclick = () => window.OverlayManager && window.OverlayManager.dismiss(id);
+    cancel.onclick = () => {
+      try { if (window.OverlayManager) window.OverlayManager.dismiss(id); } catch (_) {}
+      // Re-render lobby overlay content (route is already LOBBY, but setRoute will re-run update)
+      try { setRoute(APP_STATES.LOBBY); } catch (_) {}
+    };
 
     const create = document.createElement('button');
     create.textContent = 'Create';
