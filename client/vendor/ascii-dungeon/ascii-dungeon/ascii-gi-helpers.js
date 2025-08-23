@@ -1028,6 +1028,50 @@ class DungeonRenderer extends BaseSurface {
     // Child class can override this
   }
 
+  resize(width, height, dpr = this.dpr) {
+    // Preserve camera state
+    const prevCamera = this.camera ? {...this.camera} : null;
+
+    // Update dimensions
+    this.width = width;
+    this.height = height;
+    this.dpr = dpr || this.dpr;
+
+    // Reinitialize the base dungeon stage and its render targets without touching DOM
+    const {render, renderTargets, scaling} = this.initializeDungeonSurface();
+    this.render = render;
+    this.renderTargets = renderTargets;
+    this.scaling = scaling;
+
+    // Recreate high-resolution upscaling targets
+    this.drawRenderTargetHighA = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
+      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      magFilter: this.gl.NEAREST,
+      internalFormat: this.gl.RGBA,
+      format: this.gl.RGBA,
+      type: this.gl.UNSIGNED_BYTE
+    });
+
+    this.drawRenderTargetHighB = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
+      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      magFilter: this.gl.NEAREST,
+      internalFormat: this.gl.RGBA,
+      format: this.gl.RGBA,
+      type: this.gl.UNSIGNED_BYTE
+    });
+
+    this.renderTargetsHigh = [this.drawRenderTargetHighA, this.drawRenderTargetHighB];
+    this.renderIndexHigh = 0;
+
+    // Restore camera and refresh uniforms
+    if (prevCamera) this.camera = prevCamera;
+    if (this.dungeonUniforms) {
+      this.dungeonUniforms.viewportSize = [this.width, this.height];
+      this.updateCameraUniforms();
+      this.updateGridSize();
+    }
+  }
+
   load() {
     try { console.log('[DEBUG renderer] load() called'); } catch (_) {}
     this.renderer.font = this.renderer.createTextureFromImage(asciiBase64, () => {

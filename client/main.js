@@ -493,6 +493,23 @@ function ensureBanner() {
   return banner;
 }
 
+// Hide legacy demo DOM and vendor demo controls when our canvas is active
+function hideLegacyDom() {
+  try { document.body.style.background = '#000'; } catch (_) {}
+  try {
+    const app = document.getElementById('app');
+    if (app) {
+      app.querySelectorAll('h1, p, pre').forEach((el) => { el.style.display = 'none'; });
+    }
+  } catch (_) {}
+  // If vendor demo controls ever sneak in, hide them defensively
+  try {
+    ['enable-nearest','bilinear-fix','rc-sun-angle-slider','falloff-slider-container','radius-slider-container']
+      .forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.querySelectorAll('.iconButton').forEach((el) => { el.style.display = 'none'; });
+  } catch (_) {}
+}
+
 // OverlayManager now lives in ./core/overlayManager.js and exposes window.OverlayManager and window.PRIORITY
 
 // Known substates and their priority for preemption
@@ -864,6 +881,9 @@ async function setupAsciiRenderer() {
       app.appendChild(container);
     }
 
+    // Proactively hide legacy DOM under our fullscreen canvas
+    hideLegacyDom();
+
     // Fullscreen size; DPR handled by RC props
     const width = Math.max(320, window.innerWidth || 1024);
     const height = Math.max(240, window.innerHeight || 768);
@@ -884,14 +904,114 @@ async function setupAsciiRenderer() {
       rc.load();
     }
 
-    // Handle window resizing dynamically
-    window.addEventListener('resize', () => {
-      const w = Math.max(320, window.innerWidth || 1024);
-      const h = Math.max(240, window.innerHeight || 768);
+    // Robust resize handler: updates canvas/container, renderer internals, uniforms, and render targets
+    const handleResize = () => {
       try {
-        if (typeof rc.resize === 'function') rc.resize(w, h);
+        const w = Math.max(320, window.innerWidth || 1024);
+        const h = Math.max(240, window.innerHeight || 768);
+        const dpr = window.devicePixelRatio || 1;
+
+        // Ensure container fills viewport
+        try {
+          container.style.width = '100vw';
+          container.style.height = '100vh';
+        } catch (_) {}
+
+        // Also update canvas CSS size and backing store to match DPR
+        try {
+          const canvas = rc.canvas;
+          if (canvas) {
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            canvas.width = Math.floor(w * dpr);
+            canvas.height = Math.floor(h * dpr);
+          }
+        } catch (_) {}
+
+        // Update renderer dimensions and DPR
+        rc.width = w;
+        rc.height = h;
+        rc.dpr = dpr;
+
+        // Rebuild base dungeon render targets for the new size (preserves camera)
+        if (typeof rc.resize === 'function') {
+          rc.resize(w, h, dpr);
+        }
+
+        // Update viewport-dependent uniforms
+        if (rc.dungeonUniforms) {
+          rc.dungeonUniforms.viewportSize = [w, h];
+        }
+
+        // Recalculate cascade parameters and dependent uniforms
+        if (typeof rc.initializeParameters === 'function') {
+          rc.initializeParameters(true);
+        }
+
+        // Recreate shader pipelines and render targets using new size/DPR
+        if (typeof rc.innerInitialize === 'function') {
+          rc.innerInitialize();
+        }
+
+        // Refresh ASCII view texture after resize if a dungeon map exists
+        try {
+          if (rc.surface && typeof rc.updateAsciiViewTexture === 'function' && typeof rc.surface.dungeonMap === 'string') {
+            rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+          }
+        } catch (_) {}
+
+        // Update camera/grid uniforms and trigger a redraw
+        try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
+        try { if (typeof rc.renderPass === 'function') rc.renderPass(); } catch (_) {}
+
+        // Keep legacy demo DOM hidden after resize/fullscreen
+        try { hideLegacyDom(); } catch (_) {}
+      } catch (e) {
+        console.warn('[resize] handler failed', e);
+      }
+    };
+
+    // Handle window resizing dynamically
+    window.addEventListener('resize', handleResize);
+
+    // Mirror resize on fullscreen changes and re-hide legacy DOM
+    ;['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach((evt) => {
+      document.addEventListener(evt, () => {
+        handleResize();
+        try { hideLegacyDom(); } catch (_) {}
+      });
+    });
+
+    // Programmatic fullscreen toggle and keybinding ('f')
+    const isFullscreen = () => (
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+    window.toggleFullscreen = async () => {
+      try {
+        if (isFullscreen()) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) await document.msExitFullscreen();
+        } else {
+          if (container.requestFullscreen) await container.requestFullscreen();
+          else if (container.webkitRequestFullscreen) await container.webkitRequestFullscreen();
+          else if (container.msRequestFullscreen) await container.msRequestFullscreen();
+        }
       } catch (_) {}
-      try { container.style.width = '100vw'; container.style.height = '100vh'; } catch (_) {}
+    };
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        try { window.toggleFullscreen(); } catch (_) {}
+      }
+    });
+
+    // Integrate floating zoom buttons with renderer
+    window.addEventListener('ui:zoom', (e) => {
+      try { const f = Number(e?.detail?.factor) || 1.0; rc.zoomCamera(f, 0.5, 0.5); } catch (_) {}
     });
 
     // FPS estimator for status bar (simple rAF-based)
@@ -991,6 +1111,9 @@ async function setupAsciiRenderer() {
       if (e.key === '+') rc.zoomCamera(1.1, 0.5, 0.5);
       if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
     });
+
+    // Initial adjustment
+    handleResize();
   } catch (e) {
     console.error('[ASCII renderer] setup failed:', e);
   }
