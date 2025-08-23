@@ -8,6 +8,7 @@ import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
 import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
+import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
 
@@ -381,7 +382,8 @@ function ensureStatusBar() {
     bar.style.padding = '0 12px';
     bar.style.background = 'var(--bar-bg)';
     bar.style.color = 'var(--ui-fg)';
-    bar.style.zIndex = '9000';
+    // Keep status bar above overlays
+    bar.style.zIndex = '30000';
     const left = document.createElement('div');
     left.id = 'status-left';
     left.textContent = 'FPS: -- | PING: --';
@@ -394,11 +396,7 @@ function ensureStatusBar() {
     gear.style.color = 'var(--ui-fg)';
     gear.style.fontSize = '1.2em';
     gear.style.cursor = 'pointer';
-    gear.onclick = () => {
-      try {
-        OverlayManager.present({ id: 'SETTINGS', priority: PRIORITY.MEDIUM, text: 'Settings (coming soon)', actions: [{ id: 'ok', label: 'OK' }], blockInput: false });
-      } catch (_) {}
-    };
+    gear.onclick = () => { try { presentSettingsPanel(); } catch (_) {} };
     right.appendChild(gear);
     bar.appendChild(left); bar.appendChild(right);
     document.body.appendChild(bar);
@@ -420,12 +418,16 @@ function ensureFloatingControls() {
     zoom.style.position = 'fixed';
     zoom.style.left = '12px';
     zoom.style.bottom = '12px';
-    zoom.style.zIndex = '10001';
+    // Keep zoom controls above overlays
+    zoom.style.zIndex = '30001';
     zoom.style.background = 'var(--control-bg)';
     zoom.style.border = '1px solid var(--control-border)';
     zoom.style.borderRadius = '6px';
     zoom.style.padding = '6px';
-    const zin = document.createElement('button'); zin.textContent = '+'; zin.style.marginRight = '6px';
+    // Vertical layout: + on top, - on bottom
+    zoom.style.display = 'flex';
+    zoom.style.flexDirection = 'column';
+    const zin = document.createElement('button'); zin.textContent = '+'; zin.style.marginBottom = '6px';
     const zout = document.createElement('button'); zout.textContent = '-';
     const applyZoom = (factor) => {
       try {
@@ -449,13 +451,27 @@ function ensureFloatingControls() {
     vol.style.position = 'fixed';
     vol.style.right = '12px';
     vol.style.bottom = '12px';
-    vol.style.zIndex = '10001';
+    // Keep volume control above overlays
+    vol.style.zIndex = '30001';
     vol.style.background = 'var(--control-bg)';
     vol.style.border = '1px solid var(--control-border)';
     vol.style.borderRadius = '6px';
     vol.style.padding = '6px';
+    // Vertical slider container
+    vol.style.display = 'flex';
+    vol.style.flexDirection = 'column';
+    vol.style.alignItems = 'center';
+    vol.style.justifyContent = 'center';
+    vol.style.height = '160px';
+    vol.style.width = '44px';
     const range = document.createElement('input');
     range.type = 'range'; range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = (window.__volume ?? 1).toString();
+    // Make slider vertical (up = louder)
+    range.style.transform = 'rotate(90deg)';
+    range.style.transformOrigin = '50% 50%';
+    range.style.width = '120px';
+    range.style.height = '24px';
+    range.style.margin = '0';
     range.oninput = () => {
       window.__volume = parseFloat(range.value);
       try { window.dispatchEvent(new CustomEvent('ui:volume', { detail: { volume: window.__volume } })); } catch (_) {}
