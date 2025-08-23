@@ -357,6 +357,9 @@ function ensureThemeSupport() {
     --banner-bg: rgba(32,32,32,0.95);
     --control-bg: rgba(0,0,0,0.6);
     --control-border: #444;
+  }
+  body, button, input, select, textarea {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }`;
   document.head.appendChild(st);
   window.setTheme = function(theme) {
