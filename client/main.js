@@ -602,6 +602,9 @@ function ensureFloatingControls() {
         col.style.alignItems = 'center';
         col.style.gap = '2px';
         col.style.width = '40px';
+        // Animate column width when extending; hide overflow so content grows in
+        col.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
+        col.style.overflow = 'hidden';
         // Label
         if (labelEl) {
           labelEl.style.fontSize = '11px';
@@ -662,6 +665,9 @@ function ensureFloatingControls() {
     panel.style.flexWrap = 'nowrap';
     panel.style.marginLeft = '0';
     panel.style.boxSizing = 'border-box';
+
+    // Collect small slider row containers for width animations on extend
+    const smallRows = [];
 
     const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
       const row = document.createElement('div');
@@ -746,6 +752,8 @@ function ensureFloatingControls() {
       }
 
       row.appendChild(holder); row.appendChild(lbl); row.appendChild(val);
+      // Track for extend animation (grow width 0 -> 40px)
+      try { smallRows.push(row); } catch (_) {}
       return row;
     };
 
@@ -761,6 +769,10 @@ function ensureFloatingControls() {
         panel.style.display = on ? 'flex' : 'none';
         toggle.textContent = on ? '<' : '>';
         if (on) {
+          // Reveal panel and animate small column widths from 0 -> 40px
+          try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          try { void panel.offsetHeight; } catch (_) {}
+          try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
           applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
           if (!window.__volumeAdjusting) applyCollapsed();
