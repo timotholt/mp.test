@@ -487,7 +487,7 @@ function ensureFloatingControls() {
 
     // Hover-driven collapse/expand
     const COLLAPSED_LEN = 36;   // short control when idle
-    const EXPANDED_LEN = 140;   // tall control on hover
+    const EXPANDED_LEN = 165;   // tall control on hover
     function applyCollapsed() {
       try {
         vol.style.height = COLLAPSED_LEN + 'px';
@@ -521,13 +521,14 @@ function ensureFloatingControls() {
         vol.style.padding = '10px 4px';
         // Row layout when extended: Master (range) on the left, then panel (Game, Music, Voice)
         vol.style.flexDirection = extended ? 'row' : 'column';
-        range.style.marginRight = extended ? '8px' : '0';
+        // Avoid asymmetric margins so the slider stays visually centered
+        range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
         // Show Master adornments only in full extended mode
         if (masterLabel) masterLabel.style.display = extended ? '' : 'none';
         if (masterVal) masterVal.style.display = extended ? '' : 'none';
         // Show toggle when expanded
-        if (toggle) toggle.style.display = '';
+        if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
       } catch (_) {}
     }
     try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
@@ -565,8 +566,8 @@ function ensureFloatingControls() {
     toggle.style.padding = '0';
     // Overlay the toggle on top of the track, only visible when expanded
     toggle.style.position = 'absolute';
-    toggle.style.top = '4px';
-    toggle.style.right = '4px';
+    toggle.style.top = '14px'; // a couple extra pixels of space from top of slider
+    toggle.style.right = 'auto'; // we'll position via left for centering
     toggle.style.zIndex = '5';
     toggle.style.display = 'none';
     // Insert so it is a child; absolute position will place it over the range
@@ -578,7 +579,7 @@ function ensureFloatingControls() {
     masterCol.style.flexDirection = 'column';
     masterCol.style.alignItems = 'center';
     masterCol.style.gap = '2px';
-    masterCol.style.width = '56px';
+    masterCol.style.width = '50px';
     const masterLabel = document.createElement('div');
     masterLabel.textContent = 'Master';
     masterLabel.style.fontSize = '11px';
@@ -624,7 +625,7 @@ function ensureFloatingControls() {
     const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
       const row = document.createElement('div');
       row.style.display = 'flex'; row.style.flexDirection = 'column'; row.style.alignItems = 'center'; row.style.gap = '2px';
-      row.style.width = '56px'; // equal column width
+      row.style.width = '50px'; // tighter equal column width
       const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '11px'; lbl.style.color = 'var(--ui-fg)'; lbl.style.textAlign = 'center';
       // Fixed-size holder to constrain rotated range footprint
       const holder = document.createElement('div');
@@ -721,7 +722,7 @@ function ensureFloatingControls() {
         panel.style.display = on ? 'flex' : 'none';
         toggle.textContent = on ? '<' : '>';
         if (on) {
-          applyExpanded();
+          applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
           if (!window.__volumeAdjusting) applyCollapsed();
         }
@@ -740,10 +741,23 @@ function ensureFloatingControls() {
           window.__volumeAdjusting = adj;
           const extended = !!window.__volumeExtended;
           if (adj || extended) applyExpanded(); else applyCollapsed();
+          try { positionToggle(); } catch (_) {}
         } catch (_) {}
       };
       window.addEventListener('ui:volume:adjusting', onAdjust);
     } catch (_) {}
+
+    // Position the toggle centered over the Master slider
+    function positionToggle() {
+      try {
+        if (!toggle || !masterHolder) return;
+        const volRect = vol.getBoundingClientRect();
+        const holderRect = masterHolder.getBoundingClientRect();
+        const left = Math.round((holderRect.left - volRect.left) + (holderRect.width / 2) - (toggle.offsetWidth / 2));
+        toggle.style.left = left + 'px';
+      } catch (_) {}
+    }
+    try { window.addEventListener('resize', positionToggle); } catch (_) {}
   }
 }
 
