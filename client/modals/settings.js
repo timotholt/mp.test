@@ -114,6 +114,22 @@ function createSettingsPanel() {
     } catch (_) {}
   });
 
+  // Keep Settings master volume UI in sync with external changes (e.g., canvas slider)
+  window.addEventListener('ui:volume', (e) => {
+    try {
+      const panel = document.getElementById('settings-panel');
+      if (!panel || panel.style.display === 'none') return;
+      const rng = panel.querySelector('#settings-master-volume');
+      const val = panel.querySelector('#settings-master-volume-val');
+      if (!rng) return;
+      const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window.__volume;
+      const clamped = Math.max(0, Math.min(1, v));
+      rng.value = String(clamped);
+      const pct = String(Math.round(clamped * 100)) + '%';
+      rng.title = pct; if (val) val.textContent = pct;
+    } catch (_) {}
+  });
+
   return panel;
 }
 
@@ -243,6 +259,8 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   const lbl = document.createElement('label'); lbl.textContent = labelText + ':'; lbl.style.minWidth = '140px';
   const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = '0.01'; rng.style.flex = '1';
   const val = document.createElement('span'); val.style.width = '46px'; val.style.textAlign = 'right'; val.style.color = '#ccc';
+  // Give IDs to master volume row for external syncing
+  if (storageKey === 'volume') { rng.id = 'settings-master-volume'; val.id = 'settings-master-volume-val'; }
   try {
     const saved = parseFloat(localStorage.getItem(storageKey));
     const fallback = (window[windowVarName] ?? (storageKey === 'volume' ? 1 : 1));

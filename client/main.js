@@ -467,7 +467,7 @@ function ensureFloatingControls() {
     const range = document.createElement('input');
     range.type = 'range'; range.min = '0'; range.max = '1'; range.step = '0.01'; range.value = (window.__volume ?? 1).toString();
     // Make slider vertical (up = louder)
-    range.style.transform = 'rotate(90deg)';
+    range.style.transform = 'rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
     range.style.width = '120px';
     range.style.height = '24px';
@@ -476,6 +476,13 @@ function ensureFloatingControls() {
       window.__volume = parseFloat(range.value);
       try { window.dispatchEvent(new CustomEvent('ui:volume', { detail: { volume: window.__volume } })); } catch (_) {}
     };
+    // Keep in sync when volume changes elsewhere (e.g., Settings panel)
+    window.addEventListener('ui:volume', (e) => {
+      try {
+        const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window.__volume;
+        range.value = String(Math.max(0, Math.min(1, v)));
+      } catch (_) {}
+    });
     vol.appendChild(range);
     document.body.appendChild(vol);
   }
