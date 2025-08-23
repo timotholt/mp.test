@@ -508,7 +508,7 @@ function ensureFloatingControls() {
       } catch (_) {}
     }
     try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
-    try { vol.addEventListener('mouseleave', applyCollapsed); } catch (_) {}
+    try { vol.addEventListener('mouseleave', () => { if (!window.__volumeAdjusting) applyCollapsed(); }); } catch (_) {}
     // Ensure runtime state matches persisted value without emitting
     try { setVolume(getVolume(), { silent: true }); } catch (_) {}
     // Bind to shared volume utility
@@ -523,6 +523,18 @@ function ensureFloatingControls() {
     // Start collapsed; expand on hover only
     applyCollapsed();
     document.body.appendChild(vol);
+
+    // React to Settings slider adjustments by forcing expansion during drag
+    try {
+      const onAdjust = (e) => {
+        try {
+          const adj = !!(e && e.detail && e.detail.adjusting);
+          window.__volumeAdjusting = adj;
+          if (adj) applyExpanded(); else applyCollapsed();
+        } catch (_) {}
+      };
+      window.addEventListener('ui:volume:adjusting', onAdjust);
+    } catch (_) {}
   }
 }
 

@@ -284,6 +284,34 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
         } catch (_) {}
       }
     });
+    // While adjusting from the Settings panel, broadcast an adjusting flag
+    // so the on-screen floating volume control can temporarily expand.
+    // Only do this for the Master volume slider.
+    if (eventName === 'ui:volume') {
+      try {
+        const sendAdjusting = (adjusting) => {
+          try { window.dispatchEvent(new CustomEvent('ui:volume:adjusting', { detail: { adjusting: !!adjusting, source: 'settings' } })); } catch (_) {}
+        };
+        const end = () => sendAdjusting(false);
+        rng.addEventListener('mousedown', () => sendAdjusting(true));
+        rng.addEventListener('touchstart', () => sendAdjusting(true));
+        // Hover-over the Master slider should also expand the floating control
+        rng.addEventListener('mouseenter', () => sendAdjusting(true));
+        // End signals (cover mouse/touch/blur/leave)
+        rng.addEventListener('mouseup', end);
+        rng.addEventListener('touchend', end);
+        rng.addEventListener('mouseleave', end);
+        rng.addEventListener('blur', end);
+        // Wheel-driven adjustments should also expand temporarily.
+        // Debounce the end so quick scrolls still keep it open briefly.
+        let __wheelAdjustTimer;
+        rng.addEventListener('wheel', () => {
+          sendAdjusting(true);
+          try { if (__wheelAdjustTimer) clearTimeout(__wheelAdjustTimer); } catch (_) {}
+          __wheelAdjustTimer = setTimeout(() => { try { sendAdjusting(false); } catch (_) {} }, 600);
+        }, { passive: true });
+      } catch (_) {}
+    }
     row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
     return row;
   }
