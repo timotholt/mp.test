@@ -454,17 +454,18 @@ function ensureFloatingControls() {
     vol.style.bottom = '12px';
     // Keep volume control above overlays
     vol.style.zIndex = '30001';
-    vol.style.background = 'var(--control-bg)';
-    vol.style.border = '1px solid var(--control-border)';
+    // Minimal, unobtrusive by default; emphasize on hover
+    vol.style.background = 'transparent';
+    vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
-    vol.style.padding = '6px';
+    vol.style.padding = '2px';
+    vol.style.transition = 'height 120ms ease, width 120ms ease, background 120ms ease, border-color 120ms ease, padding 120ms ease';
     // Vertical slider container
     vol.style.display = 'flex';
     vol.style.flexDirection = 'column';
     vol.style.alignItems = 'center';
     vol.style.justifyContent = 'center';
-    vol.style.height = '160px';
-    vol.style.width = '44px';
+    // Size is controlled dynamically on hover
     const range = document.createElement('input');
     range.type = 'range';
     range.min = '0';
@@ -473,9 +474,36 @@ function ensureFloatingControls() {
     // Make slider vertical (up = louder)
     range.style.transform = 'rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
-    range.style.width = '120px';
     range.style.height = '24px';
     range.style.margin = '0';
+    range.style.transition = 'width 120ms ease';
+
+    // Hover-driven collapse/expand
+    const COLLAPSED_LEN = 36;   // short control when idle
+    const EXPANDED_LEN = 140;   // tall control on hover
+    function applyCollapsed() {
+      try {
+        vol.style.height = COLLAPSED_LEN + 'px';
+        vol.style.width = '40px';
+        range.style.width = COLLAPSED_LEN + 'px';
+        vol.style.background = 'transparent';
+        vol.style.border = '1px solid transparent';
+        vol.style.padding = '2px';
+      } catch (_) {}
+    }
+    function applyExpanded() {
+      try {
+        vol.style.height = EXPANDED_LEN + 'px';
+        vol.style.width = '44px';
+        range.style.width = EXPANDED_LEN + 'px';
+        vol.style.background = 'var(--control-bg)';
+        vol.style.border = '1px solid var(--control-border)';
+        // Narrow left/right padding (4px), with extra top/bottom
+        vol.style.padding = '10px 4px';
+      } catch (_) {}
+    }
+    try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
+    try { vol.addEventListener('mouseleave', applyCollapsed); } catch (_) {}
     // Ensure runtime state matches persisted value without emitting
     try { setVolume(getVolume(), { silent: true }); } catch (_) {}
     // Bind to shared volume utility
@@ -487,6 +515,8 @@ function ensureFloatingControls() {
       }
     });
     vol.appendChild(range);
+    // Start collapsed; expand on hover only
+    applyCollapsed();
     document.body.appendChild(vol);
   }
 }
