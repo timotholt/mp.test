@@ -132,6 +132,27 @@ function createSettingsPanel() {
     } catch (_) {}
   });
 
+  // Keep non-master volumes in sync with external changes
+  const addVolSync = (queryId, queryValId, winVarName, evtName) => {
+    window.addEventListener(evtName, (e) => {
+      try {
+        const panel = document.getElementById('settings-panel');
+        if (!panel || panel.style.display === 'none') return;
+        const rng = panel.querySelector(queryId);
+        const val = panel.querySelector(queryValId);
+        if (!rng) return;
+        const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window[winVarName];
+        const clamped = Math.max(0, Math.min(1, v));
+        rng.value = String(clamped);
+        const pct = String(Math.round(clamped * 100)) + '%';
+        rng.title = pct; if (val) val.textContent = pct;
+      } catch (_) {}
+    });
+  };
+  addVolSync('#settings-game-volume', '#settings-game-volume-val', '__volumeGame', 'ui:volume:game');
+  addVolSync('#settings-music-volume', '#settings-music-volume-val', '__volumeMusic', 'ui:volume:music');
+  addVolSync('#settings-voice-volume', '#settings-voice-volume-val', '__volumeVoice', 'ui:volume:voice');
+
   return panel;
 }
 
@@ -263,6 +284,10 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   const val = document.createElement('span'); val.style.width = '46px'; val.style.textAlign = 'right'; val.style.color = '#ccc';
   // Give IDs to master volume row for external syncing
   if (storageKey === 'volume') { rng.id = 'settings-master-volume'; val.id = 'settings-master-volume-val'; }
+  // Assign IDs for other volume rows to enable external syncing
+  if (storageKey === 'volume_game') { rng.id = 'settings-game-volume'; val.id = 'settings-game-volume-val'; }
+  if (storageKey === 'volume_music') { rng.id = 'settings-music-volume'; val.id = 'settings-music-volume-val'; }
+  if (storageKey === 'volume_voice') { rng.id = 'settings-voice-volume'; val.id = 'settings-voice-volume-val'; }
   // Use shared utility for master volume only
   if (storageKey === 'volume') {
     try {

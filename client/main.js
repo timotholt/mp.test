@@ -477,6 +477,8 @@ function ensureFloatingControls() {
     range.max = '1';
     range.step = String(DEFAULT_WHEEL_STEP);
     // Make slider vertical (up = louder)
+    range.style.position = 'relative';
+    range.style.zIndex = '1';
     range.style.transform = 'rotate(-90deg)';
     range.style.transformOrigin = '50% 50%';
     range.style.height = '24px';
@@ -494,21 +496,42 @@ function ensureFloatingControls() {
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
+        // Stack vertically when not extended
+        vol.style.flexDirection = 'column';
+        range.style.marginRight = '0';
+        // Master adornments hidden when not extended
+        if (masterLabel) masterLabel.style.display = 'none';
+        if (masterVal) masterVal.style.display = 'none';
+        if (masterHolder) masterHolder.style.height = COLLAPSED_LEN + 'px';
+        // Hide toggle in collapsed state
+        if (toggle) toggle.style.display = 'none';
       } catch (_) {}
     }
     function applyExpanded() {
       try {
-        vol.style.height = EXPANDED_LEN + 'px';
-        vol.style.width = '24px';
+        const extended = !!window.__volumeExtended;
+        // Give extra height when extended to fit rows
+        vol.style.height = (extended ? '200px' : (EXPANDED_LEN + 'px'));
+        // Let content define width when extended to keep spacing tight
+        vol.style.width = extended ? 'auto' : '24px';
         range.style.width = EXPANDED_LEN + 'px';
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
         vol.style.padding = '10px 4px';
+        // Row layout when extended: Master (range) on the left, then panel (Game, Music, Voice)
+        vol.style.flexDirection = extended ? 'row' : 'column';
+        range.style.marginRight = extended ? '8px' : '0';
+        if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
+        // Show Master adornments only in full extended mode
+        if (masterLabel) masterLabel.style.display = extended ? '' : 'none';
+        if (masterVal) masterVal.style.display = extended ? '' : 'none';
+        // Show toggle when expanded
+        if (toggle) toggle.style.display = '';
       } catch (_) {}
     }
     try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
-    try { vol.addEventListener('mouseleave', () => { if (!window.__volumeAdjusting) applyCollapsed(); }); } catch (_) {}
+    try { vol.addEventListener('mouseleave', () => { if (!window.__volumeAdjusting && !window.__volumeExtended) applyCollapsed(); }); } catch (_) {}
     // Ensure runtime state matches persisted value without emitting
     try { setVolume(getVolume(), { silent: true }); } catch (_) {}
     // Bind to shared volume utility
@@ -516,11 +539,196 @@ function ensureFloatingControls() {
       withWheel: true,
       emitOnInit: false,
       onRender: (v) => {
-        try { range.title = String(Math.round(v * 100)) + '%'; } catch (_) {}
+        try {
+          const pct = String(Math.round(v * 100)) + '%';
+          range.title = pct;
+          // Update Master % readout when available
+          if (typeof masterVal !== 'undefined' && masterVal) masterVal.textContent = pct;
+        } catch (_) {}
       }
     });
     vol.appendChild(range);
-    // Start collapsed; expand on hover only
+
+    // Small toggle to expand into full set of sliders
+    const toggle = document.createElement('button');
+    toggle.textContent = '>';
+    toggle.title = 'Show more volume controls';
+    toggle.style.background = 'transparent';
+    toggle.style.border = '1px solid var(--control-border)';
+    toggle.style.borderRadius = '3px';
+    toggle.style.color = 'var(--ui-fg)';
+    toggle.style.cursor = 'pointer';
+    toggle.style.fontSize = '10px';
+    toggle.style.lineHeight = '10px';
+    toggle.style.width = '16px';
+    toggle.style.height = '16px';
+    toggle.style.padding = '0';
+    // Overlay the toggle on top of the track, only visible when expanded
+    toggle.style.position = 'absolute';
+    toggle.style.top = '4px';
+    toggle.style.right = '4px';
+    toggle.style.zIndex = '5';
+    toggle.style.display = 'none';
+    // Insert so it is a child; absolute position will place it over the range
+    vol.appendChild(toggle);
+
+    // Master column: label, main vertical slider, % readout (shown only when extended)
+    const masterCol = document.createElement('div');
+    masterCol.style.display = 'flex';
+    masterCol.style.flexDirection = 'column';
+    masterCol.style.alignItems = 'center';
+    masterCol.style.gap = '2px';
+    masterCol.style.width = '56px';
+    const masterLabel = document.createElement('div');
+    masterLabel.textContent = 'Master';
+    masterLabel.style.fontSize = '11px';
+    masterLabel.style.color = 'var(--ui-fg)';
+    masterLabel.style.textAlign = 'center';
+    masterLabel.style.display = 'none';
+    const masterHolder = document.createElement('div');
+    masterHolder.style.width = '18px';
+    masterHolder.style.height = EXPANDED_LEN + 'px';
+    masterHolder.style.display = 'flex';
+    masterHolder.style.alignItems = 'center';
+    masterHolder.style.justifyContent = 'center';
+    masterHolder.style.position = 'relative';
+    // Move the main range into the master holder
+    masterHolder.appendChild(range);
+    const masterVal = document.createElement('div');
+    masterVal.style.fontSize = '11px';
+    masterVal.style.color = '#ccc';
+    masterVal.style.textAlign = 'center';
+    masterVal.style.display = 'none';
+    masterCol.appendChild(masterHolder);
+    masterCol.appendChild(masterLabel);
+    masterCol.appendChild(masterVal);
+    vol.appendChild(masterCol);
+    // Initialize Master % readout
+    try { const v0 = getVolume(); masterVal.textContent = String(Math.round(v0 * 100)) + '%'; } catch (_) {}
+
+    // Compact panel containing the rest of the volume sliders
+    const panel = document.createElement('div');
+    panel.id = 'volume-panel';
+    panel.style.display = 'none';
+    // Lay out sliders side-by-side
+    panel.style.flexDirection = 'row';
+    panel.style.alignItems = 'center';
+    panel.style.gap = '2px';
+    panel.style.padding = '0';
+    panel.style.width = 'auto';
+    panel.style.maxWidth = 'none';
+    panel.style.flexWrap = 'nowrap';
+    panel.style.marginLeft = '0';
+    panel.style.boxSizing = 'border-box';
+
+    const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex'; row.style.flexDirection = 'column'; row.style.alignItems = 'center'; row.style.gap = '2px';
+      row.style.width = '56px'; // equal column width
+      const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '11px'; lbl.style.color = 'var(--ui-fg)'; lbl.style.textAlign = 'center';
+      // Fixed-size holder to constrain rotated range footprint
+      const holder = document.createElement('div');
+      holder.style.width = '18px';
+      holder.style.height = EXPANDED_LEN + 'px';
+      holder.style.display = 'flex';
+      holder.style.alignItems = 'center';
+      holder.style.justifyContent = 'center';
+      holder.style.position = 'relative';
+      const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
+      // Make these sliders vertical like the main one
+      rng.style.transform = 'rotate(-90deg)';
+      rng.style.transformOrigin = '50% 50%';
+      rng.style.height = '24px';
+      rng.style.margin = '0';
+      rng.style.transition = 'width 120ms ease';
+      rng.style.width = EXPANDED_LEN + 'px';
+      holder.appendChild(rng);
+      const val = document.createElement('span'); val.style.textAlign = 'center'; val.style.color = '#ccc'; val.style.fontSize = '11px';
+
+      if (useMasterBinding) {
+        try {
+          const init = getVolume();
+          rng.value = String(init);
+          const pct = String(Math.round(init * 100)) + '%';
+          val.textContent = pct; rng.title = pct;
+        } catch (_) {}
+        bindRangeToVolume(rng, {
+          withWheel: true,
+          emitOnInit: false,
+          onRender: (v) => {
+            try { const pct = String(Math.round(v * 100)) + '%'; val.textContent = pct; rng.title = pct; } catch (_) {}
+          }
+        });
+      } else {
+        // Mirror settings.js behavior for non-master sliders
+        try {
+          const saved = parseFloat(localStorage.getItem(storageKey));
+          const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
+          const fallback = 1;
+          const v = Number.isFinite(live) ? live : (Number.isFinite(saved) ? saved : fallback);
+          const clamped = Math.max(0, Math.min(1, v));
+          rng.value = String(clamped);
+          window[windowVarName] = clamped;
+          const pct = String(Math.round(clamped * 100)) + '%'; val.textContent = pct; rng.title = pct;
+        } catch (_) {}
+        rng.oninput = () => {
+          try { localStorage.setItem(storageKey, rng.value); } catch (_) {}
+          try {
+            window[windowVarName] = parseFloat(rng.value);
+            const vv = window[windowVarName];
+            window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: vv } }));
+            const pct = String(Math.round(vv * 100)) + '%'; val.textContent = pct; rng.title = pct;
+          } catch (_) {}
+        };
+        rng.addEventListener('wheel', (e) => {
+          try {
+            e.preventDefault();
+            const step = parseFloat(rng.step) || DEFAULT_WHEEL_STEP;
+            const dir = e.deltaY < 0 ? 1 : -1;
+            const cur = parseFloat(rng.value);
+            const next = Math.max(0, Math.min(1, cur + dir * step));
+            if (next !== cur) { rng.value = String(next); rng.oninput(); }
+          } catch (_) {}
+        }, { passive: false });
+        // Listen for external changes (from Settings panel or other sources)
+        try {
+          const onExternal = (e) => {
+            try {
+              const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window[windowVarName];
+              const clamped = Math.max(0, Math.min(1, v));
+              rng.value = String(clamped);
+              const pct = String(Math.round(clamped * 100)) + '%';
+              val.textContent = pct; rng.title = pct;
+            } catch (_) {}
+          };
+          window.addEventListener(eventName, onExternal);
+        } catch (_) {}
+      }
+
+      row.appendChild(holder); row.appendChild(lbl); row.appendChild(val);
+      return row;
+    };
+
+    // Build rows (Master is already present as the main vertical slider; avoid duplicating it here)
+    panel.appendChild(makeSmallRow('Game', 'volume_game', '__volumeGame', 'ui:volume:game', false));
+    panel.appendChild(makeSmallRow('Music', 'volume_music', '__volumeMusic', 'ui:volume:music', false));
+    panel.appendChild(makeSmallRow('Voice', 'volume_voice', '__volumeVoice', 'ui:volume:voice', false));
+    vol.appendChild(panel);
+
+    function setExtended(on) {
+      try {
+        window.__volumeExtended = !!on;
+        panel.style.display = on ? 'flex' : 'none';
+        toggle.textContent = on ? '<' : '>';
+        if (on) {
+          applyExpanded();
+        } else {
+          if (!window.__volumeAdjusting) applyCollapsed();
+        }
+      } catch (_) {}
+    }
+    toggle.addEventListener('click', () => setExtended(!window.__volumeExtended));
+    // Start collapsed; expand on hover only (until extended via >)
     applyCollapsed();
     document.body.appendChild(vol);
 
@@ -530,7 +738,8 @@ function ensureFloatingControls() {
         try {
           const adj = !!(e && e.detail && e.detail.adjusting);
           window.__volumeAdjusting = adj;
-          if (adj) applyExpanded(); else applyCollapsed();
+          const extended = !!window.__volumeExtended;
+          if (adj || extended) applyExpanded(); else applyCollapsed();
         } catch (_) {}
       };
       window.addEventListener('ui:volume:adjusting', onAdjust);
