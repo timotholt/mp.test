@@ -488,7 +488,7 @@ function ensureFloatingControls() {
         range.style.width = COLLAPSED_LEN + 'px';
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
-        vol.style.padding = '10px 4 px';
+        vol.style.padding = '10px 4px';
       } catch (_) {}
     }
     function applyExpanded() {

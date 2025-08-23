@@ -20,13 +20,16 @@ function ensureOverlay() {
     overlayEl.style.right = '0';
     overlayEl.style.bottom = '0';
     overlayEl.style.display = 'none';
-    overlayEl.style.pointerEvents = 'auto';
+    // Allow dragging/clicks to pass through dim background
+    overlayEl.style.pointerEvents = 'none';
     overlayEl.style.background = 'rgba(0,0,0,0.5)';
     overlayEl.style.color = '#fff';
     overlayEl.style.padding = '16px';
     overlayEl.style.zIndex = '20000';
     const inner = document.createElement('div');
     inner.id = 'overlay-content';
+    // Keep modal content interactive
+    inner.style.pointerEvents = 'auto';
     inner.style.maxWidth = '640px';
     inner.style.margin = '40px auto';
     inner.style.background = 'rgba(0,0,0,0.8)';
