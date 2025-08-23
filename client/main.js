@@ -9,6 +9,7 @@ import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
+import { createChatTabs } from './core/chatTabs.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -95,11 +96,16 @@ function getPlayersSnapshot() {
 }
 
 function refreshRoomChat() {
-  if (!roomChatListEl || !room) return;
+  if (!room) return;
   try {
-    roomChatListEl.innerHTML = '';
     const arr = room.state.log || [];
     const start = Math.max(0, arr.length - 100);
+    // Clear current Game tab in tabbed UI if present; else clear legacy list
+    if (roomChat && typeof roomChat.clear === 'function') {
+      roomChat.clear('Game');
+    } else if (roomChatListEl) {
+      roomChatListEl.innerHTML = '';
+    }
     for (let i = start; i < arr.length; i++) {
       appendChatLine(String(arr[i]));
     }
@@ -107,9 +113,16 @@ function refreshRoomChat() {
 }
 
 function appendChatLine(line) {
+  try {
+    if (roomChat && typeof roomChat.appendMessage === 'function') {
+      roomChat.appendMessage('Game', String(line));
+      return;
+    }
+  } catch (_) {}
+  // Fallback to legacy DOM list if present
   if (!roomChatListEl) return;
   const div = document.createElement('div');
-  div.textContent = line;
+  div.textContent = String(line);
   roomChatListEl.appendChild(div);
   roomChatListEl.scrollTop = roomChatListEl.scrollHeight;
 }
@@ -125,6 +138,9 @@ let roomChatListEl = null;
 let roomChatInputEl = null;
 let roomReadyBtn = null;
 let roomUIBound = false;
+// Chat components
+let lobbyChat = null;
+let roomChat = null;
 
 makeScreen(APP_STATES.LOGIN, (el) => {
   // Clear screen content; we use a modal over the full-screen renderer backdrop
@@ -154,13 +170,41 @@ makeScreen(APP_STATES.LOBBY, (el) => {
       roomsListEl = document.createElement('div');
       roomsListEl.id = 'lobby-rooms';
       roomsListEl.style.marginTop = '8px';
-      const stubs = document.createElement('div');
-      stubs.style.marginTop = '12px';
-      stubs.innerHTML = '<div>[chat stub]</div><div>[player list stub]</div>';
+      // Tabbed chat UI (Lobby)
+      lobbyChat = createChatTabs({
+        mode: 'lobby',
+        onJoinGame: async (roomId) => {
+          try {
+            const playerName = localStorage.getItem('name') || 'Hero';
+            const rj = await client.joinById(String(roomId), { name: playerName });
+            await afterJoin(rj);
+          } catch (e) {
+            const msg = (e && (e.message || e)) + '';
+            if (msg.includes('password')) {
+              presentRoomPromptPassword({
+                roomName: String(roomId),
+                onSubmit: async (pwd) => {
+                  try {
+                    const rj = await client.joinById(String(roomId), { name: localStorage.getItem('name') || 'Hero', roomPass: pwd || '' });
+                    await afterJoin(rj);
+                    return true;
+                  } catch (err) {
+                    const em = (err && (err.message || err)) + '';
+                    if (em.includes('Invalid password')) return false;
+                    throw new Error(typeof em === 'string' ? em : 'Join failed');
+                  }
+                },
+                onCancel: () => {}
+              });
+            }
+          }
+        },
+        onOpenLink: (href) => { try { window.open(href, '_blank'); } catch (_) {} }
+      });
       content.appendChild(header);
       content.appendChild(actions);
       content.appendChild(roomsListEl);
-      content.appendChild(stubs);
+      content.appendChild(lobbyChat.el);
       createRoomBtn.onclick = () => {
         presentRoomCreateModal({
           onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
@@ -221,36 +265,43 @@ makeScreen(APP_STATES.ROOM, (el) => {
     playersTitle.style.marginTop = '8px';
     roomPlayersEl = document.createElement('div');
     roomPlayersEl.id = 'room-players-list';
-
-    const chat = document.createElement('div');
-    chat.id = 'room-chat';
-    const chatTitle = document.createElement('div');
-    chatTitle.textContent = 'Chat / Log';
-    chatTitle.style.marginTop = '12px';
-    roomChatListEl = document.createElement('div');
-    roomChatListEl.id = 'room-chat-list';
-    roomChatListEl.style.maxHeight = '200px';
-    roomChatListEl.style.overflowY = 'auto';
-    const chatInputRow = document.createElement('div');
-    chatInputRow.style.marginTop = '6px';
-    roomChatInputEl = document.createElement('input');
-    roomChatInputEl.type = 'text';
-    roomChatInputEl.placeholder = 'Chat coming soon…';
-    roomChatInputEl.disabled = true;
-    const chatSend = document.createElement('button');
-    chatSend.textContent = 'Send';
-    chatSend.disabled = true;
-    chatInputRow.appendChild(roomChatInputEl);
-    chatInputRow.appendChild(chatSend);
+    // Tabbed chat UI (Room/Game)
+    roomChat = createChatTabs({
+      mode: 'game',
+      onJoinGame: async (roomId) => {
+        try {
+          const playerName = localStorage.getItem('name') || 'Hero';
+          const rj = await client.joinById(String(roomId), { name: playerName });
+          await afterJoin(rj);
+        } catch (e) {
+          const msg = (e && (e.message || e)) + '';
+          if (msg.includes('password')) {
+            presentRoomPromptPassword({
+              roomName: String(roomId),
+              onSubmit: async (pwd) => {
+                try {
+                  const rj = await client.joinById(String(roomId), { name: localStorage.getItem('name') || 'Hero', roomPass: pwd || '' });
+                  await afterJoin(rj);
+                  return true;
+                } catch (err) {
+                  const em = (err && (err.message || err)) + '';
+                  if (em.includes('Invalid password')) return false;
+                  throw new Error(typeof em === 'string' ? em : 'Join failed');
+                }
+              },
+              onCancel: () => {}
+            });
+          }
+        }
+      },
+      onOpenLink: (href) => { try { window.open(href, '_blank'); } catch (_) {} }
+    });
 
     content.appendChild(header);
     content.appendChild(players);
     players.appendChild(playersTitle);
     players.appendChild(roomPlayersEl);
-    content.appendChild(chat);
-    chat.appendChild(chatTitle);
-    chat.appendChild(roomChatListEl);
-    chat.appendChild(chatInputRow);
+    content.appendChild(roomChat.el);
 
     try { bindRoomUIEventsOnce(); } catch (_) {}
     try { renderRoomPlayers(); } catch (_) {}
@@ -964,12 +1015,6 @@ async function setupAsciiRenderer() {
         }
       } catch (_) {}
     };
-    window.addEventListener('keydown', (e) => {
-      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        try { window.toggleFullscreen(); } catch (_) {}
-      }
-    });
 
     // Integrate floating zoom buttons with renderer
     window.addEventListener('ui:zoom', (e) => {
