@@ -484,17 +484,17 @@ function ensureFloatingControls() {
     function applyCollapsed() {
       try {
         vol.style.height = COLLAPSED_LEN + 'px';
-        vol.style.width = '40px';
+        vol.style.width = '24px';
         range.style.width = COLLAPSED_LEN + 'px';
         vol.style.background = 'transparent';
-        vol.style.border = '1px solid transparent';
-        vol.style.padding = '2px';
+        vol.style.border = '1px solid var(--control-border)';
+        vol.style.padding = '10px 4 px';
       } catch (_) {}
     }
     function applyExpanded() {
       try {
         vol.style.height = EXPANDED_LEN + 'px';
-        vol.style.width = '44px';
+        vol.style.width = '24px';
         range.style.width = EXPANDED_LEN + 'px';
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
