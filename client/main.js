@@ -493,7 +493,10 @@ function ensureFloatingControls() {
     range.style.transformOrigin = '50% 50%';
     range.style.height = '24px';
     range.style.margin = '0';
-    range.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
+    // Keep a constant track length; container clips during collapse
+    range.style.transition = 'none';
+    // Use literal here to avoid referring to EXPANDED_LEN before declaration
+    range.style.width = '165px';
 
     // Hover-driven collapse/expand
     const COLLAPSED_LEN = 36;   // short control when idle
@@ -502,7 +505,7 @@ function ensureFloatingControls() {
       try {
         vol.style.height = COLLAPSED_LEN + 'px';
         vol.style.width = 'auto';
-        range.style.width = COLLAPSED_LEN + 'px';
+        /* keep range width constant to avoid jump */
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
@@ -516,10 +519,8 @@ function ensureFloatingControls() {
         // Hide Master label/value via height animation base state
         if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
         if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
-        if (masterHolder) masterHolder.style.height = COLLAPSED_LEN + 'px';
-        // Prep small sliders so their internal holders/ranges match collapsed height
-        try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
-        try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+        if (masterHolder) masterHolder.style.height = '100%';
+        // Holders/ranges auto-fill parent; no per-holder or per-range size tweening in collapsed prep
         // Hide toggle in collapsed state
         if (toggle) toggle.style.display = 'none';
       } catch (_) {}
@@ -528,11 +529,11 @@ function ensureFloatingControls() {
     function applyExpanded() {
       try {
         const extended = !!window.__volumeExtended;
-        // When extended, let container height fit its children to avoid overflow/clipping
-        vol.style.height = extended ? 'auto' : (EXPANDED_LEN + 'px');
+        // Keep a fixed expanded height so percent-based children don't collapse
+        vol.style.height = EXPANDED_LEN + 'px';
         // Keep width auto during hover expansion to avoid auto↔fixed jumps
         vol.style.width = 'auto';
-        range.style.width = EXPANDED_LEN + 'px';
+        /* keep range width constant to avoid jump */
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
@@ -540,7 +541,7 @@ function ensureFloatingControls() {
         // Keep slider horizontally centered to avoid lateral jump during animation
         range.style.left = '50%';
         range.style.marginRight = '0';
-        if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
+        if (masterHolder) masterHolder.style.height = '100%';
         // Only widen master column when extended so non-extended hover keeps identical geometry
 
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = extended ? '40px' : '24px';
@@ -557,8 +558,7 @@ function ensureFloatingControls() {
             smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
           } catch (_) {}
           // But contribute correct height so the container animates smoothly
-          try { smallHolders.forEach(h => { h.style.height = EXPANDED_LEN + 'px'; }); } catch (_) {}
-          try { smallRanges.forEach(r => { r.style.width = EXPANDED_LEN + 'px'; }); } catch (_) {}
+          // Holders and ranges fill via 100% height; no per-range width tween
         }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
@@ -618,6 +618,7 @@ function ensureFloatingControls() {
         col.style.alignItems = 'center';
         // col.style.gap = '2px';
         col.style.width = '40px';
+        col.style.height = '100%';
         // Critical for flex children: allow shrinking below content size during animations
         col.style.minWidth = '0';
         // Animate column width when extending; hide overflow so content grows in
@@ -633,13 +634,13 @@ function ensureFloatingControls() {
           labelEl.style.overflow = 'hidden';
           labelEl.style.maxHeight = '0px';
           labelEl.style.opacity = '0';
-          labelEl.style.transition = `max-height ${FLOATING_VOL_ANIM_DUR} ease, opacity ${FLOATING_VOL_ANIM_DUR} ease`;
+          labelEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
         // Holder for rotated range
         if (holder) {
           holder.style.width = '24px';
-          holder.style.height = EXPANDED_LEN + 'px';
-          holder.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease`;
+          holder.style.height = '100%';
+          holder.style.transition = 'none';
           holder.style.display = 'flex';
           holder.style.alignItems = 'center';
           holder.style.justifyContent = 'center';
@@ -656,7 +657,7 @@ function ensureFloatingControls() {
           valEl.style.overflow = 'hidden';
           valEl.style.maxHeight = '0px';
           valEl.style.opacity = '0';
-          valEl.style.transition = `max-height ${FLOATING_VOL_ANIM_DUR} ease, opacity ${FLOATING_VOL_ANIM_DUR} ease`;
+          valEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
       } catch (_) {}
     }
@@ -683,7 +684,8 @@ function ensureFloatingControls() {
       rng.style.transformOrigin = '50% 50%';
       rng.style.height = '24px';
       rng.style.margin = '0';
-      rng.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
+      // Always fill holder height; no independent width animation
+      rng.style.transition = 'none';
       rng.style.width = EXPANDED_LEN + 'px';
       rng.style.zIndex = '1';
       holder.appendChild(rng);
@@ -768,12 +770,15 @@ function ensureFloatingControls() {
     const masterHolder = masterInst.holder;
     const masterLabel = masterInst.labelEl;
     const masterVal = masterInst.valEl;
+    // Match non-master behavior: no vertical animation on the holder; container handles vertical
+    try { masterHolder.style.transition = 'none'; } catch (_) {}
     vol.appendChild(masterCol);
 
     // Compact panel containing the rest of the volume sliders
     const panel = document.createElement('div');
     panel.id = 'volume-panel';
     panel.style.display = 'none';
+    panel.style.height = '100%';
     // Lay out sliders side-by-side
     panel.style.flexDirection = 'row';
     panel.style.alignItems = 'center';
@@ -796,6 +801,12 @@ function ensureFloatingControls() {
         windowVarName,
         eventName,
       });
+      // Non-master sliders: no vertical animation
+      // - Remove height transition on holder so height changes snap
+      // - Avoid label/value max-height animation; fade opacity only
+      try { inst.holder.style.transition = 'none'; } catch (_) {}
+      try { if (inst.labelEl) inst.labelEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
+      try { if (inst.valEl) inst.valEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
       panel.appendChild(inst.col);
       smallRows.push(inst.col);
       smallHolders.push(inst.holder);
@@ -821,27 +832,23 @@ function ensureFloatingControls() {
         if (on) {
           // Reveal panel and animate small columns/holders/inputs in sync like Master (collapsed -> expanded)
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
-          try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
-          try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+          // Holders fill via 100% height; ranges auto-fill holder (no per-range width tween)
           try { void panel.offsetHeight; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
-          try { smallHolders.forEach(h => { h.style.height = EXPANDED_LEN + 'px'; }); } catch (_) {}
-          try { smallRanges.forEach(r => { r.style.width = EXPANDED_LEN + 'px'; }); } catch (_) {}
-          // Animate label/value height reveals for all small sliders
+          // No holder or range size tweens here
+          applyExpanded(); try { positionToggle(); } catch (_) {}
+          // Reveal small label/value after Master expansion to align start times
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
             smallVals.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
           } catch (_) {}
-          applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
           // Freeze current auto height to px so the subsequent change to EXPANDED_LEN animates
           try { const h0 = vol.offsetHeight; vol.style.height = h0 + 'px'; void vol.offsetHeight; } catch (_) {}
           // Animate widths simultaneously: Master 40->24 and small columns 40->0
           try { if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px'; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
-          // Match Master shrink: inputs and holders go to COLLAPSED_LEN before hiding
-          try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
-          try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+          // Holders stay 100% height; ranges auto-fill holder (no per-range width tween)
           // Now collapse all labels/values in the same frame to sync with width transitions
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
