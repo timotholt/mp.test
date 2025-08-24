@@ -470,6 +470,8 @@ function ensureFloatingControls() {
     vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
     vol.style.padding = '2px';
+    // Clip any child overflow during transitions so sliders never escape the border
+    vol.style.overflow = 'hidden';
     vol.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease, width ${FLOATING_VOL_ANIM_DUR} ease, background ${FLOATING_VOL_ANIM_DUR} ease, border-color ${FLOATING_VOL_ANIM_DUR} ease, padding ${FLOATING_VOL_ANIM_DUR} ease`;
     // Vertical slider container (keep layout constant across modes)
     vol.style.display = 'flex';
@@ -515,10 +517,14 @@ function ensureFloatingControls() {
         if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
         if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
         if (masterHolder) masterHolder.style.height = COLLAPSED_LEN + 'px';
+        // Prep small sliders so their internal holders/ranges match collapsed height
+        try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+        try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
         // Hide toggle in collapsed state
         if (toggle) toggle.style.display = 'none';
       } catch (_) {}
     }
+
     function applyExpanded() {
       try {
         const extended = !!window.__volumeExtended;
@@ -541,19 +547,24 @@ function ensureFloatingControls() {
         // Reveal Master adornments only in full extended mode (animate height)
         if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; masterLabel.style.opacity = extended ? '1' : '0'; }
         if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; masterVal.style.opacity = extended ? '1' : '0'; }
-        // When not extended, ensure compact panel stays hidden and small columns are reset to 0
+        // When not extended (hover-only): show panel so height contributes, but keep small columns visually hidden
         if (!extended) {
-          try { if (panel) panel.style.display = 'none'; } catch (_) {}
+          try { if (panel) panel.style.display = 'flex'; } catch (_) {}
+          // Visually hidden: columns width = 0 and labels/values collapsed
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
             smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
           } catch (_) {}
+          // But contribute correct height so the container animates smoothly
+          try { smallHolders.forEach(h => { h.style.height = EXPANDED_LEN + 'px'; }); } catch (_) {}
+          try { smallRanges.forEach(r => { r.style.width = EXPANDED_LEN + 'px'; }); } catch (_) {}
         }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
       } catch (_) {}
     }
+
     try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
     try { vol.addEventListener('mouseleave', () => { if (!window.__volumeAdjusting && !window.__volumeExtended) applyCollapsed(); }); } catch (_) {}
     // Ensure runtime state matches persisted value without emitting
@@ -607,6 +618,8 @@ function ensureFloatingControls() {
         col.style.alignItems = 'center';
         col.style.gap = '2px';
         col.style.width = '40px';
+        // Critical for flex children: allow shrinking below content size during animations
+        col.style.minWidth = '0';
         // Animate column width when extending; hide overflow so content grows in
         col.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
         col.style.overflow = 'hidden';
@@ -626,10 +639,12 @@ function ensureFloatingControls() {
         if (holder) {
           holder.style.width = '24px';
           holder.style.height = EXPANDED_LEN + 'px';
+          holder.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease`;
           holder.style.display = 'flex';
           holder.style.alignItems = 'center';
           holder.style.justifyContent = 'center';
           holder.style.position = 'relative';
+          holder.style.overflow = 'hidden';
         }
         // Value text
         if (valEl) {
@@ -646,25 +661,114 @@ function ensureFloatingControls() {
       } catch (_) {}
     }
 
-    // Master column: label, main vertical slider, % readout (shown only when extended)
-    const masterCol = document.createElement('div');
-    const masterLabel = document.createElement('div');
-    masterLabel.textContent = 'Master';
-    const masterHolder = document.createElement('div');
-    applyVolumeColStyles(masterCol, masterHolder, masterLabel, null);
-    // Smooth the holder height change so the centered slider doesn't pop
-    masterHolder.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease`;
-    // Place the primary range inside the master holder so Master column structure
-    // matches Game/Music/Voice columns.
-    masterHolder.appendChild(range);
-    const masterVal = document.createElement('div');
-    applyVolumeColStyles(masterCol, null, null, masterVal);
-    masterCol.appendChild(masterHolder);
-    masterCol.appendChild(masterLabel);
-    masterCol.appendChild(masterVal);
+    // Factory: build a fully styled volume column identical to Master
+    // opts: { labelText, useExternalRange, externalRange, bindMode: 'master'|'custom', storageKey, windowVarName, eventName }
+    function makeVolumeColumn(opts) {
+      const { labelText = '', useExternalRange = false, externalRange = null, bindMode = 'custom', storageKey = '', windowVarName = '', eventName = '' } = opts || {};
+      const col = document.createElement('div');
+      const holder = document.createElement('div');
+      const labelEl = document.createElement('div'); labelEl.textContent = labelText;
+      const valEl = document.createElement('div');
+      applyVolumeColStyles(col, holder, labelEl, valEl);
+
+      // Range element: reuse provided one (Master) or create new (others)
+      const rng = useExternalRange && externalRange ? externalRange : document.createElement('input');
+      if (!useExternalRange) {
+        rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
+      }
+      rng.style.position = 'absolute';
+      rng.style.left = 'calc(50% + 1px)';
+      rng.style.top = '50%';
+      rng.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
+      rng.style.transformOrigin = '50% 50%';
+      rng.style.height = '24px';
+      rng.style.margin = '0';
+      rng.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
+      rng.style.width = EXPANDED_LEN + 'px';
+      rng.style.zIndex = '1';
+      holder.appendChild(rng);
+
+      // Bindings
+      if (!useExternalRange) {
+        if (bindMode === 'master') {
+          try {
+            const init = getVolume();
+            rng.value = String(init);
+            const pct = String(Math.round(init * 100)) + '%';
+            valEl.textContent = pct; rng.title = pct;
+          } catch (_) {}
+          bindRangeToVolume(rng, {
+            withWheel: true,
+            emitOnInit: false,
+            onRender: (v) => {
+              try { const pct = String(Math.round(v * 100)) + '%'; valEl.textContent = pct; rng.title = pct; } catch (_) {}
+            }
+          });
+        } else {
+          // custom binding mirrors previous small slider logic
+          try {
+            const saved = parseFloat(localStorage.getItem(storageKey));
+            const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
+            const fallback = 1;
+            const v = Number.isFinite(live) ? live : (Number.isFinite(saved) ? saved : fallback);
+            const clamped = Math.max(0, Math.min(1, v));
+            rng.value = String(clamped);
+            window[windowVarName] = clamped;
+            const pct = String(Math.round(clamped * 100)) + '%'; valEl.textContent = pct; rng.title = pct;
+          } catch (_) {}
+          rng.oninput = () => {
+            try { localStorage.setItem(storageKey, rng.value); } catch (_) {}
+            try {
+              window[windowVarName] = parseFloat(rng.value);
+              const vv = window[windowVarName];
+              window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: vv } }));
+              const pct = String(Math.round(vv * 100)) + '%'; valEl.textContent = pct; rng.title = pct;
+            } catch (_) {}
+          };
+          rng.addEventListener('wheel', (e) => {
+            try {
+              e.preventDefault();
+              const step = parseFloat(rng.step) || DEFAULT_WHEEL_STEP;
+              const dir = e.deltaY < 0 ? 1 : -1;
+              const cur = parseFloat(rng.value);
+              const next = Math.max(0, Math.min(1, cur + dir * step));
+              if (next !== cur) { rng.value = String(next); rng.oninput(); }
+            } catch (_) {}
+          }, { passive: false });
+          // external updates
+          try {
+            const onExternal = (e) => {
+              try {
+                const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window[windowVarName];
+                const clamped = Math.max(0, Math.min(1, v));
+                rng.value = String(clamped);
+                const pct = String(Math.round(clamped * 100)) + '%';
+                valEl.textContent = pct; rng.title = pct;
+              } catch (_) {}
+            };
+            window.addEventListener(eventName, onExternal);
+          } catch (_) {}
+        }
+      } else {
+        // External (Master) range: do not re-bind (binding already set earlier). Initialize value text.
+        try { const v0 = getVolume(); valEl.textContent = String(Math.round(v0 * 100)) + '%'; } catch (_) {}
+      }
+
+      // Assemble
+      col.appendChild(holder);
+      col.appendChild(labelEl);
+      col.appendChild(valEl);
+
+      return { col, holder, labelEl, valEl, range: rng };
+    }
+
+    // Master column built via factory to match others 1:1 (reuse pre-bound range)
+    const masterInst = makeVolumeColumn({ labelText: 'Master', useExternalRange: true, externalRange: range });
+    const masterCol = masterInst.col;
+    const masterHolder = masterInst.holder;
+    const masterLabel = masterInst.labelEl;
+    const masterVal = masterInst.valEl;
     vol.appendChild(masterCol);
-    // Initialize Master % readout
-    try { const v0 = getVolume(); masterVal.textContent = String(Math.round(v0 * 100)) + '%'; } catch (_) {}
 
     // Compact panel containing the rest of the volume sliders
     const panel = document.createElement('div');
@@ -676,108 +780,36 @@ function ensureFloatingControls() {
     panel.style.gap = '2px';
     panel.style.padding = '0';
     panel.style.width = 'auto';
-    panel.style.maxWidth = 'none';
-    panel.style.flexWrap = 'nowrap';
-    panel.style.marginLeft = '0';
-    panel.style.boxSizing = 'border-box';
-
-    // Collect small slider row containers and their labels/values for animations
+    // Arrays used by animations to keep small sliders in sync with Master
     const smallRows = [];
+    const smallHolders = [];
+    const smallRanges = [];
     const smallLabels = [];
     const smallVals = [];
 
-    const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
-      const row = document.createElement('div');
-      const lbl = document.createElement('label'); lbl.textContent = labelText;
-      // Fixed-size holder to constrain rotated range footprint
-      const holder = document.createElement('div');
-      // Apply shared column/label/holder styles for consistency
-      applyVolumeColStyles(row, holder, lbl, null);
-      const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
-      // Make these sliders vertical like the main one and absolutely center them
-      rng.style.position = 'absolute';
-      rng.style.left = 'calc(50% + 1px)';
-      rng.style.top = '50%';
-      rng.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-      rng.style.transformOrigin = '50% 50%';
-      rng.style.height = '24px';
-      rng.style.margin = '0';
-      rng.style.transition = `width ${FLOATING_VOL_ANIM_DUR} ease`;
-      rng.style.width = EXPANDED_LEN + 'px';
-      holder.appendChild(rng);
-      const val = document.createElement('span');
-      applyVolumeColStyles(row, null, null, val);
+    // Helper to add a small slider wired with custom storage + events
+    function addSmall(label, storageKey, windowVarName, eventName) {
+      const inst = makeVolumeColumn({
+        labelText: label,
+        bindMode: 'custom',
+        storageKey,
+        windowVarName,
+        eventName,
+      });
+      panel.appendChild(inst.col);
+      smallRows.push(inst.col);
+      smallHolders.push(inst.holder);
+      smallRanges.push(inst.range);
+      smallLabels.push(inst.labelEl);
+      smallVals.push(inst.valEl);
+      return inst;
+    }
 
-      if (useMasterBinding) {
-        try {
-          const init = getVolume();
-          rng.value = String(init);
-          const pct = String(Math.round(init * 100)) + '%';
-          val.textContent = pct; rng.title = pct;
-        } catch (_) {}
-        bindRangeToVolume(rng, {
-          withWheel: true,
-          emitOnInit: false,
-          onRender: (v) => {
-            try { const pct = String(Math.round(v * 100)) + '%'; val.textContent = pct; rng.title = pct; } catch (_) {}
-          }
-        });
-      } else {
-        // Mirror settings.js behavior for non-master sliders
-        try {
-          const saved = parseFloat(localStorage.getItem(storageKey));
-          const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
-          const fallback = 1;
-          const v = Number.isFinite(live) ? live : (Number.isFinite(saved) ? saved : fallback);
-          const clamped = Math.max(0, Math.min(1, v));
-          rng.value = String(clamped);
-          window[windowVarName] = clamped;
-          const pct = String(Math.round(clamped * 100)) + '%'; val.textContent = pct; rng.title = pct;
-        } catch (_) {}
-        rng.oninput = () => {
-          try { localStorage.setItem(storageKey, rng.value); } catch (_) {}
-          try {
-            window[windowVarName] = parseFloat(rng.value);
-            const vv = window[windowVarName];
-            window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: vv } }));
-            const pct = String(Math.round(vv * 100)) + '%'; val.textContent = pct; rng.title = pct;
-          } catch (_) {}
-        };
-        rng.addEventListener('wheel', (e) => {
-          try {
-            e.preventDefault();
-            const step = parseFloat(rng.step) || DEFAULT_WHEEL_STEP;
-            const dir = e.deltaY < 0 ? 1 : -1;
-            const cur = parseFloat(rng.value);
-            const next = Math.max(0, Math.min(1, cur + dir * step));
-            if (next !== cur) { rng.value = String(next); rng.oninput(); }
-          } catch (_) {}
-        }, { passive: false });
-        // Listen for external changes (from Settings panel or other sources)
-        try {
-          const onExternal = (e) => {
-            try {
-              const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window[windowVarName];
-              const clamped = Math.max(0, Math.min(1, v));
-              rng.value = String(clamped);
-              const pct = String(Math.round(clamped * 100)) + '%';
-              val.textContent = pct; rng.title = pct;
-            } catch (_) {}
-          };
-          window.addEventListener(eventName, onExternal);
-        } catch (_) {}
-      }
+    // Build small sliders using the unified factory
+    addSmall('Game', 'volume_game', '__volumeGame', 'ui:volume:game');
+    addSmall('Music', 'volume_music', '__volumeMusic', 'ui:volume:music');
+    addSmall('Voice', 'volume_voice', '__volumeVoice', 'ui:volume:voice');
 
-      row.appendChild(holder); row.appendChild(lbl); row.appendChild(val);
-      // Track for extend animation (grow width 0 -> 40px) and label/value height reveals
-      try { smallRows.push(row); smallLabels.push(lbl); smallVals.push(val); } catch (_) {}
-      return row;
-    };
-
-    // Build rows (Master is already present as the main vertical slider; avoid duplicating it here)
-    panel.appendChild(makeSmallRow('Game', 'volume_game', '__volumeGame', 'ui:volume:game', false));
-    panel.appendChild(makeSmallRow('Music', 'volume_music', '__volumeMusic', 'ui:volume:music', false));
-    panel.appendChild(makeSmallRow('Voice', 'volume_voice', '__volumeVoice', 'ui:volume:voice', false));
     vol.appendChild(panel);
 
     function setExtended(on) {
@@ -787,10 +819,14 @@ function ensureFloatingControls() {
         if (on) panel.style.display = 'flex';
         toggle.textContent = on ? '<' : '>';
         if (on) {
-          // Reveal panel and animate small column widths from 0 -> 40px
+          // Reveal panel and animate small columns/holders/inputs in sync like Master (collapsed -> expanded)
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+          try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
           try { void panel.offsetHeight; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
+          try { smallHolders.forEach(h => { h.style.height = EXPANDED_LEN + 'px'; }); } catch (_) {}
+          try { smallRanges.forEach(r => { r.style.width = EXPANDED_LEN + 'px'; }); } catch (_) {}
           // Animate label/value height reveals for all small sliders
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
@@ -803,6 +839,9 @@ function ensureFloatingControls() {
           // Animate widths simultaneously: Master 40->24 and small columns 40->0
           try { if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px'; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          // Match Master shrink: inputs and holders go to COLLAPSED_LEN before hiding
+          try { smallHolders.forEach(h => { h.style.height = COLLAPSED_LEN + 'px'; }); } catch (_) {}
+          try { smallRanges.forEach(r => { r.style.width = COLLAPSED_LEN + 'px'; }); } catch (_) {}
           // Now collapse all labels/values in the same frame to sync with width transitions
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
