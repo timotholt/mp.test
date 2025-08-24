@@ -234,10 +234,19 @@ function ensureStyle() {
   if (!st) { st = document.createElement('style'); st.id = 'volume-knob-style'; document.head.appendChild(st); }
   st.textContent = `
   .vol-knob { position: relative; width: var(--vk-size, 64px); height: var(--vk-size, 64px);
-    border-radius: 50%; background: radial-gradient(ellipse at center, #222 0%, #151515 60%, #0d0d0d 100%);
-    box-shadow: inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -2px 6px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.5);
+    border-radius: 50%;
+    /* Flat top fill (no dome) */
+    background: linear-gradient(to bottom, #202020 0%, #1a1a1a 100%);
+    /* Bevel under top-left light: outer TL highlight + outer BR shadow + inner TL shadow + inner BR highlight */
+    box-shadow:
+      -2px -2px 3px rgba(255,255,255,0.28),
+       2px  2px 7px rgba(0,0,0,0.65),
+      inset -2px -2px 3px rgba(0,0,0,0.40),
+      inset  2px  2px 2px rgba(255,255,255,0.14);
     outline: none; cursor: ns-resize; user-select: none; touch-action: none; overflow: visible; }
-  .vol-knob:focus { box-shadow: 0 0 0 2px rgba(100,160,255,0.5), inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -2px 6px rgba(0,0,0,0.8); }
+  .vol-knob:focus { box-shadow: 0 0 0 2px rgba(100,160,255,0.5), -2px -2px 3px rgba(255,255,255,0.28), 2px 2px 7px rgba(0,0,0,0.65), inset -2px -2px 3px rgba(0,0,0,0.40), inset 2px 2px 2px rgba(255,255,255,0.14); }
+  /* Slightly stronger bevel when hovered */
+  .vol-knob:hover { box-shadow: -2px -2px 3px rgba(255,255,255,0.34), 2px 2px 8px rgba(0,0,0,0.72), inset -2px -2px 3px rgba(0,0,0,0.46), inset 2px 2px 2px rgba(255,255,255,0.18); }
 
   .vol-knob .vk-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;
     transform-origin: 50% 50%; }
