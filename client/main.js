@@ -514,8 +514,9 @@ function ensureFloatingControls() {
         // Keep master column the same width as its holder so the track stays centered
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
         // Master adornments hidden when not extended
-        if (masterLabel) masterLabel.style.display = 'none';
-        if (masterVal) masterVal.style.display = 'none';
+        // Hide Master label/value via height animation base state
+        if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
+        if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
         if (masterHolder) masterHolder.style.height = COLLAPSED_LEN + 'px';
         // Hide toggle in collapsed state
         if (toggle) toggle.style.display = 'none';
@@ -524,8 +525,8 @@ function ensureFloatingControls() {
     function applyExpanded() {
       try {
         const extended = !!window.__volumeExtended;
-        // Give extra height when extended to fit rows
-        vol.style.height = (extended ? '200px' : (EXPANDED_LEN + 'px'));
+        // When extended, let container height fit its children to avoid overflow/clipping
+        vol.style.height = extended ? 'auto' : (EXPANDED_LEN + 'px');
         // Keep width auto during hover expansion to avoid auto↔fixed jumps
         vol.style.width = 'auto';
         range.style.width = EXPANDED_LEN + 'px';
@@ -542,9 +543,9 @@ function ensureFloatingControls() {
         if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
         // Only widen master column when extended so non-extended hover keeps identical geometry
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = extended ? '40px' : '24px';
-        // Show Master adornments only in full extended mode
-        if (masterLabel) masterLabel.style.display = extended ? '' : 'none';
-        if (masterVal) masterVal.style.display = extended ? '' : 'none';
+        // Reveal Master adornments only in full extended mode (animate height)
+        if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; masterLabel.style.opacity = extended ? '1' : '0'; }
+        if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; masterVal.style.opacity = extended ? '1' : '0'; }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
       } catch (_) {}
@@ -610,6 +611,12 @@ function ensureFloatingControls() {
           labelEl.style.fontSize = '11px';
           labelEl.style.color = 'var(--ui-fg)';
           labelEl.style.textAlign = 'center';
+          // Prepare for height reveal animation
+          labelEl.style.display = 'block';
+          labelEl.style.overflow = 'hidden';
+          labelEl.style.maxHeight = '0px';
+          labelEl.style.opacity = '0';
+          labelEl.style.transition = `max-height ${FLOATING_VOL_ANIM_DUR} ease, opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
         // Holder for rotated range
         if (holder) {
@@ -625,6 +632,12 @@ function ensureFloatingControls() {
           valEl.style.fontSize = '11px';
           valEl.style.color = 'var(--ui-fg)';
           valEl.style.textAlign = 'center';
+          // Prepare for height reveal animation
+          valEl.style.display = 'block';
+          valEl.style.overflow = 'hidden';
+          valEl.style.maxHeight = '0px';
+          valEl.style.opacity = '0';
+          valEl.style.transition = `max-height ${FLOATING_VOL_ANIM_DUR} ease, opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
       } catch (_) {}
     }
@@ -633,7 +646,6 @@ function ensureFloatingControls() {
     const masterCol = document.createElement('div');
     const masterLabel = document.createElement('div');
     masterLabel.textContent = 'Master';
-    masterLabel.style.display = 'none';
     const masterHolder = document.createElement('div');
     applyVolumeColStyles(masterCol, masterHolder, masterLabel, null);
     // Smooth the holder height change so the centered slider doesn't pop
@@ -643,7 +655,6 @@ function ensureFloatingControls() {
     masterHolder.appendChild(range);
     const masterVal = document.createElement('div');
     applyVolumeColStyles(masterCol, null, null, masterVal);
-    masterVal.style.display = 'none';
     masterCol.appendChild(masterHolder);
     masterCol.appendChild(masterLabel);
     masterCol.appendChild(masterVal);
@@ -666,8 +677,10 @@ function ensureFloatingControls() {
     panel.style.marginLeft = '0';
     panel.style.boxSizing = 'border-box';
 
-    // Collect small slider row containers for width animations on extend
+    // Collect small slider row containers and their labels/values for animations
     const smallRows = [];
+    const smallLabels = [];
+    const smallVals = [];
 
     const makeSmallRow = (labelText, storageKey, windowVarName, eventName, useMasterBinding) => {
       const row = document.createElement('div');
@@ -752,8 +765,8 @@ function ensureFloatingControls() {
       }
 
       row.appendChild(holder); row.appendChild(lbl); row.appendChild(val);
-      // Track for extend animation (grow width 0 -> 40px)
-      try { smallRows.push(row); } catch (_) {}
+      // Track for extend animation (grow width 0 -> 40px) and label/value height reveals
+      try { smallRows.push(row); smallLabels.push(lbl); smallVals.push(val); } catch (_) {}
       return row;
     };
 
@@ -773,8 +786,18 @@ function ensureFloatingControls() {
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
           try { void panel.offsetHeight; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
+          // Animate label/value height reveals for all small sliders
+          try {
+            smallLabels.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
+            smallVals.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
+          } catch (_) {}
           applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
+          // Hide small slider label/values
+          try {
+            smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+            smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+          } catch (_) {}
           if (!window.__volumeAdjusting) applyCollapsed();
         }
       } catch (_) {}
