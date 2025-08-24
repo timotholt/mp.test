@@ -799,25 +799,33 @@ function ensureFloatingControls() {
             window.addEventListener(eventName, onExternal);
           } catch (_) {}
         }
-      } else {
-        // External (Master) range: do not re-bind (binding already set earlier). Initialize value text.
-        try { const v0 = getVolume(); valEl.textContent = String(Math.round(v0 * 100)) + '%'; } catch (_) {}
       }
 
-      // Assemble
-      col.appendChild(holder);
+      // Assemble with labels/percent above the slider holder
       col.appendChild(labelEl);
       col.appendChild(valEl);
-
-      return { col, holder, labelEl, valEl, range: rng };
+      col.appendChild(holder);
+      return { col, holder, range: rng, labelEl, valEl };
     }
 
-    // Master column built via factory to match others 1:1 (reuse pre-bound range)
-    const masterInst = makeVolumeColumn({ labelText: 'Master', useExternalRange: true, externalRange: range });
+    // Master column using the main range input
+    const masterInst = makeVolumeColumn({
+      labelText: 'Master',
+      useExternalRange: true,
+      externalRange: range,
+      bindMode: 'master',
+    });
+
     const masterCol = masterInst.col;
     const masterHolder = masterInst.holder;
     const masterLabel = masterInst.labelEl;
     const masterVal = masterInst.valEl;
+    // Initialize Master % label immediately so it's visible when extended
+    try {
+      const init = getVolume();
+      const pct = String(Math.round(init * 100)) + '%';
+      masterVal.textContent = pct; range.title = pct;
+    } catch (_) {}
     // Match non-master behavior: no vertical animation on the holder; container handles vertical
     try { masterHolder.style.transition = 'none'; } catch (_) {}
     vol.appendChild(masterCol);
