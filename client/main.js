@@ -827,16 +827,17 @@ function ensureFloatingControls() {
       try {
         window.__volumeExtended = !!on;
         // Only show immediately when enabling; when disabling, wait for shrink animation to finish
-        if (on) panel.style.display = 'flex';
         toggle.textContent = on ? '<' : '>';
         if (on) {
+          // Lock expanded geometry first to avoid any flicker or height dip
+          applyExpanded(); try { positionToggle(); } catch (_) {}
           // Reveal panel and animate small columns/holders/inputs in sync like Master (collapsed -> expanded)
+          try { if (panel) panel.style.display = 'flex'; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
           // Holders fill via 100% height; ranges auto-fill holder (no per-range width tween)
           try { void panel.offsetHeight; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
           // No holder or range size tweens here
-          applyExpanded(); try { positionToggle(); } catch (_) {}
           // Reveal small label/value after Master expansion to align start times
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
