@@ -37,6 +37,11 @@ export function createVolumeKnob(opts = {}) {
   el.className = 'vol-knob';
   el.style.setProperty('--vk-size', size + 'px');
   el.style.setProperty('--vk-segments', segments);
+  // Scale the outer LED ring radius with size so it clearly sits outside the knob
+  const ringOffset = Math.max(8, Math.round(size * 0.18));
+  el.style.setProperty('--vk-ring-offset', ringOffset + 'px');
+  // Fine vertical centering tweak for the LED ring (positive moves it down)
+  el.style.setProperty('--vk-ring-global-y', '2px');
   el.setAttribute('role', 'slider');
   el.setAttribute('aria-label', (opts.label || (groupId + ' Volume')));
   el.setAttribute('aria-valuemin', '0');
@@ -225,9 +230,8 @@ function debounceAdjustingDone() {
 }
 
 function ensureStyle() {
-  if (document.getElementById('volume-knob-style')) return;
-  const st = document.createElement('style');
-  st.id = 'volume-knob-style';
+  let st = document.getElementById('volume-knob-style');
+  if (!st) { st = document.createElement('style'); st.id = 'volume-knob-style'; document.head.appendChild(st); }
   st.textContent = `
   .vol-knob { position: relative; width: var(--vk-size, 64px); height: var(--vk-size, 64px);
     border-radius: 50%; background: radial-gradient(ellipse at center, #222 0%, #151515 60%, #0d0d0d 100%);
@@ -240,11 +244,22 @@ function ensureStyle() {
   .vol-knob .vk-dot::after { content: ''; position: absolute; left: 50%; top: 6%; width: 6px; height: 6px; margin-left: -3px;
     border-radius: 50%; background: #cfe8ff; box-shadow: 0 0 8px rgba(130,180,255,0.8); }
 
-  .vol-knob .vk-ring { position: absolute; inset: 0; pointer-events: none; }
-  .vol-knob .vk-seg { position: absolute; left: 50%; top: 50%; width: 2px; height: 10px; margin-left: -1px; margin-top: -5px;
+  .vol-knob .vk-ring { position: absolute; inset: 0; pointer-events: none; transform: translateY(var(--vk-ring-global-y, 0px)); }
+  /* Optional debug guide circle (appended only in debugCenterKnob) */
+  .vol-knob .vk-guide { position: absolute; left: 50%; top: 50%;
+    width: calc(var(--vk-size) + 2 * var(--vk-ring-offset, 12px));
+    height: calc(var(--vk-size) + 2 * var(--vk-ring-offset, 12px));
+    margin-left: calc(-0.5 * (var(--vk-size) + 2 * var(--vk-ring-offset, 12px)));
+    margin-top: calc(-0.5 * (var(--vk-size) + 2 * var(--vk-ring-offset, 12px)));
+    border-radius: 50%; border: 1px dashed rgba(255,255,255,0.35);
+    filter: drop-shadow(0 0 1px rgba(0,0,0,0.5)); opacity: 0.7;
+    pointer-events: none; transform: translateY(var(--vk-guide-global-y, 0px)); }
+  .vol-knob .vk-seg { position: absolute; left: 50%; top: 50%; width: 2px; height: 10px; margin-left: 0; margin-top: 0;
     background: #2a2f36; border-radius: 1px; opacity: 0.45;
-    transform-origin: 0 0; transform: rotate(var(--ang)) translateY(calc(-1 * var(--vk-size) / 2 - 6px)); }
+    /* Place the segment's local origin at the knob center, center the bar around that origin,
+       rotate to angle, then translate outward by exact radius. This ensures a perfect circle. */
+    transform-origin: 0 0;
+    transform: translate(-1px, -5px) rotate(var(--ang)) translateY(calc(-0.5 * var(--vk-size) - var(--vk-ring-offset, 12px))); }
   .vol-knob .vk-seg.on { background: #9fd0ff; opacity: 1; box-shadow: 0 0 6px rgba(120,170,255,0.9); }
   `;
-  document.head.appendChild(st);
 }

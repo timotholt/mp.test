@@ -22,6 +22,16 @@ export function installCenterVolumeKnob(opts = {}) {
   root.style.pointerEvents = 'auto';
 
   const knob = createVolumeKnob({ groupId, size, segments });
+  // Nudge LED ring down by another 3px to match guide (now total 6px)
+  try { knob.el.style.setProperty('--vk-ring-global-y', '6px'); } catch (_) {}
+  // Draw a debug guide circle matching the LED ring radius to visually check circularity/centering
+  try {
+    const guide = document.createElement('div');
+    guide.className = 'vk-guide';
+    knob.el.appendChild(guide);
+    // Nudge guide down by another 3px
+    knob.el.style.setProperty('--vk-guide-global-y', '3px');
+  } catch (_) {}
   root.appendChild(knob.el);
 
   document.body.appendChild(root);
