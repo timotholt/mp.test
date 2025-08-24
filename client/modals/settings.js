@@ -1,4 +1,4 @@
-import { bindRangeToVolume, getVolume, setVolume, DEFAULT_WHEEL_STEP } from '../core/volume.js';
+import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumes.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -116,42 +116,7 @@ function createSettingsPanel() {
     } catch (_) {}
   });
 
-  // Keep Settings master volume UI in sync with external changes (e.g., canvas slider)
-  window.addEventListener('ui:volume', (e) => {
-    try {
-      const panel = document.getElementById('settings-panel');
-      if (!panel || panel.style.display === 'none') return;
-      const rng = panel.querySelector('#settings-master-volume');
-      const val = panel.querySelector('#settings-master-volume-val');
-      if (!rng) return;
-      const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window.__volume;
-      const clamped = Math.max(0, Math.min(1, v));
-      rng.value = String(clamped);
-      const pct = String(Math.round(clamped * 100)) + '%';
-      rng.title = pct; if (val) val.textContent = pct;
-    } catch (_) {}
-  });
-
-  // Keep non-master volumes in sync with external changes
-  const addVolSync = (queryId, queryValId, winVarName, evtName) => {
-    window.addEventListener(evtName, (e) => {
-      try {
-        const panel = document.getElementById('settings-panel');
-        if (!panel || panel.style.display === 'none') return;
-        const rng = panel.querySelector(queryId);
-        const val = panel.querySelector(queryValId);
-        if (!rng) return;
-        const v = (e && e.detail && typeof e.detail.volume === 'number') ? e.detail.volume : window[winVarName];
-        const clamped = Math.max(0, Math.min(1, v));
-        rng.value = String(clamped);
-        const pct = String(Math.round(clamped * 100)) + '%';
-        rng.title = pct; if (val) val.textContent = pct;
-      } catch (_) {}
-    });
-  };
-  addVolSync('#settings-game-volume', '#settings-game-volume-val', '__volumeGame', 'ui:volume:game');
-  addVolSync('#settings-music-volume', '#settings-music-volume-val', '__volumeMusic', 'ui:volume:music');
-  addVolSync('#settings-voice-volume', '#settings-voice-volume-val', '__volumeVoice', 'ui:volume:voice');
+  // External sync now handled by bindRange from '../core/volumes.js'
 
   return panel;
 }
@@ -288,94 +253,56 @@ function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
   if (storageKey === 'volume_game') { rng.id = 'settings-game-volume'; val.id = 'settings-game-volume-val'; }
   if (storageKey === 'volume_music') { rng.id = 'settings-music-volume'; val.id = 'settings-music-volume-val'; }
   if (storageKey === 'volume_voice') { rng.id = 'settings-voice-volume'; val.id = 'settings-voice-volume-val'; }
-  // Use shared utility for master volume only
-  if (storageKey === 'volume') {
-    try {
-      const init = getVolume();
-      rng.value = String(init);
-      // Ensure runtime state is aligned but don't emit yet
-      setVolume(init, { silent: true });
-      const pct = String(Math.round(init * 100)) + '%';
-      val.textContent = pct; rng.title = pct;
-    } catch (_) {}
-    // Delegate input, wheel, and external sync to utility
-    bindRangeToVolume(rng, {
-      withWheel: true,
-      emitOnInit: false,
-      onRender: (v) => {
-        try {
-          const pct = String(Math.round(v * 100)) + '%';
-          val.textContent = pct; rng.title = pct;
-        } catch (_) {}
-      }
-    });
-    // While adjusting from the Settings panel, broadcast an adjusting flag
-    // so the on-screen floating volume control can temporarily expand.
-    // Only do this for the Master volume slider.
-    if (eventName === 'ui:volume') {
+  // Group mapping for new volumes API
+  const groupId = (storageKey === 'volume') ? 'MASTER'
+    : (storageKey === 'volume_game') ? 'GAME'
+    : (storageKey === 'volume_music') ? 'MUSIC'
+    : (storageKey === 'volume_voice') ? 'VOICE'
+    : 'MASTER';
+
+  // Initialize UI from group value
+  try {
+    const init = getValue(groupId);
+    rng.value = String(init);
+    setValue(groupId, init, { silent: true });
+    const pct = String(Math.round(init * 100)) + '%';
+    val.textContent = pct; rng.title = pct;
+  } catch (_) {}
+
+  // Bind via unified group-based utility (handles input, wheel, external sync)
+  bindRange(rng, groupId, {
+    withWheel: true,
+    emitOnInit: false,
+    onRender: (v) => {
       try {
-        const sendAdjusting = (adjusting) => {
-          try { window.dispatchEvent(new CustomEvent('ui:volume:adjusting', { detail: { adjusting: !!adjusting, source: 'settings' } })); } catch (_) {}
-        };
-        const end = () => sendAdjusting(false);
-        rng.addEventListener('mousedown', () => sendAdjusting(true));
-        rng.addEventListener('touchstart', () => sendAdjusting(true));
-        // Hover-over the Master slider should also expand the floating control
-        rng.addEventListener('mouseenter', () => sendAdjusting(true));
-        // End signals (cover mouse/touch/blur/leave)
-        rng.addEventListener('mouseup', end);
-        rng.addEventListener('touchend', end);
-        rng.addEventListener('mouseleave', end);
-        rng.addEventListener('blur', end);
-        // Wheel-driven adjustments should also expand temporarily.
-        // Debounce the end so quick scrolls still keep it open briefly.
-        let __wheelAdjustTimer;
-        rng.addEventListener('wheel', () => {
-          sendAdjusting(true);
-          try { if (__wheelAdjustTimer) clearTimeout(__wheelAdjustTimer); } catch (_) {}
-          __wheelAdjustTimer = setTimeout(() => { try { sendAdjusting(false); } catch (_) {} }, 600);
-        }, { passive: true });
+        const pct = String(Math.round(v * 100)) + '%';
+        val.textContent = pct; rng.title = pct;
       } catch (_) {}
     }
-    row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
-    return row;
+  });
+
+  // While adjusting from the Settings panel, broadcast an adjusting flag for MASTER only
+  if (groupId === 'MASTER') {
+    try {
+      const sendAdjusting = (adjusting) => {
+        try { window.dispatchEvent(new CustomEvent('ui:volume:adjusting', { detail: { adjusting: !!adjusting, source: 'settings' } })); } catch (_) {}
+      };
+      const end = () => sendAdjusting(false);
+      rng.addEventListener('mousedown', () => sendAdjusting(true));
+      rng.addEventListener('touchstart', () => sendAdjusting(true));
+      rng.addEventListener('mouseenter', () => sendAdjusting(true));
+      rng.addEventListener('mouseup', end);
+      rng.addEventListener('touchend', end);
+      rng.addEventListener('mouseleave', end);
+      rng.addEventListener('blur', end);
+      let __wheelAdjustTimer;
+      rng.addEventListener('wheel', () => {
+        sendAdjusting(true);
+        try { if (__wheelAdjustTimer) clearTimeout(__wheelAdjustTimer); } catch (_) {}
+        __wheelAdjustTimer = setTimeout(() => { try { sendAdjusting(false); } catch (_) {} }, 600);
+      }, { passive: true });
+    } catch (_) {}
   }
-  try {
-    const saved = parseFloat(localStorage.getItem(storageKey));
-    const live = (typeof window[windowVarName] === 'number') ? window[windowVarName] : NaN;
-    const fallback = (storageKey === 'volume' ? 1 : 1);
-    const v = Number.isFinite(live) ? live : (Number.isFinite(saved) ? saved : fallback);
-    rng.value = String(Math.max(0, Math.min(1, v)));
-    window[windowVarName] = parseFloat(rng.value);
-    const pct = String(Math.round(window[windowVarName] * 100)) + '%'; val.textContent = pct; rng.title = pct;
-    if (eventName === 'ui:volume') {
-      window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: window[windowVarName] } }));
-    }
-  } catch (_) { rng.value = (window[windowVarName] ?? 1).toString(); const pct = String(Math.round(parseFloat(rng.value) * 100)) + '%'; val.textContent = pct; rng.title = pct; }
-  rng.oninput = () => {
-    try { localStorage.setItem(storageKey, rng.value); } catch (_) {}
-    try {
-      window[windowVarName] = parseFloat(rng.value);
-      const val2 = window[windowVarName];
-      if (eventName === 'ui:volume') {
-        window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: val2 } }));
-      } else {
-        window.dispatchEvent(new CustomEvent(eventName, { detail: { volume: val2 } }));
-      }
-      const pct = String(Math.round(val2 * 100)) + '%'; val.textContent = pct; rng.title = pct;
-    } catch (_) {}
-  };
-  // Mouse wheel support: scroll up increases, down decreases
-  rng.addEventListener('wheel', (e) => {
-    try {
-      e.preventDefault();
-      const step = parseFloat(rng.step) || DEFAULT_WHEEL_STEP;
-      const dir = e.deltaY < 0 ? 1 : -1;
-      const cur = parseFloat(rng.value);
-      const next = Math.max(0, Math.min(1, cur + dir * step));
-      if (next !== cur) { rng.value = String(next); rng.oninput(); }
-    } catch (_) {}
-  }, { passive: false });
   row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
   return row;
 }
