@@ -14,7 +14,7 @@ import { createChatTabs } from './core/chatTabs.js';
 import { getVolume, setVolume, bindRangeToVolume, DEFAULT_WHEEL_STEP } from './core/volume.js';
 
 // Animation duration for floating volume control transitions (collapsed→expanded, expanded→extended)
-const FLOATING_VOL_ANIM_DUR = '14s';
+const FLOATING_VOL_ANIM_DUR = '4s';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -470,6 +470,8 @@ function ensureFloatingControls() {
     vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
     vol.style.padding = '2px';
+    // Reserve space on the right so the toggle doesn't cover the slider
+    // vol.style.paddingRight = '22px';
     // Ensure animated height includes padding/border
     vol.style.boxSizing = 'border-box';
     // Clip any child overflow during transitions so sliders never escape the border
@@ -506,7 +508,29 @@ function ensureFloatingControls() {
       if (!css) {
         css = document.createElement('style');
         css.id = 'volume-control-hover-css';
-        css.textContent = `#volume-control { height: ${COLLAPSED_LEN}px; min-height: 4rem; } #volume-control:hover { height: ${EXPANDED_LEN}px; }`;
+        css.textContent = `
+          #volume-control { height: ${COLLAPSED_LEN}px; min-height: 4rem; }
+          #volume-control:hover { height: ${EXPANDED_LEN}px; }
+          #volume-control #volume-toggle {
+            position: absolute;
+            top: 50%;
+            right: auto;
+            left: 1.2rem;
+            height: 0;
+            max-height: 16px;
+            width: 16px;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            transition: height .2s ease, opacity .2s ease;
+          }
+          #volume-control:hover #volume-toggle {
+            height: 16px;
+            max-height: 16px;
+            opacity: 1;
+            pointer-events: auto;
+          }
+        `;
         document.head.appendChild(css);
       }
     } catch (_) {}
@@ -518,6 +542,7 @@ function ensureFloatingControls() {
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
+        // vol.style.paddingRight = '22px';
         // Do not force centering; rely on layout
         // range.style.left = '';
         // range.style.marginRight = '0';
@@ -531,8 +556,7 @@ function ensureFloatingControls() {
         if (masterHolder) masterHolder.style.height = '100%';
         // Holders/ranges auto-fill parent; defer length sync to next frame so layout is updated
         try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
-        // Hide toggle in collapsed state
-        if (toggle) toggle.style.display = 'none';
+        // Toggle visibility handled purely by CSS :hover (opacity/pointer-events)
       } catch (_) {}
     }
 
@@ -546,8 +570,9 @@ function ensureFloatingControls() {
         // widths are synced to holder heights dynamically
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
-        // Narrow left/right padding (4px), with extra top/bottom
+        // Narrow left/right padding (4px), with extra top/bottom; reserve right space for toggle
         vol.style.padding = '10px 4px';
+        vol.style.paddingRight = '22px';
         // Do not force centering; rely on layout
         range.style.left = '';
         range.style.marginRight = '0';
@@ -570,8 +595,7 @@ function ensureFloatingControls() {
           // But contribute correct height so the container animates smoothly
           // Holders and ranges fill via 100% height; no per-range width tween
         }
-        // Show toggle when expanded
-        if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
+        // Toggle visibility handled purely by CSS :hover
         try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
       } catch (_) {}
     }
@@ -608,14 +632,17 @@ function ensureFloatingControls() {
     toggle.style.fontSize = '10px';
     toggle.style.lineHeight = '10px';
     toggle.style.width = '16px';
-    toggle.style.height = '16px';
+    // Let CSS control height via hover (0 -> 100%)
+    toggle.style.height = '50%';
     toggle.style.padding = '0';
-    // Overlay the toggle on top of the track, only visible when expanded
+    // Overlay the toggle; position via top/left
     toggle.style.position = 'absolute';
-    toggle.style.top = '14px'; // a couple extra pixels of space from top of slider
-    toggle.style.right = 'auto'; // we'll position via left for centering
+    toggle.style.top = '50%';
+    toggle.style.left = '1.2rem';
+    toggle.style.right = '';
     toggle.style.zIndex = '5';
-    toggle.style.display = 'none';
+    // Always present in layout; CSS controls visibility
+    toggle.style.display = '';
     // Insert so it is a child; absolute position will place it over the range
     vol.appendChild(toggle);
 
@@ -877,7 +904,7 @@ function ensureFloatingControls() {
     // Keep holder widths synced with CSS-driven height changes (no mouse listeners)
     try {
       const ro = new ResizeObserver(() => {
-        try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
+        try { requestAnimationFrame(() => { try { syncRangeLengths(); } catch (_) {} }); } catch (_) {}
       });
       ro.observe(vol);
       // expose for potential teardown/debug
@@ -891,7 +918,7 @@ function ensureFloatingControls() {
         toggle.textContent = on ? '<' : '>';
         if (on) {
           // Lock expanded geometry first to avoid any flicker or height dip
-          applyExpanded(); try { positionToggle(); } catch (_) {}
+          applyExpanded();
           // Reveal panel and animate small columns/holders/inputs in sync like Master (collapsed -> expanded)
           try { if (panel) panel.style.display = 'flex'; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
@@ -930,7 +957,6 @@ function ensureFloatingControls() {
                 try { targets.forEach(t => t.removeEventListener('transitionend', onDone)); } catch (_) {}
                 panel.style.display = 'none';
                 applyExpanded();
-                try { positionToggle(); } catch (_) {}
     try { window.addEventListener('resize', () => syncRangeLengths()); } catch (_) {}
               }
             };
@@ -942,9 +968,7 @@ function ensureFloatingControls() {
     toggle.addEventListener('click', () => setExtended(!window.__volumeExtended));
     // Start collapsed; expand on hover only (until extended via >)
     applyCollapsed();
-    // Ensure final position/toggle after assembly
-    // (vol already appended above for measurement)
-    try { positionToggle(); } catch (_) {}
+    // Ensure final state after assembly (vol already appended above for measurement)
 
     // React to Settings slider adjustments by forcing expansion during drag
     try {
@@ -954,34 +978,12 @@ function ensureFloatingControls() {
           window.__volumeAdjusting = adj;
           const extended = !!window.__volumeExtended;
           if (adj || extended) applyExpanded(); else applyCollapsed();
-          try { positionToggle(); } catch (_) {}
         } catch (_) {}
       };
       window.addEventListener('ui:volume:adjusting', onAdjust);
     } catch (_) {}
 
-    // Position the toggle centered over the Master slider
-    function positionToggle() {
-      try {
-        if (!toggle || !masterHolder) return;
-        const volRect = vol.getBoundingClientRect();
-        const holderRect = masterHolder.getBoundingClientRect();
-        const left = Math.round((holderRect.left - volRect.left) + (holderRect.width / 2) - (toggle.offsetWidth / 2));
-        const gutter = 4; // small spacing from the holder's top edge
-        // Apply a tiny offset only when not in fully-collapsed geometry to neutralize hover drift
-        const isCollapsed = vol.style.height === (COLLAPSED_LEN + 'px');
-        const hoverOffset = isCollapsed ? 0 : -4;
-        const top = Math.round((holderRect.top - volRect.top) + gutter + hoverOffset);
-        // Clamp inside container so moving cursor to the button doesn't exit hover area
-        const maxLeft = Math.max(0, (vol.clientWidth - toggle.offsetWidth - 2));
-        const maxTop = Math.max(0, (vol.clientHeight - toggle.offsetHeight - 2));
-        const clampedLeft = Math.max(2, Math.min(maxLeft, left));
-        const clampedTop = Math.max(0, Math.min(maxTop, top));
-        toggle.style.left = clampedLeft + 'px';
-        toggle.style.top = clampedTop + 'px';
-      } catch (_) {}
-    }
-    try { window.addEventListener('resize', positionToggle); } catch (_) {}
+    // positionToggle removed - CSS handles toggle placement
   }
 }
 
