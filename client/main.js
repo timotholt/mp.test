@@ -469,7 +469,8 @@ function ensureFloatingControls() {
     vol.style.background = 'transparent';
     vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
-    vol.style.padding = '2px';
+    // Keep padding constant across states to avoid visual jumps on toggle
+    vol.style.padding = '10px 4px';
     // Reserve space on the right so the toggle doesn't cover the slider
     // vol.style.paddingRight = '22px';
     // Ensure animated height includes padding/border
@@ -570,16 +571,14 @@ function ensureFloatingControls() {
         // widths are synced to holder heights dynamically
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
-        // Narrow left/right padding (4px), with extra top/bottom; reserve right space for toggle
+        // Narrow left/right padding (4px), with extra top/bottom; keep padding constant across states
         vol.style.padding = '10px 4px';
-        vol.style.paddingRight = '22px';
         // Do not force centering; rely on layout
         range.style.left = '';
         range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = '100%';
-        // Only widen master column when extended so non-extended hover keeps identical geometry
-
-        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = extended ? '40px' : '24px';
+        // Keep master column width constant to avoid visual padding shifts during toggle
+        if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
         // Reveal Master adornments only in full extended mode (animate height)
         if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; masterLabel.style.opacity = extended ? '1' : '0'; }
         if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; masterVal.style.opacity = extended ? '1' : '0'; }
