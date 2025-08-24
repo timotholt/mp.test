@@ -14,7 +14,7 @@ import { createChatTabs } from './core/chatTabs.js';
 import { getVolume, setVolume, bindRangeToVolume, DEFAULT_WHEEL_STEP } from './core/volume.js';
 
 // Animation duration for floating volume control transitions (collapsed→expanded, expanded→extended)
-const FLOATING_VOL_ANIM_DUR = '4s';
+const FLOATING_VOL_ANIM_DUR = '14s';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -470,6 +470,8 @@ function ensureFloatingControls() {
     vol.style.border = '1px solid transparent';
     vol.style.borderRadius = '6px';
     vol.style.padding = '2px';
+    // Ensure animated height includes padding/border
+    vol.style.boxSizing = 'border-box';
     // Clip any child overflow during transitions so sliders never escape the border
     vol.style.overflow = 'hidden';
     vol.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease, width ${FLOATING_VOL_ANIM_DUR} ease, background ${FLOATING_VOL_ANIM_DUR} ease, border-color ${FLOATING_VOL_ANIM_DUR} ease, padding ${FLOATING_VOL_ANIM_DUR} ease`;
@@ -493,14 +495,24 @@ function ensureFloatingControls() {
     // range.style.height = '100%';
     // range.style.margin = '0.5rem';
     // range.style.transition = 'none';
-    // range.style.width = '100%';
+    range.style.width = '100%';
 
     // Hover-driven collapse/expand
     const COLLAPSED_LEN = 36;   // short control when idle
     const EXPANDED_LEN = 165;   // tall control on hover
+    // CSS-only hover grow/shrink for volume container
+    try {
+      let css = document.getElementById('volume-control-hover-css');
+      if (!css) {
+        css = document.createElement('style');
+        css.id = 'volume-control-hover-css';
+        css.textContent = `#volume-control { height: ${COLLAPSED_LEN}px; min-height: 4rem; } #volume-control:hover { height: ${EXPANDED_LEN}px; }`;
+        document.head.appendChild(css);
+      }
+    } catch (_) {}
     function applyCollapsed() {
       try {
-        vol.style.height = COLLAPSED_LEN + 'px';
+        // height handled by CSS :hover
         vol.style.width = 'auto';
         // widths are synced to holder heights dynamically
         vol.style.background = 'transparent';
@@ -517,8 +529,8 @@ function ensureFloatingControls() {
         if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
         if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
         if (masterHolder) masterHolder.style.height = '100%';
-        // Holders/ranges auto-fill parent; no per-holder or per-range size tweening in collapsed prep
-        try { syncRangeLengths(); } catch (_) {}
+        // Holders/ranges auto-fill parent; defer length sync to next frame so layout is updated
+        try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
         // Hide toggle in collapsed state
         if (toggle) toggle.style.display = 'none';
       } catch (_) {}
@@ -528,7 +540,7 @@ function ensureFloatingControls() {
       try {
         const extended = !!window.__volumeExtended;
         // Keep a fixed expanded height so percent-based children don't collapse
-        vol.style.height = EXPANDED_LEN + 'px';
+        // height handled by CSS :hover
         // Keep width auto during hover expansion to avoid auto↔fixed jumps
         vol.style.width = 'auto';
         // widths are synced to holder heights dynamically
@@ -560,12 +572,11 @@ function ensureFloatingControls() {
         }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
-        try { syncRangeLengths(); } catch (_) {}
+        try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
       } catch (_) {}
     }
 
-    try { vol.addEventListener('mouseenter', applyExpanded); } catch (_) {}
-    try { vol.addEventListener('mouseleave', () => { if (!window.__volumeAdjusting && !window.__volumeExtended) applyCollapsed(); }); } catch (_) {}
+    // JS hover listeners removed; CSS handles hover grow/shrink
     // Ensure runtime state matches persisted value without emitting
     try { setVolume(getVolume(), { silent: true }); } catch (_) {}
     // Bind to shared volume utility
@@ -700,7 +711,7 @@ function ensureFloatingControls() {
       // rng.style.margin = '0';
       // Holder is rotated; keep input simple
       // rng.style.transition = 'none';
-      // rng.style.width = '100%';
+      rng.style.width = '100%';
       // rng.style.zIndex = '';
       holder.appendChild(rng);
 
@@ -863,6 +874,15 @@ function ensureFloatingControls() {
     try { document.body.appendChild(vol); } catch (_) {}
     try { syncRangeLengths(); } catch (_) {}
     // We appended vol early to measure; subsequent code may still add children
+    // Keep holder widths synced with CSS-driven height changes (no mouse listeners)
+    try {
+      const ro = new ResizeObserver(() => {
+        try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
+      });
+      ro.observe(vol);
+      // expose for potential teardown/debug
+      window.__volResizeObserver = ro;
+    } catch (_) {}
 
     function setExtended(on) {
       try {
