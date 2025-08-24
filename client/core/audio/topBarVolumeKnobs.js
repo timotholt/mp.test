@@ -28,11 +28,15 @@ export function installTopBarVolumeKnobs(opts = {}) {
     groupId: 'MASTER',
     segments: opts.masterSegments ?? 24,
     size: opts.masterSize ?? 44,
+    allowSmall: !!opts.allowSmall,
     ringOffset: opts.masterRingOffset,
     segThickness: opts.masterSegThickness,
     segLength: opts.masterSegLength,
     dotSize: opts.masterDotSize,
   });
+  if (opts.masterOffsetY != null) {
+    try { master.el.style.marginTop = Math.round(Number(opts.masterOffsetY)) + 'px'; } catch (_) {}
+  }
   master.el.classList.add('vk-master');
   master.el.title = 'Master Volume';
   cluster.appendChild(master.el);
@@ -61,11 +65,16 @@ export function installTopBarVolumeKnobs(opts = {}) {
       groupId: g.id,
       segments: g.segments,
       size: g.size,
+      allowSmall: (g.allowSmall != null ? !!g.allowSmall : !!opts.allowSmall),
       ringOffset: (g.ringOffset != null ? g.ringOffset : opts.groupRingOffset),
       segThickness: (g.segThickness != null ? g.segThickness : opts.groupSegThickness),
       segLength: (g.segLength != null ? g.segLength : opts.groupSegLength),
       dotSize: (g.dotSize != null ? g.dotSize : opts.groupDotSize),
     });
+    const offY = (g.offsetY != null ? g.offsetY : opts.groupOffsetY);
+    if (offY != null) {
+      try { k.el.style.marginTop = Math.round(Number(offY)) + 'px'; } catch (_) {}
+    }
     k.el.title = `${g.label} Volume`;
     panel.appendChild(k.el);
     unbinders.push(k.unbind);

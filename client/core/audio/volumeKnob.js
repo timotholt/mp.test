@@ -28,19 +28,28 @@ export function createVolumeKnob(opts = {}) {
   ensureStyle();
 
   const groupId = String(opts.groupId || 'MASTER');
-  const size = Math.max(40, Math.floor(opts.size || 64));
+  const allowSmall = !!opts.allowSmall;
+  const rawSize = opts.size;
+  const sizeNum = (typeof rawSize === 'number' && Number.isFinite(rawSize)) ? Math.floor(rawSize) : null;
+  const minSize = allowSmall ? 8 : 40; // allow tiny knobs if explicitly requested
+  const size = (sizeNum != null) ? Math.max(minSize, sizeNum) : 64;
   const segments = Math.max(6, Math.floor(opts.segments || 24));
   const step = typeof opts.step === 'number' ? Math.abs(opts.step) : DEFAULT_WHEEL_STEP;
   const emitOnInit = !!opts.emitOnInit;
 
   const el = document.createElement('div');
   el.className = 'vol-knob';
-  el.style.setProperty('--vk-size', size + 'px');
+  // Support numeric pixel sizes and string CSS sizes (e.g., '1rem')
+  if (typeof rawSize === 'string') {
+    el.style.setProperty('--vk-size', String(rawSize));
+  } else {
+    el.style.setProperty('--vk-size', size + 'px');
+  }
   el.style.setProperty('--vk-segments', segments);
   // Scale the outer LED ring radius with size so it clearly sits outside the knob
   const ringOffset = (opts.ringOffset != null)
     ? Math.max(0, Math.round(Number(opts.ringOffset)))
-    : Math.max(8, Math.round(size * 0.18));
+    : (sizeNum != null ? Math.max(8, Math.round(size * 0.18)) : 6); // conservative default when size is a CSS unit
   el.style.setProperty('--vk-ring-offset', ringOffset + 'px');
   // Fine vertical centering tweak for the LED ring (positive moves it down)
   el.style.setProperty('--vk-ring-global-y', '2px');
@@ -50,7 +59,7 @@ export function createVolumeKnob(opts = {}) {
     el.style.setProperty('--vk-seg-w', w + 'px');
   }
   if (opts.segLength != null) {
-    const h = Math.max(4, Math.round(Number(opts.segLength)));
+    const h = Math.max(1, Math.round(Number(opts.segLength)));
     el.style.setProperty('--vk-seg-h', h + 'px');
   }
   if (opts.dotSize != null) {

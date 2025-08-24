@@ -1077,12 +1077,14 @@ async function setupAsciiRenderer() {
     // Tweaked for tighter status bar fit: smaller knobs, fewer LEDs, thinner/shorter LEDs, smaller dot
     try {
       installTopBarVolumeKnobs({
-        masterSegments: 10,
-        masterSize: 26,
+        masterSegments: 20,
+        masterSize: 25,
+        allowSmall: true,
         masterRingOffset: 8,
-        masterSegThickness: 1,
-        masterSegLength: 5,
-        masterDotSize: 3,
+        masterOffsetY: 8,
+        masterSegThickness: 0.5,
+        masterSegLength: 3,
+        masterDotSize: 2,
         groupRingOffset: 8,
         groupSegThickness: 1,
         groupSegLength: 5,
