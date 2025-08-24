@@ -798,23 +798,34 @@ function ensureFloatingControls() {
           } catch (_) {}
           applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
-          // Hide small slider label/values (animate 16px -> 0)
+          // Freeze current auto height to px so the subsequent change to EXPANDED_LEN animates
+          try { const h0 = vol.offsetHeight; vol.style.height = h0 + 'px'; void vol.offsetHeight; } catch (_) {}
+          // Animate widths simultaneously: Master 40->24 and small columns 40->0
+          try { if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px'; } catch (_) {}
+          try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          // Now collapse all labels/values in the same frame to sync with width transitions
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
             smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+            if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
+            if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
           } catch (_) {}
-          // Animate small column widths 40px -> 0px before hiding the panel
-          try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
-          // After width transition completes, hide the panel and switch to non-extended expanded layout
+          // After all width transitions (Master + small) complete, hide the panel and switch layout
           try {
-            const first = smallRows[0];
-            if (first) first.addEventListener('transitionend', (e) => {
-              if (e.propertyName === 'width' && !window.__volumeExtended) {
+            const targets = [];
+            if (typeof masterCol !== 'undefined' && masterCol) targets.push(masterCol);
+            try { smallRows.forEach(col => targets.push(col)); } catch (_) {}
+            let remaining = targets.length;
+            const onDone = (e) => {
+              if (e.propertyName !== 'width') return;
+              if (--remaining <= 0 && !window.__volumeExtended) {
+                try { targets.forEach(t => t.removeEventListener('transitionend', onDone)); } catch (_) {}
                 panel.style.display = 'none';
                 applyExpanded();
                 try { positionToggle(); } catch (_) {}
               }
-            }, { once: true });
+            };
+            targets.forEach(t => t.addEventListener('transitionend', onDone));
           } catch (_) {}
         }
       } catch (_) {}
