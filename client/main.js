@@ -516,7 +516,7 @@ function ensureFloatingControls() {
             position: absolute;
             top: 50%;
             right: auto;
-            left: 1.2rem;
+            left: 6px;
             height: 0;
             max-height: 16px;
             width: 16px;
@@ -667,6 +667,8 @@ function ensureFloatingControls() {
           labelEl.style.fontSize = '11px';
           labelEl.style.color = 'var(--ui-fg)';
           labelEl.style.textAlign = 'center';
+          // Nudge content off the hard left edge to avoid clipping first glyphs (e.g., 'M')
+          labelEl.style.paddingLeft = '2px';
           // Prepare for height reveal animation
           labelEl.style.display = 'block';
           labelEl.style.overflow = 'hidden';
@@ -690,6 +692,8 @@ function ensureFloatingControls() {
           valEl.style.fontSize = '11px';
           valEl.style.color = 'var(--ui-fg)';
           valEl.style.textAlign = 'center';
+          // Match label left padding for consistent alignment
+          valEl.style.paddingLeft = '2px';
           // Prepare for height reveal animation
           valEl.style.display = 'block';
           valEl.style.overflow = 'hidden';
@@ -826,6 +830,8 @@ function ensureFloatingControls() {
       const pct = String(Math.round(init * 100)) + '%';
       masterVal.textContent = pct; range.title = pct;
     } catch (_) {}
+    // Nudge Master label slightly to prevent left-edge glyph clipping
+    try { if (masterLabel) masterLabel.style.paddingLeft = '4px'; } catch (_) {}
     // Match non-master behavior: no vertical animation on the holder; container handles vertical
     try { masterHolder.style.transition = 'none'; } catch (_) {}
     vol.appendChild(masterCol);
@@ -927,6 +933,8 @@ function ensureFloatingControls() {
           // Holders fill via 100% height; ranges auto-fill holder (no per-range width tween)
           try { void panel.offsetHeight; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '40px'; }); } catch (_) {}
+          // Expand Master column slightly wider so 'Master' label isn't clipped
+          try { if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '48px'; } catch (_) {}
           // No holder or range size tweens here
           // Reveal small label/value after Master expansion to align start times
           try {
