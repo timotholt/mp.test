@@ -12,7 +12,7 @@ import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
 // removed legacy volume import from './core/volume.js'
-import { installFloatingVolumeUI } from './core/audio/floatingVolume.js';
+import { initAudio } from './core/audio/audioManager.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -1058,7 +1058,7 @@ async function setupAsciiRenderer() {
     ensureStatusBar();
     ensureZoomControls();
     // Volume controls (V2)
-    try { installFloatingVolumeUI(); } catch (_) {}
+    try { initAudio(); } catch (_) {}
     ensureBanner();
     ensureScreenShade();
 
