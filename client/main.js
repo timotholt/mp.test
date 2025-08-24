@@ -484,19 +484,16 @@ function ensureFloatingControls() {
     range.min = '0';
     range.max = '1';
     range.step = String(DEFAULT_WHEEL_STEP);
-    // Make slider vertical (up = louder)
-    range.style.position = 'absolute';
-    range.style.left = 'calc(50% + 1px)';
-    range.style.top = '50%';
-    range.style.zIndex = '1';
-    range.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-    range.style.transformOrigin = '50% 50%';
-    range.style.height = '24px';
-    range.style.margin = '0';
-    // Keep a constant track length; container clips during collapse
-    range.style.transition = 'none';
-    // Use literal here to avoid referring to EXPANDED_LEN before declaration
-    range.style.width = '165px';
+    // range.style.position = 'relative';
+    // range.style.left = '';
+    // range.style.top = '';
+    // range.style.zIndex = '';
+    // range.style.transform = '';
+    // range.style.transformOrigin = '';
+    // range.style.height = '100%';
+    // range.style.margin = '0.5rem';
+    // range.style.transition = 'none';
+    // range.style.width = '100%';
 
     // Hover-driven collapse/expand
     const COLLAPSED_LEN = 36;   // short control when idle
@@ -505,13 +502,13 @@ function ensureFloatingControls() {
       try {
         vol.style.height = COLLAPSED_LEN + 'px';
         vol.style.width = 'auto';
-        /* keep range width constant to avoid jump */
+        // widths are synced to holder heights dynamically
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
-        // True center in collapsed column
-        range.style.left = '50%';
-        range.style.marginRight = '0';
+        // Do not force centering; rely on layout
+        // range.style.left = '';
+        // range.style.marginRight = '0';
         // Keep master column the same width as its holder so the track stays centered
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
 
@@ -521,6 +518,7 @@ function ensureFloatingControls() {
         if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
         if (masterHolder) masterHolder.style.height = '100%';
         // Holders/ranges auto-fill parent; no per-holder or per-range size tweening in collapsed prep
+        try { syncRangeLengths(); } catch (_) {}
         // Hide toggle in collapsed state
         if (toggle) toggle.style.display = 'none';
       } catch (_) {}
@@ -533,13 +531,13 @@ function ensureFloatingControls() {
         vol.style.height = EXPANDED_LEN + 'px';
         // Keep width auto during hover expansion to avoid auto↔fixed jumps
         vol.style.width = 'auto';
-        /* keep range width constant to avoid jump */
+        // widths are synced to holder heights dynamically
         vol.style.background = 'var(--control-bg)';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
         vol.style.padding = '10px 4px';
-        // Keep slider horizontally centered to avoid lateral jump during animation
-        range.style.left = '50%';
+        // Do not force centering; rely on layout
+        range.style.left = '';
         range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = '100%';
         // Only widen master column when extended so non-extended hover keeps identical geometry
@@ -562,6 +560,7 @@ function ensureFloatingControls() {
         }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
+        try { syncRangeLengths(); } catch (_) {}
       } catch (_) {}
     }
 
@@ -587,6 +586,7 @@ function ensureFloatingControls() {
 
     // Small toggle to expand into full set of sliders
     const toggle = document.createElement('button');
+    toggle.id = 'volume-toggle';
     toggle.textContent = '>';
     toggle.title = 'Show more volume controls';
     toggle.style.background = 'transparent';
@@ -638,7 +638,7 @@ function ensureFloatingControls() {
         }
         // Holder for rotated range
         if (holder) {
-          holder.style.width = '24px';
+          holder.style.width = '100%';
           holder.style.height = '100%';
           holder.style.transition = 'none';
           holder.style.display = 'flex';
@@ -646,6 +646,8 @@ function ensureFloatingControls() {
           holder.style.justifyContent = 'center';
           holder.style.position = 'relative';
           holder.style.overflow = 'hidden';
+          holder.style.transform = 'rotate(-90deg)';
+          holder.style.transformOrigin = '50% 50%';
         }
         // Value text
         if (valEl) {
@@ -670,6 +672,14 @@ function ensureFloatingControls() {
       const holder = document.createElement('div');
       const labelEl = document.createElement('div'); labelEl.textContent = labelText;
       const valEl = document.createElement('div');
+      // Assign debug-friendly IDs
+      try {
+        const slug = String(labelText || 'col').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        col.id = `vol-col-${slug}`;
+        holder.id = `vol-holder-${slug}`;
+        labelEl.id = `vol-label-${slug}`;
+        valEl.id = `vol-val-${slug}`;
+      } catch (_) {}
       applyVolumeColStyles(col, holder, labelEl, valEl);
 
       // Range element: reuse provided one (Master) or create new (others)
@@ -677,17 +687,21 @@ function ensureFloatingControls() {
       if (!useExternalRange) {
         rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP);
       }
-      rng.style.position = 'absolute';
-      rng.style.left = 'calc(50% + 1px)';
-      rng.style.top = '50%';
-      rng.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
-      rng.style.transformOrigin = '50% 50%';
-      rng.style.height = '24px';
-      rng.style.margin = '0';
-      // Always fill holder height; no independent width animation
-      rng.style.transition = 'none';
-      rng.style.width = EXPANDED_LEN + 'px';
-      rng.style.zIndex = '1';
+      try {
+        const slug = String(labelText || 'col').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        rng.id = `vol-range-${slug}`;
+      } catch (_) {}
+      // rng.style.position = 'relative';
+      // rng.style.left = '';
+      // rng.style.top = '';
+      // rng.style.transform = '';
+      // rng.style.transformOrigin = '';
+      // rng.style.height = '100%';
+      // rng.style.margin = '0';
+      // Holder is rotated; keep input simple
+      // rng.style.transition = 'none';
+      // rng.style.width = '100%';
+      // rng.style.zIndex = '';
       holder.appendChild(rng);
 
       // Bindings
@@ -792,18 +806,41 @@ function ensureFloatingControls() {
     const smallLabels = [];
     const smallVals = [];
 
-    // Helper to add a small slider wired with custom storage + events
-    function addSmall(label, storageKey, windowVarName, eventName) {
+    // Helper: sync rotated holder widths to visual column heights (minus label/value)
+    function syncRangeLengths() {
+      try {
+        const trackLen = (col, labelEl, valEl) => {
+          try {
+            const lh = (labelEl && labelEl.offsetHeight) ? labelEl.offsetHeight : 0;
+            const vh = (valEl && valEl.offsetHeight) ? valEl.offsetHeight : 0;
+            const pad = 6; // breathing room
+            return Math.max(0, (col ? col.clientHeight : 0) - lh - vh - pad);
+          } catch (_) { return (col ? col.clientHeight : 0) || 0; }
+        };
+
+        if (masterHolder && typeof masterCol !== 'undefined' && masterCol) {
+          masterHolder.style.width = trackLen(masterCol, masterLabel, masterVal) + 'px';
+        }
+        for (let i = 0; i < smallRanges.length; i++) {
+          const h = smallHolders[i];
+          const col = smallRows[i];
+          const lbl = smallLabels[i];
+          const val = smallVals[i];
+          if (h && col) h.style.width = trackLen(col, lbl, val) + 'px';
+        }
+      } catch (_) {}
+    }
+
+    // Factory wrapper for small sliders
+    function addSmall(labelText, storageKey, windowVarName, eventName) {
       const inst = makeVolumeColumn({
-        labelText: label,
+        labelText,
         bindMode: 'custom',
         storageKey,
         windowVarName,
         eventName,
       });
-      // Non-master sliders: no vertical animation
-      // - Remove height transition on holder so height changes snap
-      // - Avoid label/value max-height animation; fade opacity only
+      // Non-master sliders: no vertical animation; fade labels/values only
       try { inst.holder.style.transition = 'none'; } catch (_) {}
       try { if (inst.labelEl) inst.labelEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
       try { if (inst.valEl) inst.valEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
@@ -822,6 +859,10 @@ function ensureFloatingControls() {
     addSmall('Voice', 'volume_voice', '__volumeVoice', 'ui:volume:voice');
 
     vol.appendChild(panel);
+    // Initial sync after mount so clientHeight is accurate
+    try { document.body.appendChild(vol); } catch (_) {}
+    try { syncRangeLengths(); } catch (_) {}
+    // We appended vol early to measure; subsequent code may still add children
 
     function setExtended(on) {
       try {
@@ -870,6 +911,7 @@ function ensureFloatingControls() {
                 panel.style.display = 'none';
                 applyExpanded();
                 try { positionToggle(); } catch (_) {}
+    try { window.addEventListener('resize', () => syncRangeLengths()); } catch (_) {}
               }
             };
             targets.forEach(t => t.addEventListener('transitionend', onDone));
@@ -880,7 +922,8 @@ function ensureFloatingControls() {
     toggle.addEventListener('click', () => setExtended(!window.__volumeExtended));
     // Start collapsed; expand on hover only (until extended via >)
     applyCollapsed();
-    document.body.appendChild(vol);
+    // Ensure final position/toggle after assembly
+    // (vol already appended above for measurement)
     try { positionToggle(); } catch (_) {}
 
     // React to Settings slider adjustments by forcing expansion during drag
