@@ -24,7 +24,15 @@ export function installTopBarVolumeKnobs(opts = {}) {
   cluster.setAttribute('aria-label', 'Volume');
 
   // Master knob (slightly larger)
-  const master = createVolumeKnob({ groupId: 'MASTER', segments: opts.masterSegments ?? 24, size: opts.masterSize ?? 44 });
+  const master = createVolumeKnob({
+    groupId: 'MASTER',
+    segments: opts.masterSegments ?? 24,
+    size: opts.masterSize ?? 44,
+    ringOffset: opts.masterRingOffset,
+    segThickness: opts.masterSegThickness,
+    segLength: opts.masterSegLength,
+    dotSize: opts.masterDotSize,
+  });
   master.el.classList.add('vk-master');
   master.el.title = 'Master Volume';
   cluster.appendChild(master.el);
@@ -49,7 +57,15 @@ export function installTopBarVolumeKnobs(opts = {}) {
 
   const unbinders = [];
   for (const g of groups) {
-    const k = createVolumeKnob({ groupId: g.id, segments: g.segments, size: g.size });
+    const k = createVolumeKnob({
+      groupId: g.id,
+      segments: g.segments,
+      size: g.size,
+      ringOffset: (g.ringOffset != null ? g.ringOffset : opts.groupRingOffset),
+      segThickness: (g.segThickness != null ? g.segThickness : opts.groupSegThickness),
+      segLength: (g.segLength != null ? g.segLength : opts.groupSegLength),
+      dotSize: (g.dotSize != null ? g.dotSize : opts.groupDotSize),
+    });
     k.el.title = `${g.label} Volume`;
     panel.appendChild(k.el);
     unbinders.push(k.unbind);

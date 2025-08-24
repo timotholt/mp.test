@@ -420,7 +420,16 @@ function ensureStatusBar() {
     document.body.appendChild(bar);
 
     let hideTimer = null;
-    const requestHide = () => { if (hideTimer) clearTimeout(hideTimer); hideTimer = setTimeout(() => { bar.style.display = 'none'; }, 3000); };
+    let hoveringBar = false;
+    const clearHide = () => { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } };
+    const requestHide = () => {
+      clearHide();
+      hideTimer = setTimeout(() => {
+        if (!hoveringBar) bar.style.display = 'none';
+      }, 3000);
+    };
+    bar.addEventListener('mouseenter', () => { hoveringBar = true; clearHide(); });
+    bar.addEventListener('mouseleave', () => { hoveringBar = false; requestHide(); });
     window.addEventListener('mousemove', (e) => {
       if (e.clientY <= 8) { bar.style.display = 'flex'; requestHide(); }
     });
@@ -1065,7 +1074,26 @@ async function setupAsciiRenderer() {
     ensureThemeSupport();
     ensureStatusBar();
     // Install compact volume knobs on the left side of the top hover bar
-    try { installTopBarVolumeKnobs({ masterSegments: 28, masterSize: 44 }); } catch (_) {}
+    // Tweaked for tighter status bar fit: smaller knobs, fewer LEDs, thinner/shorter LEDs, smaller dot
+    try {
+      installTopBarVolumeKnobs({
+        masterSegments: 10,
+        masterSize: 26,
+        masterRingOffset: 8,
+        masterSegThickness: 1,
+        masterSegLength: 5,
+        masterDotSize: 3,
+        groupRingOffset: 8,
+        groupSegThickness: 1,
+        groupSegLength: 5,
+        groupDotSize: 3,
+        groups: [
+          { id: 'GAME',  label: 'Game',  segments: 10, size: 22 },
+          { id: 'MUSIC', label: 'Music', segments: 10, size: 22 },
+          { id: 'VOICE', label: 'Voice', segments: 10, size: 22 },
+        ]
+      });
+    } catch (_) {}
     ensureZoomControls();
     // Volume controls (V2)
     try { initAudio(); } catch (_) {}
