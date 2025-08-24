@@ -241,7 +241,7 @@ function ensureStyle() {
 
   .vol-knob .vk-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;
     transform-origin: 50% 50%; }
-  .vol-knob .vk-dot::after { content: ''; position: absolute; left: 50%; top: 6%; width: 6px; height: 6px; margin-left: -3px;
+  .vol-knob .vk-dot::after { content: ''; position: absolute; left: 50%; top: calc(6% + 8px); width: 6px; height: 6px; margin-left: -3px;
     border-radius: 50%; background: #cfe8ff; box-shadow: 0 0 8px rgba(130,180,255,0.8); }
 
   .vol-knob .vk-ring { position: absolute; inset: 0; pointer-events: none; transform: translateY(var(--vk-ring-global-y, 0px)); }
