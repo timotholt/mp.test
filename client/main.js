@@ -471,9 +471,9 @@ function ensureFloatingControls() {
     vol.style.borderRadius = '6px';
     vol.style.padding = '2px';
     vol.style.transition = `height ${FLOATING_VOL_ANIM_DUR} ease, width ${FLOATING_VOL_ANIM_DUR} ease, background ${FLOATING_VOL_ANIM_DUR} ease, border-color ${FLOATING_VOL_ANIM_DUR} ease, padding ${FLOATING_VOL_ANIM_DUR} ease`;
-    // Vertical slider container
+    // Vertical slider container (keep layout constant across modes)
     vol.style.display = 'flex';
-    vol.style.flexDirection = 'column';
+    vol.style.flexDirection = 'row';
     vol.style.alignItems = 'flex-end';
     vol.style.justifyContent = 'center';
     // Size is controlled dynamically on hover
@@ -504,15 +504,12 @@ function ensureFloatingControls() {
         vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         vol.style.padding = '10px 4px';
-        // Stack vertically when not extended
-        vol.style.flexDirection = 'column';
-        // Center contents in collapsed mode (expanded uses flex-end)
-        vol.style.alignItems = 'center';
         // True center in collapsed column
         range.style.left = '50%';
         range.style.marginRight = '0';
         // Keep master column the same width as its holder so the track stays centered
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
+
         // Master adornments hidden when not extended
         // Hide Master label/value via height animation base state
         if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
@@ -534,18 +531,25 @@ function ensureFloatingControls() {
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom
         vol.style.padding = '10px 4px';
-        // Avoid layout flip during hover; only switch when actually extended
-        vol.style.flexDirection = extended ? 'row' : 'column';
-        vol.style.alignItems = extended ? 'flex-end' : 'center';
         // Keep slider horizontally centered to avoid lateral jump during animation
         range.style.left = '50%';
         range.style.marginRight = '0';
         if (masterHolder) masterHolder.style.height = EXPANDED_LEN + 'px';
         // Only widen master column when extended so non-extended hover keeps identical geometry
+
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = extended ? '40px' : '24px';
         // Reveal Master adornments only in full extended mode (animate height)
         if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; masterLabel.style.opacity = extended ? '1' : '0'; }
         if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; masterVal.style.opacity = extended ? '1' : '0'; }
+        // When not extended, ensure compact panel stays hidden and small columns are reset to 0
+        if (!extended) {
+          try { if (panel) panel.style.display = 'none'; } catch (_) {}
+          try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          try {
+            smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+            smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+          } catch (_) {}
+        }
         // Show toggle when expanded
         if (toggle) { toggle.style.display = ''; try { positionToggle(); } catch (_) {} }
       } catch (_) {}
@@ -779,7 +783,8 @@ function ensureFloatingControls() {
     function setExtended(on) {
       try {
         window.__volumeExtended = !!on;
-        panel.style.display = on ? 'flex' : 'none';
+        // Only show immediately when enabling; when disabling, wait for shrink animation to finish
+        if (on) panel.style.display = 'flex';
         toggle.textContent = on ? '<' : '>';
         if (on) {
           // Reveal panel and animate small column widths from 0 -> 40px
@@ -793,12 +798,24 @@ function ensureFloatingControls() {
           } catch (_) {}
           applyExpanded(); try { positionToggle(); } catch (_) {}
         } else {
-          // Hide small slider label/values
+          // Hide small slider label/values (animate 16px -> 0)
           try {
             smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
             smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
           } catch (_) {}
-          if (!window.__volumeAdjusting) applyCollapsed();
+          // Animate small column widths 40px -> 0px before hiding the panel
+          try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
+          // After width transition completes, hide the panel and switch to non-extended expanded layout
+          try {
+            const first = smallRows[0];
+            if (first) first.addEventListener('transitionend', (e) => {
+              if (e.propertyName === 'width' && !window.__volumeExtended) {
+                panel.style.display = 'none';
+                applyExpanded();
+                try { positionToggle(); } catch (_) {}
+              }
+            }, { once: true });
+          } catch (_) {}
         }
       } catch (_) {}
     }
