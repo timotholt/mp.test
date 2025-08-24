@@ -13,6 +13,8 @@ import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.
 import { createChatTabs } from './core/chatTabs.js';
 // removed legacy volume import from './core/volume.js'
 import { initAudio } from './core/audio/audioManager.js';
+import { installTopBarVolumeKnobs } from './core/audio/topBarVolumeKnobs.js';
+import { installCenterVolumeKnob } from './core/audio/debugCenterKnob.js';
 import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
@@ -397,7 +399,12 @@ function ensureStatusBar() {
     bar.style.zIndex = '30000';
     const left = document.createElement('div');
     left.id = 'status-left';
-    left.textContent = 'FPS: -- | PING: --';
+    // Keep metrics in a nested span so other UI (like volume knobs) can live inside left without
+    // being clobbered by textContent updates elsewhere.
+    const metrics = document.createElement('span');
+    metrics.id = 'status-metrics';
+    metrics.textContent = 'FPS: -- | PING: --';
+    left.appendChild(metrics);
     const right = document.createElement('div');
     right.id = 'status-right';
     const gear = document.createElement('button');
@@ -1041,11 +1048,11 @@ async function setupAsciiRenderer() {
           const fps = Math.round(frames * 1000 / acc);
           frames = 0; acc = 0;
           try {
-            const left = document.getElementById('status-left');
-            if (left) {
-              const txt = left.textContent || '';
+            const metricsEl = document.getElementById('status-metrics');
+            if (metricsEl) {
+              const txt = metricsEl.textContent || '';
               const parts = txt.split('|');
-              left.textContent = `FPS: ${fps} | ${parts[1] ? parts[1].trim() : 'PING: --'}`;
+              metricsEl.textContent = `FPS: ${fps} | ${parts[1] ? parts[1].trim() : 'PING: --'}`;
             }
           } catch (_) {}
         }
@@ -1057,9 +1064,13 @@ async function setupAsciiRenderer() {
     // Ensure UI chrome exists
     ensureThemeSupport();
     ensureStatusBar();
+    // Install compact volume knobs on the left side of the top hover bar
+    try { installTopBarVolumeKnobs({ masterSegments: 28, masterSize: 44 }); } catch (_) {}
     ensureZoomControls();
     // Volume controls (V2)
     try { initAudio(); } catch (_) {}
+    // Center debug knob (temporary for testing)
+    try { installCenterVolumeKnob({ groupId: 'MASTER', size: 120, segments: 36 }); } catch (_) {}
     ensureBanner();
     ensureScreenShade();
 

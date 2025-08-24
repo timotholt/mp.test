@@ -232,10 +232,10 @@ function ensureStyle() {
   .vol-knob { position: relative; width: var(--vk-size, 64px); height: var(--vk-size, 64px);
     border-radius: 50%; background: radial-gradient(ellipse at center, #222 0%, #151515 60%, #0d0d0d 100%);
     box-shadow: inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -2px 6px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.5);
-    outline: none; cursor: ns-resize; user-select: none; touch-action: none; }
+    outline: none; cursor: ns-resize; user-select: none; touch-action: none; overflow: visible; }
   .vol-knob:focus { box-shadow: 0 0 0 2px rgba(100,160,255,0.5), inset 0 1px 2px rgba(255,255,255,0.06), inset 0 -2px 6px rgba(0,0,0,0.8); }
 
-  .vol-knob .vk-dot { position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; pointer-events: none;
+  .vol-knob .vk-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;
     transform-origin: 50% 50%; }
   .vol-knob .vk-dot::after { content: ''; position: absolute; left: 50%; top: 6%; width: 6px; height: 6px; margin-left: -3px;
     border-radius: 50%; background: #cfe8ff; box-shadow: 0 0 8px rgba(130,180,255,0.8); }
@@ -243,7 +243,7 @@ function ensureStyle() {
   .vol-knob .vk-ring { position: absolute; inset: 0; pointer-events: none; }
   .vol-knob .vk-seg { position: absolute; left: 50%; top: 50%; width: 2px; height: 10px; margin-left: -1px; margin-top: -5px;
     background: #2a2f36; border-radius: 1px; opacity: 0.45;
-    transform-origin: 0 0; transform: rotate(var(--ang)) translateY(calc(-1 * var(--vk-size) / 2 + 6px)); }
+    transform-origin: 0 0; transform: rotate(var(--ang)) translateY(calc(-1 * var(--vk-size) / 2 - 6px)); }
   .vol-knob .vk-seg.on { background: #9fd0ff; opacity: 1; box-shadow: 0 0 6px rgba(120,170,255,0.9); }
   `;
   document.head.appendChild(st);
