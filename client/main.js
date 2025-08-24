@@ -13,6 +13,7 @@ import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.
 import { createChatTabs } from './core/chatTabs.js';
 // removed legacy volume import from './core/volume.js'
 import { initAudio } from './core/audio/audioManager.js';
+import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -178,7 +179,7 @@ makeScreen(APP_STATES.LOBBY, (el) => {
         mode: 'lobby',
         onJoinGame: async (roomId) => {
           try {
-            const playerName = localStorage.getItem('name') || 'Hero';
+            const playerName = LS.getItem('name', 'Hero');
             const rj = await client.joinById(String(roomId), { name: playerName });
             await afterJoin(rj);
           } catch (e) {
@@ -188,7 +189,7 @@ makeScreen(APP_STATES.LOBBY, (el) => {
                 roomName: String(roomId),
                 onSubmit: async (pwd) => {
                   try {
-                    const rj = await client.joinById(String(roomId), { name: localStorage.getItem('name') || 'Hero', roomPass: pwd || '' });
+                    const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
                     await afterJoin(rj);
                     return true;
                   } catch (err) {
@@ -211,7 +212,7 @@ makeScreen(APP_STATES.LOBBY, (el) => {
       createRoomBtn.onclick = () => {
         presentRoomCreateModal({
           onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
-            const cname = localStorage.getItem('name') || 'Hero';
+            const cname = LS.getItem('name', 'Hero');
             try {
               const newRoom = await client.create('nethack', {
                 name,
@@ -278,7 +279,7 @@ makeScreen(APP_STATES.ROOM, (el) => {
       mode: 'game',
       onJoinGame: async (roomId) => {
         try {
-          const playerName = localStorage.getItem('name') || 'Hero';
+          const playerName = LS.getItem('name', 'Hero');
           const rj = await client.joinById(String(roomId), { name: playerName });
           await afterJoin(rj);
         } catch (e) {
@@ -288,7 +289,7 @@ makeScreen(APP_STATES.ROOM, (el) => {
               roomName: String(roomId),
               onSubmit: async (pwd) => {
                 try {
-                  const rj = await client.joinById(String(roomId), { name: localStorage.getItem('name') || 'Hero', roomPass: pwd || '' });
+                  const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
                   await afterJoin(rj);
                   return true;
                 } catch (err) {
@@ -692,7 +693,7 @@ function renderRooms(rooms) {
     btn.textContent = 'Join';
     btn.style.marginLeft = '8px';
     btn.onclick = async () => {
-      const playerName = localStorage.getItem('name') || prompt('Name?') || 'Hero';
+      const playerName = LS.getItem('name', '') || prompt('Name?') || 'Hero';
       if (meta.private) {
         presentRoomPromptPassword({
           roomName: meta.name || r.roomId,
@@ -732,7 +733,7 @@ async function afterJoin(r) {
   try { roomUIBound = false; } catch (_) {}
   wireRoomEvents(room);
   const selfId = room.sessionId;
-  const pname = localStorage.getItem('name') || 'Hero';
+  const pname = LS.getItem('name', 'Hero');
   statusEl.textContent = `Connected | roomId=${room.id} | you=${pname} (${selfId.slice(0,6)})`;
   // Close lobby modal on successful join
   try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}

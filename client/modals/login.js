@@ -1,6 +1,7 @@
 // Login Modal & Backdrop (plain JS)
 // Depends on global window.OverlayManager and optionally window.PRIORITY.
 // Exports functions used by client/main.js to present the login UI.
+import * as LS from '../core/localStorage.js';
 
 export function presentLoginModal() {
   const id = 'LOGIN_MODAL';
@@ -32,13 +33,13 @@ export function presentLoginModal() {
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Hero';
-  input.value = localStorage.getItem('name') || '';
+  input.value = LS.getItem('name', '') || '';
 
   const ok = document.createElement('button');
   ok.textContent = 'Enter Lobby';
   ok.onclick = () => {
     const n = (input.value || '').trim() || 'Hero';
-    localStorage.setItem('name', n);
+    LS.setItem('name', n);
     if (window.OverlayManager) window.OverlayManager.dismiss(id);
     // Route into lobby by setting a marker and relying on main.js to start lobby
     if (typeof window.startLobby === 'function') {

@@ -1,7 +1,7 @@
-// Floating Volume UI (V2) - clean, CSS-first, using volumes.js groups
+// Floating Volume UI (V2) - clean, CSS-first, using volumeGroupManager.js groups
 // Exports a single installer function. Keeps all state in DOM + window flags.
 
-import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from './volumes.js';
+import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from './volumeGroupManager.js';
 
 export function installFloatingVolumeUI() {
   // Feature-guarded creation

@@ -1,4 +1,5 @@
-import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumes.js';
+import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumeGroupManager.js';
+import * as LS from '../core/localStorage.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -166,7 +167,7 @@ function renderSettingsContent(panel) {
     if (!__settingsState.accountEnabled) {
       content.appendChild(makeNote('Please login to a game server first to change your profile settings.'));
     } else {
-      content.appendChild(makeRow('Display Name', makeInput('text', localStorage.getItem('name') || '')));
+      content.appendChild(makeRow('Display Name', makeInput('text', LS.getItem('name', '') || '')));
     }
   } else if (tab === 'Display') {
     content.appendChild(makeSection('Display', 'Theme and rendering.'));
@@ -177,12 +178,12 @@ function renderSettingsContent(panel) {
     ['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
     // Load and apply persisted theme
     try {
-      const saved = localStorage.getItem('theme');
+      const saved = LS.getItem('theme', null);
       if (saved) sel.value = saved;
       if (window.setTheme) window.setTheme(sel.value || saved || 'dark');
     } catch (_) {}
     sel.onchange = () => {
-      try { localStorage.setItem('theme', sel.value); } catch (_) {}
+      try { LS.setItem('theme', sel.value); } catch (_) {}
       try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
     };
     themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
@@ -231,7 +232,7 @@ function makeRow(labelText, controlEl) {
 function makeInput(type, value) {
   const i = document.createElement('input'); i.type = type; if (value != null) i.value = value;
   i.style.flex = '1';
-  i.onchange = () => { if (type === 'text') try { localStorage.setItem('name', i.value || ''); } catch (_) {} };
+  i.onchange = () => { if (type === 'text') try { LS.setItem('name', i.value || ''); } catch (_) {} };
   return i;
 }
 
@@ -311,10 +312,10 @@ function makeCheckboxRow(labelText, storageKey, eventName) {
   const row = document.createElement('div');
   row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '6px';
   const cb = document.createElement('input'); cb.type = 'checkbox';
-  try { cb.checked = localStorage.getItem(storageKey) === '1'; } catch (_) { cb.checked = false; }
+  try { cb.checked = LS.getItem(storageKey, '0') === '1'; } catch (_) { cb.checked = false; }
   const lbl = document.createElement('label'); lbl.textContent = labelText;
   cb.onchange = () => {
-    try { localStorage.setItem(storageKey, cb.checked ? '1' : '0'); } catch (_) {}
+    try { LS.setItem(storageKey, cb.checked ? '1' : '0'); } catch (_) {}
     try { window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled: cb.checked } })); } catch (_) {}
   };
   row.appendChild(cb); row.appendChild(lbl);
