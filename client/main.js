@@ -520,15 +520,17 @@ function ensureFloatingControls() {
             height: 0;
             max-height: 16px;
             width: 16px;
-            opacity: 0;
+            border: 0;
+            visibility: hidden;
             pointer-events: none;
             overflow: hidden;
-            transition: height .2s ease, opacity .2s ease;
+            transition: height .2s ease;
           }
           #volume-control:hover #volume-toggle {
             height: 16px;
             max-height: 16px;
-            opacity: 1;
+            border: 1px solid var(--control-border);
+            visibility: visible;
             pointer-events: auto;
           }
         `;
@@ -552,12 +554,12 @@ function ensureFloatingControls() {
 
         // Master adornments hidden when not extended
         // Hide Master label/value via height animation base state
-        if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
-        if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
+        if (masterLabel) { masterLabel.style.maxHeight = '0px'; }
+        if (masterVal) { masterVal.style.maxHeight = '0px'; }
         if (masterHolder) masterHolder.style.height = '100%';
         // Holders/ranges auto-fill parent; defer length sync to next frame so layout is updated
         try { requestAnimationFrame(() => syncRangeLengths()); } catch (_) {}
-        // Toggle visibility handled purely by CSS :hover (opacity/pointer-events)
+        // Toggle visibility handled purely by CSS :hover (pointer-events)
       } catch (_) {}
     }
 
@@ -569,7 +571,8 @@ function ensureFloatingControls() {
         // Keep width auto during hover expansion to avoid auto↔fixed jumps
         vol.style.width = 'auto';
         // widths are synced to holder heights dynamically
-        vol.style.background = 'var(--control-bg)';
+        // Keep background transparent; no opacity-like effect
+        vol.style.background = 'transparent';
         vol.style.border = '1px solid var(--control-border)';
         // Narrow left/right padding (4px), with extra top/bottom; keep padding constant across states
         vol.style.padding = '10px 4px';
@@ -580,16 +583,16 @@ function ensureFloatingControls() {
         // Keep master column width constant to avoid visual padding shifts during toggle
         if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px';
         // Reveal Master adornments only in full extended mode (animate height)
-        if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; masterLabel.style.opacity = extended ? '1' : '0'; }
-        if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; masterVal.style.opacity = extended ? '1' : '0'; }
+        if (masterLabel) { masterLabel.style.maxHeight = extended ? '16px' : '0px'; }
+        if (masterVal) { masterVal.style.maxHeight = extended ? '16px' : '0px'; }
         // When not extended (hover-only): show panel so height contributes, but keep small columns visually hidden
         if (!extended) {
           try { if (panel) panel.style.display = 'flex'; } catch (_) {}
           // Visually hidden: columns width = 0 and labels/values collapsed
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
           try {
-            smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
-            smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
+            smallLabels.forEach(el => { el.style.maxHeight = '0px'; });
+            smallVals.forEach(el => { el.style.maxHeight = '0px'; });
           } catch (_) {}
           // But contribute correct height so the container animates smoothly
           // Holders and ranges fill via 100% height; no per-range width tween
@@ -624,15 +627,13 @@ function ensureFloatingControls() {
     toggle.textContent = '>';
     toggle.title = 'Show more volume controls';
     toggle.style.background = 'transparent';
-    toggle.style.border = '1px solid var(--control-border)';
     toggle.style.borderRadius = '3px';
     toggle.style.color = 'var(--ui-fg)';
     toggle.style.cursor = 'pointer';
     toggle.style.fontSize = '10px';
     toggle.style.lineHeight = '10px';
     toggle.style.width = '16px';
-    // Let CSS control height via hover (0 -> 100%)
-    toggle.style.height = '50%';
+    // Let CSS control height via hover (0 -> 16px)
     toggle.style.padding = '0';
     // Overlay the toggle; position via top/left
     toggle.style.position = 'absolute';
@@ -670,8 +671,6 @@ function ensureFloatingControls() {
           labelEl.style.display = 'block';
           labelEl.style.overflow = 'hidden';
           labelEl.style.maxHeight = '0px';
-          labelEl.style.opacity = '0';
-          labelEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
         // Holder for rotated range
         if (holder) {
@@ -695,8 +694,6 @@ function ensureFloatingControls() {
           valEl.style.display = 'block';
           valEl.style.overflow = 'hidden';
           valEl.style.maxHeight = '0px';
-          valEl.style.opacity = '0';
-          valEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`;
         }
       } catch (_) {}
     }
@@ -877,10 +874,8 @@ function ensureFloatingControls() {
         windowVarName,
         eventName,
       });
-      // Non-master sliders: no vertical animation; fade labels/values only
+      // Non-master sliders: no vertical animation; rely on height only (no opacity fades)
       try { inst.holder.style.transition = 'none'; } catch (_) {}
-      try { if (inst.labelEl) inst.labelEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
-      try { if (inst.valEl) inst.valEl.style.transition = `opacity ${FLOATING_VOL_ANIM_DUR} ease`; } catch (_) {}
       panel.appendChild(inst.col);
       smallRows.push(inst.col);
       smallHolders.push(inst.holder);
@@ -927,22 +922,22 @@ function ensureFloatingControls() {
           // No holder or range size tweens here
           // Reveal small label/value after Master expansion to align start times
           try {
-            smallLabels.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
-            smallVals.forEach(el => { el.style.maxHeight = '16px'; el.style.opacity = '1'; });
+            smallLabels.forEach(el => { el.style.maxHeight = '16px'; });
+            smallVals.forEach(el => { el.style.maxHeight = '16px'; });
           } catch (_) {}
         } else {
-          // Freeze current auto height to px so the subsequent change to EXPANDED_LEN animates
-          try { const h0 = vol.offsetHeight; vol.style.height = h0 + 'px'; void vol.offsetHeight; } catch (_) {}
+          // Do NOT freeze inline height; allow CSS :hover to collapse immediately
+          try { vol.style.height = ''; } catch (_) {}
           // Animate widths simultaneously: Master 40->24 and small columns 40->0
           try { if (typeof masterCol !== 'undefined' && masterCol) masterCol.style.width = '24px'; } catch (_) {}
           try { smallRows.forEach(col => { col.style.width = '0px'; }); } catch (_) {}
           // Holders stay 100% height; ranges auto-fill holder (no per-range width tween)
           // Now collapse all labels/values in the same frame to sync with width transitions
           try {
-            smallLabels.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
-            smallVals.forEach(el => { el.style.maxHeight = '0px'; el.style.opacity = '0'; });
-            if (masterLabel) { masterLabel.style.maxHeight = '0px'; masterLabel.style.opacity = '0'; }
-            if (masterVal) { masterVal.style.maxHeight = '0px'; masterVal.style.opacity = '0'; }
+            smallLabels.forEach(el => { el.style.maxHeight = '0px'; });
+            smallVals.forEach(el => { el.style.maxHeight = '0px'; });
+            if (masterLabel) { masterLabel.style.maxHeight = '0px'; }
+            if (masterVal) { masterVal.style.maxHeight = '0px'; }
           } catch (_) {}
           // After all width transitions (Master + small) complete, hide the panel and switch layout
           try {
@@ -955,8 +950,11 @@ function ensureFloatingControls() {
               if (--remaining <= 0 && !window.__volumeExtended) {
                 try { targets.forEach(t => t.removeEventListener('transitionend', onDone)); } catch (_) {}
                 panel.style.display = 'none';
-                applyExpanded();
-    try { window.addEventListener('resize', () => syncRangeLengths()); } catch (_) {}
+                // Return to collapsed baseline; CSS :hover will expand height when hovered
+                applyCollapsed();
+                // Clear the temporary inline height so CSS :hover can collapse again
+                try { vol.style.height = ''; } catch (_) {}
+                try { window.addEventListener('resize', () => syncRangeLengths()); } catch (_) {}
               }
             };
             targets.forEach(t => t.addEventListener('transitionend', onDone));
