@@ -616,7 +616,7 @@ function ensureFloatingControls() {
         col.style.display = 'flex';
         col.style.flexDirection = 'column';
         col.style.alignItems = 'center';
-        col.style.gap = '2px';
+        // col.style.gap = '2px';
         col.style.width = '40px';
         // Critical for flex children: allow shrinking below content size during animations
         col.style.minWidth = '0';
@@ -777,7 +777,7 @@ function ensureFloatingControls() {
     // Lay out sliders side-by-side
     panel.style.flexDirection = 'row';
     panel.style.alignItems = 'center';
-    panel.style.gap = '2px';
+    // panel.style.gap = '2px';
     panel.style.padding = '0';
     panel.style.width = 'auto';
     // Arrays used by animations to keep small sliders in sync with Master
@@ -873,6 +873,7 @@ function ensureFloatingControls() {
     // Start collapsed; expand on hover only (until extended via >)
     applyCollapsed();
     document.body.appendChild(vol);
+    try { positionToggle(); } catch (_) {}
 
     // React to Settings slider adjustments by forcing expansion during drag
     try {
@@ -896,12 +897,15 @@ function ensureFloatingControls() {
         const holderRect = masterHolder.getBoundingClientRect();
         const left = Math.round((holderRect.left - volRect.left) + (holderRect.width / 2) - (toggle.offsetWidth / 2));
         const gutter = 4; // small spacing from the holder's top edge
-        const top = Math.round((holderRect.top - volRect.top) + gutter);
+        // Apply a tiny offset only when not in fully-collapsed geometry to neutralize hover drift
+        const isCollapsed = vol.style.height === (COLLAPSED_LEN + 'px');
+        const hoverOffset = isCollapsed ? 0 : -4;
+        const top = Math.round((holderRect.top - volRect.top) + gutter + hoverOffset);
         // Clamp inside container so moving cursor to the button doesn't exit hover area
         const maxLeft = Math.max(0, (vol.clientWidth - toggle.offsetWidth - 2));
         const maxTop = Math.max(0, (vol.clientHeight - toggle.offsetHeight - 2));
         const clampedLeft = Math.max(2, Math.min(maxLeft, left));
-        const clampedTop = Math.max(2, Math.min(maxTop, top));
+        const clampedTop = Math.max(0, Math.min(maxTop, top));
         toggle.style.left = clampedLeft + 'px';
         toggle.style.top = clampedTop + 'px';
       } catch (_) {}
