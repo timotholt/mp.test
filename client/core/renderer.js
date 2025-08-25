@@ -191,7 +191,8 @@ export async function setupAsciiRenderer() {
     try { if (window.ensureThemeSupport) window.ensureThemeSupport(); } catch (_) {}
     try { if (window.ensureStatusBar) window.ensureStatusBar(); } catch (_) {}
     try { if (window.ensureZoomControls) window.ensureZoomControls(); } catch (_) {}
-    try { initAudio({ floatingVolume: false }); } catch (_) {}
+    // Disable center debug knob while keeping audio wiring; floating panel also off for now
+    try { initAudio({ floatingVolume: false, centerDebugKnob: false }); } catch (_) {}
     try { if (window.ensureBanner) window.ensureBanner(); } catch (_) {}
     try { if (window.ensureScreenShade) window.ensureScreenShade(); } catch (_) {}
 
