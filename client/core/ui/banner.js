@@ -10,7 +10,8 @@ export function ensureBanner() {
     banner.style.position = 'fixed';
     banner.style.top = '8px';
     banner.style.left = '50%';
-    banner.style.transform = 'translateX(-50%)';
+    banner.style.transform = 'translate(-50%, -120%)';
+    banner.style.transition = 'transform 0.4s ease';
     banner.style.width = '20%';
     banner.style.minWidth = '240px';
     banner.style.maxWidth = '480px';
@@ -18,18 +19,30 @@ export function ensureBanner() {
     banner.style.display = 'none';
     banner.style.alignItems = 'center';
     banner.style.justifyContent = 'center';
-    banner.style.background = 'var(--banner-bg)';
+    banner.style.background = 'var(--banner-bg, linear-gradient(180deg, rgba(10,18,26,0.35) 0%, rgba(10,16,22,0.28) 100%))';
     banner.style.color = 'var(--ui-fg)';
-    banner.style.border = '1px solid var(--control-border)';
+    banner.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    banner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
+    banner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
     banner.style.borderRadius = '6px';
     banner.style.padding = '0 12px';
-    banner.style.zIndex = '9500'; // above hover status bar (9000), below overlay (9999)
+    // Keep banner above overlay (zIndex 20000) and status bar (30000)
+    banner.style.zIndex = '30100';
     document.body.appendChild(banner);
 
     window.showBanner = function(msg = '', ms = 4000) {
-      try { banner.textContent = msg; banner.style.display = 'flex'; } catch (_) {}
+      try {
+        banner.textContent = msg;
+        banner.style.display = 'flex';
+        // allow layout to apply before animating
+        requestAnimationFrame(() => { try { banner.style.transform = 'translate(-50%, 0)'; } catch (_) {} });
+      } catch (_) {}
       if (window.__bannerTimer) clearTimeout(window.__bannerTimer);
-      window.__bannerTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} }, ms);
+      if (window.__bannerHideVisTimer) clearTimeout(window.__bannerHideVisTimer);
+      window.__bannerTimer = setTimeout(() => {
+        try { banner.style.transform = 'translate(-50%, -120%)'; } catch (_) {}
+        window.__bannerHideVisTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} }, 450);
+      }, ms);
     };
   }
   return banner;

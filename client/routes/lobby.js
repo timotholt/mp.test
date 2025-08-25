@@ -8,6 +8,7 @@ import { presentRoomCreateModal } from '../modals/roomCreate.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
 import { deriveGameId } from '../core/util/deriveGameId.js';
+import { ensureBanner } from '../core/ui/banner.js';
 
 let lobbyPollId = null;
 let lobbyChat = null;
@@ -213,6 +214,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     el.innerHTML = '';
     el.update = () => {
       try { OverlayManager.present({ id: 'LOBBY_MODAL', priority: PRIORITY.MEDIUM, text: 'Lobby', actions: [], blockInput: true, external: true }); } catch (_) {}
+      try { ensureBanner(); window.showBanner('Lobby', 2500); } catch (_) {}
       const overlay = document.getElementById('overlay');
       const content = overlay ? overlay.querySelector('#overlay-content') : null;
       if (content) {
@@ -223,9 +225,6 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           // Include padding within layout height to prevent bottom clipping of chat
           content.style.boxSizing = 'border-box';
         } catch (_) {}
-        const header = document.createElement('div');
-        header.textContent = 'Lobby';
-
         // Layout container: grid with 2 rows (top panels fixed to 40vh, bottom chat fills remainder) and 2 columns
         const grid = document.createElement('div');
         grid.style.display = 'grid';
@@ -461,7 +460,6 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         grid.appendChild(playersPanel.el);
         grid.appendChild(chatWrap);
 
-        content.appendChild(header);
         content.appendChild(grid);
       }
       // Prefer realtime; keep polling as a fallback

@@ -3,6 +3,7 @@
 
 import OverlayManager from '../core/overlayManager.js';
 import { presentLoginModal, showLoginBackdrop } from '../modals/login.js';
+import { ensureBanner } from '../core/ui/banner.js';
 
 export function registerLoginRoute({ makeScreen, APP_STATES }) {
   makeScreen(APP_STATES.LOGIN, (el) => {
@@ -13,5 +14,6 @@ export function registerLoginRoute({ makeScreen, APP_STATES }) {
     try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
     showLoginBackdrop();
     presentLoginModal();
+    try { ensureBanner(); window.showBanner('Login', 3000); } catch (_) {}
   });
 }

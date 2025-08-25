@@ -6,6 +6,7 @@ import { getAccessToken } from '../core/auth/supabaseAuth.js';
 import { createChatTabs } from '../core/chatTabs.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
+import { ensureBanner } from '../core/ui/banner.js';
 
 export function registerRoomRoute({ makeScreen, APP_STATES, joinById, afterJoin, sendRoomMessage, leaveRoomToLobby, setReadyButtonUI, appendChatLine, bindRoomUIEventsOnce, renderRoomPlayers, refreshRoomChat, setRefs }) {
   makeScreen(APP_STATES.ROOM, (el) => {
@@ -13,6 +14,7 @@ export function registerRoomRoute({ makeScreen, APP_STATES, joinById, afterJoin,
     el.innerHTML = '';
     el.update = () => {
       try { OverlayManager.present({ id: 'ROOM_MODAL', priority: PRIORITY.MEDIUM, text: 'Room', actions: [], blockInput: true, external: true }); } catch (_) {}
+      try { ensureBanner(); window.showBanner('Room', 2500); } catch (_) {}
       const overlay = document.getElementById('overlay');
       const content = overlay ? overlay.querySelector('#overlay-content') : null;
       if (!content) return;
