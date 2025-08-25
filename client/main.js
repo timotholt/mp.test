@@ -12,9 +12,12 @@ import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.
 import { createChatTabs } from './core/chatTabs.js';
 import { setupAsciiRenderer } from './core/renderer.js';
 import { SUBSTATES, presentSubstate } from './core/substates.js';
-import './core/ui/theme.js';
+import { ensureThemeSupport } from './core/ui/theme/themeManager.js';
 import { ensureStatusBar } from './core/ui/statusBar.js';
 import { registerRoomRoute } from './routes/room.js';
+import { ensureZoomControls } from './core/zoom/zoomManager.js';
+import { ensureBanner } from './core/ui/banner.js';
+import { registerGameplayMovement } from './core/input/gameplayInput.js';
 import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
@@ -285,38 +288,7 @@ window.ensureScreenShade = ensureScreenShade;
 
 // Default route until server tells us otherwise (after shade is attached)
 setRoute(APP_STATES.LOGIN);
-
-// Lightweight theme support using CSS variables
-function ensureThemeSupport() {
-  if (document.getElementById('theme-style')) return;
-  const st = document.createElement('style');
-  st.id = 'theme-style';
-  st.textContent = `:root{
-    --ui-bg: rgba(0,0,0,0.8);
-    --ui-fg: #fff;
-    --ui-muted: #ccc;
-    --ui-accent: #4caf50;
-    --bar-bg: rgba(20,20,20,0.9);
-    --banner-bg: rgba(32,32,32,0.95);
-    --control-bg: rgba(0,0,0,0.6);
-    --control-border: #444;
-  }
-  body, button, input, select, textarea {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  }`;
-  document.head.appendChild(st);
-  window.setTheme = function(theme) {
-    // Simple placeholder for future themes
-    const dark = theme !== 'light';
-    document.documentElement.style.setProperty('--ui-bg', dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)');
-    document.documentElement.style.setProperty('--ui-fg', dark ? '#fff' : '#111');
-    document.documentElement.style.setProperty('--ui-muted', dark ? '#ccc' : '#333');
-    document.documentElement.style.setProperty('--bar-bg', dark ? 'rgba(20,20,20,0.9)' : 'rgba(240,240,240,0.9)');
-    document.documentElement.style.setProperty('--banner-bg', dark ? 'rgba(32,32,32,0.95)' : 'rgba(250,250,250,0.95)');
-    document.documentElement.style.setProperty('--control-bg', dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)');
-    document.documentElement.style.setProperty('--control-border', dark ? '#444' : '#bbb');
-  };
-}
+// Theme support moved to './core/ui/theme/themeManager.js'
 // Expose for other modules
 window.ensureThemeSupport = ensureThemeSupport;
 
@@ -326,76 +298,11 @@ window.ensureStatusBar = ensureStatusBar;
 
 // Legacy floating volume controls removed in favor of './core/audio/floatingVolume.js'.
 
-// Provide minimal zoom controls (+/-) to replace the part that lived in the legacy block
-function ensureZoomControls() {
-  let zoom = document.getElementById('zoom-controls');
-  if (!zoom) {
-    zoom = document.createElement('div');
-    zoom.id = 'zoom-controls';
-    zoom.style.position = 'fixed';
-    zoom.style.left = '12px';
-    zoom.style.bottom = '12px';
-    zoom.style.zIndex = '30001';
-    zoom.style.background = 'var(--control-bg)';
-    zoom.style.border = '1px solid var(--control-border)';
-    zoom.style.borderRadius = '6px';
-    zoom.style.padding = '6px';
-    zoom.style.display = 'flex';
-    zoom.style.flexDirection = 'column';
-    const zin = document.createElement('button');
-    zin.textContent = '+'; zin.style.marginBottom = '6px';
-    const zout = document.createElement('button');
-    zout.textContent = '-';
-    const applyZoom = (factor) => {
-      try {
-        if (window.radianceCascades && typeof window.radianceCascades.zoom === 'function') {
-          window.radianceCascades.zoom(factor);
-        } else {
-          window.dispatchEvent(new CustomEvent('ui:zoom', { detail: { factor } }));
-        }
-      } catch (_) {}
-    };
-    zin.onclick = () => applyZoom(1.1);
-    zout.onclick = () => applyZoom(0.9);
-    zoom.appendChild(zin); zoom.appendChild(zout);
-    document.body.appendChild(zoom);
-  }
-}
+// Provide minimal zoom controls (+/-) moved to './core/zoom/zoomManager.js'
 // Expose for other modules
 window.ensureZoomControls = ensureZoomControls;
 
-function ensureBanner() {
-  let banner = document.getElementById('mini-banner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'mini-banner';
-    banner.style.position = 'fixed';
-    banner.style.top = '8px';
-    banner.style.left = '50%';
-    banner.style.transform = 'translateX(-50%)';
-    banner.style.width = '20%';
-    banner.style.minWidth = '240px';
-    banner.style.maxWidth = '480px';
-    banner.style.height = '2em';
-    banner.style.display = 'none';
-    banner.style.alignItems = 'center';
-    banner.style.justifyContent = 'center';
-    banner.style.background = 'var(--banner-bg)';
-    banner.style.color = 'var(--ui-fg)';
-    banner.style.border = '1px solid var(--control-border)';
-    banner.style.borderRadius = '6px';
-    banner.style.padding = '0 12px';
-    banner.style.zIndex = '9500'; // above hover status bar (9000), below overlay (9999)
-    document.body.appendChild(banner);
-
-    window.showBanner = function(msg = '', ms = 4000) {
-      try { banner.textContent = msg; banner.style.display = 'flex'; } catch (_) {}
-      if (window.__bannerTimer) clearTimeout(window.__bannerTimer);
-      window.__bannerTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} }, ms);
-    };
-  }
-  return banner;
-}
+// Banner moved to './core/ui/banner.js' (ensureBanner is imported)
 // Expose for other modules
 window.ensureBanner = ensureBanner;
 
@@ -410,6 +317,8 @@ const client = new Colyseus.Client(endpoint);
 
 let room;
 let lastStateVersion = 0;
+// Register gameplay input handler (guarded)
+try { registerGameplayMovement(() => room); } catch (_) {}
 
 // Only auto-reconnect on reload or back/forward, not on a fresh navigate/duplicated tab.
 function shouldAutoReconnect() {
@@ -668,15 +577,7 @@ function wireRoomEvents(r) {
   });
 }
  
-// Gameplay movement input (guarded)
-window.addEventListener('keydown', (e) => {
-  const map = { ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E' };
-  const dir = map[e.key];
-  if (!dir) return;
-  if (!room || !window.__canSendGameplayInput) return;
-  e.preventDefault();
-  room.send('input', { type: 'move', dir });
-});
+// Gameplay movement input moved to './core/input/gameplayInput.js'
 
 // ASCII renderer moved to './core/renderer.js'
 
