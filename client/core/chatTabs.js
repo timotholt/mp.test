@@ -71,11 +71,17 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   hiddenIconBtn.style.display = 'none';
   input.style.padding = '0 10px';
   // Preserve chat sizing and font
-  input.style.height = '46px';
+  // Fill the full row height so the left border (divider) touches top/bottom
+  input.style.height = '100%';
   input.style.lineHeight = '46px';
   input.style.borderRadius = '0px 10px 0px 0px';
   input.style.borderLeft = '1px solid var(--ui-surface-border)';
+  input.style.boxSizing = 'border-box';
   input.style.fontSize = '16px';
+
+  // Stretch the input row's children to eliminate tiny vertical gaps
+  try { inputRow.style.alignItems = 'stretch'; } catch (_) {}
+  try { inputWrap.style.alignSelf = 'stretch'; } catch (_) {}
 
   const sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
