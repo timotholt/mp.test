@@ -88,13 +88,21 @@ export function wireFocusHighlight(inputEl, rowEl) {
     const looksUserDriven = userInteracted || (typeof inputEl.matches === 'function' && inputEl.matches(':focus-visible'));
     if (!looksUserDriven) return;
     try {
-      rowEl.style.boxShadow = 'inset 0 0 0 1px #fff';
+      // Save existing shadow so we can restore it on blur (e.g., custom glow)
+      if (!rowEl.hasAttribute('data-saved-boxshadow')) {
+        rowEl.setAttribute('data-saved-boxshadow', rowEl.style.boxShadow || '');
+      }
+      const prev = rowEl.getAttribute('data-saved-boxshadow') || '';
+      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px #fff'].filter(Boolean).join(', ');
       rowEl.style.borderColor = '#fff';
     } catch (_) {}
   });
   inputEl.addEventListener('blur', () => {
     try {
-      rowEl.style.boxShadow = '';
+      // Restore any saved shadow from before focus
+      const prev = rowEl.getAttribute('data-saved-boxshadow');
+      rowEl.style.boxShadow = prev || '';
+      try { rowEl.removeAttribute('data-saved-boxshadow'); } catch (_) {}
       rowEl.style.borderColor = 'var(--ui-surface-border, rgba(120,170,255,0.70))';
     } catch (_) {}
   });

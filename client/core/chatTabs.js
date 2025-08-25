@@ -50,15 +50,32 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
   list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   list.style.borderRadius = '0px 4px 0px 0px';
-  list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
+  // List: glow on left, top, right only; omit bottom for seamless join with input row
+  list.style.borderBottom = '0';
+  // Keep crisp borders on glow sides for clear edge definition
+  // Inline glow so it renders without relying on external CSS
+  const glowColor = 'var(--ui-surface-glow-color, rgba(140,190,255,0.55))';
+  // Outside glow on top/left/right only. Use spread 0 so the glow starts just outside the border.
+  list.style.boxShadow = `0 -24px 48px 0 ${glowColor}, -24px 0 48px 0 ${glowColor}, 24px 0 48px 0 ${glowColor}`;
   list.style.padding = '6px';
   try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
+  // Assign ID expected by theme styles for chat glow
+  try { list.id = 'ui-glass-scrollbar'; } catch (_) {}
   try { list.setAttribute('data-name', 'chat-messages-list'); } catch (_) {}
   el.appendChild(list);
 
   // Input row (shared control)
   const inputRow = createInputRow({ dataName: 'chat-input-row' });
   el.appendChild(inputRow);
+  // Assign ID expected by theme styles for chat glow
+  try { inputRow.id = 'chat-input-row'; } catch (_) {}
+  // Keep crisp borders on glow sides for input row
+  // Ensure the input row has a surface for inset glow and add side-specific glows
+  try {
+    inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+    // Outside glow on left/right/bottom only. Use spread 0 for crisp border visibility.
+    inputRow.style.boxShadow = `-24px 0 48px 0 ${glowColor}, 24px 0 48px 0 ${glowColor}, 0 24px 48px 0 ${glowColor}`;
+  } catch (_) {}
 
   // Message input: use shared left-icon input but hide the icon to reuse styles
   const { wrap: inputWrap, input, btn: hiddenIconBtn } = createLeftIconInput({
