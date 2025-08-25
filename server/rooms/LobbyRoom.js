@@ -38,6 +38,8 @@ class LobbyPlayer extends Schema {
     this.id = '';
     this.name = '';
     this.status = 'red';
+    this.pingMs = 0;
+    this.net = 'red';
   }
 }
 
@@ -45,6 +47,8 @@ defineTypes(LobbyPlayer, {
   id: 'string',
   name: 'string',
   status: 'string',
+  pingMs: 'number',
+  net: 'string',
 });
 
 class LobbyState extends Schema {
@@ -106,6 +110,41 @@ class LobbyRoom extends Room {
         });
       } catch (_) {}
     }, 5000);
+
+    // --- Ping/Pong RTT measurement ---
+    // Echo handler (client-initiated ping) kept for compatibility
+    try {
+      this.onMessage('ping', (c, msg) => {
+        try { c.send('pong', { t: (msg && msg.t) | 0 }); } catch (_) {}
+      });
+    } catch (_) {}
+    // Server-initiated ping: send to each client; expect 'pong' with same t
+    try {
+      this.onMessage('pong', (c, msg) => {
+        try {
+          const t = (msg && msg.t) | 0;
+          if (!t) return;
+          const rtt = Date.now() - t;
+          const id = c?.auth?.userId || c?.sessionId;
+          const p = id && this.state.players.get(String(id));
+          if (p && typeof rtt === 'number' && isFinite(rtt) && rtt >= 0) {
+            // Simple smoothing to avoid spikes
+            const prev = (p.pingMs | 0) || 0;
+            const smoothed = prev ? Math.round(prev * 0.7 + rtt * 0.3) : rtt;
+            p.pingMs = smoothed | 0;
+            // Derive a simple network quality tier (green/yellow/red) from ping
+            const tier = smoothed <= 60 ? 'green' : (smoothed <= 120 ? 'yellow' : 'red');
+            if (p.net !== tier) p.net = tier;
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+    this._pingTimer = this.clock.setInterval(() => {
+      try {
+        const t = Date.now();
+        this.clients.forEach((c) => { try { c.send('ping', { t }); } catch (_) {} });
+      } catch (_) {}
+    }, 5000);
   }
 
   async onAuth(client, options) {
@@ -137,6 +176,8 @@ class LobbyRoom extends Room {
       lp.name = String(name);
       Presence.setOnline(id);
       lp.status = Presence.getStatus(id);
+      lp.pingMs = 0;
+      lp.net = 'red';
       this.state.players.set(lp.id, lp);
     } catch (_) {}
     // Legacy playersList broadcast for older clients
@@ -148,8 +189,6 @@ class LobbyRoom extends Room {
         const uid = c?.auth?.userId || c?.sessionId;
         if (!uid) return;
         Presence.beat(uid);
-        const p = this.state.players.get(String(uid));
-        if (p) p.status = Presence.getStatus(uid);
       });
     } catch (_) {}
   }
@@ -176,6 +215,10 @@ class LobbyRoom extends Room {
     if (this._presenceTimer) {
       try { this.clock.clearInterval(this._presenceTimer); } catch (_) {}
       this._presenceTimer = null;
+    }
+    if (this._pingTimer) {
+      try { this.clock.clearInterval(this._pingTimer); } catch (_) {}
+      this._pingTimer = null;
     }
   }
 

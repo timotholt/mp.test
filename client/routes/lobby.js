@@ -19,6 +19,7 @@ let lobbyRoom = null;
 // Panels state
 let gamesPanel = null;   // { el, setData, setFilter, selectTab }
 let playersPanel = null; // { el, setData, setFilter, selectTab }
+let playersUiTimer = null; // updates 'ago' text & dot tooltip without re-rendering
 
 // In-memory caches
 let roomsCache = [];
@@ -282,7 +283,13 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           if (playersPanel) playersPanel.setData(playersCache);
         });
       } catch (_) {}
-      lobbyRoom.onLeave(() => { lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {} /* resume polling if needed */ startLobbyPolling(); });
+      // Reply to server-initiated ping for RTT measurement
+      try {
+        lobbyRoom.onMessage('ping', (msg) => {
+          try { lobbyRoom.send('pong', { t: (msg && msg.t) | 0 }); } catch (_) {}
+        });
+      } catch (_) {}
+      lobbyRoom.onLeave(() => { lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {} /* resume polling if needed */ startLobbyPolling(); try { if (playersUiTimer) { clearInterval(playersUiTimer); playersUiTimer = null; } } catch (_) {} });
       return true;
     } catch (e) {
       // Fallback: keep polling
@@ -446,6 +453,16 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               if (tab === 'recent') return recent.has(String(p.id));
               return true;
             });
+            // Sort by presence (green -> yellow -> red -> unknown) then by name
+            const statusOrder = (raw) => raw === 'green' ? 0 : (raw === 'yellow' ? 1 : (raw === 'red' ? 2 : 3));
+            filtered.sort((a, b) => {
+              const sa = statusOrder(String(a.status || '').toLowerCase());
+              const sb = statusOrder(String(b.status || '').toLowerCase());
+              if (sa !== sb) return sa - sb;
+              const an = String(a.name || '').toLowerCase();
+              const bn = String(b.name || '').toLowerCase();
+              return an.localeCompare(bn);
+            });
             if (!filtered.length) {
               const empty = document.createElement('div');
               empty.style.opacity = '0.7';
@@ -464,26 +481,28 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
               const label = document.createElement('div');
+              label.style.display = 'flex';
+              label.style.alignItems = 'center';
+              // Status dot on far left
               const statusRaw = String(p.status || '').toLowerCase();
-              const statusMap = { green: 'online', yellow: 'idle', red: 'offline' };
-              const status = statusMap[statusRaw] || statusRaw;
-              const when = recent.get(String(p.id)) || 0;
-              const ago = when ? `${Math.max(1, Math.round((Date.now() - when)/1000))}s ago` : '';
-              label.textContent = `${p.name || 'Guest'}${status ? ' · ' + status : ''}${ago ? ' · ' + ago : ''}`;
-              // Colored dot for presence (online/idle/offline)
-              try {
-                const sDot = document.createElement('span');
-                sDot.textContent = ' ●';
-                // Accept both friendly and raw color labels
-                const color = (status === 'online' || statusRaw === 'green') ? '#4ade80'
-                  : ((status === 'idle' || statusRaw === 'yellow') ? '#facc15'
-                  : ((status === 'offline' || statusRaw === 'red') ? '#f87171'
-                  : 'rgba(255,255,255,0.5)'));
-                sDot.style.color = color;
-                sDot.style.marginLeft = '4px';
-                sDot.title = status || statusRaw || 'unknown';
-                label.appendChild(sDot);
-              } catch (_) {}
+              const dot = document.createElement('span');
+              dot.textContent = '●';
+              const dotColor = statusRaw === 'green' ? '#4ade80' : (statusRaw === 'yellow' ? '#facc15' : (statusRaw === 'red' ? '#f87171' : 'rgba(255,255,255,0.5)'));
+              dot.style.color = dotColor;
+              dot.style.marginRight = '6px';
+              dot.setAttribute('data-dot-id', String(p.id));
+              // Name
+              const nameSpan = document.createElement('span');
+              nameSpan.textContent = p.name || 'Guest';
+              // Location tag (placeholder: Lobby)
+              const locSpan = document.createElement('span');
+              locSpan.style.opacity = '0.8';
+              locSpan.textContent = ' · Lobby';
+              // Compose left label: dot, space, name, location
+              label.appendChild(dot);
+              label.appendChild(document.createTextNode(' '));
+              label.appendChild(nameSpan);
+              label.appendChild(locSpan);
               // Right-click context menu on player name (skip self)
               try {
                 label.style.cursor = 'context-menu';
@@ -504,29 +523,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                   });
                 });
               } catch (_) {}
-              const actions = document.createElement('div');
-              actions.style.display = 'flex';
-              actions.style.gap = '6px';
-              const friendBtn = document.createElement('button');
-              const isF = friends.has(String(p.id)) || friends.has(String(p.name || ''));
-              friendBtn.textContent = isF ? 'Unfriend' : 'Add Friend';
-              friendBtn.onclick = () => {
-                toggleSet('friends:set', p.id, !isF);
-                if (p.name) toggleSet('friends:set', p.name, !isF);
-                playersPanel.setData(playersCache);
-              };
-              const blockBtn = document.createElement('button');
-              const isB = blocked.has(String(p.id)) || blocked.has(String(p.name || ''));
-              blockBtn.textContent = isB ? 'Unblock' : 'Block';
-              blockBtn.onclick = () => {
-                toggleSet('blocked:set', p.id, !isB);
-                if (p.name) toggleSet('blocked:set', p.name, !isB);
-                playersPanel.setData(playersCache);
-              };
-              actions.appendChild(friendBtn);
-              actions.appendChild(blockBtn);
               row.appendChild(label);
-              row.appendChild(actions);
               listEl.appendChild(row);
             });
           }
@@ -602,6 +599,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         } catch (_) {}
         chatWrap.appendChild(lobbyChat.el);
 
+        grid.appendChild(chatWrap);
+
         grid.appendChild(gamesPanel.el);
         grid.appendChild(playersPanel.el);
         grid.appendChild(chatWrap);
@@ -614,6 +613,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       // Render initial cached data if any
       if (gamesPanel && roomsCache) gamesPanel.setData(roomsCache);
       if (playersPanel && playersCache) playersPanel.setData(playersCache);
+      // Removed 'ago' updater: players list now only shows dot, name, and location.
     };
   });
 }
