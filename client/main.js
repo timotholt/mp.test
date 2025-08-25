@@ -14,6 +14,7 @@ import { setupAsciiRenderer } from './core/renderer.js';
 import { SUBSTATES, presentSubstate } from './core/substates.js';
 import './core/ui/theme.js';
 import { ensureStatusBar } from './core/ui/statusBar.js';
+import { registerRoomRoute } from './routes/room.js';
 import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
@@ -238,87 +239,24 @@ makeScreen(APP_STATES.LOBBY, (el) => {
   };
 });
 
-makeScreen(APP_STATES.ROOM, (el) => {
-  // Render Room UI inside an overlay so it appears above the shade/canvas
-  el.innerHTML = '';
-  el.update = () => {
-    try { OverlayManager.present({ id: 'ROOM_MODAL', priority: PRIORITY.MEDIUM, text: 'Room', actions: [], blockInput: true, external: true }); } catch (_) {}
-    const overlay = document.getElementById('overlay');
-    const content = overlay ? overlay.querySelector('#overlay-content') : null;
-    if (!content) return;
-    content.innerHTML = '';
-
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    const backBtn = document.createElement('button');
-    backBtn.textContent = '← Lobby';
-    backBtn.style.marginRight = '8px';
-    backBtn.onclick = () => { try { leaveRoomToLobby(); } catch (_) {} };
-    header.appendChild(backBtn);
-    const title = document.createElement('div');
-    title.textContent = 'Room';
-    header.appendChild(title);
-    roomReadyBtn = document.createElement('button');
-    setReadyButtonUI(false); // default to not ready on room entry
-    roomReadyBtn.onclick = () => {
-      const now = roomReadyBtn.dataset.ready !== 'true';
-      setReadyButtonUI(now);
-      try { if (room) room.send('setReady', { ready: now }); } catch (_) {}
-      if (now) { try { appendChatLine('You are ready'); } catch (_) {} }
-      if (!now) { try { appendChatLine('You are not ready'); } catch (_) {} }
-    };
-    header.appendChild(roomReadyBtn);
-
-    const players = document.createElement('div');
-    players.id = 'room-players';
-    const playersTitle = document.createElement('div');
-    playersTitle.textContent = 'Players';
-    playersTitle.style.marginTop = '8px';
-    roomPlayersEl = document.createElement('div');
-    roomPlayersEl.id = 'room-players-list';
-    // Tabbed chat UI (Room/Game)
-    roomChat = createChatTabs({
-      mode: 'game',
-      onJoinGame: async (roomId) => {
-        try {
-          const playerName = LS.getItem('name', 'Hero');
-          const rj = await client.joinById(String(roomId), { name: playerName });
-          await afterJoin(rj);
-        } catch (e) {
-          const msg = (e && (e.message || e)) + '';
-          if (msg.includes('password')) {
-            presentRoomPromptPassword({
-              roomName: String(roomId),
-              onSubmit: async (pwd) => {
-                try {
-                  const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
-                  await afterJoin(rj);
-                  return true;
-                } catch (err) {
-                  const em = (err && (err.message || err)) + '';
-                  if (em.includes('Invalid password')) return false;
-                  throw new Error(typeof em === 'string' ? em : 'Join failed');
-                }
-              },
-              onCancel: () => {}
-            });
-          }
-        }
-      },
-      onOpenLink: (href) => { try { window.open(href, '_blank'); } catch (_) {} }
-    });
-
-    content.appendChild(header);
-    content.appendChild(players);
-    players.appendChild(playersTitle);
-    players.appendChild(roomPlayersEl);
-    content.appendChild(roomChat.el);
-
-    try { bindRoomUIEventsOnce(); } catch (_) {}
-    try { renderRoomPlayers(); } catch (_) {}
-    try { refreshRoomChat(); } catch (_) {}
-  };
+// Register ROOM route via extracted module
+registerRoomRoute({
+  makeScreen,
+  APP_STATES,
+  joinById: (roomId, opts) => client.joinById(roomId, opts),
+  afterJoin,
+  sendRoomMessage: (type, data) => { try { if (room) room.send(type, data); } catch (_) {} },
+  leaveRoomToLobby,
+  setReadyButtonUI,
+  appendChatLine,
+  bindRoomUIEventsOnce,
+  renderRoomPlayers,
+  refreshRoomChat,
+  setRefs: {
+    setRoomReadyBtn: (btn) => { roomReadyBtn = btn; },
+    setRoomPlayersEl: (el) => { roomPlayersEl = el; },
+    setRoomChat: (chat) => { roomChat = chat; },
+  },
 });
 
 makeScreen(APP_STATES.GAMEPLAY_ACTIVE, (el) => { el.textContent = 'Gameplay Active'; });
