@@ -15,6 +15,7 @@ export function wireRoomEvents(r, deps) {
     setReadyButtonUI,
     presentFCLSelectModal,
     onLeave,
+    onForcedModal,
   } = deps || {};
 
   let lastStateVersion = 0;
@@ -63,6 +64,8 @@ export function wireRoomEvents(r, deps) {
   r.onMessage('modal', (msg) => {
     const { command, id, text, actions, priority, blockInput } = msg || {};
     if (command === 'present') {
+      // Notify host app of forced disconnect reasons so it can avoid duplicate fallback prompts
+      try { if (id === 'SESSION_KICK' || id === 'SESSION_EXPIRE') { onForcedModal && onForcedModal(id); } } catch (_) {}
       OverlayManager && OverlayManager.present && OverlayManager.present({ id, text, actions, priority: priority ?? (PRIORITY && PRIORITY.MEDIUM), blockInput: blockInput !== false });
     } else if (command === 'dismiss' && id) {
       OverlayManager && OverlayManager.dismiss && OverlayManager.dismiss(id);

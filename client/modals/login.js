@@ -13,6 +13,7 @@ import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { getRandomLoginPhrase } from '../core/util/loginPhrases.js';
 import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
+import { shouldAutoReconnect } from '../core/net/reconnect.js';
 
 function ensureLoginStyles() {
   if (document.getElementById('login-modal-style')) return;
@@ -134,8 +135,13 @@ export function presentLoginModal() {
   } catch (_) {}
   ensureLoginStyles();
 
-  // If already authenticated (e.g., after OAuth redirect), skip UI and proceed
-  try { getUser().then(u => { if (u && u.id) afterAuthSuccess(id); }); } catch (_) {}
+  // Only auto-continue when the page load was a reload/back-forward to avoid
+  // surprising fresh tabs instantly skipping the login UI.
+  try {
+    if (shouldAutoReconnect()) {
+      getUser().then(u => { if (u && u.id) afterAuthSuccess(id); });
+    }
+  } catch (_) {}
 
   // Build centered card
   const center = document.createElement('div');

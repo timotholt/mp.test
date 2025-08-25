@@ -7,6 +7,12 @@ const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify
 const { listRecentGames } = require('../persistence/supabase');
 const Presence = require('../presence/PresenceHub');
 
+// --- Session policy (env-configurable) ---
+// Disconnect clients with no heartbeat for this long (ms). Default: 60s.
+const SESSION_EXPIRE_MS = parseInt(process.env.SESSION_EXPIRE_MS || '60000', 10);
+// Enforce a single active Lobby session per userId (kick older when duplicate joins)
+const ENFORCE_SINGLE_SESSION = (process.env.ENFORCE_SINGLE_SESSION ?? 'true') !== 'false';
+
 class LobbyGame extends Schema {
   constructor() {
     super();
@@ -145,6 +151,26 @@ class LobbyRoom extends Room {
         this.clients.forEach((c) => { try { c.send('ping', { t }); } catch (_) {} });
       } catch (_) {}
     }, 5000);
+
+    // --- Session expiry sweep: force-disconnect idle clients (uses Presence heartbeats) ---
+    this._sessionTimer = this.clock.setInterval(() => {
+      if (!(SESSION_EXPIRE_MS > 0)) return;
+      try {
+        const now = Date.now();
+        this.clients.forEach((c) => {
+          try {
+            const uid = c?.auth?.userId || c?.sessionId;
+            if (!uid) return;
+            const last = Presence.get(uid)?.lastSeen || 0;
+            if (now - last > SESSION_EXPIRE_MS) {
+              // Notify client before closing the socket (small delay so message can flush)
+              try { c.send('modal', { command: 'present', id: 'SESSION_EXPIRE', text: 'Session expired due to inactivity.', blockInput: true }); } catch (_) {}
+              this.clock.setTimeout(() => { try { c.leave(4402); } catch (_) {} }, 120);
+            }
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }, 5000);
   }
 
   async onAuth(client, options) {
@@ -170,6 +196,19 @@ class LobbyRoom extends Room {
     // Track lobby players in state
     try {
       const id = client?.auth?.userId || client?.sessionId;
+      // Enforce single active lobby session per userId: kick any previous connection
+      if (ENFORCE_SINGLE_SESSION && id) {
+        try {
+          this.clients.forEach((c) => {
+            if (c === client) return;
+            const uid = c?.auth?.userId || c?.sessionId;
+            if (uid && uid === id) {
+              try { c.send('modal', { command: 'present', id: 'SESSION_KICK', text: 'You signed in from another tab/device. This lobby session was disconnected.', blockInput: true }); } catch (_) {}
+              this.clock.setTimeout(() => { try { c.leave(4401); } catch (_) {} }, 120);
+            }
+          });
+        } catch (_) {}
+      }
       const name = client?.auth?.name || 'Guest';
       const lp = new LobbyPlayer();
       lp.id = String(id);
@@ -219,6 +258,10 @@ class LobbyRoom extends Room {
     if (this._pingTimer) {
       try { this.clock.clearInterval(this._pingTimer); } catch (_) {}
       this._pingTimer = null;
+    }
+    if (this._sessionTimer) {
+      try { this.clock.clearInterval(this._sessionTimer); } catch (_) {}
+      this._sessionTimer = null;
     }
   }
 

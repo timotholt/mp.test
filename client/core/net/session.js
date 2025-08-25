@@ -19,6 +19,10 @@ export function createSessionHandlers(deps) {
     getRoom, setRoom,
   } = deps || {};
 
+  // Track last forced modal so we don't duplicate onLeave fallback
+  let _lastForcedModalId = null; // 'SESSION_KICK' | 'SESSION_EXPIRE' | null
+  let _lastForcedAt = 0;
+
   function startLobby() {
     try { statusEl && (statusEl.textContent = 'In Lobby'); } catch (_) {}
     setRoute && setRoute(APP_STATES && APP_STATES.LOBBY);
@@ -53,8 +57,21 @@ export function createSessionHandlers(deps) {
       onLeave: (code) => {
         try { statusEl && (statusEl.textContent = 'Disconnected (' + code + ')'); } catch (_) {}
         try { setRoom && setRoom(null); } catch (_) {}
+        // Fallback modal if server closed before modal delivered
+        try {
+          const now = Date.now();
+          const seenRecently = _lastForcedModalId && (now - _lastForcedAt < 3000);
+          if (!seenRecently && (code === 4401 || code === 4402)) {
+            const id = code === 4401 ? 'SESSION_KICK' : 'SESSION_EXPIRE';
+            const text = code === 4401
+              ? 'You signed in from another tab/device. This session was disconnected.'
+              : 'Session expired due to inactivity.';
+            try { OverlayManager && OverlayManager.present && OverlayManager.present({ id, text, priority: PRIORITY && PRIORITY.CRITICAL, blockInput: true }); } catch (_) {}
+          }
+        } catch (_) {}
         startLobby();
       },
+      onForcedModal: (id) => { try { if (id === 'SESSION_KICK' || id === 'SESSION_EXPIRE') { _lastForcedModalId = id; _lastForcedAt = Date.now(); } } catch (_) {} },
     });
     const selfId = r.sessionId;
     const pname = (LS && LS.getItem) ? LS.getItem('name', 'Hero') : 'Hero';

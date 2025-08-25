@@ -15,6 +15,9 @@ import { showPlayerContextMenu } from '../core/ui/playerContextMenu.js';
 let lobbyPollId = null;
 let lobbyChat = null;
 let lobbyRoom = null;
+// Track forced-disconnect reasons coming from server modals to avoid duplicate prompts on close
+let _lastForcedModalId = null; // 'SESSION_KICK' | 'SESSION_EXPIRE' | null
+let _lastForcedAt = 0;
 
 // Panels state
 let gamesPanel = null;   // { el, setData, setFilter, selectTab }
@@ -291,7 +294,41 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           try { lobbyRoom.send('pong', { t: (msg && msg.t) }); } catch (_) {}
         });
       } catch (_) {}
-      lobbyRoom.onLeave(() => { lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {} /* resume polling if needed */ startLobbyPolling(); try { if (playersUiTimer) { clearInterval(playersUiTimer); playersUiTimer = null; } } catch (_) {} });
+      // Minimal modal pipeline for lobby (mirror of wireRoomEvents)
+      try {
+        lobbyRoom.onMessage('modal', (msg) => {
+          const { command, id, text, actions, priority, blockInput } = msg || {};
+          if (command === 'present') {
+            // Remember forced reason to avoid duplicate fallback onLeave
+            if (id === 'SESSION_KICK' || id === 'SESSION_EXPIRE') { _lastForcedModalId = id; _lastForcedAt = Date.now(); }
+            try { OverlayManager.present({ id, text, actions, priority: priority ?? PRIORITY.MEDIUM, blockInput: blockInput !== false }); } catch (_) {}
+          } else if (command === 'dismiss' && id) {
+            try { OverlayManager.dismiss(id); } catch (_) {}
+          } else if (command === 'clearBelow') {
+            try { OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM); } catch (_) {}
+          }
+        });
+      } catch (_) {}
+      lobbyRoom.onLeave((code) => {
+        lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {}
+        // Resume polling in absence of realtime
+        startLobbyPolling();
+        try { if (playersUiTimer) { clearInterval(playersUiTimer); playersUiTimer = null; } } catch (_) {}
+        // Fallback UX for forced disconnects if modal didn't arrive before close
+        try {
+          const now = Date.now();
+          const seenRecently = _lastForcedModalId && (now - _lastForcedAt < 3000);
+          if (!seenRecently && (code === 4401 || code === 4402)) {
+            const id = code === 4401 ? 'SESSION_KICK' : 'SESSION_EXPIRE';
+            const text = code === 4401
+              ? 'You signed in from another tab/device. Lobby session was disconnected.'
+              : 'Session expired due to inactivity.';
+            try { OverlayManager.present({ id, text, priority: PRIORITY.CRITICAL, blockInput: true }); } catch (_) {}
+          }
+        } catch (_) {}
+        // Attempt to rejoin realtime lobby shortly (non-blocking)
+        try { setTimeout(() => { try { startLobbyRealtime(); } catch (_) {} }, 800); } catch (_) {}
+      });
       return true;
     } catch (e) {
       // Fallback: keep polling
