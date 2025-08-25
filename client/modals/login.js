@@ -48,7 +48,7 @@ function ensureLoginStyles() {
   .btn-outline-glass:hover { border-color: #dff1ff; box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
   .btn svg { width: 18px; height: 18px; }
   .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; }
-  .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 6px 10px; margin-top: 8px; }
+  .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
   .login-form label { opacity: 0.95; text-align: right; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
@@ -60,7 +60,9 @@ function ensureLoginStyles() {
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
   .input-glass:hover { border-color: #dff1ff; }
   .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
-  .login-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .login-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+  .login-footer { display: flex; justify-content: flex-start; margin-top: 6px; }
+  .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
   .login-link { color: #dff1ff; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
   .login-link:hover { color: #ffffff; opacity: 1; }
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); }
@@ -124,7 +126,7 @@ export function presentLoginModal() {
 
   const title = document.createElement('div');
   title.className = 'login-title';
-  title.textContent = 'Welcome to Grimdark';
+  title.textContent = "Welcome to Grimdark";
 
   const sub = document.createElement('div');
   sub.className = 'login-sub';
@@ -209,13 +211,16 @@ export function presentLoginModal() {
     await sendPasswordReset(String(emailInput.value || '').trim());
     setStatus('Password reset sent (if the email exists).');
   };
-  // Tooltips on actions
-  try { attachTooltip(signInBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
-  try { attachTooltip(signUpLink, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
-  try { attachTooltip(resetLink, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
+  // Tooltips on actions (favor bottom-right)
+  try { attachTooltip(signInBtn, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
+  try { attachTooltip(signUpLink, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
+  try { attachTooltip(resetLink, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
+  // Centered primary button
+  const linksWrap = document.createElement('div');
+  linksWrap.className = 'login-links';
+  linksWrap.appendChild(signUpLink);
+  linksWrap.appendChild(resetLink);
   actions.appendChild(signInBtn);
-  actions.appendChild(signUpLink);
-  actions.appendChild(resetLink);
 
   const status = document.createElement('div');
   status.id = 'login-status';
@@ -241,6 +246,11 @@ export function presentLoginModal() {
   grid.appendChild(art);
   grid.appendChild(main);
   card.appendChild(grid);
+  // Footer at the very bottom of the modal, aligned left
+  const footer = document.createElement('div');
+  footer.className = 'login-footer';
+  footer.appendChild(linksWrap);
+  card.appendChild(footer);
   center.appendChild(card);
   content.appendChild(center);
 }
