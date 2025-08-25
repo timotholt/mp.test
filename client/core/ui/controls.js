@@ -126,6 +126,8 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       const label = getLabel ? getLabel(t) : String(t);
       const b = document.createElement('button');
       b.textContent = label;
+      // Expose the tab key for callers that want to update labels (e.g., counts)
+      try { b.setAttribute('data-tab-key', String(key)); } catch (_) {}
       b.style.padding = '4px 8px';
       b.style.border = UI.border;
       b.style.borderBottom = '0';

@@ -469,6 +469,40 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               const bn = String(b.name || '').toLowerCase();
               return an.localeCompare(bn);
             });
+            // Unfiltered counts for tabs (ignore search term)
+            try {
+              const base = (data || []).filter(p => p && p.id);
+              const allCount = base.length;
+              const friendsCount = base.filter(p => friends.has(String(p.id)) || friends.has(String(p.name || ''))).length;
+              const recentCount = base.filter(p => recent.has(String(p.id))).length;
+              const updateTabCounts = () => {
+                try {
+                  const rootEl = playersPanel && playersPanel.el;
+                  if (!rootEl) return;
+                  const setBtn = (key, label, count) => {
+                    const b = rootEl.querySelector(`[data-tab-key="${key}"]`);
+                    if (b) b.textContent = `${label} (${count})`;
+                  };
+                  setBtn('all', 'All', allCount);
+                  setBtn('friends', 'Friends', friendsCount);
+                  setBtn('recent', 'Recent', recentCount);
+                  // Do not modify 'Blocked'
+                } catch (_) {}
+              };
+              updateTabCounts();
+              // If tab switch triggers a re-render of tab buttons after onRender, ensure counts persist
+              setTimeout(updateTabCounts, 0);
+            } catch (_) {}
+
+            // If searching, prepend a small system header with match count
+            if (filterText) {
+              const hdr = document.createElement('div');
+              hdr.textContent = `Filtered search results (${filtered.length})`;
+              hdr.style.opacity = '0.8';
+              hdr.style.fontSize = '0.75em';
+              hdr.style.margin = '2px 0 6px 0';
+              listEl.appendChild(hdr);
+            }
             if (!filtered.length) {
               const empty = document.createElement('div');
               empty.style.opacity = '0.7';
