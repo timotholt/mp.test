@@ -47,6 +47,7 @@ export function createKnob(opts = {}) {
 
   const label = String(opts.label || 'Knob');
   const className = String(opts.className || '');
+  // Title/tooltip formatter receives (value, { min, max, label })
   const titleFormatter = typeof opts.titleFormatter === 'function' ? opts.titleFormatter : defaultTitle;
   const onInput = typeof opts.onInput === 'function' ? opts.onInput : null;
   const onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
@@ -103,7 +104,7 @@ export function createKnob(opts = {}) {
     for (let i = 0; i < segments; i++) segEls[i].classList.toggle('on', i < lit);
 
     // Tooltip + ARIA
-    const title = titleFormatter(v, { min, max });
+    const title = titleFormatter(v, { min, max, label });
     el.title = title;
     el.setAttribute('aria-valuenow', String(v));
     el.setAttribute('aria-valuetext', title);
@@ -268,11 +269,13 @@ function clamp01(x) { x = Number(x); if (!Number.isFinite(x)) return 0; if (x < 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function getPointerY(e) { return (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY); }
 
-function defaultTitle(v, { min, max }) {
+function defaultTitle(v, { min, max, label }) {
   const range = Math.max(0.000001, max - min);
   const pct = Math.round(((v - min) / range) * 100);
   const num = Math.round(v * 100) / 100; // 2 decimals
-  return `${pct}% (${num})`;
+  // Include label (knob name) so tooltip shows e.g., "Master: 75% (0.75)"
+  const prefix = label ? String(label) + ': ' : '';
+  return `${prefix}${pct}% (${num})`;
 }
 
 function ensureStyle() {

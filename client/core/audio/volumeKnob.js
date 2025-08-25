@@ -93,13 +93,8 @@ function makeSourceId(groupId) {
   }
 }
 
-let adjustingTimer = null;
 function signalAdjusting(on) {
   try { window.dispatchEvent(new CustomEvent('ui:volume:adjusting', { detail: { adjusting: !!on } })); } catch (_) {}
-}
-function debounceAdjustingDone() {
-  clearTimeout(adjustingTimer);
-  adjustingTimer = setTimeout(() => signalAdjusting(false), 180);
 }
 
 // (No local CSS; UI provided by client/core/ui/knob.js)

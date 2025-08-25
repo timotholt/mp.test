@@ -11,19 +11,14 @@ import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
-// removed legacy volume import from './core/volume.js'
 import { initAudio } from './core/audio/audioManager.js';
-import { installTopBarVolumeKnobs } from './core/audio/topBarVolumeKnobs.js';
-import { installCenterVolumeKnob } from './core/audio/debugCenterKnob.js';
 import * as LS from './core/localStorage.js';
-import { createKnob as createGenericKnob, applyKnobTheme as applyKnobThemeGeneric, themes as knobThemes } from './core/ui/knob.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };
 
-// Expose generic knob utilities for quick experiments (no UI changes by default)
-try { window.Knob = { createKnob: createGenericKnob, applyKnobTheme: applyKnobThemeGeneric, themes: knobThemes }; } catch (_) {}
+// (Knob utilities are exposed from audioManager.initAudio())
 
 // -------------------- Micro Router (plain DOM) --------------------
 // Router extracted to './core/router.js'. See imports above.
@@ -1077,34 +1072,9 @@ async function setupAsciiRenderer() {
     // Ensure UI chrome exists
     ensureThemeSupport();
     ensureStatusBar();
-    // Install compact volume knobs on the left side of the top hover bar
-    // Tweaked for tighter status bar fit: smaller knobs, fewer LEDs, thinner/shorter LEDs, smaller dot
-    try {
-      installTopBarVolumeKnobs({
-        masterSegments: 20,
-        masterSize: 25,
-        masterRingOffset: 9,
-        masterOffsetY: 10,
-        spacing: 24,
-        masterSegThickness: 0.5,
-        masterSegLength: 2.5,
-        masterDotSize: 2,
-        groupRingOffset: 9,
-        groupSegThickness: 0.5,
-        groupSegLength: 2.5,
-        groupDotSize: 2,
-        groups: [
-          { id: 'GAME',  label: 'Game',  segments: 20, size: 25 },
-          { id: 'MUSIC', label: 'Music', segments: 20, size: 25 },
-          { id: 'VOICE', label: 'Voice', segments: 20, size: 25 },
-        ]
-      });
-    } catch (_) {}
     ensureZoomControls();
     // Volume controls (V2)
     try { initAudio(); } catch (_) {}
-    // Center debug knob (temporary for testing)
-    try { installCenterVolumeKnob({ groupId: 'MASTER', size: 120, segments: 36 }); } catch (_) {}
     ensureBanner();
     ensureScreenShade();
 

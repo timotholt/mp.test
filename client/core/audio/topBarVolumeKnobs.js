@@ -39,12 +39,12 @@ export function installTopBarVolumeKnobs(opts = {}) {
   if (opts.masterSegThickness != null) masterOpts.segThickness = opts.masterSegThickness;
   if (opts.masterSegLength != null) masterOpts.segLength = opts.masterSegLength;
   if (opts.masterDotSize != null) masterOpts.dotSize = opts.masterDotSize;
+  // Friendly label for tooltip/title
+  if (masterOpts.label == null) masterOpts.label = 'Master';
   const master = createVolumeKnob(masterOpts);
   if (opts.masterOffsetY != null) {
     try { master.el.style.marginTop = Math.round(Number(opts.masterOffsetY)) + 'px'; } catch (_) {}
   }
-  master.el.classList.add('vk-master');
-  master.el.title = 'Master Volume';
   cluster.appendChild(master.el);
 
   // Hidden panel with other knobs
@@ -76,7 +76,6 @@ export function installTopBarVolumeKnobs(opts = {}) {
     if (offY != null) {
       try { k.el.style.marginTop = Math.round(Number(offY)) + 'px'; } catch (_) {}
     }
-    k.el.title = `${g.label} Volume`;
     panel.appendChild(k.el);
     unbinders.push(k.unbind);
   }
@@ -101,7 +100,6 @@ function ensureStyle() {
   st.id = 'topbar-volume-knobs-style';
   st.textContent = `
   #topbar-volume-knobs.vk-cluster { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; }
-  #topbar-volume-knobs .vk-master { --vk-size: 44px; }
   #topbar-volume-knobs .vk-panel { display: none; align-items: center; gap: 6px; }
   #topbar-volume-knobs:hover .vk-panel { display: inline-flex; }
   `;
