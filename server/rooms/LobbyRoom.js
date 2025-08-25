@@ -101,41 +101,41 @@ class LobbyRoom extends Room {
       } catch (_) {}
     }, 30000);
 
-    // Presence mirror: periodically reflect PresenceHub status into state.players
+    // Presence mirror: periodically reflect PresenceHub status + ping/net into state.players
     this._presenceTimer = this.clock.setInterval(() => {
       try {
         this.state.players.forEach((p, id) => {
           const s = Presence.getStatus(id);
           if (p && typeof p.status === 'string' && p.status !== s) p.status = s;
+          const pm = (Presence.getPing(id) | 0) || 0;
+          if (p && typeof p.pingMs === 'number' && p.pingMs !== pm) p.pingMs = pm;
+          const net = Presence.getNet(id);
+          if (p && typeof p.net === 'string' && p.net !== net) p.net = net;
         });
       } catch (_) {}
-    }, 5000);
+    }, 2000);
 
     // --- Ping/Pong RTT measurement ---
     // Echo handler (client-initiated ping) kept for compatibility
     try {
       this.onMessage('ping', (c, msg) => {
-        try { c.send('pong', { t: (msg && msg.t) | 0 }); } catch (_) {}
+        try { c.send('pong', { t: (msg && msg.t) }); } catch (_) {}
       });
     } catch (_) {}
     // Server-initiated ping: send to each client; expect 'pong' with same t
     try {
       this.onMessage('pong', (c, msg) => {
         try {
-          const t = (msg && msg.t) | 0;
+          const t = msg && msg.t;
           if (!t) return;
           const rtt = Date.now() - t;
           const id = c?.auth?.userId || c?.sessionId;
-          const p = id && this.state.players.get(String(id));
-          if (p && typeof rtt === 'number' && isFinite(rtt) && rtt >= 0) {
-            // Simple smoothing to avoid spikes
-            const prev = (p.pingMs | 0) || 0;
-            const smoothed = prev ? Math.round(prev * 0.7 + rtt * 0.3) : rtt;
-            p.pingMs = smoothed | 0;
-            // Derive a simple network quality tier (green/yellow/red) from ping
-            const tier = smoothed <= 60 ? 'green' : (smoothed <= 120 ? 'yellow' : 'red');
-            if (p.net !== tier) p.net = tier;
+          if (!id) return;
+          if (typeof rtt === 'number' && isFinite(rtt) && rtt >= 0) {
+            Presence.setPing(id, rtt);
           }
+          // Treat pong as a heartbeat
+          Presence.beat(id);
         } catch (_) {}
       });
     } catch (_) {}

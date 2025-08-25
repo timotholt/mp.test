@@ -260,7 +260,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             if (m && typeof m.forEach === 'function') {
               m.forEach((p, id) => {
                 const status = (p && typeof p.status === 'string') ? p.status : '';
-                pl.push({ id, name: p?.name || 'Guest', status });
+                // Include pingMs for UI (Presence mirror updates this)
+                const pingMs = (p && typeof p.pingMs === 'number') ? p.pingMs : 0;
+                pl.push({ id, name: p?.name || 'Guest', status, pingMs });
               });
             }
             playersCache = pl;
@@ -283,10 +285,10 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           if (playersPanel) playersPanel.setData(playersCache);
         });
       } catch (_) {}
-      // Reply to server-initiated ping for RTT measurement
+      // Reply to server-initiated ping for RTT measurement (lobby)
       try {
         lobbyRoom.onMessage('ping', (msg) => {
-          try { lobbyRoom.send('pong', { t: (msg && msg.t) | 0 }); } catch (_) {}
+          try { lobbyRoom.send('pong', { t: (msg && msg.t) }); } catch (_) {}
         });
       } catch (_) {}
       lobbyRoom.onLeave(() => { lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {} /* resume polling if needed */ startLobbyPolling(); try { if (playersUiTimer) { clearInterval(playersUiTimer); playersUiTimer = null; } } catch (_) {} });
@@ -471,42 +473,64 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               listEl.appendChild(empty);
               return;
             }
+            // Render each row as a 4-column grid: [dot | name | location | ping]
             filtered.forEach(p => {
               const row = document.createElement('div');
-              row.style.display = 'flex';
+              // Grid layout to meet the 4-column spec
+              row.style.display = 'grid';
+              row.style.gridTemplateColumns = '24px 1fr auto auto';
               row.style.alignItems = 'center';
-              row.style.justifyContent = 'space-between';
+              row.style.columnGap = '8px';
               row.style.padding = '6px 8px';
               row.style.border = '1px solid rgba(255,255,255,0.12)';
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
-              const label = document.createElement('div');
-              label.style.display = 'flex';
-              label.style.alignItems = 'center';
-              // Status dot on far left
+
+              // 1) Status dot (centered)
               const statusRaw = String(p.status || '').toLowerCase();
               const dot = document.createElement('span');
               dot.textContent = '●';
               const dotColor = statusRaw === 'green' ? '#4ade80' : (statusRaw === 'yellow' ? '#facc15' : (statusRaw === 'red' ? '#f87171' : 'rgba(255,255,255,0.5)'));
               dot.style.color = dotColor;
-              dot.style.marginRight = '6px';
+              dot.style.textAlign = 'center';
+              dot.style.display = 'inline-block';
+              dot.style.width = '100%';
               dot.setAttribute('data-dot-id', String(p.id));
-              // Name
+
+              // 2) Player name (left)
               const nameSpan = document.createElement('span');
               nameSpan.textContent = p.name || 'Guest';
-              // Location tag (placeholder: Lobby)
+              nameSpan.style.textAlign = 'left';
+
+              // 3) Location (right) — placeholder until real location is wired
+              const loc = 'Lobby';
               const locSpan = document.createElement('span');
+              locSpan.textContent = loc;
               locSpan.style.opacity = '0.8';
-              locSpan.textContent = ' · Lobby';
-              // Compose left label: dot, space, name, location
-              label.appendChild(dot);
-              label.appendChild(document.createTextNode(' '));
-              label.appendChild(nameSpan);
-              label.appendChild(locSpan);
+              locSpan.style.textAlign = 'right';
+
+              // 4) Ping (right) — format per spec
+              const pingSpan = document.createElement('span');
+              const ms = Number(p.pingMs || 0);
+              const isValid = Number.isFinite(ms) && ms >= 0;
+              let pingText = '—';
+              if (isValid) {
+                if (ms <= 1000) {
+                  pingText = `${Math.round(ms)} ms`;
+                } else {
+                  const secs = ms / 1000;
+                  const prec = secs >= 10 ? 1 : 2; // keep at most 2 decimals
+                  pingText = `${secs.toFixed(prec)} s`;
+                }
+              }
+              pingSpan.textContent = pingText;
+              pingSpan.style.textAlign = 'right';
+              pingSpan.style.opacity = isValid ? '1' : '0.7';
+
               // Right-click context menu on player name (skip self)
               try {
-                label.style.cursor = 'context-menu';
-                label.addEventListener('contextmenu', (ev) => {
+                nameSpan.style.cursor = 'context-menu';
+                nameSpan.addEventListener('contextmenu', (ev) => {
                   ev.preventDefault(); ev.stopPropagation();
                   const targetName = String(p.name || '').trim();
                   if (targetName && targetName === selfName) return; // don't show for yourself
@@ -523,7 +547,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                   });
                 });
               } catch (_) {}
-              row.appendChild(label);
+
+              row.appendChild(dot);
+              row.appendChild(nameSpan);
+              row.appendChild(locSpan);
+              row.appendChild(pingSpan);
               listEl.appendChild(row);
             });
           }
@@ -603,7 +631,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
         grid.appendChild(gamesPanel.el);
         grid.appendChild(playersPanel.el);
-        grid.appendChild(chatWrap);
+        // chatWrap already appended above; avoid duplicate append
 
         content.appendChild(grid);
       }

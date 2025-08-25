@@ -136,10 +136,12 @@ try { registerGameplayMovement(() => room); } catch (_) {}
 // Configure Room UI module with a getter for current room
 try { configureRoomUi({ getRoom: () => room }); } catch (_) {}
 
+// Lightweight heartbeat for presence: send 'hb' to current room and lobby (guarded)
+try { startHeartbeat({ getRoom: () => room, getLobbyRoom: () => (window.lobbyRoom || null), intervalMs: 5000 }); } catch (_) {}
+
 // Reconnect helpers moved to './core/net/reconnect.js'
 
-// Global heartbeat (5s): sends 'hb' to current game room and lobby room
-try { startHeartbeat({ getRoom: () => room, getLobbyRoom: () => window.lobbyRoom, intervalMs: 5000 }); } catch (_) {}
+// Client replies to server 'ping' with 'pong' and also sends a lightweight 'hb' every ~5s for presence
 
 // Expose for login modal to call directly
 window.startLobby = startLobby;

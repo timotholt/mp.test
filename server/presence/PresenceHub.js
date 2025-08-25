@@ -1,9 +1,9 @@
 // PresenceHub singleton: tracks userId -> lastSeen, status (green/yellow/red), and ping (ms) + net tier
 // Plain JS (CommonJS)
 
-const GREEN_MS = 10000;  // <=10s
-const YELLOW_MS = 20000; // 10-20s
-// >20s -> red
+const GREEN_MS = 5000;   // <5s -> green
+const YELLOW_MS = 10000; // <10s -> yellow
+// >=10s -> red
 
 class PresenceHub {
   constructor() {
@@ -42,7 +42,7 @@ class PresenceHub {
     const id = String(userId);
     const u = this.users.get(id);
     if (!u) return { lastSeen: 0, status: 'red', pingMs: 0, net: 'red' };
-    return { lastSeen: u.lastSeen | 0, status: u.status || 'red', pingMs: (u.pingMs | 0) || 0, net: u.net || 'red' };
+    return { lastSeen: u.lastSeen, status: u.status || 'red', pingMs: (u.pingMs | 0) || 0, net: u.net || 'red' };
   }
 
   getStatus(userId) { return this.get(userId).status; }
@@ -68,14 +68,14 @@ class PresenceHub {
     this._timer = setInterval(() => {
       const now = this.now();
       this.users.forEach((u, id) => {
-        const dt = now - (u.lastSeen | 0);
+        const dt = now - (u.lastSeen || 0);
         let status = 'red';
-        if (dt <= GREEN_MS) status = 'green';
-        else if (dt <= YELLOW_MS) status = 'yellow';
+        if (dt < GREEN_MS) status = 'green';
+        else if (dt < YELLOW_MS) status = 'yellow';
         else status = 'red';
         if (u.status !== status) u.status = status;
       });
-    }, 5000);
+    }, 2000);
     try { this._timer.unref && this._timer.unref(); } catch (_) {}
   }
 }

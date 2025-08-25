@@ -124,4 +124,11 @@ export function wireRoomEvents(r, deps) {
   r.onLeave((code) => {
     try { onLeave && onLeave(code); } catch (_) {}
   });
+
+  // Universal ping reply: server-authoritative RTT
+  try {
+    r.onMessage('ping', (msg) => {
+      try { r.send('pong', { t: (msg && msg.t) }); } catch (_) {}
+    });
+  } catch (_) {}
 }

@@ -75,6 +75,8 @@ class Player extends Entity {
     this.online = true;
     this.ready = false;
     this.status = 'red';
+    this.pingMs = 0;
+    this.net = 'red';
     // Selection fields
     this.faction = '';
     this.classKey = '';
@@ -86,6 +88,8 @@ defineTypes(Player, {
   online: 'boolean',
   ready: 'boolean',
   status: 'string',
+  pingMs: 'number',
+  net: 'string',
   faction: 'string',
   classKey: 'string',
   loadout: 'string',
@@ -186,6 +190,30 @@ class NethackRoom extends Room {
         if (p) p.status = Presence.getStatus(uid);
       });
     } catch (_) {}
+
+    // --- Ping/Pong RTT measurement (server-initiated) ---
+    try {
+      this.onMessage('pong', (c, msg) => {
+        try {
+          const t = msg && msg.t;
+          if (!t) return;
+          const rtt = Date.now() - t;
+          const id = c?.auth?.userId || c?.sessionId;
+          if (!id) return;
+          if (typeof rtt === 'number' && isFinite(rtt) && rtt >= 0) {
+            Presence.setPing(id, rtt);
+          }
+          // Treat pong as heartbeat
+          Presence.beat(id);
+        } catch (_) {}
+      });
+    } catch (_) {}
+    this._pingTimer = this.clock.setInterval(() => {
+      try {
+        const t = Date.now();
+        this.clients.forEach((c) => { try { c.send('ping', { t }); } catch (_) {} });
+      } catch (_) {}
+    }, 5000);
 
     // Host can start at any time: triggers a 5s server-driven countdown
     this.onMessage('startGame', (client) => {
@@ -318,9 +346,13 @@ class NethackRoom extends Room {
         this.state.players.forEach((p, id) => {
           const s = Presence.getStatus(id);
           if (p && typeof p.status === 'string' && p.status !== s) p.status = s;
+          const pm = (Presence.getPing(id) | 0) || 0;
+          if (p && typeof p.pingMs === 'number' && p.pingMs !== pm) p.pingMs = pm;
+          const net = Presence.getNet(id);
+          if (p && typeof p.net === 'string' && p.net !== net) p.net = net;
         });
       } catch (_) {}
-    }, 5000);
+    }, 2000);
 
     // --- Dungeon setup (modularized) ---
     // Generate dungeon (currently returns default map)
@@ -668,6 +700,10 @@ class NethackRoom extends Room {
     if (this._presenceTimer) {
       try { this.clock.clearInterval(this._presenceTimer); } catch (_) {}
       this._presenceTimer = null;
+    }
+    if (this._pingTimer) {
+      try { this.clock.clearInterval(this._pingTimer); } catch (_) {}
+      this._pingTimer = null;
     }
   }
 }
