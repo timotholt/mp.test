@@ -47,12 +47,17 @@ function ensureLoginStyles() {
   }
   .btn-outline-glass:hover { border-color: #dff1ff; box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
   .btn svg { width: 18px; height: 18px; }
+  /* Provider buttons fixed height */
+  .login-providers .btn { height: 46px; padding-top: 0; padding-bottom: 0; }
+  /* Universal icon wrapper for consistent sizing */
+  .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-wrap svg { width: 100%; height: 100%; display: block; }
   .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; }
   .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
   .login-form label { opacity: 0.95; text-align: right; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
-    border: 1px solid rgba(120,170,255,0.60); border-radius: 10px; padding: 9px 10px;
+    border: 1px solid rgba(120,170,255,0.60); border-radius: 10px; padding: 0 10px; height: 46px;
     outline: none; box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18);
     backdrop-filter: blur(6px) saturate(1.2);
     box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
@@ -60,6 +65,14 @@ function ensureLoginStyles() {
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
   .input-glass:hover { border-color: #dff1ff; }
   .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
+  /* Input wrapper with optional left/right icon buttons */
+  .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
+  .input-wrap .input-glass { padding-left: 34px; padding-right: 34px; }
+  .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: #dff1ff; opacity: 0.9; cursor: pointer; }
+  .input-icon-btn.left { left: 8px; }
+  .input-icon-btn.right { right: 8px; }
+  .input-icon-btn:hover { color: #ffffff; opacity: 1; }
+  /* Icon sizes inside input buttons rely on .icon-wrap */
   .login-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
   .login-footer { display: flex; justify-content: flex-start; margin-top: 6px; }
   .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
@@ -76,9 +89,10 @@ function ensureLoginStyles() {
 }
 
 function icon(name) {
-  const wrap = document.createElement('span');
+  const wrap = document.createElement('div');
+  wrap.className = 'icon-wrap';
   wrap.setAttribute('aria-hidden', 'true');
-  // Simple inline SVGs (from Simple Icons), sized via CSS
+  // Simple inline SVGs (from Simple Icons), sized via CSS via .icon-wrap
   if (name === 'google') {
     wrap.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 12v3.6h5.1c-.22 1.34-1.54 3.93-5.1 3.93-3.07 0-5.58-2.54-5.58-5.67S8.93 8.19 12 8.19c1.75 0 2.92.74 3.59 1.38l2.45-2.36C16.73 5.83 14.6 5 12 5 6.98 5 2.9 9.03 2.9 14.06 2.9 19.09 6.98 23.12 12 23.12c6.93 0 9.55-4.85 9.55-8.01 0-.54-.06-.95-.13-1.36H12z"/></svg>';
   } else if (name === 'discord') {
@@ -157,10 +171,16 @@ export function presentLoginModal() {
 
   const googleBtn = mkBtn('Google', () => signInWithProvider('google'));
   try { googleBtn.insertBefore(icon('google'), googleBtn.firstChild); } catch (_) {}
+  // Provider label size bump
+  try { const gTxt = googleBtn.lastElementChild; if (gTxt && gTxt.style) gTxt.style.fontSize = '16px'; } catch (_) {}
   const discordBtn = mkBtn('Discord', () => signInWithProvider('discord'));
   try { discordBtn.insertBefore(icon('discord'), discordBtn.firstChild); } catch (_) {}
+  // Provider label size bump
+  try { const dTxt = discordBtn.lastElementChild; if (dTxt && dTxt.style) dTxt.style.fontSize = '16px'; } catch (_) {}
   const facebookBtn = mkBtn('Facebook', () => signInWithProvider('facebook'));
   try { facebookBtn.insertBefore(icon('facebook'), facebookBtn.firstChild); } catch (_) {}
+  // Facebook size is good; just bump provider label size slightly for consistency
+  try { const fTxt = facebookBtn.lastElementChild; if (fTxt && fTxt.style) fTxt.style.fontSize = '16px'; } catch (_) {}
   // Far-mode tooltips for providers
   try { attachTooltip(googleBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(googleBtn, 'Continue with Google'); } catch (_) {}
   try { attachTooltip(discordBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(discordBtn, 'Continue with Discord'); } catch (_) {}
@@ -180,12 +200,46 @@ export function presentLoginModal() {
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
   const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'you@grim.dark'; emailInput.className = 'input-glass';
   const passLabel = document.createElement('label'); passLabel.textContent = 'Password:';
-  const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = '••••••••'; passInput.className = 'input-glass';
+  const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'; passInput.className = 'input-glass';
+
+  // Wrap inputs with optional icons
+  const emailWrap = document.createElement('div'); emailWrap.className = 'input-wrap';
+  const passWrap = document.createElement('div'); passWrap.className = 'input-wrap';
+
+  // Left mail icon for email (focuses the input)
+  const mailBtn = document.createElement('button'); mailBtn.type = 'button'; mailBtn.className = 'input-icon-btn left';
+  mailBtn.innerHTML = '<div class="icon-wrap"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z"/></svg></div>';
+  mailBtn.onclick = () => { try { emailInput.focus(); } catch (_) {} };
+  try { attachTooltip(mailBtn, { mode: 'far', placement: 'l,lc,tl,bl,t,b' }); updateTooltip(mailBtn, 'Email'); } catch (_) {}
+
+  // Right eye icon for password (toggle visibility)
+  const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.className = 'input-icon-btn right';
+  const eyeOpen = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
+  const eyeOff = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M2 4.27 3.28 3 21 20.72 19.73 22l-3.2-3.2A12.37 12.37 0 0 1 12 19c-7 0-10-7-10-7a18.42 18.42 0 0 1 5.06-5.91L2 4.27Zm6.11 6.11A5 5 0 0 0 12 17c.55 0 1.08-.09 1.57-.26l-1.83-1.83A2.5 2.5 0 0 1 9.89 10.38ZM12 5c7 0 10 7 10 7a18.4 18.4 0 0 1-3.18 4.19l-1.43-1.43A12.3 12.3 0 0 0 20.06 12S17 5 12 5a12.33 12.33 0 0 0-4.37.78L6.2 4.35A18.36 18.36 0 0 1 12 5Z"/></svg>';
+  let pwVisible = false; eyeBtn.innerHTML = '<div class="icon-wrap">' + eyeOpen + '</div>';
+  eyeBtn.onclick = () => {
+    try {
+      pwVisible = !pwVisible;
+      passInput.type = pwVisible ? 'text' : 'password';
+      eyeBtn.innerHTML = '<div class="icon-wrap">' + (pwVisible ? eyeOff : eyeOpen) + '</div>';
+      try { updateTooltip(eyeBtn, pwVisible ? 'Hide password' : 'Show password'); } catch (_) {}
+    } catch (_) {}
+  };
+  try { attachTooltip(eyeBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(eyeBtn, 'Show password'); } catch (_) {}
+
+  // Assemble wraps
+  emailWrap.appendChild(mailBtn);
+  emailWrap.appendChild(emailInput);
+  passWrap.appendChild(passInput);
+  passWrap.appendChild(eyeBtn);
+
+  // Tooltips for inputs
   try { attachTooltip(emailInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(emailInput, 'Enter your email address'); } catch (_) {}
   try { attachTooltip(passInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(passInput, 'Enter your password'); } catch (_) {}
 
-  form.appendChild(emailLabel); form.appendChild(emailInput);
-  form.appendChild(passLabel); form.appendChild(passInput);
+  // Add to form
+  form.appendChild(emailLabel); form.appendChild(emailWrap);
+  form.appendChild(passLabel); form.appendChild(passWrap);
 
   const actions = document.createElement('div');
   actions.className = 'login-actions';
