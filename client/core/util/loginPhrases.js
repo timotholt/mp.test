@@ -12,7 +12,7 @@ export const LOGIN_PHRASES = [
     "Purge the cache, for it is unclean.",
     "Encrypt. Engage. Exterminate bad actors.",
     "Captcha? We prefer bullets.",
-    "OAuth seals waxed and stamped.",
+    "oAuth seals waxed and stamped.",
     "Verifying your gene-seed (email).",
     "May your cookies be HttpOnly and secure.",
     "Rate limits sharper than a power sword.",

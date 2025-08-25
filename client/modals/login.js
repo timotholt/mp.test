@@ -6,13 +6,13 @@ import {
   initSupabase,
   signInWithProvider,
   signInWithPassword,
-  signUpWithPassword,
-  sendPasswordReset,
   ensureProfileForCurrentUser,
   getUser,
 } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { getRandomLoginPhrase } from '../core/util/loginPhrases.js';
+import { presentCreateAccountModal } from './createAccount.js';
+import { presentForgotPasswordModal } from './forgotPassword.js';
 
 function ensureLoginStyles() {
   if (document.getElementById('login-modal-style')) return;
@@ -255,18 +255,12 @@ export function presentLoginModal() {
   signUpLink.type = 'button';
   signUpLink.className = 'login-link';
   signUpLink.textContent = 'Create Account';
-  signUpLink.onclick = async () => {
-    await signUpWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
-    setStatus('Check your email for a verification link. Then sign in.');
-  };
+  signUpLink.onclick = () => { try { presentCreateAccountModal(); } catch (_) {} };
   const resetLink = document.createElement('button');
   resetLink.type = 'button';
   resetLink.className = 'login-link';
   resetLink.textContent = 'Forgot password?';
-  resetLink.onclick = async () => {
-    await sendPasswordReset(String(emailInput.value || '').trim());
-    setStatus('Password reset sent (if the email exists).');
-  };
+  resetLink.onclick = () => { try { presentForgotPasswordModal(); } catch (_) {} };
   // Tooltips on actions (favor bottom-right)
   try { attachTooltip(signInBtn, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
   try { attachTooltip(signUpLink, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
