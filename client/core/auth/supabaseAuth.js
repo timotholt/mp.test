@@ -8,8 +8,27 @@ let inited = false;
 
 export function initSupabase() {
   if (inited && supabase) return supabase;
-  const url = import.meta?.env?.VITE_SUPABASE_URL || window.VITE_SUPABASE_URL || '';
-  const anon = import.meta?.env?.VITE_SUPABASE_ANON_KEY || window.VITE_SUPABASE_ANON_KEY || '';
+  // Prefer Vite env, then window, then localStorage, then prompt (dev-only) to avoid committing secrets
+  let url = import.meta?.env?.VITE_SUPABASE_URL || window.VITE_SUPABASE_URL || localStorage.getItem('VITE_SUPABASE_URL') || '';
+  let anon = import.meta?.env?.VITE_SUPABASE_ANON_KEY || window.VITE_SUPABASE_ANON_KEY || localStorage.getItem('VITE_SUPABASE_ANON_KEY') || '';
+  // If still missing, prompt once and persist to localStorage (public anon key is safe in client)
+  if (!url || !anon) {
+    try {
+      if (!url) {
+        const u = prompt('Enter Supabase URL (https://<project>.supabase.co)');
+        if (u) { url = u.trim(); localStorage.setItem('VITE_SUPABASE_URL', url); }
+      }
+      if (!anon) {
+        const a = prompt('Enter Supabase ANON key (public)');
+        if (a) { anon = a.trim(); localStorage.setItem('VITE_SUPABASE_ANON_KEY', anon); }
+      }
+    } catch (_) {}
+  }
+  // Debug: print env-derived values to help diagnose configuration
+  try {
+    console.log('[auth] VITE_SUPABASE_URL =', url);
+    console.log('[auth] VITE_SUPABASE_ANON_KEY =', anon);
+  } catch (_) {}
   if (!url || !anon) {
     console.warn('[auth] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
   }
