@@ -53,7 +53,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   list.style.overflowY = 'auto';
   list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
   list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  list.style.borderRadius = '4px';
+  list.style.borderRadius = '4px 4px 0px 0px';
   list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   list.style.padding = '6px';
   try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
