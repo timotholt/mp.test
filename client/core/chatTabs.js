@@ -75,6 +75,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
     // Outside glow on left/right/bottom only. Use small offsets and negative spread to avoid any top glow.
     inputRow.style.boxShadow = `-2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}, 0 2px 16px -6px ${glowColor}`;
+    // Crisp separator line between messages area and input row
+    inputRow.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   } catch (_) {}
 
   // Message input: use shared left-icon input but hide the icon to reuse styles
