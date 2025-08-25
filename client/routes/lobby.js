@@ -255,10 +255,14 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           content.style.padding = '2rem 4rem 4rem 4rem';
           // Include padding within layout height to prevent bottom clipping of chat
           content.style.boxSizing = 'border-box';
+          // Let pointer events pass through empty gaps to the canvas; child panels remain interactive
+          content.style.pointerEvents = 'none';
         } catch (_) {}
         // Layout container: grid with 2 rows (top panels fixed to 40vh, bottom chat fills remainder) and 2 columns
         const grid = document.createElement('div');
         grid.style.display = 'grid';
+        // Let gaps between items pass through to the canvas; panels will re-enable interaction
+        grid.style.pointerEvents = 'none';
         grid.style.gridTemplateColumns = '2fr 1fr';
         // Top fixed height reduced by 2rem; bottom grows to fill remainder
         grid.style.gridTemplateRows = 'calc(40vh - 2rem) 1fr';
@@ -452,9 +456,12 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         gamesPanel.el.style.gridRow = '1 / 2';
         // Ensure the panel fills its grid track so its internal list can flex
         gamesPanel.el.style.height = '100%';
+        // Re-enable interaction within the panel while parent container passes through
+        gamesPanel.el.style.pointerEvents = 'auto';
         playersPanel.el.style.gridColumn = '2 / 3';
         playersPanel.el.style.gridRow = '1 / 2';
         playersPanel.el.style.height = '100%';
+        playersPanel.el.style.pointerEvents = 'auto';
 
         // --- Chat bottom ---
         lobbyChat = createChatTabs({
@@ -494,6 +501,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         chatWrap.style.height = '100%';
         chatWrap.style.maxHeight = '100%';
         chatWrap.style.minHeight = '0';
+        chatWrap.style.pointerEvents = 'auto';
         // We allow the bottom of the chat to be seen
         // chatWrap.style.overflow = 'hidden';
         // Let the chat component fill the fixed area without growing layout
