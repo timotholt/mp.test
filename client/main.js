@@ -19,6 +19,8 @@ import { registerLobbyRoute, stopLobbyPolling as stopLobbyPollingExport } from '
 import { ensureScreenShade } from './core/ui/screenShade.js';
 import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js';
 import * as LS from './core/localStorage.js';
+import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEventsOnce, renderRoomPlayers, getPlayersSnapshot, refreshRoomChat, appendChatLine, setRoomReadyBtn, setRoomPlayersEl, setRoomChat } from './core/ui/roomUi.js';
+import { createSessionHandlers } from './core/net/session.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -31,105 +33,33 @@ const log = (line) => { logEl.textContent += line + '\n'; };
 
 // deriveGameId moved to './core/util/deriveGameId.js' and used by Lobby route module
 
-// -------------------- Room UI Helpers --------------------
-function setReadyButtonUI(isReady) {
-  if (!roomReadyBtn) return;
-  roomReadyBtn.dataset.ready = isReady ? 'true' : 'false';
-  // Checkbox-style labels: empty = not ready, filled = ready
-  roomReadyBtn.textContent = isReady ? '☑ Ready' : '☐ Ready';
-}
+// -------------------- Room UI (extracted to './core/ui/roomUi.js') --------------------
 // Expose for modal modules to sync button state on cancel/unready
 window.setReadyButtonUI = setReadyButtonUI;
-function bindRoomUIEventsOnce() {
-  if (!room || roomUIBound) return;
-  roomUIBound = true;
-  try {
-    room.state.players.onAdd((player) => {
-      // Re-render players list and refresh start confirm (if shown)
-      renderRoomPlayers();
-      // Server will push 'showGameConfirm' with fresh snapshot; no local modal refresh needed
-    });
-    room.state.players.onRemove(() => {
-      renderRoomPlayers();
-      // Server will push 'showGameConfirm' updates if needed
-    });
-  } catch (_) {}
-  try {
-    room.state.log.onAdd((value) => {
-      appendChatLine(String(value));
-    });
-  } catch (_) {}
-}
-
-function renderRoomPlayers() {
-  if (!roomPlayersEl || !room) return;
-  try {
-    roomPlayersEl.innerHTML = '';
-    // MapSchema supports forEach
-    room.state.players.forEach((p, id) => {
-      const line = document.createElement('div');
-      const nm = p.name || 'Hero';
-      const off = p.online === false ? ' (offline)' : '';
-      line.textContent = `${nm}${off}`;
-      roomPlayersEl.appendChild(line);
-    });
-  } catch (_) {}
-}
-
-// Snapshot current players for modals/UI that need a serializable view
-function getPlayersSnapshot() {
-  const arr = [];
-  try {
-    if (!room || !room.state || !room.state.players) return arr;
-    room.state.players.forEach((p, id) => {
-      arr.push({ id, name: p?.name || 'Hero', ready: !!p?.ready, online: p?.online !== false });
-    });
-  } catch (_) {}
-  return arr;
-}
-
-function refreshRoomChat() {
-  if (!room) return;
-  try {
-    const arr = room.state.log || [];
-    const start = Math.max(0, arr.length - 100);
-    // Clear current Game tab in tabbed UI if present; else clear legacy list
-    if (roomChat && typeof roomChat.clear === 'function') {
-      roomChat.clear('Game');
-    } else if (roomChatListEl) {
-      roomChatListEl.innerHTML = '';
-    }
-    for (let i = start; i < arr.length; i++) {
-      appendChatLine(String(arr[i]));
-    }
-  } catch (_) {}
-}
-
-function appendChatLine(line) {
-  try {
-    if (roomChat && typeof roomChat.appendMessage === 'function') {
-      roomChat.appendMessage('Game', String(line));
-      return;
-    }
-  } catch (_) {}
-  // Fallback to legacy DOM list if present
-  if (!roomChatListEl) return;
-  const div = document.createElement('div');
-  div.textContent = String(line);
-  roomChatListEl.appendChild(div);
-  roomChatListEl.scrollTop = roomChatListEl.scrollHeight;
-}
 // Routing handled by imported setRoute/toggleRenderer in './core/router.js'
 
+// Provide room reference and session handlers (used by routes)
+let room;
+const { startLobby, leaveRoomToLobby, afterJoin } = createSessionHandlers({
+  setRoute,
+  APP_STATES,
+  OverlayManager,
+  PRIORITY,
+  LS,
+  resetRoomUiBinding,
+  getPlayersSnapshot,
+  appendChatLine,
+  setReadyButtonUI,
+  presentSubstate,
+  presentStartGameConfirm,
+  presentFCLSelectModal,
+  statusEl,
+  getRoom: () => room,
+  setRoom: (r) => { room = r; try { window.room = r; } catch (_) {} },
+  log,
+});
+
 // Register screens
-// ROOM UI refs
-let roomPlayersEl = null;
-let roomChatListEl = null;
-let roomChatInputEl = null;
-let roomReadyBtn = null;
-let roomUIBound = false;
-// Chat components
-let roomChat = null;
 
 // Register LOGIN route via extracted module
 registerLoginRoute({ makeScreen, APP_STATES });
@@ -150,9 +80,9 @@ registerRoomRoute({
   renderRoomPlayers,
   refreshRoomChat,
   setRefs: {
-    setRoomReadyBtn: (btn) => { roomReadyBtn = btn; },
-    setRoomPlayersEl: (el) => { roomPlayersEl = el; },
-    setRoomChat: (chat) => { roomChat = chat; },
+    setRoomReadyBtn,
+    setRoomPlayersEl,
+    setRoomChat,
   },
 });
 
@@ -199,166 +129,16 @@ registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin });
 // Back-compat global
 try { window.stopLobbyPolling = stopLobbyPollingExport; } catch (_) {}
 
-let room;
-let lastStateVersion = 0;
 // Register gameplay input handler (guarded)
 try { registerGameplayMovement(() => room); } catch (_) {}
 
+// Configure Room UI module with a getter for current room
+try { configureRoomUi({ getRoom: () => room }); } catch (_) {}
+
 // Reconnect helpers moved to './core/net/reconnect.js'
 
-function startLobby() {
-  statusEl.textContent = 'In Lobby';
-  setRoute(APP_STATES.LOBBY);
-}
 // Expose for login modal to call directly
 window.startLobby = startLobby;
-
-// Leave current room and return to Lobby
-async function leaveRoomToLobby() {
-  try {
-    if (room && typeof room.leave === 'function') {
-      await room.leave(true);
-    }
-  } catch (e) { try { console.warn('leave failed', e); } catch (_) {} }
-  try { sessionStorage.removeItem('roomId'); } catch (_) {}
-  try { sessionStorage.removeItem('sessionId'); } catch (_) {}
-  try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
-  try { statusEl.textContent = 'In Lobby'; } catch (_) {}
-  try { window.room = null; } catch (_) {}
-  try { room = null; } catch (_) {}
-  try { roomUIBound = false; } catch (_) {}
-  setRoute(APP_STATES.LOBBY);
-}
-
-async function afterJoin(r) {
-  room = r;
-  sessionStorage.setItem('roomId', room.id);
-  sessionStorage.setItem('sessionId', room.sessionId);
-  window.room = room;
-  // reset room UI binding for this new room
-  try { roomUIBound = false; } catch (_) {}
-  wireRoomEvents(room);
-  const selfId = room.sessionId;
-  const pname = LS.getItem('name', 'Hero');
-  statusEl.textContent = `Connected | roomId=${room.id} | you=${pname} (${selfId.slice(0,6)})`;
-  // Close lobby modal on successful join
-  try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}
-  setRoute(APP_STATES.ROOM);
-}
-
-function wireRoomEvents(r) {
-  lastStateVersion = 0;
-  // Players
-  try {
-    r.state.players.onAdd((player, key) => {
-      const lx = player.currentLocation?.x; const ly = player.currentLocation?.y; const ll = player.currentLocation?.level ?? 0;
-      log(`+ ${player.name} (${key}) @ ${lx}/${ly}/${ll}`);
-    });
-    r.state.players.onRemove((_, key) => { log(`- player ${key}`); });
-  } catch (_) {}
-
-  // Server log
-  try { r.state.log.onAdd((value) => { log(value); }); } catch (_) {}
-
-  // Maps & colors
-  r.onMessage('dungeonMap', (mapString) => {
-    if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
-      window.radianceCascades.setDungeonMap(mapString);
-    } else { window.__pendingDungeonMap = mapString; }
-  });
-  r.onMessage('positionColorMap', (mapString) => {
-    if (window.radianceCascades?.surface?.setPositionColorMap) {
-      window.radianceCascades.surface.setPositionColorMap(mapString);
-    } else { window.__pendingPositionColorMap = mapString; }
-  });
-  r.onMessage('characterColorMap', (mapString) => {
-    if (window.radianceCascades?.surface?.setCharacterColorMap) {
-      window.radianceCascades.surface.setCharacterColorMap(mapString);
-    } else { window.__pendingCharacterColorMap = mapString; }
-  });
-
-  // App state and modal pipeline
-  r.onMessage('appState', (msg) => {
-    try { console.log('[DEBUG client] appState', msg); } catch (_) {}
-    if (typeof msg?.version === 'number' && msg.version < lastStateVersion) return;
-    if (typeof msg?.version === 'number') lastStateVersion = msg.version;
-    const { state, substate, payload } = msg || {};
-    if (state) setRoute(state, payload || {});
-    // Ensure start-confirm modal is dismissed when gameplay starts
-    if (state === APP_STATES.GAMEPLAY_ACTIVE) {
-      try { OverlayManager.dismiss('CONFIRM_START'); } catch (_) {}
-    }
-    if (substate) presentSubstate(substate, payload || {}); else OverlayManager.clearBelow(PRIORITY.CRITICAL + 1);
-  });
-  r.onMessage('modal', (msg) => {
-    const { command, id, text, actions, priority, blockInput } = msg || {};
-    if (command === 'present') {
-      OverlayManager.present({ id, text, actions, priority: priority ?? PRIORITY.MEDIUM, blockInput: blockInput !== false });
-    } else if (command === 'dismiss' && id) {
-      OverlayManager.dismiss(id);
-    } else if (command === 'clearBelow') {
-      OverlayManager.clearBelow(priority ?? PRIORITY.MEDIUM);
-    }
-  });
-
-  // Server-driven start game confirmation (host and ready players)
-  r.onMessage('showGameConfirm', (payload) => {
-    try {
-      presentStartGameConfirm({
-        players: (payload && Array.isArray(payload.players)) ? payload.players : getPlayersSnapshot(),
-        canStart: typeof payload?.canStart === 'boolean' ? payload.canStart : undefined,
-        isHost: !!(payload && (payload.isHost || (payload.hostId && payload.hostId === r.sessionId))),
-        starting: !!payload?.starting,
-        countdown: (payload && typeof payload.countdown === 'number') ? payload.countdown : 0,
-        youAreReady: !!payload?.youAreReady,
-        onStart: () => { try { r.send('startGame'); } catch (e) { console.warn('startGame send failed', e); } },
-        onCancel: () => {
-          try { r.send('cancelStart'); } catch (_) {}
-          // Host cancel should reflect as not ready when countdown isn't active; reset UI proactively
-          try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
-        },
-        onUnready: () => {
-          try { r.send('setReady', { ready: false }); } catch (_) {}
-          try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
-          try { appendChatLine('You are not ready'); } catch (_) {}
-        },
-        priority: PRIORITY.MEDIUM,
-      });
-    } catch (e) { console.warn('showGameConfirm handling failed', e); }
-  });
-
-  // Server-driven Faction/Class/Loadout selection modal (per-player)
-  r.onMessage('showFCLSelect', (payload) => {
-    try {
-      // If selection incomplete, ensure Ready button shows not ready
-      if (!payload?.complete) {
-        try { if (typeof window.setReadyButtonUI === 'function') window.setReadyButtonUI(false); } catch (_) {}
-      }
-      presentFCLSelectModal({
-        factions: payload?.factions || [],
-        classes: payload?.classes || [],
-        loadouts: payload?.loadouts || [],
-        selection: payload?.selection || {},
-        complete: !!payload?.complete,
-        priority: PRIORITY.LOW,
-        onSelectFaction: (key) => { try { r.send('chooseFaction', { key }); } catch (_) {} },
-        onSelectClass: (key) => { try { r.send('chooseClass', { key }); } catch (_) {} },
-        onSelectLoadout: (key) => { try { r.send('chooseLoadout', { key }); } catch (_) {} },
-        onReady: () => {
-          try { r.send('setReady', { ready: true }); } catch (_) {}
-          try { setReadyButtonUI(true); } catch (_) {}
-          try { appendChatLine('You are ready'); } catch (_) {}
-        },
-      });
-    } catch (e) { console.warn('showFCLSelect handling failed', e); }
-  });
-
-  r.onLeave((code) => {
-    statusEl.textContent = 'Disconnected (' + code + ')';
-    room = null;
-    startLobby();
-  });
-}
  
 // Gameplay movement input moved to './core/input/gameplayInput.js'
 
