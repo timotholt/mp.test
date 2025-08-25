@@ -18,8 +18,8 @@ export function ensureStatusBar() {
     bar.style.alignItems = 'center';
     bar.style.justifyContent = 'space-between';
     bar.style.padding = '0 12px';
-    // Blue glassmorphism look
-    bar.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
+    // Blue glassmorphism look (more opaque). Theme override via --statusbar-bg
+    bar.style.background = 'var(--statusbar-bg, linear-gradient(180deg, rgba(10,18,26,0.35) 0%, rgba(10,16,22,0.28) 100%))';
     bar.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     bar.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     bar.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
