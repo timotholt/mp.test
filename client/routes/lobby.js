@@ -412,6 +412,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               row.style.border = '1px solid rgba(255,255,255,0.12)';
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
+              // Make games list font smaller to allow denser rows
+              row.style.fontSize = '0.75em';
               const label = document.createElement('div');
               label.textContent = `${meta.name || r.roomId}  |  ${r.clients}/${meta.maxPlayers || r.maxClients || '?' }${meta.private ? ' (private)' : ''}`;
               const btn = document.createElement('button');
@@ -478,13 +480,17 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               const row = document.createElement('div');
               // Grid layout to meet the 4-column spec
               row.style.display = 'grid';
-              row.style.gridTemplateColumns = '24px 1fr auto auto';
+              // Narrow status dot col (12px), flexible name, location auto, fixed ping width (7ch)
+              row.style.gridTemplateColumns = '12px 1fr auto 7ch';
               row.style.alignItems = 'center';
               row.style.columnGap = '8px';
-              row.style.padding = '6px 8px';
-              row.style.border = '1px solid rgba(255,255,255,0.12)';
+              // Uniform compact padding per row
+              row.style.padding = '4px 4px 4px 4px';
+              row.style.border = '0';
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
+              // Match tabs font-size (~13.33px) assuming base 16px
+              row.style.fontSize = '0.833em';
 
               // 1) Status dot (centered)
               const statusRaw = String(p.status || '').toLowerCase();
@@ -495,6 +501,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               dot.style.textAlign = 'center';
               dot.style.display = 'inline-block';
               dot.style.width = '100%';
+              dot.style.padding = '0';
+              dot.style.margin = '0';
               dot.setAttribute('data-dot-id', String(p.id));
 
               // 2) Player name (left)
@@ -516,16 +524,24 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               let pingText = '—';
               if (isValid) {
                 if (ms <= 1000) {
-                  pingText = `${Math.round(ms)} ms`;
+                  pingText = `${Math.round(ms)}ms`;
                 } else {
                   const secs = ms / 1000;
                   const prec = secs >= 10 ? 1 : 2; // keep at most 2 decimals
-                  pingText = `${secs.toFixed(prec)} s`;
+                  pingText = `${secs.toFixed(prec)}s`;
                 }
               }
               pingSpan.textContent = pingText;
               pingSpan.style.textAlign = 'right';
               pingSpan.style.opacity = isValid ? '1' : '0.7';
+              // Smaller font and prevent wrapping so digits/units stay together (e.g., 0ms)
+              pingSpan.style.fontSize = '0.85em';
+              pingSpan.style.whiteSpace = 'nowrap';
+              // Ensure fixed character width for consistent 7ch column
+              pingSpan.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+              pingSpan.style.fontVariantNumeric = 'tabular-nums';
+              // Bottom-align the ping within the grid cell
+              pingSpan.style.alignSelf = 'end';
 
               // Right-click context menu on player name (skip self)
               try {
