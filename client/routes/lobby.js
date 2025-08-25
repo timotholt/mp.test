@@ -119,7 +119,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     searchInput.style.lineHeight = '40px';
     searchInput.style.background = 'transparent';
     searchInput.style.color = 'var(--sf-tip-fg, #fff)';
-    searchInput.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    // No visible border on the input itself (row provides borders)
+    searchInput.style.border = '0';
     searchInput.style.borderRadius = '8px';
     // padding-left: icon-left (0) + icon-width (32px) + desired gap (0.5rem)
     searchInput.style.padding = '0 10px 0 calc(32px + 0.5rem)';
