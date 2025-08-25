@@ -120,8 +120,8 @@ export function createKnob(opts = {}) {
   };
   const getValue = () => value;
 
-  // Initialize
-  try { attachTooltip(el); } catch (_) {}
+  // Initialize (far mode = distant tooltip with connector line, no arrow)
+  try { attachTooltip(el, { mode: 'far' }); } catch (_) {}
   updateUI(value);
 
   // Interaction helpers
@@ -275,10 +275,9 @@ function getPointerY(e) { return (e.touches && e.touches[0] ? e.touches[0].clien
 function defaultTitle(v, { min, max, label }) {
   const range = Math.max(0.000001, max - min);
   const pct = Math.round(((v - min) / range) * 100);
-  const num = Math.round(v * 100) / 100; // 2 decimals
-  // Include label (knob name) so tooltip shows e.g., "Master: 75% (0.75)"
+  // Include label (knob name) so tooltip shows e.g., "Master: 75%"
   const prefix = label ? String(label) + ': ' : '';
-  return `${prefix}${pct}% (${num})`;
+  return `${prefix}${pct}%`;
 }
 
 function ensureStyle() {

@@ -6,14 +6,23 @@
 //   detachTooltip(el)
 // Tooltip shows on mouseenter/focus and hides on mouseleave/blur.
 
-let TIP = null; // { el, text, visible, target, mx, my }
+let TIP = null; // { el, line, text, visible, target, mx, my }
 
-export function attachTooltip(targetEl) {
+export function attachTooltip(targetEl, opts = {}) {
   if (!targetEl) return;
   ensureTip();
   // Idempotent: skip re-binding
   if (targetEl.__sfTipBound) return;
   targetEl.__sfTipBound = true;
+  // Mode: 'near' (arrow, close) or 'far' (line, distant). Defaults to 'near'.
+  try {
+    if (opts && typeof opts === 'object') {
+      if (opts.mode === 'far' || opts.mode === 'near') targetEl.__sfTipMode = opts.mode;
+      if (Number.isFinite(opts.gapRem)) targetEl.__sfTipGapRem = Number(opts.gapRem);
+      if (opts.start === 'edge' || opts.start === 'center') targetEl.__sfTipStart = opts.start;
+      if (Number.isFinite(opts.startOffset)) targetEl.__sfTipStartOffsetPx = Number(opts.startOffset);
+    }
+  } catch (_) {}
 
   const onEnter = () => {
     try {
@@ -82,6 +91,8 @@ export function detachTooltip(targetEl) {
   try { targetEl.removeEventListener('blur', h.onBlur); } catch (_) {}
   delete targetEl.__sfTipHandlers;
   delete targetEl.__sfTipText;
+  delete targetEl.__sfTipMode;
+  delete targetEl.__sfTipGapRem;
   if (TIP && TIP.target === targetEl) { TIP.visible = false; TIP.target = null; render(); }
 }
 
@@ -93,33 +104,86 @@ function ensureTip() {
   el.className = 'sf-tooltip';
   el.style.display = 'none';
   document.body.appendChild(el);
-  TIP = { el, text: '', visible: false, target: null, mx: 0, my: 0 };
+
+  const line = document.createElement('div');
+  line.id = 'sf-tooltip-line';
+  line.className = 'sf-tooltip-line';
+  line.style.display = 'none';
+  document.body.appendChild(line);
+
+  TIP = { el, line, text: '', visible: false, target: null, mx: 0, my: 0 };
 }
 
 function render() {
   if (!TIP || !TIP.el) return;
   const t = TIP.target;
   const text = (t && t.__sfTipText) ? t.__sfTipText : '';
+  const mode = (t && t.__sfTipMode) || 'near';
   TIP.text = text;
   TIP.el.textContent = text;
   TIP.el.style.display = TIP.visible && text ? 'block' : 'none';
+  // Toggle mode class (controls arrow visibility via CSS)
+  try { TIP.el.classList.toggle('far', mode === 'far'); } catch (_) {}
+  if (TIP.line) TIP.line.style.display = (TIP.el.style.display === 'block' && mode === 'far') ? 'block' : 'none';
   if (TIP.el.style.display === 'block') position();
 }
 
 function position() {
   if (!TIP || !TIP.el) return;
   const pad = 10;
-  const preferY = -16; // above cursor
-  let x = TIP.mx + 14;
-  let y = TIP.my + preferY;
+  const t = TIP.target;
+  const mode = (t && t.__sfTipMode) || 'near';
+  const gap = remToPx(Number.isFinite(t?.__sfTipGapRem) ? t.__sfTipGapRem : (mode === 'far' ? 2.5 : 0.5));
+  // If we have a target, anchor to it; otherwise fall back to mouse
+  const rt = TIP.target ? TIP.target.getBoundingClientRect() : null;
+  const centerX = rt ? (rt.left + rt.width / 2) : TIP.mx;
+  const centerY = rt ? (rt.top + rt.height / 2) : TIP.my;
+
   const r = TIP.el.getBoundingClientRect();
+  let x = Math.round(centerX - r.width / 2);
+  let y = Math.round(centerY - gap - r.height); // try above by default
   const vw = window.innerWidth || document.documentElement.clientWidth || 800;
   const vh = window.innerHeight || document.documentElement.clientHeight || 600;
+  // If not enough space above, place below
+  if (y < pad) y = Math.round(centerY + gap);
+
   if (x + r.width + pad > vw) x = vw - r.width - pad;
   if (x < pad) x = pad;
   if (y + r.height + pad > vh) y = vh - r.height - pad;
   if (y < pad) y = pad;
   TIP.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+
+  // Position connector line from target anchor to tooltip edge (far mode only)
+  if (TIP.line && mode === 'far') {
+    const trW = r.width; const trH = r.height;
+    // Endpoint at the nearest edge center of the tooltip box towards the anchor
+    const above = (y + trH) <= centerY;
+    const endX = x + trW / 2;
+    const endY = above ? (y + trH) : y;
+
+    // Determine start point: from target center or edge toward tooltip
+    let startX = centerX;
+    let startY = centerY;
+    const startMode = t && t.__sfTipStart ? t.__sfTipStart : 'edge';
+    const startOff = Number.isFinite(t?.__sfTipStartOffsetPx) ? t.__sfTipStartOffsetPx : 6;
+    if (rt && startMode === 'edge') {
+      const hit = intersectRectTowardsPoint(rt, endX, endY);
+      if (hit) { startX = hit.x; startY = hit.y; }
+    }
+    // Nudge start a little outward toward the tooltip so we don't overlap the target
+    {
+      const vx = endX - startX; const vy = endY - startY; const vlen = Math.hypot(vx, vy) || 1;
+      startX += (vx / vlen) * startOff;
+      startY += (vy / vlen) * startOff;
+    }
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const len = Math.max(0, Math.hypot(dx, dy)); // line touches tooltip
+    const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    TIP.line.style.width = `${Math.round(len)}px`;
+    TIP.line.style.transform = `translate(${Math.round(startX)}px, ${Math.round(startY)}px) rotate(${ang}deg)`;
+  }
 }
 
 function ensureStyle() {
@@ -147,6 +211,49 @@ function ensureStyle() {
     transform: translateY(-4px) rotate(45deg);
     filter: drop-shadow(0 0 6px rgba(120,170,255,0.25));
   }
+  .sf-tooltip.far::after { content: none; }
+  .sf-tooltip-line {
+    position: fixed; left: 0; top: 0; height: 1px; width: 0; z-index: 2147483599;
+    pointer-events: none;
+    /* Match tooltip outline hue/glow */
+    background: rgba(120,170,255,0.45);
+    box-shadow: 0 0 12px rgba(120,170,255,0.22), 0 0 2px rgba(120,170,255,0.55);
+    transform-origin: 0 50%;
+  }
   `;
   document.head.appendChild(st);
+}
+
+// Compute intersection point between the center of rect and a target point (tx, ty)
+// returning the point where the ray exits the rectangle boundary.
+function intersectRectTowardsPoint(rect, tx, ty) {
+  // Ray origin: rectangle center
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = tx - cx; const dy = ty - cy;
+  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return { x: cx, y: cy };
+  // Compute t at which the ray hits each side; pick the smallest positive
+  const tVals = [];
+  if (Math.abs(dx) > 1e-6) {
+    const t1 = (rect.left - cx) / dx; // left side
+    const y1 = cy + t1 * dy; if (t1 >= 0 && y1 >= rect.top && y1 <= rect.bottom) tVals.push({ t: t1, x: rect.left, y: y1 });
+    const t2 = (rect.right - cx) / dx; // right side
+    const y2 = cy + t2 * dy; if (t2 >= 0 && y2 >= rect.top && y2 <= rect.bottom) tVals.push({ t: t2, x: rect.right, y: y2 });
+  }
+  if (Math.abs(dy) > 1e-6) {
+    const t3 = (rect.top - cy) / dy; // top side
+    const x3 = cx + t3 * dx; if (t3 >= 0 && x3 >= rect.left && x3 <= rect.right) tVals.push({ t: t3, x: x3, y: rect.top });
+    const t4 = (rect.bottom - cy) / dy; // bottom side
+    const x4 = cx + t4 * dx; if (t4 >= 0 && x4 >= rect.left && x4 <= rect.right) tVals.push({ t: t4, x: x4, y: rect.bottom });
+  }
+  if (!tVals.length) return { x: cx, y: cy };
+  tVals.sort((a,b) => a.t - b.t);
+  return { x: tVals[0].x, y: tVals[0].y };
+}
+
+function remToPx(rem) {
+  try {
+    const fs = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return Math.round(rem * fs);
+  } catch (_) { return Math.round(rem * 16); }
 }
