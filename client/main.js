@@ -1074,7 +1074,7 @@ async function setupAsciiRenderer() {
     ensureStatusBar();
     ensureZoomControls();
     // Volume controls (V2)
-    try { initAudio(); } catch (_) {}
+    try { initAudio({ floatingVolume: false }); } catch (_) {}
     ensureBanner();
     ensureScreenShade();
 
