@@ -50,15 +50,17 @@ function createSettingsPanel() {
   panel.style.top = '60px'; // below hover status bar
   panel.style.right = '12px';
   panel.style.zIndex = '40000'; // above overlays and controls
-  panel.style.background = 'rgba(0,0,0,0.9)';
+  // Blue glassmorphism surface
+  panel.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
   panel.style.color = 'var(--ui-fg, #eee)';
-  panel.style.border = '1px solid #444';
+  panel.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   panel.style.borderRadius = '8px';
   panel.style.padding = '10px';
   panel.style.width = '420px';
   panel.style.maxHeight = '72vh';
   panel.style.overflow = 'hidden';
-  panel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.6)';
+  panel.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
+  panel.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
   panel.style.pointerEvents = 'auto';
 
   const header = document.createElement('div');
@@ -91,7 +93,7 @@ function createSettingsPanel() {
   tabs.id = 'settings-tabs';
   tabs.style.display = 'flex';
   tabs.style.gap = '6px';
-  tabs.style.borderBottom = '1px solid #333';
+  tabs.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   tabs.style.paddingBottom = '6px';
   panel.appendChild(tabs);
 
@@ -142,8 +144,13 @@ function renderSettingsContent(panel) {
   tabNames.forEach((name) => {
     const btn = document.createElement('button');
     btn.textContent = name;
-    btn.style.border = '1px solid #444';
-    btn.style.background = (__settingsState.activeTab === name) ? '#2a2a2a' : 'transparent';
+    // Glass tabs
+    btn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    btn.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+    btn.style.boxShadow = (__settingsState.activeTab === name)
+      ? 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))'
+      : 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
+    btn.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
     btn.style.color = 'var(--ui-fg, #eee)';
     btn.style.padding = '4px 8px';
     btn.style.borderRadius = '4px';

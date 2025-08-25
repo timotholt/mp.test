@@ -36,23 +36,31 @@ export function ensureStatusBar() {
     bar.style.pointerEvents = 'none';
     const left = document.createElement('div');
     left.id = 'status-left';
-    // Keep metrics in a nested span so other UI (like volume knobs) can live inside left without
-    // being clobbered by textContent updates elsewhere.
+    // Metrics span (ID preserved for external updaters). Now lives in right side next to the gear.
     const metrics = document.createElement('span');
     metrics.id = 'status-metrics';
     metrics.textContent = 'FPS: -- | PING: --';
-    left.appendChild(metrics);
     const right = document.createElement('div');
     right.id = 'status-right';
+    right.style.display = 'flex';
+    right.style.alignItems = 'center';
+    right.style.gap = '10px';
     const gear = document.createElement('button');
-    gear.textContent = '⚙️';
+    // Outline gear SVG (accessible)
+    gear.setAttribute('aria-label', 'Settings');
+    gear.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 3.3l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.39 1.26 1 1.51.16.07.33.1.51.1H21a2 2 0 1 1 0 4h-.09c-.18 0-.35.03-.51.1-.61.25-1 .85-1 1.51Z"/></svg>';
     gear.style.background = 'transparent';
     gear.style.border = 'none';
     gear.style.color = 'var(--ui-fg)';
-    gear.style.fontSize = '1.2em';
+    gear.style.width = '28px';
+    gear.style.height = '28px';
+    gear.style.display = 'inline-flex';
+    gear.style.alignItems = 'center';
+    gear.style.justifyContent = 'center';
     gear.style.cursor = 'pointer';
     gear.onclick = () => { try { presentSettingsPanel(); } catch (_) {} };
     right.appendChild(gear);
+    right.appendChild(metrics);
     bar.appendChild(left); bar.appendChild(right);
     document.body.appendChild(bar);
 
