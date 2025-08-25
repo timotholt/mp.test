@@ -13,10 +13,10 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Root container (glassmorphism via theme variables with fallbacks)
   const el = document.createElement('div');
   el.style.marginTop = '12px';
-  el.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+  // el.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
   el.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   el.style.borderRadius = '6px';
-  el.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)), var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
+  // el.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)), var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   el.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
   el.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
   // Let the chat fill its container's fixed height (e.g., lobby grid's chat row)
@@ -24,6 +24,11 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   el.style.flexDirection = 'column';
   el.style.height = '100%';
   el.style.maxHeight = '100%';
+  // No top border on chat root
+  // el.style.borderTop = '0';
+  // el.style.borderLeft = '0';
+  // el.style.borderRight = '0';
+  el.style.border = '0px';
   // Debug labels for DOM inspection
   try { el.setAttribute('data-name', 'chat-root'); el.setAttribute('data-mode', String(mode)); } catch (_) {}
 
@@ -31,7 +36,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   const tabsRow = document.createElement('div');
   tabsRow.style.display = 'flex';
   tabsRow.style.gap = '6px';
-  tabsRow.style.marginBottom = '6px';
+  // Tabs should touch the div below (no gap)
+  tabsRow.style.marginBottom = '0';
+  // No top border on the chat tabs row
+  tabsRow.style.borderTop = '0';
+  tabsRow.style.borderLeft = '0';
+  tabsRow.style.borderRight = '0';
   try { tabsRow.setAttribute('data-name', 'chat-tabs-row'); } catch (_) {}
   el.appendChild(tabsRow);
 
@@ -57,6 +67,10 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   inputRow.style.gap = '8px';
   // inputRow.style.marginTop = '6px';
   inputRow.style.minHeight = '46px';
+  inputRow.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  inputRow.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  inputRow.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  inputRow.style.borderRadius = '0px 0px 6px 6px';
   try { inputRow.setAttribute('data-name', 'chat-input-row'); } catch (_) {}
   el.appendChild(inputRow);
 
@@ -142,10 +156,18 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       const b = document.createElement('button');
       b.textContent = t;
       b.style.padding = '4px 8px';
+      // Remove bottom border so tabs visually touch content below
       b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-      b.style.background = (t === currentTab) ? 'rgba(120,170,255,0.18)' : 'rgba(255,255,255,0.06)';
-      b.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
-      b.style.borderRadius = '4px';
+      b.style.borderBottom = '0';
+      // Only round top corners
+      b.style.borderRadius = '0';
+      b.style.borderTopLeftRadius = '6px';
+      b.style.borderTopRightRadius = '6px';
+      // Active vs inactive styling
+      const isActive = (t === currentTab);
+      b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
+      b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
+      b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
       b.onclick = () => switchTo(t);
       tabsRow.appendChild(b);
     });
