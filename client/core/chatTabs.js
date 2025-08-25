@@ -1,5 +1,6 @@
 // Tabbed chat UI (JS-only, reusable)
 // Exports: createChatTabs({ mode: 'lobby' | 'game', onJoinGame(roomId), onOpenLink(href) })
+import { UI, createInputRow, createLeftIconInput, wireFocusHighlight } from './ui/controls.js';
 // - Lobby tabs: Lobby / Whisper / News / Games / Server (read-only: News, Games, Server)
 // - Game tabs: Game / Whisper / Server (read-only: Server)
 // - Search: clicking the magnifier filters current tab to lines containing the input text; click with empty text clears filter
@@ -60,67 +61,24 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   try { list.setAttribute('data-name', 'chat-messages-list'); } catch (_) {}
   el.appendChild(list);
 
-  // Input row
-  const inputRow = document.createElement('div');
-  inputRow.style.display = 'flex';
-  inputRow.style.alignItems = 'center';
-  inputRow.style.gap = '8px';
-  // inputRow.style.marginTop = '6px';
-  inputRow.style.minHeight = '46px';
-  inputRow.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  inputRow.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  inputRow.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  inputRow.style.borderRadius = '0px 0px 6px 6px';
-  try { inputRow.setAttribute('data-name', 'chat-input-row'); } catch (_) {}
+  // Input row (shared control)
+  const inputRow = createInputRow({ dataName: 'chat-input-row' });
   el.appendChild(inputRow);
 
-  // Input with left icon (login-style control, JS-styled to avoid CSS edits)
-  const inputWrap = document.createElement('div');
-  inputWrap.style.position = 'relative';
-  inputWrap.style.display = 'flex';
-  inputWrap.style.alignItems = 'center';
-  inputWrap.style.flex = '1';
-  inputWrap.style.marginLeft = '0.3rem';
+  // Input with left icon (shared control), keep chat-specific tweaks
+  const { wrap: inputWrap, input, btn: searchBtn } = createLeftIconInput({
+    placeholder: 'Type message…',
+    marginLeft: '0.3rem',
+    iconSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+  });
   try { inputWrap.setAttribute('data-name', 'chat-input-wrap'); } catch (_) {}
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = 'Type message…';
-  input.style.flex = '1';
+  // Preserve chat sizing and font
   input.style.height = '46px';
   input.style.lineHeight = '46px';
-  // Fully transparent to use parent background
-  input.style.background = 'transparent';
-  input.style.border = '0'; // reduce borders around the input control
-  input.style.outline = 'none';
-  input.style.color = 'var(--sf-tip-fg, #fff)';
   input.style.borderRadius = '10px';
-  input.style.fontSize = '16px'; // larger input text
-  // padding-left: icon-left (0) + icon-width (32px) + desired gap (0.5rem)
-  input.style.padding = '0 10px 0 calc(32px + 0.5rem)';
-  input.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10)';
-
-  // Left search icon button inside input (acts as search toggle)
-  const searchBtn = document.createElement('button');
-  searchBtn.type = 'button';
+  input.style.fontSize = '16px';
+  // Title for accessibility
   searchBtn.title = 'Filter current tab by text';
-  searchBtn.style.position = 'absolute';
-  searchBtn.style.left = '0';
-  searchBtn.style.top = '50%';
-  searchBtn.style.transform = 'translateY(-50%)';
-  searchBtn.style.width = '32px';
-  searchBtn.style.height = '32px';
-  searchBtn.style.display = 'inline-flex';
-  searchBtn.style.alignItems = 'center';
-  searchBtn.style.justifyContent = 'center';
-  searchBtn.style.background = 'transparent'; // transparent like send button
-  searchBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  searchBtn.style.borderRadius = '8px';
-  searchBtn.style.boxSizing = 'border-box';
-  searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
-  searchBtn.style.cursor = 'pointer';
-  // Inline SVG magnifier (line-art to match login eye icon style)
-  searchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
   const sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
@@ -135,8 +93,6 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Even margin on all sides
   sendBtn.style.margin = '0.3rem';
 
-  inputWrap.appendChild(input);
-  inputWrap.appendChild(searchBtn);
   inputRow.appendChild(inputWrap);
   inputRow.appendChild(sendBtn);
 
@@ -306,18 +262,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     if (e.key === 'Enter') sendBtn.click();
   });
   // Focus styling: keep input borderless; highlight parent row instead
-  input.addEventListener('focus', () => {
-    try {
-      inputRow.style.boxShadow = 'inset 0 0 0 1px #fff';
-      inputRow.style.borderColor = '#fff';
-    } catch (_) {}
-  });
-  input.addEventListener('blur', () => {
-    try {
-      inputRow.style.boxShadow = '';
-      inputRow.style.borderColor = 'var(--ui-surface-border, rgba(120,170,255,0.70))';
-    } catch (_) {}
-  });
+  wireFocusHighlight(input, inputRow);
 
   // Initial render
   renderTabs();
