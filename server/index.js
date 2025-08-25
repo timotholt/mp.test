@@ -12,6 +12,8 @@ const { Server } = require('colyseus');
 const { WebSocketTransport } = require('@colyseus/ws-transport');
 const { NethackRoom } = require('./rooms/NethackRoom');
 const { LobbyRoom } = require('./rooms/LobbyRoom');
+// Initialize presence hub (singleton starts its sweep on require)
+require('./presence/PresenceHub');
 
 const PORT = process.env.PORT || 2567;
 

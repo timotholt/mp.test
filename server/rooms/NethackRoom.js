@@ -20,6 +20,7 @@ const { snapshotWorld, restoreWorld } = require('./gamecode/serialization');
 const { saveSnapshot, loadLatestSnapshot } = require('../persistence/supabase');
 const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify');
 const { upsertRoom, removeRoom } = require('./RoomsHub');
+const Presence = require('../presence/PresenceHub');
 
 // Autosave configuration (env with defaults)
 const AUTOSAVE_ENABLED = (process.env.AUTOSAVE_ENABLED ?? 'true') !== 'false';
@@ -73,6 +74,7 @@ class Player extends Entity {
     this.kind = 'player';
     this.online = true;
     this.ready = false;
+    this.status = 'red';
     // Selection fields
     this.faction = '';
     this.classKey = '';
@@ -83,6 +85,7 @@ class Player extends Entity {
 defineTypes(Player, {
   online: 'boolean',
   ready: 'boolean',
+  status: 'string',
   faction: 'string',
   classKey: 'string',
   loadout: 'string',
@@ -168,8 +171,21 @@ class NethackRoom extends Room {
       if (typeof type !== 'string') return;
       // DEBUG: temporary instrumentation - server received input (remove after verifying flow)
       console.log('[DEBUG server] onMessage input', { sessionId: client.sessionId, type, rest });
-      this.commandQueue.push({ userId: client.auth?.userId || client.sessionId, type, data: rest });
+      const uid = client.auth?.userId || client.sessionId;
+      Presence.beat(uid); // gameplay input counts as heartbeat
+      this.commandQueue.push({ userId: uid, type, data: rest });
     });
+
+    // Heartbeat message from client (every ~5s)
+    try {
+      this.onMessage('hb', (client) => {
+        const uid = client?.auth?.userId || client?.sessionId;
+        if (!uid) return;
+        Presence.beat(uid);
+        const p = this.state.players.get(String(uid));
+        if (p) p.status = Presence.getStatus(uid);
+      });
+    } catch (_) {}
 
     // Host can start at any time: triggers a 5s server-driven countdown
     this.onMessage('startGame', (client) => {
@@ -295,6 +311,16 @@ class NethackRoom extends Room {
         } catch (_) {}
       }, AUTOSAVE_INTERVAL_MS);
     }
+
+    // Presence mirror: periodically reflect PresenceHub status into state.players
+    this._presenceTimer = this.clock.setInterval(() => {
+      try {
+        this.state.players.forEach((p, id) => {
+          const s = Presence.getStatus(id);
+          if (p && typeof p.status === 'string' && p.status !== s) p.status = s;
+        });
+      } catch (_) {}
+    }, 5000);
 
     // --- Dungeon setup (modularized) ---
     // Generate dungeon (currently returns default map)
@@ -453,6 +479,8 @@ class NethackRoom extends Room {
       // Prefer authenticated name (from onAuth), fall back to join options
       p.name = (client.auth && client.auth.name) || options?.name || 'Hero';
       p.online = true;
+      Presence.setOnline(id);
+      p.status = Presence.getStatus(id);
       // Initialize player glyphs/metadata
       initPlayer(p);
       // Place the player at a walkable spawn
@@ -488,6 +516,8 @@ class NethackRoom extends Room {
       }
     } else {
       p.online = true;
+      Presence.setOnline(id);
+      p.status = Presence.getStatus(id);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} rejoined`);
       // Update mapping in case of reconnection
       this.userClients.set(id, client);
@@ -526,6 +556,7 @@ class NethackRoom extends Room {
 
     if (p) {
       p.online = false;
+      Presence.setOffline(id);
       this.state.log.push(`${p.name}#${p.id.slice(0,6)} left`);
       removeEntity(this, p);
       // Refresh confirm views for ready players (host + others)
@@ -634,6 +665,10 @@ class NethackRoom extends Room {
 
   async onDispose() {
     try { removeRoom(this.roomId); } catch (_) {}
+    if (this._presenceTimer) {
+      try { this.clock.clearInterval(this._presenceTimer); } catch (_) {}
+      this._presenceTimer = null;
+    }
   }
 }
 

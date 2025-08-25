@@ -137,6 +137,16 @@ try { configureRoomUi({ getRoom: () => room }); } catch (_) {}
 
 // Reconnect helpers moved to './core/net/reconnect.js'
 
+// Global 5s heartbeat: send 'hb' to any joined rooms (lobby + current game room)
+try {
+  if (!window.__hbTimer) {
+    window.__hbTimer = setInterval(() => {
+      try { if (room) room.send('hb'); } catch (_) {}
+      try { const lr = window.lobbyRoom; if (lr) lr.send('hb'); } catch (_) {}
+    }, 5000);
+  }
+} catch (_) {}
+
 // Expose for login modal to call directly
 window.startLobby = startLobby;
  

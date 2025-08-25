@@ -226,6 +226,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       const access_token = await getAccessToken();
       // Join or create a singleton lobby room; allow guests too
       lobbyRoom = await client.joinOrCreate('lobby', { access_token });
+      try { window.lobbyRoom = lobbyRoom; } catch (_) {}
       // Stop polling once realtime feed is active
       stopLobbyPolling();
       // New: consume LobbyRoom Schema state
@@ -278,7 +279,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           if (playersPanel) playersPanel.setData(playersCache);
         });
       } catch (_) {}
-      lobbyRoom.onLeave(() => { lobbyRoom = null; /* resume polling if needed */ startLobbyPolling(); });
+      lobbyRoom.onLeave(() => { lobbyRoom = null; try { window.lobbyRoom = null; } catch (_) {} /* resume polling if needed */ startLobbyPolling(); });
       return true;
     } catch (e) {
       // Fallback: keep polling

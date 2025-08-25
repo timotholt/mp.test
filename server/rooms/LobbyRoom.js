@@ -5,6 +5,7 @@ const { Schema, type, ArraySchema, MapSchema, defineTypes } = require('@colyseus
 const { onRoomsChanged, getRooms } = require('./RoomsHub');
 const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify');
 const { listRecentGames } = require('../persistence/supabase');
+const Presence = require('../presence/PresenceHub');
 
 class LobbyGame extends Schema {
   constructor() {
@@ -36,12 +37,14 @@ class LobbyPlayer extends Schema {
     super();
     this.id = '';
     this.name = '';
+    this.status = 'red';
   }
 }
 
 defineTypes(LobbyPlayer, {
   id: 'string',
   name: 'string',
+  status: 'string',
 });
 
 class LobbyState extends Schema {
@@ -93,6 +96,16 @@ class LobbyRoom extends Room {
         this.mergeSupabaseGames(list);
       } catch (_) {}
     }, 30000);
+
+    // Presence mirror: periodically reflect PresenceHub status into state.players
+    this._presenceTimer = this.clock.setInterval(() => {
+      try {
+        this.state.players.forEach((p, id) => {
+          const s = Presence.getStatus(id);
+          if (p && typeof p.status === 'string' && p.status !== s) p.status = s;
+        });
+      } catch (_) {}
+    }, 5000);
   }
 
   async onAuth(client, options) {
@@ -122,10 +135,23 @@ class LobbyRoom extends Room {
       const lp = new LobbyPlayer();
       lp.id = String(id);
       lp.name = String(name);
+      Presence.setOnline(id);
+      lp.status = Presence.getStatus(id);
       this.state.players.set(lp.id, lp);
     } catch (_) {}
     // Legacy playersList broadcast for older clients
     this.broadcastLobbyPlayers();
+
+    // Heartbeat message from client (every ~5s)
+    try {
+      this.onMessage('hb', (c) => {
+        const uid = c?.auth?.userId || c?.sessionId;
+        if (!uid) return;
+        Presence.beat(uid);
+        const p = this.state.players.get(String(uid));
+        if (p) p.status = Presence.getStatus(uid);
+      });
+    } catch (_) {}
   }
 
   onLeave(client) {
@@ -133,6 +159,7 @@ class LobbyRoom extends Room {
     try {
       const id = client?.auth?.userId || client?.sessionId;
       if (id && this.state?.players?.has?.(id)) this.state.players.delete(id);
+      if (id) Presence.setOffline(id);
     } catch (_) {}
     // Rebuild legacy players list snapshot
     this.broadcastLobbyPlayers();
@@ -145,6 +172,10 @@ class LobbyRoom extends Room {
     if (this._supabaseTimer) {
       try { this.clock.clearInterval(this._supabaseTimer); } catch (_) {}
       this._supabaseTimer = null;
+    }
+    if (this._presenceTimer) {
+      try { this.clock.clearInterval(this._presenceTimer); } catch (_) {}
+      this._presenceTimer = null;
     }
   }
 
