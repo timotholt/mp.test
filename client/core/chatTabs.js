@@ -73,7 +73,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Preserve chat sizing and font
   input.style.height = '46px';
   input.style.lineHeight = '46px';
-  input.style.borderRadius = '10px';
+  input.style.borderRadius = '0px 10px 0px 0px';
+  input.style.borderLeft = '1px solid var(--ui-surface-border)';
   input.style.fontSize = '16px';
 
   const sendBtn = document.createElement('button');
@@ -100,6 +101,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   searchWrap.classList.add('chat-search-collapsible');
   // Prevent it from stretching; only take space equal to icon until expanded
   searchWrap.style.flex = '0 0 auto';
+  // Add small padding before the search icon per request
+  searchWrap.style.paddingLeft = '6px';
   // Tiny clear button on right side of the search input
   const clearBtn = document.createElement('button');
   clearBtn.className = 'chat-search-clear';
@@ -131,11 +134,9 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       style.id = STYLE_ID;
       style.textContent = `
         .chat-search-collapsible{ position:relative; display:flex; align-items:center; width:32px; overflow:hidden; transition: width 160ms ease; }
-        .chat-search-collapsible::after{ content:""; position:absolute; right:-4px; top:50%; transform:translateY(-50%); width:1px; height:60%; background: var(--ui-surface-border, rgba(120,170,255,0.70)); opacity:0; transition: opacity 160ms ease; }
         .chat-search-collapsible input{ width:0; opacity:0; padding:0; pointer-events:none; transition: width 160ms ease, opacity 140ms ease, padding 160ms ease; }
         .chat-search-collapsible:hover, .chat-search-collapsible:focus-within, .chat-search-collapsible.has-text{ width:240px; }
         .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:200px; opacity:1; padding: 0 24px 0 calc(32px + 0.5rem); pointer-events:auto; }
-        .chat-search-collapsible:hover::after, .chat-search-collapsible:focus-within::after, .chat-search-collapsible.has-text::after{ opacity:1; }
         .chat-search-collapsible > button:not(.chat-search-clear){ left:0; }
         .chat-search-collapsible .chat-search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:16px; height:16px; border:0; background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); cursor:pointer; font-size:14px; line-height:14px; padding:0; opacity:0; pointer-events:none; transition: opacity 120ms ease; }
         .chat-search-collapsible:hover .chat-search-clear, .chat-search-collapsible:focus-within .chat-search-clear, .chat-search-collapsible.has-text .chat-search-clear{ opacity:1; pointer-events:auto; }
