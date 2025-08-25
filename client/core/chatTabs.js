@@ -1,8 +1,8 @@
 // Tabbed chat UI (JS-only, reusable)
 // Exports: createChatTabs({ mode: 'lobby' | 'game', onJoinGame(roomId), onOpenLink(href) })
 import { UI, createInputRow, createLeftIconInput, wireFocusHighlight, createTabsBar } from './ui/controls.js';
-import { showContextMenu } from './ui/contextMenu.js';
-import { ensureBanner } from './ui/banner.js';
+import { showPlayerContextMenu } from './ui/playerContextMenu.js';
+import { showLinkContextMenu } from './ui/linkContextMenu.js';
 import * as LS from './localStorage.js';
 // - Lobby tabs: Lobby / Whisper / News / Games / Server (read-only: News, Games, Server)
 // - Game tabs: Game / Whisper / Server (read-only: Server)
@@ -237,6 +237,11 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
               }
             } catch (_) {}
           });
+          // Right-click on link: open/copy/join
+          span.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            showLinkContextMenu({ x: e.clientX, y: e.clientY, href, joinRoomId, onOpenLink, onJoinGame });
+          });
         }
         container.appendChild(span);
       });
@@ -380,37 +385,13 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       const name = String(target.getAttribute('data-player-name') || '').trim();
       const selfName = String(LS.getItem('name', '') || '').trim();
       if (!name || (selfName && name === selfName)) return;
-      // Minimal LS helpers for friend/block
-      const friends = new Set((() => { try { return JSON.parse(LS.getItem('friends:set', '[]') || '[]'); } catch { return []; } })());
-      const blocked = new Set((() => { try { return JSON.parse(LS.getItem('blocked:set', '[]') || '[]'); } catch { return []; } })());
-      const isF = friends.has(name);
-      const isB = blocked.has(name);
-      showContextMenu({
+      showPlayerContextMenu({
         x: ev.clientX,
         y: ev.clientY,
-        items: [
-          { label: `Whisper ${name}`, onClick: () => whisperTo(name) },
-          { label: 'View Profile', onClick: () => { try { ensureBanner(); window.queueBanner('Profile coming soon', 2); } catch (_) {} } },
-          { label: isF ? 'Unfriend' : 'Add Friend', onClick: () => {
-            try {
-              const arr = Array.from(friends);
-              const s = new Set(arr);
-              if (isF) s.delete(name); else s.add(name);
-              LS.setItem('friends:set', JSON.stringify(Array.from(s)));
-              try { ensureBanner(); window.queueBanner(isF ? `Removed ${name} from friends` : `Added ${name} to friends`, 1); } catch (_) {}
-            } catch (_) {}
-          }},
-          { separator: true },
-          { label: isB ? 'Unblock' : 'Block', onClick: () => {
-            try {
-              const arr = Array.from(blocked);
-              const s = new Set(arr);
-              if (isB) s.delete(name); else s.add(name);
-              LS.setItem('blocked:set', JSON.stringify(Array.from(s)));
-              try { ensureBanner(); window.queueBanner(isB ? `Unblocked ${name}` : `Blocked ${name}`, 1); } catch (_) {}
-            } catch (_) {}
-          }},
-        ]
+        name,
+        id: name,
+        selfName,
+        onWhisper: (display) => whisperTo(display),
       });
     });
   } catch (_) {}

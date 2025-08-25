@@ -2,7 +2,7 @@
 // Usage: import { showContextMenu } from './contextMenu.js';
 // showContextMenu({ x, y, items: [ { label, onClick }, { separator: true }, ... ] })
 
-export function showContextMenu({ x = 0, y = 0, items = [] } = {}) {
+export function showContextMenu({ x = 0, y = 0, items = [], blockGameplayInput = true } = {}) {
   // Close any existing menu first
   try { hideContextMenu(); } catch (_) {}
 
@@ -69,6 +69,15 @@ export function showContextMenu({ x = 0, y = 0, items = [] } = {}) {
   // Ensure on-screen positioning
   document.body.appendChild(backdrop);
   document.body.appendChild(menu);
+  // Optionally gate gameplay input while menu is open
+  let restoreGameplayInput;
+  try {
+    if (blockGameplayInput) {
+      const prev = window.__canSendGameplayInput;
+      restoreGameplayInput = () => { try { window.__canSendGameplayInput = prev; } catch (_) {} };
+      window.__canSendGameplayInput = false;
+    }
+  } catch (_) {}
   try {
     const rect = menu.getBoundingClientRect();
     let nx = x, ny = y;
@@ -80,7 +89,7 @@ export function showContextMenu({ x = 0, y = 0, items = [] } = {}) {
   } catch (_) {}
 
   // Close behaviors
-  function handleClose() { hideContextMenu(); }
+  function handleClose() { try { if (restoreGameplayInput) restoreGameplayInput(); } catch (_) {} hideContextMenu(); }
   backdrop.addEventListener('click', handleClose, { once: true });
   backdrop.addEventListener('contextmenu', (e) => { e.preventDefault(); handleClose(); });
   window.addEventListener('blur', handleClose, { once: true });

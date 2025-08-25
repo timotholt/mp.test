@@ -10,7 +10,7 @@ import * as LS from '../core/localStorage.js';
 import { deriveGameId } from '../core/util/deriveGameId.js';
 import { ensureBanner } from '../core/ui/banner.js';
 import { UI, createInputRow, createLeftIconInput, wireFocusHighlight, createTabsBar } from '../core/ui/controls.js';
-import { showContextMenu } from '../core/ui/contextMenu.js';
+import { showPlayerContextMenu } from '../core/ui/playerContextMenu.js';
 
 let lobbyPollId = null;
 let lobbyChat = null;
@@ -424,18 +424,16 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                   ev.preventDefault(); ev.stopPropagation();
                   const targetName = String(p.name || '').trim();
                   if (targetName && targetName === selfName) return; // don't show for yourself
-                  const isF = friends.has(String(p.id)) || friends.has(String(p.name || ''));
-                  const isB = blocked.has(String(p.id)) || blocked.has(String(p.name || ''));
-                  showContextMenu({
+                  showPlayerContextMenu({
                     x: ev.clientX,
                     y: ev.clientY,
-                    items: [
-                      { label: `Whisper ${targetName || p.id}`, onClick: () => { try { if (lobbyChat && typeof lobbyChat.whisperTo === 'function') lobbyChat.whisperTo(targetName || p.id); } catch (_) {} } },
-                      { label: 'View Profile', onClick: () => { try { ensureBanner(); window.queueBanner('Profile coming soon', 2); } catch (_) {} } },
-                      { label: isF ? 'Unfriend' : 'Add Friend', onClick: () => { toggleSet('friends:set', p.id, !isF); if (p.name) toggleSet('friends:set', p.name, !isF); playersPanel.setData(playersCache); } },
-                      { separator: true },
-                      { label: isB ? 'Unblock' : 'Block', onClick: () => { toggleSet('blocked:set', p.id, !isB); if (p.name) toggleSet('blocked:set', p.name, !isB); playersPanel.setData(playersCache); } },
-                    ]
+                    name: targetName || p.id,
+                    id: p.id,
+                    selfName,
+                    onWhisper: (display) => { try { if (lobbyChat && typeof lobbyChat.whisperTo === 'function') lobbyChat.whisperTo(display); } catch (_) {} },
+                    onViewProfile: () => { try { ensureBanner(); window.queueBanner('Profile coming soon', 2); } catch (_) {} },
+                    onFriendsChanged: () => { try { playersPanel.setData(playersCache); } catch (_) {} },
+                    onBlockedChanged: () => { try { playersPanel.setData(playersCache); } catch (_) {} }
                   });
                 });
               } catch (_) {}
