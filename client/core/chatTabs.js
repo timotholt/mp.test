@@ -43,6 +43,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   list.style.borderRadius = '4px';
   list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   list.style.padding = '6px';
+  try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
   el.appendChild(list);
 
   // Input row

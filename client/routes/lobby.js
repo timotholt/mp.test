@@ -120,6 +120,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     list.style.flex = '1 1 auto';
     list.style.overflow = 'auto';
     list.style.maxHeight = '100%';
+    try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
 
     root.appendChild(header);
     root.appendChild(list);
@@ -216,19 +217,25 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       const content = overlay ? overlay.querySelector('#overlay-content') : null;
       if (content) {
         content.innerHTML = '';
+        // Add spacing around the lobby content; switch to '0 4rem' for left/right-only
+        try {
+          content.style.padding = '2rem 4rem 4rem 4rem';
+          // Include padding within layout height to prevent bottom clipping of chat
+          content.style.boxSizing = 'border-box';
+        } catch (_) {}
         const header = document.createElement('div');
         header.textContent = 'Lobby';
 
-        // Layout container: grid with 2 rows (top panels, bottom chat) and 2 columns
+        // Layout container: grid with 2 rows (top panels fixed to 40vh, bottom chat fills remainder) and 2 columns
         const grid = document.createElement('div');
         grid.style.display = 'grid';
         grid.style.gridTemplateColumns = '1fr 1fr';
-        // Top takes remaining space, chat ~12 messages tall (approx 14em)
-        grid.style.gridTemplateRows = '1fr 14em';
+        // Top fixed height: 40% of viewport; bottom grows
+        grid.style.gridTemplateRows = '40vh 1fr';
         grid.style.gap = '10px';
         grid.style.marginTop = '8px';
-        // Allow layout to reach bottom of screen so chat sits flush at bottom
-        grid.style.height = '80vh';
+        // Fill viewport height minus content padding (2rem top + 4rem bottom = 6rem)
+        grid.style.height = 'calc(100vh - 6rem)';
 
         // --- Games Panel ---
         gamesPanel = createTabbedPanel({
@@ -396,8 +403,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         // Place panels in grid
         gamesPanel.el.style.gridColumn = '1 / 2';
         gamesPanel.el.style.gridRow = '1 / 2';
+        // Ensure the panel fills its grid track so its internal list can flex
+        gamesPanel.el.style.height = '100%';
         playersPanel.el.style.gridColumn = '2 / 3';
         playersPanel.el.style.gridRow = '1 / 2';
+        playersPanel.el.style.height = '100%';
 
         // --- Chat bottom ---
         lobbyChat = createChatTabs({
@@ -433,13 +443,17 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         const chatWrap = document.createElement('div');
         chatWrap.style.gridColumn = '1 / 3';
         chatWrap.style.gridRow = '2 / 3';
-        chatWrap.style.height = '14em';
+        // Chat fills the remaining space of the grid
+        chatWrap.style.height = '100%';
+        chatWrap.style.maxHeight = '100%';
         chatWrap.style.minHeight = '0';
         chatWrap.style.overflow = 'hidden';
         // Let the chat component fill the fixed area without growing layout
         try {
           lobbyChat.el.style.height = '100%';
           lobbyChat.el.style.maxHeight = '100%';
+          // Include padding/border within fixed height so the input row isn't clipped
+          lobbyChat.el.style.boxSizing = 'border-box';
         } catch (_) {}
         chatWrap.appendChild(lobbyChat.el);
 

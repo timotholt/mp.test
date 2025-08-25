@@ -36,7 +36,12 @@
       '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)'
       ,
       // Link color used by chat and other interactive text
-      '--ui-link': '#6cf'
+      '--ui-link': '#6cf',
+      // Scrollbar tokens (glass)
+      '--ui-scrollbar-width': '10px',
+      '--ui-scrollbar-radius': '8px',
+      '--ui-scrollbar-thumb': 'rgba(120,170,255,0.45)',
+      '--ui-scrollbar-thumb-hover': 'rgba(120,170,255,0.65)'
     }
   };
 
@@ -67,6 +72,36 @@
 
   // Apply default theme immediately
   applyTheme('glassBlue');
+
+  // Inject glassmorphism scrollbar styles (scoped to .ui-glass-scrollbar)
+  try {
+    const STYLE_ID = 'ui-glass-scrollbar-style';
+    if (!document.getElementById(STYLE_ID)) {
+      const css = `
+        .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; }
+        .ui-glass-scrollbar::-webkit-scrollbar { width: var(--ui-scrollbar-width, 10px); height: var(--ui-scrollbar-width, 10px); }
+        .ui-glass-scrollbar::-webkit-scrollbar-track {
+          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
+          border-radius: var(--ui-scrollbar-radius, 8px);
+          box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
+        }
+        .ui-glass-scrollbar::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45));
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: var(--ui-scrollbar-radius, 8px);
+          box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33));
+        }
+        .ui-glass-scrollbar:hover::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb-hover, rgba(120,170,255,0.65));
+        }
+      `;
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.type = 'text/css';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  } catch (_) {}
 
   // Expose lightweight API for future theme switching
   try {
