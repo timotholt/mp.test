@@ -305,6 +305,19 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     }
     if (e.key === 'Enter') sendBtn.click();
   });
+  // Focus styling: keep input borderless; highlight parent row instead
+  input.addEventListener('focus', () => {
+    try {
+      inputRow.style.boxShadow = 'inset 0 0 0 1px #fff';
+      inputRow.style.borderColor = '#fff';
+    } catch (_) {}
+  });
+  input.addEventListener('blur', () => {
+    try {
+      inputRow.style.boxShadow = '';
+      inputRow.style.borderColor = 'var(--ui-surface-border, rgba(120,170,255,0.70))';
+    } catch (_) {}
+  });
 
   // Initial render
   renderTabs();

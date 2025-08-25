@@ -119,6 +119,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     searchInput.style.height = '40px';
     searchInput.style.lineHeight = '40px';
     searchInput.style.background = 'transparent';
+    // Prevent default focus ring/border on focus
+    searchInput.style.outline = 'none';
     searchInput.style.color = 'var(--sf-tip-fg, #fff)';
     // No visible border on the input itself (row provides borders)
     searchInput.style.border = '0';
@@ -221,6 +223,19 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         searchInput.value = '';
         setFilter('');
       }
+    });
+    // Focus styling: keep input borderless; highlight parent row instead
+    searchInput.addEventListener('focus', () => {
+      try {
+        inputRow.style.boxShadow = 'inset 0 0 0 1px #fff';
+        inputRow.style.borderColor = '#fff';
+      } catch (_) {}
+    });
+    searchInput.addEventListener('blur', () => {
+      try {
+        inputRow.style.boxShadow = '';
+        inputRow.style.borderColor = 'var(--ui-surface-border, rgba(120,170,255,0.70))';
+      } catch (_) {}
     });
 
     renderTabs();
