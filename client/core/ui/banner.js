@@ -8,7 +8,7 @@ export function ensureBanner() {
     banner = document.createElement('div');
     banner.id = 'mini-banner';
     banner.style.position = 'fixed';
-    banner.style.top = '8px';
+    banner.style.top = '0';
     banner.style.left = '50%';
     banner.style.transform = 'translate(-50%, -120%)';
     banner.style.transition = 'transform 0.4s ease';
@@ -22,6 +22,7 @@ export function ensureBanner() {
     banner.style.background = 'var(--banner-bg, linear-gradient(180deg, rgba(10,18,26,0.35) 0%, rgba(10,16,22,0.28) 100%))';
     banner.style.color = 'var(--ui-fg)';
     banner.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    banner.style.borderTop = 'none';
     banner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
     banner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
     banner.style.borderRadius = '6px';
@@ -30,20 +31,65 @@ export function ensureBanner() {
     banner.style.zIndex = '30100';
     document.body.appendChild(banner);
 
-    window.showBanner = function(msg = '', ms = 4000) {
+    // Priority queue state (persisted on window to survive re-ensures)
+    const state = (window.__bannerState = window.__bannerState || {
+      q: [], // items: { msg, pri, ms, id, t }
+      nextId: 1,
+      showing: false,
+      timer: null,
+      hideVisTimer: null,
+    });
+
+    function animateShow() {
+      banner.style.display = 'flex';
+      requestAnimationFrame(() => { try { banner.style.transform = 'translate(-50%, 0)'; } catch (_) {} });
+    }
+    function animateHide(cb) {
+      try { banner.style.transform = 'translate(-50%, -120%)'; } catch (_) {}
+      state.hideVisTimer && clearTimeout(state.hideVisTimer);
+      state.hideVisTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} cb && cb(); }, 450);
+    }
+
+    function pickNext() {
+      if (!state.q.length) return null;
+      // Find smallest priority group present
+      let minPri = Infinity;
+      for (const it of state.q) if (it && it.pri < minPri) minPri = it.pri;
+      const idx = state.q.findIndex(it => it.pri === minPri);
+      if (idx === -1) return state.q.shift();
+      return state.q.splice(idx, 1)[0];
+    }
+
+    function runLoop() {
+      if (state.showing) return; // already showing; wait for completion
+      const item = pickNext();
+      if (!item) return; // nothing to show
+      state.showing = true;
+      try { banner.textContent = item.msg; } catch (_) {}
+      animateShow();
+      const isLastAfterThis = state.q.length === 0;
+      const dur = typeof item.ms === 'number' ? item.ms : (isLastAfterThis ? 3000 : 1500);
+      state.timer && clearTimeout(state.timer);
+      state.timer = setTimeout(() => {
+        animateHide(() => {
+          state.showing = false;
+          // Immediately proceed to next item if any
+          // We intentionally do not collapse priorities mid-flight; new high-pri will be picked next
+          runLoop();
+        });
+      }, Math.max(300, dur));
+    }
+
+    // Public APIs
+    window.queueBanner = function(msg = '', pri = 4, ms) {
       try {
-        banner.textContent = msg;
-        banner.style.display = 'flex';
-        // allow layout to apply before animating
-        requestAnimationFrame(() => { try { banner.style.transform = 'translate(-50%, 0)'; } catch (_) {} });
+        state.q.push({ msg: String(msg || ''), pri: Math.max(1, Math.min(9, parseInt(pri, 10) || 4)), ms, id: state.nextId++, t: Date.now() });
+        // Start loop if idle
+        runLoop();
       } catch (_) {}
-      if (window.__bannerTimer) clearTimeout(window.__bannerTimer);
-      if (window.__bannerHideVisTimer) clearTimeout(window.__bannerHideVisTimer);
-      window.__bannerTimer = setTimeout(() => {
-        try { banner.style.transform = 'translate(-50%, -120%)'; } catch (_) {}
-        window.__bannerHideVisTimer = setTimeout(() => { try { banner.style.display = 'none'; } catch (_) {} }, 450);
-      }, ms);
     };
+    // Back-compat: showBanner enqueues with given duration as override and default priority 4
+    window.showBanner = function(msg = '', ms) { window.queueBanner(msg, 4, ms); };
   }
   return banner;
 }

@@ -14,7 +14,7 @@ export function registerRoomRoute({ makeScreen, APP_STATES, joinById, afterJoin,
     el.innerHTML = '';
     el.update = () => {
       try { OverlayManager.present({ id: 'ROOM_MODAL', priority: PRIORITY.MEDIUM, text: 'Room', actions: [], blockInput: true, external: true }); } catch (_) {}
-      try { ensureBanner(); window.showBanner('Room', 2500); } catch (_) {}
+      try { ensureBanner(); window.queueBanner('Room', 1); } catch (_) {}
       const overlay = document.getElementById('overlay');
       const content = overlay ? overlay.querySelector('#overlay-content') : null;
       if (!content) return;

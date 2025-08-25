@@ -214,7 +214,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     el.innerHTML = '';
     el.update = () => {
       try { OverlayManager.present({ id: 'LOBBY_MODAL', priority: PRIORITY.MEDIUM, text: 'Lobby', actions: [], blockInput: true, external: true }); } catch (_) {}
-      try { ensureBanner(); window.showBanner('Lobby', 2500); } catch (_) {}
+      try { ensureBanner(); window.queueBanner('Lobby', 1); } catch (_) {}
       const overlay = document.getElementById('overlay');
       const content = overlay ? overlay.querySelector('#overlay-content') : null;
       if (content) {
@@ -229,9 +229,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         const grid = document.createElement('div');
         grid.style.display = 'grid';
         grid.style.gridTemplateColumns = '1fr 1fr';
-        // Top fixed height: 40% of viewport; bottom grows
-        grid.style.gridTemplateRows = '40vh 1fr';
-        grid.style.gap = '10px';
+        // Top fixed height reduced by 2rem; bottom grows to fill remainder
+        grid.style.gridTemplateRows = 'calc(40vh - 2rem) 1fr';
+        // Horizontal gap 10px, vertical gap 1rem between panels and chat
+        grid.style.columnGap = '10px';
+        grid.style.rowGap = '1rem';
         grid.style.marginTop = '8px';
         // Fill viewport height minus content padding (2rem top + 4rem bottom = 6rem)
         grid.style.height = 'calc(100vh - 6rem)';
@@ -446,7 +448,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         chatWrap.style.height = '100%';
         chatWrap.style.maxHeight = '100%';
         chatWrap.style.minHeight = '0';
-        chatWrap.style.overflow = 'hidden';
+        // We allow the bottom of the chat to be seen
+        // chatWrap.style.overflow = 'hidden';
         // Let the chat component fill the fixed area without growing layout
         try {
           lobbyChat.el.style.height = '100%';

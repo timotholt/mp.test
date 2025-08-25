@@ -14,6 +14,6 @@ export function registerLoginRoute({ makeScreen, APP_STATES }) {
     try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
     showLoginBackdrop();
     presentLoginModal();
-    try { ensureBanner(); window.showBanner('Login', 3000); } catch (_) {}
+    try { ensureBanner(); window.queueBanner('Login', 1); } catch (_) {}
   });
 }
