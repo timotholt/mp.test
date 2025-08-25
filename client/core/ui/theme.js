@@ -78,7 +78,7 @@
     const STYLE_ID = 'ui-glass-scrollbar-style';
     if (!document.getElementById(STYLE_ID)) {
       const css = `
-        .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; }
+        .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; box-shadow: 0 -4px 16px -6px var(--ui-surface-glow-color, rgba(120,170,255,0.33)), -4px 0 16px -8px var(--ui-surface-glow-color, rgba(120,170,255,0.33)), 4px 0 16px -8px var(--ui-surface-glow-color, rgba(120,170,255,0.33)); }
         .ui-glass-scrollbar::-webkit-scrollbar { width: var(--ui-scrollbar-width, 10px); height: var(--ui-scrollbar-width, 10px); }
         .ui-glass-scrollbar::-webkit-scrollbar-track {
           background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
