@@ -103,12 +103,30 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   searchWrap.style.flex = '0 0 auto';
   // Add small padding before the search icon per request
   searchWrap.style.paddingLeft = '6px';
+  // Make the search icon a plain, non-interactive icon
+  try {
+    searchBtn.style.border = '0';
+    searchBtn.style.outline = 'none';
+    searchBtn.style.background = 'transparent';
+    searchBtn.style.cursor = 'default';
+    searchBtn.style.pointerEvents = 'none';
+    searchBtn.style.left = '6px';
+    searchBtn.tabIndex = -1;
+    searchBtn.setAttribute('aria-hidden', 'true');
+    // Remove any box shadow/border artifacts
+    searchBtn.style.boxShadow = 'none';
+  } catch (_) {}
   // Tiny clear button on right side of the search input
   const clearBtn = document.createElement('button');
   clearBtn.className = 'chat-search-clear';
   clearBtn.type = 'button';
   clearBtn.title = 'Clear';
-  clearBtn.textContent = '×';
+  clearBtn.textContent = 'clear';
+  // Interactive; sizing/border handled via CSS class
+  try {
+    clearBtn.style.boxShadow = 'none';
+    clearBtn.tabIndex = 0;
+  } catch (_) {}
   searchWrap.appendChild(clearBtn);
   // Slightly smaller search input
   searchInput.style.height = '40px';
@@ -136,10 +154,11 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
         .chat-search-collapsible{ position:relative; display:flex; align-items:center; width:32px; overflow:hidden; transition: width 160ms ease; }
         .chat-search-collapsible input{ width:0; opacity:0; padding:0; pointer-events:none; transition: width 160ms ease, opacity 140ms ease, padding 160ms ease; }
         .chat-search-collapsible:hover, .chat-search-collapsible:focus-within, .chat-search-collapsible.has-text{ width:240px; }
-        .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:200px; opacity:1; padding: 0 24px 0 calc(32px + 0.5rem); pointer-events:auto; }
+        .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:200px; opacity:1; padding: 0 64px 0 calc(32px + 0.5rem); pointer-events:auto; }
         .chat-search-collapsible > button:not(.chat-search-clear){ left:0; }
-        .chat-search-collapsible .chat-search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:16px; height:16px; border:0; background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); cursor:pointer; font-size:14px; line-height:14px; padding:0; opacity:0; pointer-events:none; transition: opacity 120ms ease; }
+        .chat-search-collapsible .chat-search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); font-size:12px; line-height:18px; padding:0 6px; border-radius:6px; border:1px solid var(--ui-surface-border, rgba(120,170,255,0.70)); cursor:pointer; opacity:0; pointer-events:none; transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease; }
         .chat-search-collapsible:hover .chat-search-clear, .chat-search-collapsible:focus-within .chat-search-clear, .chat-search-collapsible.has-text .chat-search-clear{ opacity:1; pointer-events:auto; }
+        .chat-search-collapsible .chat-search-clear:hover{ background: rgba(120,170,255,0.10); border-color: var(--ui-surface-border-strong, rgba(120,170,255,0.95)); }
       `;
       document.head.appendChild(style);
     }
@@ -288,11 +307,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       try { searchInput.blur(); } catch (_) {}
     }
   });
+  // Clear button: clear search input and keep focus
   clearBtn.addEventListener('click', () => {
-    try { searchInput.focus(); } catch (_) {}
     searchInput.value = '';
-    searchWrap.classList.remove('has-text');
     filter('');
+    searchWrap.classList.remove('has-text');
+    try { searchInput.focus(); } catch (_) {}
   });
 
   // Initial render
