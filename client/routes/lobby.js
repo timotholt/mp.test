@@ -10,6 +10,7 @@ import * as LS from '../core/localStorage.js';
 import { deriveGameId } from '../core/util/deriveGameId.js';
 import { ensureBanner } from '../core/ui/banner.js';
 import { UI, createInputRow, createLeftIconInput, wireFocusHighlight, createTabsBar } from '../core/ui/controls.js';
+import { showContextMenu } from '../core/ui/contextMenu.js';
 
 let lobbyPollId = null;
 let lobbyChat = null;
@@ -385,6 +386,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             const friends = getFriendsSet();
             const blocked = getBlockedSet();
             const recent = getRecentMap();
+            const selfName = String(LS.getItem('name', '') || '').trim();
             let filtered = (data || []).filter(p => p && p.id);
             filtered = filtered.filter(p => {
               const hay = `${p.id} ${p.name || ''}`.toLowerCase();
@@ -415,6 +417,28 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               const when = recent.get(String(p.id)) || 0;
               const ago = when ? `${Math.max(1, Math.round((Date.now() - when)/1000))}s ago` : '';
               label.textContent = `${p.name || 'Guest'}  ${ago ? '· ' + ago : ''}`;
+              // Right-click context menu on player name (skip self)
+              try {
+                label.style.cursor = 'context-menu';
+                label.addEventListener('contextmenu', (ev) => {
+                  ev.preventDefault(); ev.stopPropagation();
+                  const targetName = String(p.name || '').trim();
+                  if (targetName && targetName === selfName) return; // don't show for yourself
+                  const isF = friends.has(String(p.id)) || friends.has(String(p.name || ''));
+                  const isB = blocked.has(String(p.id)) || blocked.has(String(p.name || ''));
+                  showContextMenu({
+                    x: ev.clientX,
+                    y: ev.clientY,
+                    items: [
+                      { label: `Whisper ${targetName || p.id}`, onClick: () => { try { if (lobbyChat && typeof lobbyChat.whisperTo === 'function') lobbyChat.whisperTo(targetName || p.id); } catch (_) {} } },
+                      { label: 'View Profile', onClick: () => { try { ensureBanner(); window.queueBanner('Profile coming soon', 2); } catch (_) {} } },
+                      { label: isF ? 'Unfriend' : 'Add Friend', onClick: () => { toggleSet('friends:set', p.id, !isF); if (p.name) toggleSet('friends:set', p.name, !isF); playersPanel.setData(playersCache); } },
+                      { separator: true },
+                      { label: isB ? 'Unblock' : 'Block', onClick: () => { toggleSet('blocked:set', p.id, !isB); if (p.name) toggleSet('blocked:set', p.name, !isB); playersPanel.setData(playersCache); } },
+                    ]
+                  });
+                });
+              } catch (_) {}
               const actions = document.createElement('div');
               actions.style.display = 'flex';
               actions.style.gap = '6px';
