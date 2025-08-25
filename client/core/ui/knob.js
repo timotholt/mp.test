@@ -1,3 +1,4 @@
+import { attachTooltip, updateTooltip as updateSciTip, detachTooltip } from './tooltip.js';
 // Generic Knob UI (plain JS)
 // Reusable control for any purpose (puzzles, mixers, etc.)
 // - Wheel, drag, and keyboard input
@@ -103,9 +104,9 @@ export function createKnob(opts = {}) {
     const lit = Math.round(n * segments);
     for (let i = 0; i < segments; i++) segEls[i].classList.toggle('on', i < lit);
 
-    // Tooltip + ARIA
+    // Tooltip (Sci-Fi) + ARIA
     const title = titleFormatter(v, { min, max, label });
-    el.title = title;
+    try { updateSciTip(el, title); } catch (_) {}
     el.setAttribute('aria-valuenow', String(v));
     el.setAttribute('aria-valuetext', title);
   };
@@ -120,6 +121,7 @@ export function createKnob(opts = {}) {
   const getValue = () => value;
 
   // Initialize
+  try { attachTooltip(el); } catch (_) {}
   updateUI(value);
 
   // Interaction helpers
@@ -222,6 +224,7 @@ export function createKnob(opts = {}) {
     try { window.removeEventListener('pointerup', onPointerUp); } catch (_) {}
     try { el.removeEventListener('keydown', onKeyDown); } catch (_) {}
     try { el.removeEventListener('mouseenter', onMouseEnter); } catch (_) {}
+    try { detachTooltip(el); } catch (_) {}
   };
 
   // Apply theme if provided
