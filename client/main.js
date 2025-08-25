@@ -21,6 +21,7 @@ import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js
 import * as LS from './core/localStorage.js';
 import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEventsOnce, renderRoomPlayers, getPlayersSnapshot, refreshRoomChat, appendChatLine, setRoomReadyBtn, setRoomPlayersEl, setRoomChat } from './core/ui/roomUi.js';
 import { createSessionHandlers } from './core/net/session.js';
+import { startHeartbeat } from './core/net/heartbeat.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -137,15 +138,8 @@ try { configureRoomUi({ getRoom: () => room }); } catch (_) {}
 
 // Reconnect helpers moved to './core/net/reconnect.js'
 
-// Global 5s heartbeat: send 'hb' to any joined rooms (lobby + current game room)
-try {
-  if (!window.__hbTimer) {
-    window.__hbTimer = setInterval(() => {
-      try { if (room) room.send('hb'); } catch (_) {}
-      try { const lr = window.lobbyRoom; if (lr) lr.send('hb'); } catch (_) {}
-    }, 5000);
-  }
-} catch (_) {}
+// Global heartbeat (5s): sends 'hb' to current game room and lobby room
+try { startHeartbeat({ getRoom: () => room, getLobbyRoom: () => window.lobbyRoom, intervalMs: 5000 }); } catch (_) {}
 
 // Expose for login modal to call directly
 window.startLobby = startLobby;
