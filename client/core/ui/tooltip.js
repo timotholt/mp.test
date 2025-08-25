@@ -21,6 +21,10 @@ export function attachTooltip(targetEl, opts = {}) {
       if (Number.isFinite(opts.gapRem)) targetEl.__sfTipGapRem = Number(opts.gapRem);
       if (opts.start === 'edge' || opts.start === 'center') targetEl.__sfTipStart = opts.start;
       if (Number.isFinite(opts.startOffset)) targetEl.__sfTipStartOffsetPx = Number(opts.startOffset);
+      // Optional placement hint/priority. Accepts string like "t/b/l/r/tl/tr/bl/br/tc/bc/lc/rc" or array of tokens.
+      if (typeof opts.placement === 'string') targetEl.__sfTipPlacementPriority = opts.placement;
+      else if (Array.isArray(opts.placement)) targetEl.__sfTipPlacementPriority = opts.placement.join(',');
+      else if (typeof opts.placementPriority === 'string') targetEl.__sfTipPlacementPriority = opts.placementPriority;
     }
   } catch (_) {}
 
@@ -144,8 +148,37 @@ function position() {
   let y = Math.round(centerY - gap - r.height); // try above by default
   const vw = window.innerWidth || document.documentElement.clientWidth || 800;
   const vh = window.innerHeight || document.documentElement.clientHeight || 600;
-  // If not enough space above, place below
-  if (y < pad) y = Math.round(centerY + gap);
+  // Try custom placement priority first (e.g., prefer right). If not specified or no fit, fall back to default.
+  const priorityRaw = (t && t.__sfTipPlacementPriority) ? String(t.__sfTipPlacementPriority) : '';
+  const placements = priorityRaw
+    ? priorityRaw.split(/[\s,\/|]+/).map(s => s.trim().toLowerCase()).filter(Boolean)
+    : null;
+  let placedFlag = false;
+
+  if (rt && placements && placements.length) {
+    for (const place of placements) {
+      const cand = computePlacementFor(place, rt, r, gap);
+      if (!cand) continue;
+      let cx = cand.x, cy = cand.y;
+      // Keep within viewport with padding
+      if (cx + r.width + pad > vw) cx = vw - r.width - pad;
+      if (cx < pad) cx = pad;
+      if (cy + r.height + pad > vh) cy = vh - r.height - pad;
+      if (cy < pad) cy = pad;
+      // If the candidate still roughly lies on the intended side, accept. Otherwise keep trying.
+      if (isPlacementRoughlyOnSide(place, rt, { x: cx, y: cy, w: r.width, h: r.height })) {
+        x = Math.round(cx); y = Math.round(cy);
+        placedFlag = true;
+        break;
+      }
+    }
+    // If none placed, we'll fall back below
+  }
+
+  // If not enough space above, place below (default behavior)
+  if (!placedFlag) {
+    if (y < pad) y = Math.round(centerY + gap);
+  }
 
   if (x + r.width + pad > vw) x = vw - r.width - pad;
   if (x < pad) x = pad;
@@ -265,4 +298,52 @@ function remToPx(rem) {
     const fs = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     return Math.round(rem * fs);
   } catch (_) { return Math.round(rem * 16); }
+}
+
+// Compute top-left (x,y) for a given placement token relative to target rect (rt)
+// Supported tokens: t, b, l, r, tl, tr, bl, br, tc, bc, lc, rc
+function computePlacementFor(token, rt, tipRect, gapPx) {
+  try {
+    const t = String(token || '').toLowerCase();
+    const w = tipRect.width, h = tipRect.height;
+    const cx = rt.left + rt.width / 2;
+    const cy = rt.top + rt.height / 2;
+    const top = rt.top - gapPx - h;
+    const bottom = rt.bottom + gapPx;
+    const left = rt.left - gapPx - w;
+    const right = rt.right + gapPx;
+    switch (t) {
+      case 't':
+      case 'tc': return { x: Math.round(cx - w / 2), y: Math.round(top) };
+      case 'b':
+      case 'bc': return { x: Math.round(cx - w / 2), y: Math.round(bottom) };
+      case 'l':
+      case 'lc': return { x: Math.round(left), y: Math.round(cy - h / 2) };
+      case 'r':
+      case 'rc': return { x: Math.round(right), y: Math.round(cy - h / 2) };
+      case 'tl': return { x: Math.round(left), y: Math.round(rt.top) };
+      case 'tr': return { x: Math.round(right), y: Math.round(rt.top) };
+      case 'bl': return { x: Math.round(left), y: Math.round(rt.bottom - h) };
+      case 'br': return { x: Math.round(right), y: Math.round(rt.bottom - h) };
+      default: return null;
+    }
+  } catch (_) { return null; }
+}
+
+// Heuristic check: does the tooltip rect lie roughly on the intended side of the target?
+function isPlacementRoughlyOnSide(token, rt, tipBox) {
+  try {
+    const t = String(token || '').toLowerCase();
+    const cx = rt.left + rt.width / 2;
+    const cy = rt.top + rt.height / 2;
+    const leftSide = tipBox.x + tipBox.w <= cx;
+    const rightSide = tipBox.x >= cx;
+    const topSide = tipBox.y + tipBox.h <= cy;
+    const bottomSide = tipBox.y >= cy;
+    if (t === 'l' || t === 'lc' || t === 'tl' || t === 'bl') return leftSide;
+    if (t === 'r' || t === 'rc' || t === 'tr' || t === 'br') return rightSide;
+    if (t === 't' || t === 'tc' || t === 'tl' || t === 'tr') return topSide;
+    if (t === 'b' || t === 'bc' || t === 'bl' || t === 'br') return bottomSide;
+    return true;
+  } catch (_) { return true; }
 }

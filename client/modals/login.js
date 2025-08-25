@@ -45,10 +45,10 @@ function ensureLoginStyles() {
     border: 1px solid rgba(120,170,255,0.60);
     box-shadow: inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22);
   }
-  .btn-outline-glass:hover { border-color: rgba(140,190,255,0.85); box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
+  .btn-outline-glass:hover { border-color: #dff1ff; box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
   .btn svg { width: 18px; height: 18px; }
   .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; }
-  .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 6px 8px; margin-top: 8px; }
+  .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 6px 10px; margin-top: 8px; }
   .login-form label { opacity: 0.95; text-align: right; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
@@ -58,7 +58,8 @@ function ensureLoginStyles() {
     box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
   }
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-  .input-glass:focus { border-color: rgba(140,190,255,0.90); box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
+  .input-glass:hover { border-color: #dff1ff; }
+  .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
   .login-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); }
   /* Two-column layout inside the modal */
@@ -157,9 +158,9 @@ export function presentLoginModal() {
   const facebookBtn = mkBtn('Facebook', () => signInWithProvider('facebook'));
   try { facebookBtn.insertBefore(icon('facebook'), facebookBtn.firstChild); } catch (_) {}
   // Far-mode tooltips for providers
-  try { attachTooltip(googleBtn, { mode: 'far' }); updateTooltip(googleBtn, 'Continue with Google'); } catch (_) {}
-  try { attachTooltip(discordBtn, { mode: 'far' }); updateTooltip(discordBtn, 'Continue with Discord'); } catch (_) {}
-  try { attachTooltip(facebookBtn, { mode: 'far' }); updateTooltip(facebookBtn, 'Continue with Facebook'); } catch (_) {}
+  try { attachTooltip(googleBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(googleBtn, 'Continue with Google'); } catch (_) {}
+  try { attachTooltip(discordBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(discordBtn, 'Continue with Discord'); } catch (_) {}
+  try { attachTooltip(facebookBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(facebookBtn, 'Continue with Facebook'); } catch (_) {}
 
   buttons.appendChild(googleBtn);
   buttons.appendChild(discordBtn);
@@ -198,9 +199,9 @@ export function presentLoginModal() {
     setStatus('Password reset sent (if the email exists).');
   });
   // Tooltips on action buttons
-  try { attachTooltip(signInBtn, { mode: 'far' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
-  try { attachTooltip(signUpBtn, { mode: 'far' }); updateTooltip(signUpBtn, 'Create Account'); } catch (_) {}
-  try { attachTooltip(resetBtn, { mode: 'far' }); updateTooltip(resetBtn, 'Reset Password'); } catch (_) {}
+  try { attachTooltip(signInBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
+  try { attachTooltip(signUpBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signUpBtn, 'Create Account'); } catch (_) {}
+  try { attachTooltip(resetBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(resetBtn, 'Reset Password'); } catch (_) {}
   actions.appendChild(signInBtn);
   actions.appendChild(signUpBtn);
   actions.appendChild(resetBtn);
