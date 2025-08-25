@@ -13,14 +13,27 @@ export function ensureStatusBar() {
     bar.style.right = '0';
     bar.style.top = '0';
     bar.style.height = '3em';
-    bar.style.display = 'none';
+    // Always render; visibility controlled via transform for smooth animation
+    bar.style.display = 'flex';
     bar.style.alignItems = 'center';
     bar.style.justifyContent = 'space-between';
     bar.style.padding = '0 12px';
-    bar.style.background = 'var(--bar-bg)';
+    // Blue glassmorphism look
+    bar.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
+    bar.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    bar.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    bar.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    bar.style.borderTop = 'none';
+    bar.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
+    bar.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
     bar.style.color = 'var(--ui-fg)';
     // Keep status bar above overlays
     bar.style.zIndex = '30000';
+    // Slide animation (window shade): 1s down/up using transform
+    bar.style.transform = 'translateY(-100%)';
+    bar.style.transition = 'transform 1s ease';
+    bar.style.willChange = 'transform';
+    bar.style.pointerEvents = 'none';
     const left = document.createElement('div');
     left.id = 'status-left';
     // Keep metrics in a nested span so other UI (like volume knobs) can live inside left without
@@ -49,13 +62,20 @@ export function ensureStatusBar() {
     const requestHide = () => {
       clearHide();
       hideTimer = setTimeout(() => {
-        if (!hoveringBar) bar.style.display = 'none';
+        if (!hoveringBar) {
+          bar.style.transform = 'translateY(-100%)';
+          bar.style.pointerEvents = 'none';
+        }
       }, 3000);
     };
     bar.addEventListener('mouseenter', () => { hoveringBar = true; clearHide(); });
     bar.addEventListener('mouseleave', () => { hoveringBar = false; requestHide(); });
     window.addEventListener('mousemove', (e) => {
-      if (e.clientY <= 8) { bar.style.display = 'flex'; requestHide(); }
+      if (e.clientY <= 8) {
+        bar.style.transform = 'translateY(0)';
+        bar.style.pointerEvents = 'auto';
+        requestHide();
+      }
     });
   }
   return bar;
