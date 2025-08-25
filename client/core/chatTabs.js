@@ -10,13 +10,20 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     : ['Game', 'Whisper', 'Server'];
   const readOnlyTabs = new Set((mode === 'lobby') ? ['News', 'Games', 'Server'] : ['Server']);
 
-  // Root container
+  // Root container (glassmorphism via theme variables with fallbacks)
   const el = document.createElement('div');
   el.style.marginTop = '12px';
-  el.style.background = 'var(--ui-bg)';
-  el.style.border = '1px solid var(--control-border)';
+  el.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+  el.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   el.style.borderRadius = '6px';
-  el.style.padding = '8px';
+  el.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)), var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
+  el.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
+  el.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
+  // Let the chat fill its container's fixed height (e.g., lobby grid's chat row)
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  el.style.height = '100%';
+  el.style.maxHeight = '100%';
 
   // Tabs row
   const tabsRow = document.createElement('div');
@@ -25,13 +32,16 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   tabsRow.style.marginBottom = '6px';
   el.appendChild(tabsRow);
 
-  // Messages area
+  // Messages area (glass surface; flexible to fill remaining height)
   const list = document.createElement('div');
-  list.style.maxHeight = '220px';
+  list.style.flex = '1 1 auto';
+  list.style.minHeight = '0';
+  list.style.maxHeight = '100%';
   list.style.overflowY = 'auto';
-  list.style.background = 'rgba(0,0,0,0.2)';
-  list.style.border = '1px solid var(--control-border)';
+  list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+  list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   list.style.borderRadius = '4px';
+  list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   list.style.padding = '6px';
   el.appendChild(list);
 
@@ -47,13 +57,25 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   input.type = 'text';
   input.placeholder = 'Type message…';
   input.style.flex = '1';
+  input.style.background = 'rgba(255,255,255,0.06)';
+  input.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  input.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
+  input.style.borderRadius = '4px';
 
   const searchBtn = document.createElement('button');
   searchBtn.textContent = '🔎';
   searchBtn.title = 'Filter current tab by text';
+  searchBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  searchBtn.style.background = 'rgba(255,255,255,0.06)';
+  searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
+  searchBtn.style.borderRadius = '4px';
 
   const sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
+  sendBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  sendBtn.style.background = 'rgba(255,255,255,0.06)';
+  sendBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
+  sendBtn.style.borderRadius = '4px';
 
   inputRow.appendChild(input);
   inputRow.appendChild(searchBtn);
@@ -75,9 +97,10 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       const b = document.createElement('button');
       b.textContent = t;
       b.style.padding = '4px 8px';
-      b.style.border = '1px solid var(--control-border)';
-      b.style.background = (t === currentTab) ? 'rgba(100,150,220,0.25)' : 'rgba(0,0,0,0.2)';
-      b.style.color = 'var(--ui-fg)';
+      b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+      b.style.background = (t === currentTab) ? 'rgba(120,170,255,0.18)' : 'rgba(255,255,255,0.06)';
+      b.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
+      b.style.borderRadius = '4px';
       b.onclick = () => switchTo(t);
       tabsRow.appendChild(b);
     });
@@ -93,7 +116,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
         if (href || joinRoomId) {
           span.style.textDecoration = 'underline';
           span.style.cursor = 'pointer';
-          span.style.color = '#6cf';
+          span.style.color = 'var(--ui-link, #6cf)';
           span.addEventListener('click', () => {
             try {
               if (href) {
@@ -171,7 +194,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   function enableSearchMode() {
     if (searchMode) return;
     searchMode = true;
-    searchBtn.style.background = 'rgba(100,150,220,0.25)';
+    searchBtn.style.background = 'rgba(120,170,255,0.18)';
     searchBtn.title = 'Exit search (Esc)';
     __onLiveInput = () => filter(input.value || '');
     input.addEventListener('input', __onLiveInput);

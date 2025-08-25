@@ -34,6 +34,9 @@
       '--ui-surface-border': 'rgba(120,170,255,0.70)',
       '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
       '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)'
+      ,
+      // Link color used by chat and other interactive text
+      '--ui-link': '#6cf'
     }
   };
 
