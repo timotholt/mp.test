@@ -94,7 +94,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   sendBtn.style.height = '40px';
   sendBtn.style.padding = '0 14px';
   // Horizontal margin only (no vertical) to keep row height tight
-  sendBtn.style.margin = '0 0.3rem';
+  sendBtn.style.margin = '0.3rem';
 
   // CSS-driven expanding search field (separate from message input)
   const { wrap: searchWrap, input: searchInput, btn: searchBtn } = createLeftIconInput({
@@ -108,7 +108,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Prevent it from stretching; only take space equal to icon until expanded
   searchWrap.style.flex = '0 0 auto';
   // Add small padding before the search icon per request
-  searchWrap.style.paddingLeft = '6px';
+  // searchWrap.style.paddingLeft = '6px';
   // Make the search icon a plain, non-interactive icon
   try {
     searchBtn.style.border = '0';
