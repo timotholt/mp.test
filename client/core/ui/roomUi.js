@@ -1,5 +1,7 @@
 // Room UI helper module extracted from main.js
 // Holds UI refs and logic related to Room screen rendering and chat.
+import { showPlayerContextMenu } from './playerContextMenu.js';
+import * as LS from '../localStorage.js';
 
 let _getRoom = null;
 let roomPlayersEl = null;
@@ -53,7 +55,31 @@ export function renderRoomPlayers() {
       const line = document.createElement('div');
       const nm = p.name || 'Hero';
       const off = p.online === false ? ' (offline)' : '';
-      line.textContent = `${nm}${off}`;
+      // Compose name span to support context menu
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = nm;
+      try { nameSpan.setAttribute('data-player-name', nm); } catch (_) {}
+      nameSpan.style.textDecoration = 'underline';
+      nameSpan.style.cursor = 'context-menu';
+      nameSpan.style.color = 'var(--ui-link, #6cf)';
+      // Right-click to open player context menu
+      nameSpan.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const selfName = String(LS.getItem('name', '') || '').trim();
+        showPlayerContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          name: nm,
+          id: id,
+          selfName,
+          onWhisper: (display) => { try { if (roomChat && typeof roomChat.whisperTo === 'function') roomChat.whisperTo(display); } catch (_) {} },
+        });
+      });
+
+      line.appendChild(nameSpan);
+      const suffix = document.createElement('span');
+      suffix.textContent = off;
+      line.appendChild(suffix);
       roomPlayersEl.appendChild(line);
     });
   } catch (_) {}

@@ -79,4 +79,33 @@ async function loadLatestSnapshot(gameId) {
   }
 }
 
-module.exports = { saveSnapshot, loadLatestSnapshot };
+// List recent games from snapshots, returning one entry per game_id with latest created_at.
+// Uses a descending time-ordered slice, then reduces client-side to distinct game_ids.
+// Returns: [{ gameId, lastSavedAt }]
+async function listRecentGames(limit = 200) {
+  const client = await getClient();
+  if (!client) return [];
+  const cap = Math.min(Math.max(1, limit | 0), 2000);
+  try {
+    const { data: rows, error } = await client
+      .from(TABLE_GAMESTATE)
+      .select('id, game_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(cap);
+    if (error) throw error;
+    const seen = new Set();
+    const out = [];
+    for (const r of rows || []) {
+      const gid = String(r?.game_id || '').trim();
+      if (!gid || seen.has(gid)) continue;
+      seen.add(gid);
+      out.push({ gameId: gid, lastSavedAt: r?.created_at || null });
+    }
+    return out;
+  } catch (e) {
+    console.warn('[persistence] listRecentGames failed', e);
+    return [];
+  }
+}
+
+module.exports = { saveSnapshot, loadLatestSnapshot, listRecentGames };

@@ -52,6 +52,16 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
   async function joinRoomById(r) {
     const meta = r.metadata || {};
     const playerName = LS.getItem('name', '') || prompt('Name?') || 'Hero';
+    const hasRoom = !!r.roomId;
+    const gameId = r.gameId || meta.gameId || '';
+    if (!hasRoom && gameId) {
+      // Not currently loaded: load-on-demand by joining/creating the game room
+      try {
+        const rj = await client.joinOrCreate('nethack', { gameId, name: playerName, access_token: await getAccessToken() });
+        await afterJoin(rj);
+      } catch (e) { console.warn('joinOrCreate failed', e); }
+      return;
+    }
     if (meta.private) {
       presentRoomPromptPassword({
         roomName: meta.name || r.roomId,
@@ -218,6 +228,42 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       lobbyRoom = await client.joinOrCreate('lobby', { access_token });
       // Stop polling once realtime feed is active
       stopLobbyPolling();
+      // New: consume LobbyRoom Schema state
+      try {
+        lobbyRoom.onStateChange((state) => {
+          // Map games state to existing UI shape
+          try {
+            const games = Array.from(state?.games || []);
+            const mapped = games.map((g) => ({
+              roomId: g?.roomId || '',
+              clients: g?.clients | 0,
+              maxClients: g?.maxPlayers | 0,
+              isGameEntry: true,
+              gameId: g?.gameId || '',
+              metadata: {
+                gameId: g?.gameId || '',
+                name: g?.name || '',
+                hostName: g?.hostName || '',
+                private: !!g?.private,
+                maxPlayers: g?.maxPlayers | 0,
+              },
+            }));
+            roomsCache = mapped;
+            if (gamesPanel) gamesPanel.setData(roomsCache);
+          } catch (_) {}
+          // Map players state to UI list
+          try {
+            const pl = [];
+            const m = state?.players;
+            if (m && typeof m.forEach === 'function') {
+              m.forEach((p, id) => { pl.push({ id, name: p?.name || 'Guest' }); });
+            }
+            playersCache = pl;
+            playersCache.forEach(p => { if (p && p.id) markRecent(p.id); });
+            if (playersPanel) playersPanel.setData(playersCache);
+          } catch (_) {}
+        });
+      } catch (_) {}
       try {
         lobbyRoom.onMessage('roomsList', (rooms) => {
           roomsCache = Array.isArray(rooms) ? rooms : [];
