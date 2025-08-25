@@ -75,9 +75,18 @@ export function createLeftIconInput({ placeholder = '', iconSvg, marginLeft = '0
 
 // On input focus, highlight the parent row border; on blur, restore
 export function wireFocusHighlight(inputEl, rowEl) {
+  // Track whether the user has interacted (mouse/touch/keyboard)
+  let userInteracted = false;
+  const markUser = () => { userInteracted = true; };
+  window.addEventListener('pointerdown', markUser, { once: true, passive: true });
+  window.addEventListener('keydown', markUser, { once: true });
+
   inputEl.addEventListener('focus', (ev) => {
-    // Ignore programmatic focus (e.g., during overlay mount) to avoid flicker
+    // Avoid highlight on programmatic focus during mount
     if (ev && ev.isTrusted === false) return;
+    // Only show when it's a visible/user-driven focus
+    const looksUserDriven = userInteracted || (typeof inputEl.matches === 'function' && inputEl.matches(':focus-visible'));
+    if (!looksUserDriven) return;
     try {
       rowEl.style.boxShadow = 'inset 0 0 0 1px #fff';
       rowEl.style.borderColor = '#fff';

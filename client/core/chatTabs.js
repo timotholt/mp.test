@@ -15,7 +15,6 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   const el = document.createElement('div');
   el.style.marginTop = '12px';
   // el.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-  el.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   el.style.borderRadius = '6px';
   // el.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)), var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   el.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
@@ -61,20 +60,21 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   const inputRow = createInputRow({ dataName: 'chat-input-row' });
   el.appendChild(inputRow);
 
-  // Input with left icon (shared control), keep chat-specific tweaks
-  const { wrap: inputWrap, input, btn: searchBtn } = createLeftIconInput({
+  // Message input: use shared left-icon input but hide the icon to reuse styles
+  const { wrap: inputWrap, input, btn: hiddenIconBtn } = createLeftIconInput({
     placeholder: 'Type message…',
     marginLeft: '0.3rem',
-    iconSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+    iconSvg: null,
   });
   try { inputWrap.setAttribute('data-name', 'chat-input-wrap'); } catch (_) {}
+  // Hide the built-in icon button and reset padding to plain input
+  hiddenIconBtn.style.display = 'none';
+  input.style.padding = '0 10px';
   // Preserve chat sizing and font
   input.style.height = '46px';
   input.style.lineHeight = '46px';
   input.style.borderRadius = '10px';
   input.style.fontSize = '16px';
-  // Title for accessibility
-  searchBtn.title = 'Filter current tab by text';
 
   const sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
@@ -89,15 +89,67 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Even margin on all sides
   sendBtn.style.margin = '0.3rem';
 
+  // CSS-driven expanding search field (separate from message input)
+  const { wrap: searchWrap, input: searchInput, btn: searchBtn } = createLeftIconInput({
+    placeholder: 'Search',
+    marginLeft: '0',
+    iconSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+  });
+  try { searchWrap.setAttribute('data-name', 'chat-search-wrap'); } catch (_) {}
+  // Start collapsed; expand on hover/focus via injected CSS
+  searchWrap.classList.add('chat-search-collapsible');
+  // Prevent it from stretching; only take space equal to icon until expanded
+  searchWrap.style.flex = '0 0 auto';
+  // Tiny clear button on right side of the search input
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'chat-search-clear';
+  clearBtn.type = 'button';
+  clearBtn.title = 'Clear';
+  clearBtn.textContent = '×';
+  searchWrap.appendChild(clearBtn);
+  // Slightly smaller search input
+  searchInput.style.height = '40px';
+  searchInput.style.lineHeight = '40px';
+  searchInput.style.borderRadius = '8px';
+  // Ensure width transitions apply; do not let flex sizing override
+  searchInput.style.flex = '0 0 auto';
+  // Let CSS drive width/padding transitions: clear inline values set by shared helper
+  try { searchInput.style.removeProperty('width'); } catch (_) {}
+  try { searchInput.style.removeProperty('padding'); } catch (_) {}
+  // Accessibility titles
+  searchBtn.title = 'Search messages';
+  // Order: search (left), message input (center), send (right)
+  inputRow.appendChild(searchWrap);
   inputRow.appendChild(inputWrap);
   inputRow.appendChild(sendBtn);
+
+  // Inject minimal CSS for the collapsible search behavior (no JS toggling)
+  try {
+    const STYLE_ID = 'chat-search-collapsible-css';
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = `
+        .chat-search-collapsible{ position:relative; display:flex; align-items:center; width:32px; overflow:hidden; transition: width 160ms ease; }
+        .chat-search-collapsible::after{ content:""; position:absolute; right:-4px; top:50%; transform:translateY(-50%); width:1px; height:60%; background: var(--ui-surface-border, rgba(120,170,255,0.70)); opacity:0; transition: opacity 160ms ease; }
+        .chat-search-collapsible input{ width:0; opacity:0; padding:0; pointer-events:none; transition: width 160ms ease, opacity 140ms ease, padding 160ms ease; }
+        .chat-search-collapsible:hover, .chat-search-collapsible:focus-within, .chat-search-collapsible.has-text{ width:240px; }
+        .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:200px; opacity:1; padding: 0 24px 0 calc(32px + 0.5rem); pointer-events:auto; }
+        .chat-search-collapsible:hover::after, .chat-search-collapsible:focus-within::after, .chat-search-collapsible.has-text::after{ opacity:1; }
+        .chat-search-collapsible > button:not(.chat-search-clear){ left:0; }
+        .chat-search-collapsible .chat-search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:16px; height:16px; border:0; background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); cursor:pointer; font-size:14px; line-height:14px; padding:0; opacity:0; pointer-events:none; transition: opacity 120ms ease; }
+        .chat-search-collapsible:hover .chat-search-clear, .chat-search-collapsible:focus-within .chat-search-clear, .chat-search-collapsible.has-text .chat-search-clear{ opacity:1; pointer-events:auto; }
+      `;
+      document.head.appendChild(style);
+    }
+  } catch (_) {}
 
   // State
   const messages = new Map();
   tabs.forEach(t => messages.set(t, []));
   let currentTab = tabs[0];
   let filterTerm = '';
-  let searchMode = false;
+  let unsentDraft = '';
 
   // Helpers
   function isReadOnly(tab) { return readOnlyTabs.has(tab); }
@@ -164,6 +216,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
 
   function updateReadOnlyUI() {
     const ro = isReadOnly(currentTab);
+    // Message input disabled on read-only; search stays enabled
     input.disabled = ro;
     sendBtn.disabled = ro;
     input.placeholder = ro ? 'Read-only' : 'Type message…';
@@ -172,8 +225,6 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   function switchTo(tab) {
     if (!tabs.includes(tab)) return;
     currentTab = tab;
-    // Exiting search mode when switching tabs makes filtering less confusing
-    if (searchMode) disableSearchMode();
     updateReadOnlyUI();
     renderTabs();
     renderList();
@@ -196,32 +247,9 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     renderList();
   }
 
-  // Search mode helpers (live-as-you-type while active)
-  let __onLiveInput;
-  function enableSearchMode() {
-    if (searchMode) return;
-    searchMode = true;
-    searchBtn.style.background = 'rgba(120,170,255,0.18)';
-    searchBtn.title = 'Exit search (Esc)';
-    __onLiveInput = () => filter(input.value || '');
-    input.addEventListener('input', __onLiveInput);
-    // Start filtering immediately with current text
-    filter(input.value || '');
-  }
-  function disableSearchMode() {
-    if (!searchMode) return;
-    searchMode = false;
-    searchBtn.style.background = '';
-    searchBtn.title = 'Filter current tab by text';
-    try { if (__onLiveInput) input.removeEventListener('input', __onLiveInput); } catch (_) {}
-    __onLiveInput = null;
-    filter('');
-  }
+  // No toggle: live-filter via dedicated search input
 
-  // Wire inputs
-  searchBtn.onclick = () => {
-    if (!searchMode) enableSearchMode(); else disableSearchMode();
-  };
+  // Wire inputs (no JS focus for search icon to keep behavior CSS-only)
   sendBtn.onclick = () => {
     if (isReadOnly(currentTab)) return;
     const msg = (input.value || '').trim();
@@ -229,17 +257,42 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     // Stub: echo locally. Integration will hook network later.
     appendMessage(currentTab, `You: ${msg}`);
     input.value = '';
-    if (searchMode) disableSearchMode();
+    unsentDraft = '';
   };
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (searchMode) { e.stopPropagation(); disableSearchMode(); }
+      // Allow Esc to clear message draft focus behavior only
       return;
     }
     if (e.key === 'Enter') sendBtn.click();
   });
-  // Focus styling: keep input borderless; highlight parent row instead
+  // Focus styling: keep inputs borderless; highlight parent row instead
   wireFocusHighlight(input, inputRow);
+  wireFocusHighlight(searchInput, inputRow);
+  // Track unsent draft on message input
+  input.addEventListener('input', () => { unsentDraft = String(input.value || ''); });
+
+  // Wire search input live filtering and Esc behavior
+  searchInput.addEventListener('input', () => {
+    const v = String(searchInput.value || '').trim();
+    if (v) searchWrap.classList.add('has-text'); else searchWrap.classList.remove('has-text');
+    filter(v);
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      searchInput.value = '';
+      filter('');
+      searchWrap.classList.remove('has-text');
+      try { searchInput.blur(); } catch (_) {}
+    }
+  });
+  clearBtn.addEventListener('click', () => {
+    try { searchInput.focus(); } catch (_) {}
+    searchInput.value = '';
+    searchWrap.classList.remove('has-text');
+    filter('');
+  });
 
   // Initial render
   renderTabs();
