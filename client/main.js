@@ -3,13 +3,9 @@
 
 import * as Colyseus from 'colyseus.js';
 import OverlayManager, { PRIORITY } from './core/overlayManager.js';
-import { presentRoomCreateModal } from './modals/roomCreate.js';
-import { presentLoginModal, showLoginBackdrop } from './modals/login.js';
-import { presentRoomPromptPassword } from './modals/roomPromptPassword.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
-import { createChatTabs } from './core/chatTabs.js';
 import { setupAsciiRenderer } from './core/renderer.js';
 import { SUBSTATES, presentSubstate } from './core/substates.js';
 import { ensureThemeSupport } from './core/ui/theme/themeManager.js';
@@ -18,6 +14,10 @@ import { registerRoomRoute } from './routes/room.js';
 import { ensureZoomControls } from './core/zoom/zoomManager.js';
 import { ensureBanner } from './core/ui/banner.js';
 import { registerGameplayMovement } from './core/input/gameplayInput.js';
+import { registerLoginRoute } from './routes/login.js';
+import { registerLobbyRoute, stopLobbyPolling as stopLobbyPollingExport } from './routes/lobby.js';
+import { ensureScreenShade } from './core/ui/screenShade.js';
+import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js';
 import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
@@ -29,25 +29,7 @@ const log = (line) => { logEl.textContent += line + '\n'; };
 // -------------------- Micro Router (plain DOM) --------------------
 // Router extracted to './core/router.js'. See imports above.
 
-// Derive a stable gameId from room name and host (URL override supported via ?gameId= or #gameId=)
-function deriveGameId(name, hostName) {
-  try {
-    const params = new URLSearchParams(location.search || '');
-    const hashMatch = (location.hash || '').match(/gameId=([A-Za-z0-9_-]+)/);
-    const forced = params.get('gameId') || (hashMatch ? hashMatch[1] : '');
-    if (forced) return String(forced).slice(0, 48);
-  } catch (_) {}
-  const base = String(name || 'game')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 24) || 'game';
-  const host = String(hostName || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 8);
-  return [base, host].filter(Boolean).join('-');
-}
+// deriveGameId moved to './core/util/deriveGameId.js' and used by Lobby route module
 
 // -------------------- Room UI Helpers --------------------
 function setReadyButtonUI(isReady) {
@@ -140,9 +122,6 @@ function appendChatLine(line) {
 // Routing handled by imported setRoute/toggleRenderer in './core/router.js'
 
 // Register screens
-let lobbyPollId = null;
-let roomsListEl = null;
-let createRoomBtn = null;
 // ROOM UI refs
 let roomPlayersEl = null;
 let roomChatListEl = null;
@@ -150,97 +129,12 @@ let roomChatInputEl = null;
 let roomReadyBtn = null;
 let roomUIBound = false;
 // Chat components
-let lobbyChat = null;
 let roomChat = null;
 
-makeScreen(APP_STATES.LOGIN, (el) => {
-  // Clear screen content; we use a modal over the full-screen renderer backdrop
-  el.innerHTML = '';
-  // Ensure any lingering lobby modal is dismissed when returning to login
-  try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}
-  try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
-  showLoginBackdrop();
-  presentLoginModal();
-});
+// Register LOGIN route via extracted module
+registerLoginRoute({ makeScreen, APP_STATES });
 
-makeScreen(APP_STATES.LOBBY, (el) => {
-  // Only present Lobby overlay when this route becomes active
-  el.innerHTML = '';
-  el.update = () => {
-    try { OverlayManager.present({ id: 'LOBBY_MODAL', priority: PRIORITY.MEDIUM, text: 'Lobby', actions: [], blockInput: true, external: true }); } catch (_) {}
-    const overlay = document.getElementById('overlay');
-    const content = overlay ? overlay.querySelector('#overlay-content') : null;
-    if (content) {
-      content.innerHTML = '';
-      const header = document.createElement('div');
-      header.textContent = 'Lobby';
-      const actions = document.createElement('div');
-      createRoomBtn = document.createElement('button');
-      createRoomBtn.textContent = 'Create Private Room';
-      actions.appendChild(createRoomBtn);
-      roomsListEl = document.createElement('div');
-      roomsListEl.id = 'lobby-rooms';
-      roomsListEl.style.marginTop = '8px';
-      // Tabbed chat UI (Lobby)
-      lobbyChat = createChatTabs({
-        mode: 'lobby',
-        onJoinGame: async (roomId) => {
-          try {
-            const playerName = LS.getItem('name', 'Hero');
-            const rj = await client.joinById(String(roomId), { name: playerName });
-            await afterJoin(rj);
-          } catch (e) {
-            const msg = (e && (e.message || e)) + '';
-            if (msg.includes('password')) {
-              presentRoomPromptPassword({
-                roomName: String(roomId),
-                onSubmit: async (pwd) => {
-                  try {
-                    const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
-                    await afterJoin(rj);
-                    return true;
-                  } catch (err) {
-                    const em = (err && (err.message || err)) + '';
-                    if (em.includes('Invalid password')) return false;
-                    throw new Error(typeof em === 'string' ? em : 'Join failed');
-                  }
-                },
-                onCancel: () => {}
-              });
-            }
-          }
-        },
-        onOpenLink: (href) => { try { window.open(href, '_blank'); } catch (_) {} }
-      });
-      content.appendChild(header);
-      content.appendChild(actions);
-      content.appendChild(roomsListEl);
-      content.appendChild(lobbyChat.el);
-      createRoomBtn.onclick = () => {
-        presentRoomCreateModal({
-          onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
-            const cname = LS.getItem('name', 'Hero');
-            try {
-              const newRoom = await client.create('nethack', {
-                name,
-                turnLength,
-                roomPass,
-                maxPlayers,
-                private: !!roomPass,
-                hostName: cname,
-                gameId: deriveGameId(name, cname),
-              });
-              await afterJoin(newRoom);
-            } catch (e) {
-              console.warn('create failed', e);
-            }
-          }
-        });
-      };
-    }
-    startLobbyPolling();
-  };
-});
+// LOBBY route moved to './routes/lobby.js' and registered after client is created
 
 // Register ROOM route via extracted module
 registerRoomRoute({
@@ -267,21 +161,7 @@ makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paus
 
 
 // -------------------- Always-on Canvas Dimming Shade & UI Chrome --------------------
-function ensureScreenShade() {
-  let shade = document.getElementById('screen-shade');
-  if (!shade) {
-    shade = document.createElement('div');
-    shade.id = 'screen-shade';
-    shade.style.position = 'fixed';
-    shade.style.inset = '0';
-    shade.style.background = 'rgba(0,0,0,0.5)';
-    shade.style.zIndex = '2000'; // below overlay (9999), above canvas (1)
-    shade.style.display = 'none';
-    shade.style.pointerEvents = 'none';
-    document.body.appendChild(shade);
-  }
-  return shade;
-}
+// moved to './core/ui/screenShade.js'
 
 // Expose for router to use on initial navigation
 window.ensureScreenShade = ensureScreenShade;
@@ -314,55 +194,17 @@ window.ensureBanner = ensureBanner;
 
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
+// Register LOBBY route via extracted module (needs client)
+registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin });
+// Back-compat global
+try { window.stopLobbyPolling = stopLobbyPollingExport; } catch (_) {}
 
 let room;
 let lastStateVersion = 0;
 // Register gameplay input handler (guarded)
 try { registerGameplayMovement(() => room); } catch (_) {}
 
-// Only auto-reconnect on reload or back/forward, not on a fresh navigate/duplicated tab.
-function shouldAutoReconnect() {
-  try {
-    const navs = (typeof performance.getEntriesByType === 'function') ? performance.getEntriesByType('navigation') : null;
-    if (navs && navs[0] && typeof navs[0].type === 'string') {
-      return navs[0].type === 'reload' || navs[0].type === 'back_forward';
-    }
-  } catch (_) {}
-  try {
-    const PN = performance.navigation;
-    if (PN && typeof PN.type === 'number') {
-      return PN.type === PN.TYPE_RELOAD || PN.type === PN.TYPE_BACK_FORWARD;
-    }
-  } catch (_) {}
-  return false;
-}
-
-async function attemptReconnect() {
-  try {
-    const savedRoomId = sessionStorage.getItem('roomId');
-    const savedSessionId = sessionStorage.getItem('sessionId');
-
-    if (savedRoomId && savedSessionId && shouldAutoReconnect()) {
-      statusEl.textContent = 'Reconnecting...';
-      try {
-        // Avoid getting stuck if reconnect hangs (e.g., server restarted)
-        const timeoutMs = 3000;
-        const r = await Promise.race([
-          client.reconnect(savedRoomId, savedSessionId),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('reconnect timeout')), timeoutMs))
-        ]);
-        await afterJoin(r);
-        return; // done
-      } catch (_) {
-        // fallthrough to join
-      }
-    }
-  } catch (err) {
-    statusEl.textContent = 'Failed to connect';
-    console.error(err);
-    log(String(err?.message || err));
-  }
-}
+// Reconnect helpers moved to './core/net/reconnect.js'
 
 function startLobby() {
   statusEl.textContent = 'In Lobby';
@@ -370,23 +212,6 @@ function startLobby() {
 }
 // Expose for login modal to call directly
 window.startLobby = startLobby;
-
-function startLobbyPolling() {
-  if (lobbyPollId) return;
-  const fetchRooms = async () => {
-    try {
-      const list = await client.getAvailableRooms('nethack');
-      renderRooms(list || []);
-    } catch (e) {
-      console.warn('getAvailableRooms failed', e);
-    }
-  };
-  fetchRooms();
-  lobbyPollId = setInterval(fetchRooms, 4000);
-}
-
-function stopLobbyPolling() { if (lobbyPollId) { clearInterval(lobbyPollId); lobbyPollId = null; } }
-window.stopLobbyPolling = stopLobbyPolling;
 
 // Leave current room and return to Lobby
 async function leaveRoomToLobby() {
@@ -403,48 +228,6 @@ async function leaveRoomToLobby() {
   try { room = null; } catch (_) {}
   try { roomUIBound = false; } catch (_) {}
   setRoute(APP_STATES.LOBBY);
-}
-
-function renderRooms(rooms) {
-  if (!roomsListEl) return;
-  roomsListEl.innerHTML = '';
-  rooms.forEach((r) => {
-    const row = document.createElement('div');
-    const meta = r.metadata || {};
-    row.textContent = `${meta.name || r.roomId} | ${r.clients}/${meta.maxPlayers || r.maxClients || '?' }${meta.private ? ' (private)' : ''}`;
-    const btn = document.createElement('button');
-    btn.textContent = 'Join';
-    btn.style.marginLeft = '8px';
-    btn.onclick = async () => {
-      const playerName = LS.getItem('name', '') || prompt('Name?') || 'Hero';
-      if (meta.private) {
-        presentRoomPromptPassword({
-          roomName: meta.name || r.roomId,
-          onSubmit: async (pwd) => {
-            try {
-              const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pwd || '' });
-              await afterJoin(rj);
-              return true; // close modal
-            } catch (e) {
-              const msg = (e && (e.message || e)) + '';
-              if (msg.includes('Invalid password') || msg.includes('Room requires password')) {
-                return false; // wrong password, keep modal open
-              }
-              throw new Error(typeof msg === 'string' ? msg : 'Join failed');
-            }
-          },
-          onCancel: () => {}
-        });
-      } else {
-        try {
-          const rj = await client.joinById(r.roomId, { name: playerName });
-          await afterJoin(rj);
-        } catch (e) { console.warn('join failed', e); }
-      }
-    };
-    row.appendChild(btn);
-    roomsListEl.appendChild(row);
-  });
 }
 
 async function afterJoin(r) {
@@ -589,6 +372,6 @@ if (document.readyState === 'loading') {
 }
 
 // Initial entry: try reconnect; if none, go to login
-attemptReconnect().catch(() => {}).finally(() => {
+attemptReconnectNet({ client, afterJoin, statusEl, log }).catch(() => {}).finally(() => {
   if (!room) setRoute(APP_STATES.LOGIN);
 });
