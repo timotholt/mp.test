@@ -11,7 +11,8 @@ import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
-import { initAudio } from './core/audio/audioManager.js';
+import { setupAsciiRenderer } from './core/renderer.js';
+import { SUBSTATES, presentSubstate } from './core/substates.js';
 import './core/ui/theme.js';
 import * as LS from './core/localStorage.js';
 
@@ -378,6 +379,8 @@ function ensureThemeSupport() {
     document.documentElement.style.setProperty('--control-border', dark ? '#444' : '#bbb');
   };
 }
+// Expose for other modules
+window.ensureThemeSupport = ensureThemeSupport;
 
 function ensureStatusBar() {
   let bar = document.getElementById('hover-status-bar');
@@ -436,6 +439,8 @@ function ensureStatusBar() {
   }
   return bar;
 }
+// Expose for other modules
+window.ensureStatusBar = ensureStatusBar;
 
 // Legacy floating volume controls removed in favor of './core/audio/floatingVolume.js'.
 
@@ -474,6 +479,8 @@ function ensureZoomControls() {
     document.body.appendChild(zoom);
   }
 }
+// Expose for other modules
+window.ensureZoomControls = ensureZoomControls;
 
 function ensureBanner() {
   let banner = document.getElementById('mini-banner');
@@ -507,105 +514,14 @@ function ensureBanner() {
   }
   return banner;
 }
+// Expose for other modules
+window.ensureBanner = ensureBanner;
 
-// Hide legacy demo DOM and vendor demo controls when our canvas is active
-function hideLegacyDom() {
-  try { document.body.style.background = '#000'; } catch (_) {}
-  try {
-    const app = document.getElementById('app');
-    if (app) {
-      app.querySelectorAll('h1, p, pre').forEach((el) => { el.style.display = 'none'; });
-    }
-  } catch (_) {}
-  // If vendor demo controls ever sneak in, hide them defensively
-  try {
-    ['enable-nearest','bilinear-fix','rc-sun-angle-slider','falloff-slider-container','radius-slider-container']
-      .forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-    document.querySelectorAll('.iconButton').forEach((el) => { el.style.display = 'none'; });
-  } catch (_) {}
-}
+// Legacy DOM hider moved to './core/renderer.js'
 
 // OverlayManager now lives in ./core/overlayManager.js and exposes window.OverlayManager and window.PRIORITY
 
-// Known substates and their priority for preemption
-const SUBSTATES = {
-  CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS',
-  CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION: 'CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION',
-  CURRENT_PLAYER_CHOOSING_CHARACTER_STATS: 'CURRENT_PLAYER_CHOOSING_CHARACTER_STATS',
-  CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT: 'CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT',
-  WAITING_ON_GAME_START: 'WAITING_ON_GAME_START',
-  GAME_PAUSED_OTHER_PLAYER_IN_MENU: 'GAME_PAUSED_OTHER_PLAYER_IN_MENU',
-  CURRENT_PLAYER_DEAD: 'CURRENT_PLAYER_DEAD',
-  OTHER_PLAYER_DEAD: 'OTHER_PLAYER_DEAD',
-  CURRENT_PLAYER_DISCONNECTED: 'CURRENT_PLAYER_DISCONNECTED',
-  OTHER_PLAYER_DISCONNECTED: 'OTHER_PLAYER_DISCONNECTED',
-  CURRENT_PLAYER_REJOINING: 'CURRENT_PLAYER_REJOINING',
-  OTHER_PLAYER_REJOINING: 'OTHER_PLAYER_REJOINING',
-  CURRENT_PLAYER_KICKED: 'CURRENT_PLAYER_KICKED',
-  OTHER_PLAYER_KICKED: 'OTHER_PLAYER_KICKED',
-  SERVER_SHUTDOWN: 'SERVER_SHUTDOWN',
-  SERVER_REBOOT: 'SERVER_REBOOT',
-  CURRENT_PLAYER_QUEST_WINDOW: 'CURRENT_PLAYER_QUEST_WINDOW',
-};
-
-function priorityForSubstate(s) {
-  switch (s) {
-    case SUBSTATES.SERVER_SHUTDOWN:
-    case SUBSTATES.SERVER_REBOOT:
-      return PRIORITY.CRITICAL;
-    case SUBSTATES.CURRENT_PLAYER_KICKED:
-    case SUBSTATES.OTHER_PLAYER_KICKED:
-    case SUBSTATES.CURRENT_PLAYER_DEAD:
-    case SUBSTATES.OTHER_PLAYER_DEAD:
-      return PRIORITY.HIGH;
-    case SUBSTATES.GAME_PAUSED_OTHER_PLAYER_IN_MENU:
-    case SUBSTATES.CURRENT_PLAYER_DISCONNECTED:
-    case SUBSTATES.OTHER_PLAYER_DISCONNECTED:
-    case SUBSTATES.CURRENT_PLAYER_REJOINING:
-    case SUBSTATES.OTHER_PLAYER_REJOINING:
-    case SUBSTATES.WAITING_ON_GAME_START:
-      return PRIORITY.MEDIUM;
-    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_CLASS:
-    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_FACTION:
-    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_STATS:
-    case SUBSTATES.CURRENT_PLAYER_CHOOSING_CHARACTER_EQUIPMENT:
-    case SUBSTATES.CURRENT_PLAYER_QUEST_WINDOW:
-    default:
-      return PRIORITY.LOW;
-  }
-}
-
-function presentSubstate(substate, payload = {}) {
-  const prio = priorityForSubstate(substate);
-  // Clear any lower-priority modals so higher priority takes precedence
-  OverlayManager.clearBelow(prio);
-  const text = payload.text || `[${substate}]`;
-  const actions = Array.isArray(payload.actions) ? payload.actions : defaultActionsFor(substate);
-  const blockInput = payload.blockInput !== false; // block by default
-  OverlayManager.present({ id: substate, priority: prio, text, actions, blockInput });
-}
-
-function defaultActionsFor(substate) {
-  switch (substate) {
-    case SUBSTATES.SERVER_SHUTDOWN:
-    case SUBSTATES.SERVER_REBOOT:
-      return [{ id: 'ok', label: 'OK' }];
-    case SUBSTATES.CURRENT_PLAYER_KICKED:
-      return [{ id: 'dismiss', label: 'OK' }];
-    case SUBSTATES.CURRENT_PLAYER_DEAD:
-      return [
-        { id: 'respawn', label: 'Respawn' },
-        { id: 'spectate', label: 'Spectate' },
-      ];
-    case SUBSTATES.WAITING_ON_GAME_START:
-      return [{ id: 'ready', label: 'Ready' }];
-    default:
-      return [
-        { id: 'yes', label: 'Yes' },
-        { id: 'no', label: 'No' },
-      ];
-  }
-}
+// Substate logic moved to './core/substates.js'
 
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
@@ -880,280 +796,7 @@ window.addEventListener('keydown', (e) => {
   room.send('input', { type: 'move', dir });
 });
 
-// --- ASCII Dungeon Renderer integration (dynamic, no HTML changes) ---
-// We load vendor scripts in order, then mount the renderer into a
-// programmatically-created container under #app, and wire camera input.
-// Keeping it minimal and self-contained.
-
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    // Cache-bust to ensure latest vendor scripts are fetched
-    s.src = `${src}?v=${Date.now()}`;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = (e) => reject(new Error('Failed to load ' + src));
-    document.head.appendChild(s);
-  });
-}
-
-async function setupAsciiRenderer() {
-  try {
-    const base = '/vendor/ascii-dungeon/ascii-dungeon';
-    // Load in the same order as vendor example
-    await loadScript(`${base}/interactivity-setup.js`);
-    await loadScript(`${base}/ascii-texture.js`);
-    await loadScript(`${base}/ascii-gi-helpers.js`);
-    await loadScript(`${base}/ascii-gi.js`);
-
-    // Create container if not present (no HTML edits)
-    const app = document.getElementById('app');
-    let container = document.getElementById('rc-canvas');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'rc-canvas';
-      container.style.display = ''; // always visible per UI architecture
-      container.style.position = 'fixed';
-      container.style.inset = '0';
-      container.style.width = '100vw';
-      container.style.height = '100vh';
-      container.style.zIndex = '1';
-      app.appendChild(container);
-    }
-
-    // Proactively hide legacy DOM under our fullscreen canvas
-    hideLegacyDom();
-
-    // Fullscreen size; DPR handled by RC props
-    const width = Math.max(320, window.innerWidth || 1024);
-    const height = Math.max(240, window.innerHeight || 768);
-
-    // RC is declared by vendor scripts as a global. It may not be on window,
-    // so use a safe lookup that works with declarative globals.
-    const RCClass = (typeof RC !== 'undefined') ? RC : window.RC;
-    const rc = new RCClass({
-      id: 'rc-canvas',
-      width: width,
-      height: height,
-      dpr: 1.0,
-    });
-    window.radianceCascades = rc; // expose for debugging/devtools
-    // Ensure renderer starts even if IntersectionObserver doesn't fire
-    if (typeof rc.load === 'function') {
-      console.log('[DEBUG client] calling rc.load()');
-      rc.load();
-    }
-
-    // Robust resize handler: updates canvas/container, renderer internals, uniforms, and render targets
-    const handleResize = () => {
-      try {
-        const w = Math.max(320, window.innerWidth || 1024);
-        const h = Math.max(240, window.innerHeight || 768);
-        const dpr = window.devicePixelRatio || 1;
-
-        // Ensure container fills viewport
-        try {
-          container.style.width = '100vw';
-          container.style.height = '100vh';
-        } catch (_) {}
-
-        // Also update canvas CSS size and backing store to match DPR
-        try {
-          const canvas = rc.canvas;
-          if (canvas) {
-            canvas.style.width = '100vw';
-            canvas.style.height = '100vh';
-            canvas.width = Math.floor(w * dpr);
-            canvas.height = Math.floor(h * dpr);
-          }
-        } catch (_) {}
-
-        // Update renderer dimensions and DPR
-        rc.width = w;
-        rc.height = h;
-        rc.dpr = dpr;
-
-        // Rebuild base dungeon render targets for the new size (preserves camera)
-        if (typeof rc.resize === 'function') {
-          rc.resize(w, h, dpr);
-        }
-
-        // Update viewport-dependent uniforms
-        if (rc.dungeonUniforms) {
-          rc.dungeonUniforms.viewportSize = [w, h];
-        }
-
-        // Recalculate cascade parameters and dependent uniforms
-        if (typeof rc.initializeParameters === 'function') {
-          rc.initializeParameters(true);
-        }
-
-        // Recreate shader pipelines and render targets using new size/DPR
-        if (typeof rc.innerInitialize === 'function') {
-          rc.innerInitialize();
-        }
-
-        // Refresh ASCII view texture after resize if a dungeon map exists
-        try {
-          if (rc.surface && typeof rc.updateAsciiViewTexture === 'function' && typeof rc.surface.dungeonMap === 'string') {
-            rc.updateAsciiViewTexture(rc.surface.dungeonMap);
-          }
-        } catch (_) {}
-
-        // Update camera/grid uniforms and trigger a redraw
-        try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
-        try { if (typeof rc.renderPass === 'function') rc.renderPass(); } catch (_) {}
-
-        // Keep legacy demo DOM hidden after resize/fullscreen
-        try { hideLegacyDom(); } catch (_) {}
-      } catch (e) {
-        console.warn('[resize] handler failed', e);
-      }
-    };
-
-    // Handle window resizing dynamically
-    window.addEventListener('resize', handleResize);
-
-    // Mirror resize on fullscreen changes and re-hide legacy DOM
-    ;['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach((evt) => {
-      document.addEventListener(evt, () => {
-        handleResize();
-        try { hideLegacyDom(); } catch (_) {}
-      });
-    });
-
-    // Programmatic fullscreen toggle and keybinding ('f')
-    const isFullscreen = () => (
-      document.fullscreenElement ||
-      document.webkitFullscreenElement ||
-      document.mozFullScreenElement ||
-      document.msFullscreenElement
-    );
-    window.toggleFullscreen = async () => {
-      try {
-        if (isFullscreen()) {
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-          else if (document.msExitFullscreen) await document.msExitFullscreen();
-        } else {
-          if (container.requestFullscreen) await container.requestFullscreen();
-          else if (container.webkitRequestFullscreen) await container.webkitRequestFullscreen();
-          else if (container.msRequestFullscreen) await container.msRequestFullscreen();
-        }
-      } catch (_) {}
-    };
-
-    // Integrate floating zoom buttons with renderer
-    window.addEventListener('ui:zoom', (e) => {
-      try { const f = Number(e?.detail?.factor) || 1.0; rc.zoomCamera(f, 0.5, 0.5); } catch (_) {}
-    });
-
-    // FPS estimator for status bar (simple rAF-based)
-    (function fpsLoop(){
-      let last = performance.now(), frames = 0, acc = 0;
-      function tick(now){
-        const dt = now - last; last = now; frames++; acc += dt;
-        if (acc >= 1000) {
-          const fps = Math.round(frames * 1000 / acc);
-          frames = 0; acc = 0;
-          try {
-            const metricsEl = document.getElementById('status-metrics');
-            if (metricsEl) {
-              const txt = metricsEl.textContent || '';
-              const parts = txt.split('|');
-              metricsEl.textContent = `FPS: ${fps} | ${parts[1] ? parts[1].trim() : 'PING: --'}`;
-            }
-          } catch (_) {}
-        }
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    })();
-
-    // Ensure UI chrome exists
-    ensureThemeSupport();
-    ensureStatusBar();
-    ensureZoomControls();
-    // Volume controls (V2)
-    try { initAudio({ floatingVolume: false }); } catch (_) {}
-    ensureBanner();
-    ensureScreenShade();
-
-    // Apply any pending assets received before renderer was ready
-    // Important: set dungeon map before color maps so render has valid data
-    if (window.__pendingDungeonMap && typeof rc.setDungeonMap === 'function') {
-      try {
-        console.log('[DEBUG client] applying pending dungeonMap');
-        rc.setDungeonMap(window.__pendingDungeonMap);
-      } catch (_) {}
-      window.__pendingDungeonMap = undefined;
-    }
-    if (window.__pendingCharacterColorMap && rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
-      try {
-        console.log('[DEBUG client] applying pending characterColorMap');
-        rc.surface.setCharacterColorMap(window.__pendingCharacterColorMap);
-      } catch (_) {}
-      window.__pendingCharacterColorMap = undefined;
-    }
-    if (window.__pendingPositionColorMap && rc.surface && typeof rc.surface.setPositionColorMap === 'function') {
-      try {
-        console.log('[DEBUG client] applying pending positionColorMap');
-        rc.surface.setPositionColorMap(window.__pendingPositionColorMap);
-      } catch (_) {}
-      window.__pendingPositionColorMap = undefined;
-    }
-
-    // Minimal camera controls (mouse): pan + wheel zoom
-    const canvas = rc.canvas;
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    canvas.addEventListener('mousedown', (e) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      canvas.style.cursor = 'grabbing';
-    });
-
-    window.addEventListener('mousemove', (e) => {
-      if (!dragging) return;
-      // Adjust sensitivity a bit; use zoom-aware scaling similar to vendor example
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      const zoomFactor = 1.0 / Math.sqrt(rc.camera.zoomLevel || 1.0);
-      rc.panCamera(-dx * zoomFactor, -dy * zoomFactor);
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
-
-    window.addEventListener('mouseup', () => {
-      if (!dragging) return;
-      dragging = false;
-      canvas.style.cursor = 'grab';
-    });
-
-    canvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-      const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      rc.zoomCamera(factor, x, y);
-    }, { passive: false });
-
-    // Optional: keyboard zoom
-    window.addEventListener('keydown', (e) => {
-      if (e.key === '+') rc.zoomCamera(1.1, 0.5, 0.5);
-      if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
-    });
-
-    // Initial adjustment
-    handleResize();
-  } catch (e) {
-    console.error('[ASCII renderer] setup failed:', e);
-  }
-}
+// ASCII renderer moved to './core/renderer.js'
 
 // Defer until DOM is ready so we can attach under #app
 if (document.readyState === 'loading') {
