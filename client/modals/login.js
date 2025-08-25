@@ -218,6 +218,8 @@ export function presentLoginModal() {
   // Centered primary button
   const linksWrap = document.createElement('div');
   linksWrap.className = 'login-links';
+  // Keep links in the right column, pinned to the bottom of that column
+  try { linksWrap.style.marginTop = 'auto'; linksWrap.style.alignSelf = 'center'; } catch (_) {}
   linksWrap.appendChild(signUpLink);
   linksWrap.appendChild(resetLink);
   actions.appendChild(signInBtn);
@@ -242,15 +244,12 @@ export function presentLoginModal() {
   main.appendChild(form);
   main.appendChild(actions);
   main.appendChild(status);
+  // Place links at the bottom of the right column
+  main.appendChild(linksWrap);
 
   grid.appendChild(art);
   grid.appendChild(main);
   card.appendChild(grid);
-  // Footer at the very bottom of the modal, aligned left
-  const footer = document.createElement('div');
-  footer.className = 'login-footer';
-  footer.appendChild(linksWrap);
-  card.appendChild(footer);
   center.appendChild(card);
   content.appendChild(center);
 }
