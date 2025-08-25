@@ -144,7 +144,10 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
     list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     list.style.borderRadius = '4px 4px 0px 0px';
-    list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
+    // Match chat: subtle outer glow on top/left/right; omit bottom to avoid glow overlap with input row
+    const glowColor = 'var(--ui-surface-glow-color, rgba(120,170,255,0.33))';
+    list.style.borderBottom = '0';
+    list.style.boxShadow = `0 -2px 16px -6px ${glowColor}, -2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}`;
     list.style.padding = '6px';
     try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
 
@@ -155,6 +158,12 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     inputRow.style.paddingLeft = '0.5rem';
     inputRow.appendChild(searchWrap);
     root.appendChild(inputRow);
+    // Match chat input row: left/right/bottom glow only; crisp top border as separator
+    try {
+      inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+      inputRow.style.boxShadow = `-2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}, 0 2px 16px -6px ${glowColor}`;
+      inputRow.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    } catch (_) {}
 
     let activeTab = tabs[0]?.key;
     let filterText = '';
