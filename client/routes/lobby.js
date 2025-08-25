@@ -2,6 +2,7 @@
 // Registers the LOBBY screen UI in an overlay, list of rooms, create room flow, and chat tabs.
 
 import OverlayManager, { PRIORITY } from '../core/overlayManager.js';
+import { getAccessToken } from '../core/auth/supabaseAuth.js';
 import { createChatTabs } from '../core/chatTabs.js';
 import { presentRoomCreateModal } from '../modals/roomCreate.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
@@ -33,7 +34,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             roomName: meta.name || r.roomId,
             onSubmit: async (pwd) => {
               try {
-                const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pwd || '' });
+                const rj = await client.joinById(r.roomId, { name: playerName, roomPass: pwd || '', access_token: await getAccessToken() });
                 await afterJoin(rj);
                 return true; // close modal
               } catch (e) {
@@ -48,7 +49,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           });
         } else {
           try {
-            const rj = await client.joinById(r.roomId, { name: playerName });
+            const rj = await client.joinById(r.roomId, { name: playerName, access_token: await getAccessToken() });
             await afterJoin(rj);
           } catch (e) { console.warn('join failed', e); }
         }
@@ -96,7 +97,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           onJoinGame: async (roomId) => {
             try {
               const playerName = LS.getItem('name', 'Hero');
-              const rj = await client.joinById(String(roomId), { name: playerName });
+              const rj = await client.joinById(String(roomId), { name: playerName, access_token: await getAccessToken() });
               await afterJoin(rj);
             } catch (e) {
               const msg = (e && (e.message || e)) + '';
@@ -105,7 +106,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                   roomName: String(roomId),
                   onSubmit: async (pwd) => {
                     try {
-                      const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
+                      const rj = await client.joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '', access_token: await getAccessToken() });
                       await afterJoin(rj);
                       return true;
                     } catch (err) {
@@ -138,6 +139,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                   private: !!roomPass,
                   hostName: cname,
                   gameId: deriveGameId(name, cname),
+                  access_token: await getAccessToken(),
                 });
                 await afterJoin(newRoom);
               } catch (e) {

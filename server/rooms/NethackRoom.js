@@ -18,12 +18,15 @@ const { addEntity, removeEntity } = require('./gamecode/occupancy');
 
 const { snapshotWorld, restoreWorld } = require('./gamecode/serialization');
 const { saveSnapshot, loadLatestSnapshot } = require('../persistence/supabase');
+const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify');
 
 // Autosave configuration (env with defaults)
 const AUTOSAVE_ENABLED = (process.env.AUTOSAVE_ENABLED ?? 'true') !== 'false';
 const AUTOSAVE_INTERVAL_MS = parseInt(process.env.AUTOSAVE_INTERVAL_MS || '10000', 10);
 const AUTOSAVE_RETENTION = parseInt(process.env.AUTOSAVE_RETENTION || '3', 10);
 const ALLOW_MANUAL_RESTORE = (process.env.ALLOW_MANUAL_RESTORE ?? 'false') === 'true';
+const REQUIRE_VERIFIED_EMAIL = (process.env.REQUIRE_VERIFIED_EMAIL === 'true');
+const AUTH_REQUIRE_LOGIN = (process.env.AUTH_REQUIRE_LOGIN === 'true');
 
 // --- Selection constants (easily changeable) ---
 // Factions: top row in the modal
@@ -358,7 +361,38 @@ class NethackRoom extends Room {
   }
 
   async onAuth(client, options) {
-    const { roomPass } = options || {};
+    const { roomPass, access_token } = options || {};
+
+    // Try to verify Supabase access token if provided (non-fatal on failure)
+    let authUserId = null;
+    let authEmail = null;
+    let emailVerified = false;
+    if (access_token && typeof access_token === 'string') {
+      try {
+        const v = await verifySupabaseAccessToken(access_token);
+        authUserId = v?.userId || null;
+        authEmail = v?.email || null;
+        // optional: fetch user to inspect verification status
+        try {
+          const user = await fetchSupabaseUser(access_token);
+          emailVerified = !!(user && (user.email_confirmed_at || user.confirmed_at));
+        } catch (_) {}
+      } catch (e) {
+        console.warn('[auth] token verification failed; continuing as guest', e?.message || e);
+      }
+    }
+
+    // If the server requires login, enforce presence of a valid Supabase user id
+    if (AUTH_REQUIRE_LOGIN && !authUserId) {
+      throw new Error('Login required');
+    }
+
+    // If verified email is required, ensure the user is verified (only applies when logged in)
+    if (REQUIRE_VERIFIED_EMAIL && AUTH_REQUIRE_LOGIN) {
+      if (!emailVerified) {
+        throw new Error('Email not verified');
+      }
+    }
 
     // If no password is set yet (brand new room), handle based on privacy
     if (!this.roomPassHash) {
@@ -366,10 +400,10 @@ class NethackRoom extends Room {
         if (!roomPass) throw new Error('Room requires password');
         this.roomPassHash = bcrypt.hashSync(roomPass, 8);
       } else {
-        // Public room: no password required
+        // Public room: no password required. Attach auth if available.
         return {
-          userId: options.userId || client.sessionId,
-          name: options.hostName || options.name || 'Hero',
+          userId: authUserId || options.userId || client.sessionId,
+          name: options.hostName || options.name || (authEmail ? String(authEmail).split('@')[0] : 'Hero'),
         };
       }
     }
@@ -377,10 +411,10 @@ class NethackRoom extends Room {
     const ok = await bcrypt.compare(roomPass || '', this.roomPassHash);
     if (!ok) throw new Error('Invalid password');
 
-    // Minimal identity (no JWT yet). You can integrate JWT later.
+    // Attach identity (prefer Supabase user when available)
     return {
-      userId: options.userId || client.sessionId,
-      name: options.hostName || options.name || 'Hero',
+      userId: authUserId || options.userId || client.sessionId,
+      name: options.hostName || options.name || (authEmail ? String(authEmail).split('@')[0] : 'Hero'),
     };
   }
 

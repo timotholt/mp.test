@@ -2,6 +2,7 @@
 // Registers the ROOM screen with the micro router and wires room UI.
 
 import OverlayManager, { PRIORITY } from '../core/overlayManager.js';
+import { getAccessToken } from '../core/auth/supabaseAuth.js';
 import { createChatTabs } from '../core/chatTabs.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
@@ -54,7 +55,7 @@ export function registerRoomRoute({ makeScreen, APP_STATES, joinById, afterJoin,
         onJoinGame: async (roomId) => {
           try {
             const playerName = LS.getItem('name', 'Hero');
-            const rj = await joinById(String(roomId), { name: playerName });
+            const rj = await joinById(String(roomId), { name: playerName, access_token: await getAccessToken() });
             await afterJoin(rj);
           } catch (e) {
             const msg = (e && (e.message || e)) + '';
@@ -63,7 +64,7 @@ export function registerRoomRoute({ makeScreen, APP_STATES, joinById, afterJoin,
                 roomName: String(roomId),
                 onSubmit: async (pwd) => {
                   try {
-                    const rj = await joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '' });
+                    const rj = await joinById(String(roomId), { name: LS.getItem('name', 'Hero'), roomPass: pwd || '', access_token: await getAccessToken() });
                     await afterJoin(rj);
                     return true;
                   } catch (err) {
