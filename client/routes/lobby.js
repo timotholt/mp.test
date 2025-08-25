@@ -450,7 +450,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             const selfName = String(LS.getItem('name', '') || '').trim();
             let filtered = (data || []).filter(p => p && p.id);
             filtered = filtered.filter(p => {
-              const hay = `${p.id} ${p.name || ''}`.toLowerCase();
+              // Include location (placeholder for now) in search haystack
+              const location = 'Lobby';
+              const hay = `${p.id} ${p.name || ''} ${location}`.toLowerCase();
               if (filterText && !hay.includes(filterText)) return false;
               if (tab === 'friends') return friends.has(String(p.id)) || friends.has(String(p.name || ''));
               if (tab === 'blocked') return blocked.has(String(p.id)) || blocked.has(String(p.name || ''));
@@ -470,7 +472,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             if (!filtered.length) {
               const empty = document.createElement('div');
               empty.style.opacity = '0.7';
-              const msg = { all: 'No players online.', friends: 'No friends online yet.', recent: 'No recent players yet.', blocked: 'No blocked players.' }[tab] || 'Nothing here.';
+              const msg = filterText
+                ? "Search doesn't match any players"
+                : ({ all: 'No players online.', friends: 'No friends online yet.', recent: 'No recent players yet.', blocked: 'No blocked players.' }[tab] || 'Nothing here.');
               empty.textContent = msg;
               listEl.appendChild(empty);
               return;
@@ -579,6 +583,64 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           if (pWrap) pWrap.id = 'players-search-wrap';
           const pRow = playersPanel?.el?.querySelector('[data-name="panel-input-row"]');
           if (pRow) pRow.id = 'players-search-row';
+          // Add a tiny right-justified Clear button like chat's search
+          if (pWrap && !pWrap.querySelector('button[data-role="players-search-clear"]')) {
+            // Ensure input has space on the right for the button
+            const pInput = pWrap.querySelector('input');
+            if (pInput && pInput.style) {
+              try { pInput.style.paddingRight = '64px'; } catch (_) {}
+            }
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.title = 'Clear';
+            clearBtn.textContent = 'clear';
+            clearBtn.setAttribute('data-role', 'players-search-clear');
+            // Inline styles to avoid relying on chat CSS
+            clearBtn.style.position = 'absolute';
+            clearBtn.style.right = '6px';
+            clearBtn.style.top = '50%';
+            clearBtn.style.transform = 'translateY(-50%)';
+            clearBtn.style.background = 'transparent';
+            clearBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
+            clearBtn.style.fontSize = '12px';
+            clearBtn.style.lineHeight = '18px';
+            clearBtn.style.padding = '0 6px';
+            clearBtn.style.borderRadius = '6px';
+            clearBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+            clearBtn.style.cursor = 'pointer';
+            // Hidden by default until there's text
+            clearBtn.style.opacity = '0';
+            clearBtn.style.pointerEvents = 'none';
+
+            function updateClearVisibility() {
+              try {
+                const v = String(pInput && pInput.value || '').trim();
+                const show = !!v;
+                clearBtn.style.opacity = show ? '1' : '0';
+                clearBtn.style.pointerEvents = show ? 'auto' : 'none';
+              } catch (_) {}
+            }
+
+            clearBtn.addEventListener('click', () => {
+              try {
+                if (pInput) {
+                  pInput.value = '';
+                  if (playersPanel && typeof playersPanel.setFilter === 'function') playersPanel.setFilter('');
+                  updateClearVisibility();
+                  try { pInput.focus(); } catch (_) {}
+                }
+              } catch (_) {}
+            });
+
+            if (pInput) {
+              pInput.addEventListener('input', updateClearVisibility);
+              pInput.addEventListener('focus', updateClearVisibility);
+              pInput.addEventListener('blur', updateClearVisibility);
+              updateClearVisibility();
+            }
+
+            pWrap.appendChild(clearBtn);
+          }
         } catch (_) {}
 
         // Place panels in grid
