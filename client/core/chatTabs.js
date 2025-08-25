@@ -143,8 +143,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Let CSS drive width/padding transitions: clear inline values set by shared helper
   try { searchInput.style.removeProperty('width'); } catch (_) {}
   try { searchInput.style.removeProperty('padding'); } catch (_) {}
-  // Accessibility titles
-  searchBtn.title = 'Search messages';
+  // Decorative icon: no tooltip/title
+  searchBtn.title = '';
   // Order: search (left), message input (center), send (right)
   inputRow.appendChild(searchWrap);
   inputRow.appendChild(inputWrap);
