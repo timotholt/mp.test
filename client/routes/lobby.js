@@ -114,7 +114,13 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     });
     try { searchWrap.setAttribute('data-name', 'panel-search-wrap'); } catch (_) {}
     searchBtn.title = 'Search';
-    header.appendChild(htitle);
+    const hasTitle = !!String(title || '').trim();
+    if (hasTitle) {
+      header.appendChild(htitle);
+    } else {
+      // If no title, remove spacing so tabs start flush left (to match chat)
+      header.style.gap = '0';
+    }
     header.appendChild(tabsCtl.el);
     // Search box belongs at the bottom; do not place in header
 

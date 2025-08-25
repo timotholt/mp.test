@@ -75,7 +75,9 @@ export function createLeftIconInput({ placeholder = '', iconSvg, marginLeft = '0
 
 // On input focus, highlight the parent row border; on blur, restore
 export function wireFocusHighlight(inputEl, rowEl) {
-  inputEl.addEventListener('focus', () => {
+  inputEl.addEventListener('focus', (ev) => {
+    // Ignore programmatic focus (e.g., during overlay mount) to avoid flicker
+    if (ev && ev.isTrusted === false) return;
     try {
       rowEl.style.boxShadow = 'inset 0 0 0 1px #fff';
       rowEl.style.borderColor = '#fff';
