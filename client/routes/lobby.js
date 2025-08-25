@@ -104,17 +104,35 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     tabsBar.style.marginBottom = '0';
     tabsBar.style.borderTop = '0';
     const searchWrap = document.createElement('div');
-    searchWrap.style.marginLeft = 'auto';
+    // Chat-like input with left icon inside the control
+    searchWrap.style.marginLeft = '0';
+    searchWrap.style.position = 'relative';
+    searchWrap.style.display = 'flex';
+    searchWrap.style.alignItems = 'center';
+    searchWrap.style.flex = '1';
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.placeholder = 'Search… (Esc to exit)';
-    searchInput.style.display = 'none';
-    searchInput.style.padding = '4px 6px';
-    searchInput.style.borderRadius = '6px';
+    searchInput.placeholder = 'Search…';
+    // Permanently visible search input
+    searchInput.style.display = 'inline-block';
+    searchInput.style.height = '40px';
+    searchInput.style.lineHeight = '40px';
+    searchInput.style.background = 'transparent';
+    searchInput.style.color = 'var(--sf-tip-fg, #fff)';
     searchInput.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    searchInput.style.borderRadius = '8px';
+    // padding-left: icon-left (0) + icon-width (32px) + desired gap (0.5rem)
+    searchInput.style.padding = '0 10px 0 calc(32px + 0.5rem)';
+    searchInput.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10)';
+    searchInput.style.flex = '1';
+    searchInput.style.width = '100%';
     const searchBtn = document.createElement('button');
-    searchBtn.title = 'Toggle live search';
-    // Chat-like search icon button
+    searchBtn.title = 'Search';
+    // Left icon positioned inside the input
+    searchBtn.style.position = 'absolute';
+    searchBtn.style.left = '0';
+    searchBtn.style.top = '50%';
+    searchBtn.style.transform = 'translateY(-50%)';
     searchBtn.style.width = '32px';
     searchBtn.style.height = '32px';
     searchBtn.style.display = 'inline-flex';
@@ -125,12 +143,13 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     searchBtn.style.borderRadius = '8px';
     searchBtn.style.boxSizing = 'border-box';
     searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
+    searchBtn.style.cursor = 'pointer';
     searchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
-    searchWrap.appendChild(searchBtn);
     searchWrap.appendChild(searchInput);
+    searchWrap.appendChild(searchBtn);
     header.appendChild(htitle);
     header.appendChild(tabsBar);
-    header.appendChild(searchWrap);
+    // Search box belongs at the bottom; do not place in header
 
     const list = document.createElement('div');
     list.style.flex = '1 1 auto';
@@ -147,6 +166,18 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
     root.appendChild(header);
     root.appendChild(list);
+    // Bottom input row (chat-like), hosting the search control
+    const inputRow = document.createElement('div');
+    inputRow.style.display = 'flex';
+    inputRow.style.alignItems = 'center';
+    inputRow.style.gap = '8px';
+    inputRow.style.minHeight = '46px';
+    inputRow.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    inputRow.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    inputRow.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    inputRow.style.borderRadius = '0px 0px 6px 6px';
+    inputRow.appendChild(searchWrap);
+    root.appendChild(inputRow);
 
     let activeTab = tabs[0]?.key;
     let filterText = '';
@@ -177,16 +208,16 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     function setFilter(f) { filterText = (f || '').toLowerCase(); onRender({ listEl: list, tab: activeTab, data, filterText }); }
     function selectTab(k) { if (tabs.some(t => t.key === k)) { activeTab = k; onRender({ listEl: list, tab: activeTab, data, filterText }); renderTabs(); } }
 
-    // Search toggle behavior
-    let searchOn = false;
-    function toggleSearch() {
-      searchOn = !searchOn;
-      searchInput.style.display = searchOn ? 'inline-block' : 'none';
-      if (searchOn) { searchInput.value = ''; searchInput.focus(); setFilter(''); } else { setFilter(''); }
-    }
-    searchBtn.onclick = toggleSearch;
+    // Search behavior: always-on live filter; Esc clears
+    searchBtn.onclick = () => { try { searchInput.focus(); } catch (_) {} };
     searchInput.addEventListener('input', () => setFilter(searchInput.value || ''));
-    searchInput.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') toggleSearch(); });
+    searchInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        searchInput.value = '';
+        setFilter('');
+      }
+    });
 
     renderTabs();
     return { el: root, setData, setFilter, selectTab };
@@ -269,7 +300,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
         // --- Games Panel ---
         gamesPanel = createTabbedPanel({
-          title: 'Games',
+          title: '',
           tabs: [
             { key: 'all', label: 'All' },
             { key: 'yours', label: "Your Games" },
@@ -360,7 +391,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
         // --- Players Panel ---
         playersPanel = createTabbedPanel({
-          title: 'Players',
+          title: '',
           tabs: [
             { key: 'all', label: 'All' },
             { key: 'friends', label: 'Friends' },
