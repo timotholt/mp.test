@@ -16,10 +16,14 @@ import { initAudio } from './core/audio/audioManager.js';
 import { installTopBarVolumeKnobs } from './core/audio/topBarVolumeKnobs.js';
 import { installCenterVolumeKnob } from './core/audio/debugCenterKnob.js';
 import * as LS from './core/localStorage.js';
+import { createKnob as createGenericKnob, applyKnobTheme as applyKnobThemeGeneric, themes as knobThemes } from './core/ui/knob.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };
+
+// Expose generic knob utilities for quick experiments (no UI changes by default)
+try { window.Knob = { createKnob: createGenericKnob, applyKnobTheme: applyKnobThemeGeneric, themes: knobThemes }; } catch (_) {}
 
 // -------------------- Micro Router (plain DOM) --------------------
 // Router extracted to './core/router.js'. See imports above.
@@ -1079,20 +1083,20 @@ async function setupAsciiRenderer() {
       installTopBarVolumeKnobs({
         masterSegments: 20,
         masterSize: 25,
-        allowSmall: true,
-        masterRingOffset: 8,
-        masterOffsetY: 8,
+        masterRingOffset: 9,
+        masterOffsetY: 10,
+        spacing: 24,
         masterSegThickness: 0.5,
-        masterSegLength: 3,
+        masterSegLength: 2.5,
         masterDotSize: 2,
-        groupRingOffset: 8,
-        groupSegThickness: 1,
-        groupSegLength: 5,
-        groupDotSize: 3,
+        groupRingOffset: 9,
+        groupSegThickness: 0.5,
+        groupSegLength: 2.5,
+        groupDotSize: 2,
         groups: [
-          { id: 'GAME',  label: 'Game',  segments: 10, size: 22 },
-          { id: 'MUSIC', label: 'Music', segments: 10, size: 22 },
-          { id: 'VOICE', label: 'Voice', segments: 10, size: 22 },
+          { id: 'GAME',  label: 'Game',  segments: 20, size: 25 },
+          { id: 'MUSIC', label: 'Music', segments: 20, size: 25 },
+          { id: 'VOICE', label: 'Voice', segments: 20, size: 25 },
         ]
       });
     } catch (_) {}

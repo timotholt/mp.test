@@ -28,10 +28,9 @@ export function createVolumeKnob(opts = {}) {
   ensureStyle();
 
   const groupId = String(opts.groupId || 'MASTER');
-  const allowSmall = !!opts.allowSmall;
   const rawSize = opts.size;
   const sizeNum = (typeof rawSize === 'number' && Number.isFinite(rawSize)) ? Math.floor(rawSize) : null;
-  const minSize = allowSmall ? 8 : 40; // allow tiny knobs if explicitly requested
+  const minSize = 8; // allow tiny knobs by default; opts.allowSmall no longer needed
   const size = (sizeNum != null) ? Math.max(minSize, sizeNum) : 64;
   const segments = Math.max(6, Math.floor(opts.segments || 24));
   const step = typeof opts.step === 'number' ? Math.abs(opts.step) : DEFAULT_WHEEL_STEP;
