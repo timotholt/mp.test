@@ -257,7 +257,10 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             const pl = [];
             const m = state?.players;
             if (m && typeof m.forEach === 'function') {
-              m.forEach((p, id) => { pl.push({ id, name: p?.name || 'Guest' }); });
+              m.forEach((p, id) => {
+                const status = (p && typeof p.status === 'string') ? p.status : '';
+                pl.push({ id, name: p?.name || 'Guest', status });
+              });
             }
             playersCache = pl;
             playersCache.forEach(p => { if (p && p.id) markRecent(p.id); });
@@ -461,9 +464,26 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
               const label = document.createElement('div');
+              const statusRaw = String(p.status || '').toLowerCase();
+              const statusMap = { green: 'online', yellow: 'idle', red: 'offline' };
+              const status = statusMap[statusRaw] || statusRaw;
               const when = recent.get(String(p.id)) || 0;
               const ago = when ? `${Math.max(1, Math.round((Date.now() - when)/1000))}s ago` : '';
-              label.textContent = `${p.name || 'Guest'}  ${ago ? '· ' + ago : ''}`;
+              label.textContent = `${p.name || 'Guest'}${status ? ' · ' + status : ''}${ago ? ' · ' + ago : ''}`;
+              // Colored dot for presence (online/idle/offline)
+              try {
+                const sDot = document.createElement('span');
+                sDot.textContent = ' ●';
+                // Accept both friendly and raw color labels
+                const color = (status === 'online' || statusRaw === 'green') ? '#4ade80'
+                  : ((status === 'idle' || statusRaw === 'yellow') ? '#facc15'
+                  : ((status === 'offline' || statusRaw === 'red') ? '#f87171'
+                  : 'rgba(255,255,255,0.5)'));
+                sDot.style.color = color;
+                sDot.style.marginLeft = '4px';
+                sDot.title = status || statusRaw || 'unknown';
+                label.appendChild(sDot);
+              } catch (_) {}
               // Right-click context menu on player name (skip self)
               try {
                 label.style.cursor = 'context-menu';
