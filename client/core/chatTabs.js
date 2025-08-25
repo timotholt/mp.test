@@ -286,6 +286,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     unsentDraft = '';
   };
   input.addEventListener('keydown', (e) => {
+    // Tab from typing area -> go to search input (skip buttons)
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      try { searchInput.focus(); } catch (_) {}
+      return;
+    }
     if (e.key === 'Escape') {
       // Allow Esc to clear message draft focus behavior only
       return;
@@ -305,6 +311,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     filter(v);
   });
   searchInput.addEventListener('keydown', (e) => {
+    // Tab from search -> go to typing area (skip buttons)
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      try { if (!input.disabled) input.focus(); } catch (_) {}
+      return;
+    }
     if (e.key === 'Escape') {
       e.stopPropagation();
       searchInput.value = '';

@@ -113,7 +113,18 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       iconSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
     });
     try { searchWrap.setAttribute('data-name', 'panel-search-wrap'); } catch (_) {}
-    searchBtn.title = 'Search';
+    // Make the search icon decorative only (no border, not focusable/clickable)
+    try {
+      searchBtn.title = '';
+      searchBtn.style.border = '0';
+      searchBtn.style.background = 'transparent';
+      searchBtn.style.outline = 'none';
+      searchBtn.style.boxShadow = 'none';
+      searchBtn.style.cursor = 'default';
+      searchBtn.style.pointerEvents = 'none';
+      searchBtn.tabIndex = -1;
+      searchBtn.setAttribute('aria-hidden', 'true');
+    } catch (_) {}
     const hasTitle = !!String(title || '').trim();
     if (hasTitle) {
       header.appendChild(htitle);
@@ -157,8 +168,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     function setFilter(f) { filterText = (f || '').toLowerCase(); onRender({ listEl: list, tab: activeTab, data, filterText }); }
     function selectTab(k) { if (tabs.some(t => t.key === k)) { activeTab = k; onRender({ listEl: list, tab: activeTab, data, filterText }); renderTabs(); } }
 
-    // Search behavior: always-on live filter; Esc clears
-    searchBtn.onclick = () => { try { searchInput.focus(); } catch (_) {} };
+    // Search behavior: always-on live filter; Esc clears (icon is decorative)
+    searchBtn.onclick = null;
     searchInput.addEventListener('input', () => setFilter(searchInput.value || ''));
     searchInput.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape') {
