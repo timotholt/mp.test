@@ -61,6 +61,8 @@ function ensureLoginStyles() {
   .input-glass:hover { border-color: #dff1ff; }
   .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
   .login-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .login-link { color: #dff1ff; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
+  .login-link:hover { color: #ffffff; opacity: 1; }
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); }
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
@@ -177,8 +179,8 @@ export function presentLoginModal() {
   const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'you@grim.dark'; emailInput.className = 'input-glass';
   const passLabel = document.createElement('label'); passLabel.textContent = 'Password:';
   const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = '••••••••'; passInput.className = 'input-glass';
-  try { attachTooltip(emailInput, { mode: 'far' }); updateTooltip(emailInput, 'Enter your email address'); } catch (_) {}
-  try { attachTooltip(passInput, { mode: 'far' }); updateTooltip(passInput, 'Enter your password'); } catch (_) {}
+  try { attachTooltip(emailInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(emailInput, 'Enter your email address'); } catch (_) {}
+  try { attachTooltip(passInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(passInput, 'Enter your password'); } catch (_) {}
 
   form.appendChild(emailLabel); form.appendChild(emailInput);
   form.appendChild(passLabel); form.appendChild(passInput);
@@ -190,21 +192,30 @@ export function presentLoginModal() {
     await signInWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
     await afterAuthSuccess(id);
   });
-  const signUpBtn = mkBtn('Create Account', async () => {
+  // Inline link-style actions
+  const signUpLink = document.createElement('button');
+  signUpLink.type = 'button';
+  signUpLink.className = 'login-link';
+  signUpLink.textContent = 'Create Account';
+  signUpLink.onclick = async () => {
     await signUpWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
     setStatus('Check your email for a verification link. Then sign in.');
-  });
-  const resetBtn = mkBtn('Reset Password', async () => {
+  };
+  const resetLink = document.createElement('button');
+  resetLink.type = 'button';
+  resetLink.className = 'login-link';
+  resetLink.textContent = 'Forgot password?';
+  resetLink.onclick = async () => {
     await sendPasswordReset(String(emailInput.value || '').trim());
     setStatus('Password reset sent (if the email exists).');
-  });
-  // Tooltips on action buttons
+  };
+  // Tooltips on actions
   try { attachTooltip(signInBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
-  try { attachTooltip(signUpBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signUpBtn, 'Create Account'); } catch (_) {}
-  try { attachTooltip(resetBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(resetBtn, 'Reset Password'); } catch (_) {}
+  try { attachTooltip(signUpLink, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
+  try { attachTooltip(resetLink, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
   actions.appendChild(signInBtn);
-  actions.appendChild(signUpBtn);
-  actions.appendChild(resetBtn);
+  actions.appendChild(signUpLink);
+  actions.appendChild(resetLink);
 
   const status = document.createElement('div');
   status.id = 'login-status';
@@ -212,7 +223,7 @@ export function presentLoginModal() {
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disableAll(disabled) {
-    [googleBtn, discordBtn, facebookBtn, signInBtn, signUpBtn, resetBtn, emailInput, passInput].forEach(el => { try { el.disabled = !!disabled; } catch (_) {} });
+    [googleBtn, discordBtn, facebookBtn, signInBtn, signUpLink, resetLink, emailInput, passInput].forEach(el => { try { el.disabled = !!disabled; } catch (_) {} });
   }
 
   const grid = document.createElement('div'); grid.className = 'login-grid';
