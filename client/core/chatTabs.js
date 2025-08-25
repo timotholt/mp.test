@@ -87,8 +87,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   sendBtn.style.borderRadius = '8px';
   sendBtn.style.height = '40px';
   sendBtn.style.padding = '0 14px';
-  // Even margin on all sides
-  sendBtn.style.margin = '0.3rem';
+  // Horizontal margin only (no vertical) to keep row height tight
+  sendBtn.style.margin = '0 0.3rem';
 
   // CSS-driven expanding search field (separate from message input)
   const { wrap: searchWrap, input: searchInput, btn: searchBtn } = createLeftIconInput({
