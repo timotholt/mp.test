@@ -195,29 +195,30 @@ function ensureStyle() {
     position: fixed; left: 0; top: 0; z-index: 2147483600; pointer-events: none;
     color: #dff1ff; font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
     padding: 6px 8px; border-radius: 6px;
-    background: linear-gradient(180deg, rgba(10,18,26,0.92) 0%, rgba(10,16,22,0.88) 100%);
-    border: 1px solid rgba(120,170,255,0.45);
-    box-shadow: 0 0 12px rgba(120,170,255,0.22), inset 0 0 12px rgba(40,100,200,0.12);
-    text-shadow: 0 0 6px rgba(120,170,255,0.7);
+    /* Glassmorphism: lighter opacity, brighter outline, larger glow */
+    background: linear-gradient(180deg, rgba(10,18,26,0.46) 0%, rgba(10,16,22,0.44) 100%);
+    border: 1px solid rgba(120,170,255,0.70);
+    box-shadow: 0 0 18px rgba(120,170,255,0.33), inset 0 0 18px rgba(40,100,200,0.18);
+    text-shadow: 0 0 9px rgba(120,170,255,0.70);
     backdrop-filter: blur(4px) saturate(1.2);
     transform: translate(-9999px, -9999px);
   }
   .sf-tooltip::after {
     content: '';
     position: absolute; width: 8px; height: 8px; left: 10px; top: 100%;
-    background: linear-gradient(180deg, rgba(10,18,26,0.92) 0%, rgba(10,16,22,0.88) 100%);
-    border-right: 1px solid rgba(120,170,255,0.45);
-    border-bottom: 1px solid rgba(120,170,255,0.45);
+    background: linear-gradient(180deg, rgba(10,18,26,0.46) 0%, rgba(10,16,22,0.44) 100%);
+    border-right: 1px solid rgba(120,170,255,0.70);
+    border-bottom: 1px solid rgba(120,170,255,0.70);
     transform: translateY(-4px) rotate(45deg);
-    filter: drop-shadow(0 0 6px rgba(120,170,255,0.25));
+    filter: drop-shadow(0 0 9px rgba(120,170,255,0.35));
   }
   .sf-tooltip.far::after { content: none; }
   .sf-tooltip-line {
     position: fixed; left: 0; top: 0; height: 1px; width: 0; z-index: 2147483599;
     pointer-events: none;
-    /* Match tooltip outline hue/glow */
-    background: rgba(120,170,255,0.45);
-    box-shadow: 0 0 12px rgba(120,170,255,0.22), 0 0 2px rgba(120,170,255,0.55);
+    /* Match tooltip outline hue/glow (brighter and larger) */
+    background: rgba(120,170,255,0.70);
+    box-shadow: 0 0 18px rgba(120,170,255,0.33), 0 0 3px rgba(120,170,255,0.70);
     transform-origin: 0 50%;
   }
   `;
