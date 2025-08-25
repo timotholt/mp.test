@@ -50,8 +50,12 @@ function ensureLoginStyles() {
   /* Provider buttons fixed height */
   .login-providers .btn { height: 46px; padding-top: 0; padding-bottom: 0; }
   /* Universal icon wrapper for consistent sizing */
-  .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
   .icon-wrap svg { width: 100%; height: 100%; display: block; }
+  /* Icon tweaks */
+  .icon-wrap.icon-google { transform: translateY(-4px); }
+  .icon-wrap.icon-discord svg { transform: scale(1.28); transform-origin: 50% 50%; }
+  .icon-wrap.icon-eye svg { transform: scale(1.35); transform-origin: 50% 50%; }
   .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; }
   .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
   .login-form label { opacity: 0.95; text-align: right; }
@@ -67,7 +71,8 @@ function ensureLoginStyles() {
   .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
   /* Input wrapper with optional left/right icon buttons */
   .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
-  .input-wrap .input-glass { padding-left: 34px; padding-right: 34px; }
+  .input-wrap.has-left .input-glass { padding-left: 34px; }
+  .input-wrap.has-right .input-glass { padding-right: 34px; }
   .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: #dff1ff; opacity: 0.9; cursor: pointer; }
   .input-icon-btn.left { left: 8px; }
   .input-icon-btn.right { right: 8px; }
@@ -90,7 +95,7 @@ function ensureLoginStyles() {
 
 function icon(name) {
   const wrap = document.createElement('div');
-  wrap.className = 'icon-wrap';
+  wrap.className = 'icon-wrap icon-' + name;
   wrap.setAttribute('aria-hidden', 'true');
   // Simple inline SVGs (from Simple Icons), sized via CSS via .icon-wrap
   if (name === 'google') {
@@ -206,30 +211,27 @@ export function presentLoginModal() {
   const emailWrap = document.createElement('div'); emailWrap.className = 'input-wrap';
   const passWrap = document.createElement('div'); passWrap.className = 'input-wrap';
 
-  // Left mail icon for email (focuses the input)
-  const mailBtn = document.createElement('button'); mailBtn.type = 'button'; mailBtn.className = 'input-icon-btn left';
-  mailBtn.innerHTML = '<div class="icon-wrap"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z"/></svg></div>';
-  mailBtn.onclick = () => { try { emailInput.focus(); } catch (_) {} };
-  try { attachTooltip(mailBtn, { mode: 'far', placement: 'l,lc,tl,bl,t,b' }); updateTooltip(mailBtn, 'Email'); } catch (_) {}
+  // No left icon for email (per request)
 
   // Right eye icon for password (toggle visibility)
   const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.className = 'input-icon-btn right';
-  const eyeOpen = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
-  const eyeOff = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M2 4.27 3.28 3 21 20.72 19.73 22l-3.2-3.2A12.37 12.37 0 0 1 12 19c-7 0-10-7-10-7a18.42 18.42 0 0 1 5.06-5.91L2 4.27Zm6.11 6.11A5 5 0 0 0 12 17c.55 0 1.08-.09 1.57-.26l-1.83-1.83A2.5 2.5 0 0 1 9.89 10.38ZM12 5c7 0 10 7 10 7a18.4 18.4 0 0 1-3.18 4.19l-1.43-1.43A12.3 12.3 0 0 0 20.06 12S17 5 12 5a12.33 12.33 0 0 0-4.37.78L6.2 4.35A18.36 18.36 0 0 1 12 5Z"/></svg>';
-  let pwVisible = false; eyeBtn.innerHTML = '<div class="icon-wrap">' + eyeOpen + '</div>';
+  // Line-art eye icons (stroke) for better readability
+  const eyeOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 3l18 18"/><path d="M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17.7 17.7 0 0 1-3.2 3.8"/><path d="M6.1 6.1A17.7 17.7 0 0 0 2 12s4 7 10 7c1.1 0 2.1-.2 3.1-.5"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>';
+  let pwVisible = false; eyeBtn.innerHTML = '<div class="icon-wrap icon-eye">' + eyeOpen + '</div>';
   eyeBtn.onclick = () => {
     try {
       pwVisible = !pwVisible;
       passInput.type = pwVisible ? 'text' : 'password';
-      eyeBtn.innerHTML = '<div class="icon-wrap">' + (pwVisible ? eyeOff : eyeOpen) + '</div>';
+      eyeBtn.innerHTML = '<div class="icon-wrap icon-eye">' + (pwVisible ? eyeOff : eyeOpen) + '</div>';
       try { updateTooltip(eyeBtn, pwVisible ? 'Hide password' : 'Show password'); } catch (_) {}
     } catch (_) {}
   };
   try { attachTooltip(eyeBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(eyeBtn, 'Show password'); } catch (_) {}
 
   // Assemble wraps
-  emailWrap.appendChild(mailBtn);
   emailWrap.appendChild(emailInput);
+  try { passWrap.classList.add('has-right'); } catch (_) {}
   passWrap.appendChild(passInput);
   passWrap.appendChild(eyeBtn);
 
