@@ -103,9 +103,7 @@ function ensureStyle() {
   #topbar-volume-knobs.vk-cluster { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; }
   #topbar-volume-knobs .vk-master { --vk-size: 44px; }
   #topbar-volume-knobs .vk-panel { display: none; align-items: center; gap: 6px; }
-  #topbar-volume-knobs:hover .vk-panel, #topbar-volume-knobs.pinned .vk-panel { display: inline-flex; }
-  #topbar-volume-knobs .vk-toggle { background: transparent; color: var(--ui-fg,#fff); border: 1px solid var(--control-border,#444);
-    border-radius: 4px; cursor: pointer; padding: 0 6px; height: 24px; }
+  #topbar-volume-knobs:hover .vk-panel { display: inline-flex; }
   `;
   document.head.appendChild(st);
 }
