@@ -110,6 +110,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     searchWrap.style.display = 'flex';
     searchWrap.style.alignItems = 'center';
     searchWrap.style.flex = '1';
+    try { searchWrap.setAttribute('data-name', 'panel-search-wrap'); } catch (_) {}
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.placeholder = 'Search…';
@@ -177,6 +178,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     inputRow.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     inputRow.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     inputRow.style.borderRadius = '0px 0px 6px 6px';
+    inputRow.style.paddingLeft = '0.5rem';
+    try { inputRow.setAttribute('data-name', 'panel-input-row'); } catch (_) {}
     inputRow.appendChild(searchWrap);
     root.appendChild(inputRow);
 
@@ -389,6 +392,13 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             });
           }
         });
+        // Add IDs to Games panel search containers
+        try {
+          const gWrap = gamesPanel?.el?.querySelector('[data-name="panel-search-wrap"]');
+          if (gWrap) gWrap.id = 'games-search-wrap';
+          const gRow = gamesPanel?.el?.querySelector('[data-name="panel-input-row"]');
+          if (gRow) gRow.id = 'games-search-row';
+        } catch (_) {}
 
         // --- Players Panel ---
         playersPanel = createTabbedPanel({
@@ -461,6 +471,14 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             });
           }
         });
+
+        // Add IDs to Players panel search containers
+        try {
+          const pWrap = playersPanel?.el?.querySelector('[data-name="panel-search-wrap"]');
+          if (pWrap) pWrap.id = 'players-search-wrap';
+          const pRow = playersPanel?.el?.querySelector('[data-name="panel-input-row"]');
+          if (pRow) pRow.id = 'players-search-row';
+        } catch (_) {}
 
         // Place panels in grid
         gamesPanel.el.style.gridColumn = '1 / 2';
