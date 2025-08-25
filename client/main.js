@@ -12,6 +12,7 @@ import { presentSettingsPanel } from './modals/settings.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { createChatTabs } from './core/chatTabs.js';
 import { initAudio } from './core/audio/audioManager.js';
+import './core/ui/theme.js';
 import * as LS from './core/localStorage.js';
 
 const statusEl = document.getElementById('status');
