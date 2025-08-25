@@ -24,12 +24,15 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   el.style.flexDirection = 'column';
   el.style.height = '100%';
   el.style.maxHeight = '100%';
+  // Debug labels for DOM inspection
+  try { el.setAttribute('data-name', 'chat-root'); el.setAttribute('data-mode', String(mode)); } catch (_) {}
 
   // Tabs row
   const tabsRow = document.createElement('div');
   tabsRow.style.display = 'flex';
   tabsRow.style.gap = '6px';
   tabsRow.style.marginBottom = '6px';
+  try { tabsRow.setAttribute('data-name', 'chat-tabs-row'); } catch (_) {}
   el.appendChild(tabsRow);
 
   // Messages area (glass surface; flexible to fill remaining height)
@@ -44,42 +47,83 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
   list.style.padding = '6px';
   try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
+  try { list.setAttribute('data-name', 'chat-messages-list'); } catch (_) {}
   el.appendChild(list);
 
   // Input row
   const inputRow = document.createElement('div');
   inputRow.style.display = 'flex';
   inputRow.style.alignItems = 'center';
-  inputRow.style.gap = '6px';
-  inputRow.style.marginTop = '6px';
+  inputRow.style.gap = '8px';
+  // inputRow.style.marginTop = '6px';
+  inputRow.style.minHeight = '46px';
+  try { inputRow.setAttribute('data-name', 'chat-input-row'); } catch (_) {}
   el.appendChild(inputRow);
+
+  // Input with left icon (login-style control, JS-styled to avoid CSS edits)
+  const inputWrap = document.createElement('div');
+  inputWrap.style.position = 'relative';
+  inputWrap.style.display = 'flex';
+  inputWrap.style.alignItems = 'center';
+  inputWrap.style.flex = '1';
+  inputWrap.style.marginLeft = '0.3rem';
+  try { inputWrap.setAttribute('data-name', 'chat-input-wrap'); } catch (_) {}
 
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Type message…';
   input.style.flex = '1';
-  input.style.background = 'rgba(255,255,255,0.06)';
-  input.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  input.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
-  input.style.borderRadius = '4px';
+  input.style.height = '46px';
+  input.style.lineHeight = '46px';
+  // Fully transparent to use parent background
+  input.style.background = 'transparent';
+  input.style.border = '0'; // reduce borders around the input control
+  input.style.outline = 'none';
+  input.style.color = 'var(--sf-tip-fg, #fff)';
+  input.style.borderRadius = '10px';
+  input.style.fontSize = '16px'; // larger input text
+  // padding-left: icon-left (0) + icon-width (32px) + desired gap (0.5rem)
+  input.style.padding = '0 10px 0 calc(32px + 0.5rem)';
+  input.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10)';
 
+  // Left search icon button inside input (acts as search toggle)
   const searchBtn = document.createElement('button');
-  searchBtn.textContent = '🔎';
+  searchBtn.type = 'button';
   searchBtn.title = 'Filter current tab by text';
+  searchBtn.style.position = 'absolute';
+  searchBtn.style.left = '0';
+  searchBtn.style.top = '50%';
+  searchBtn.style.transform = 'translateY(-50%)';
+  searchBtn.style.width = '32px';
+  searchBtn.style.height = '32px';
+  searchBtn.style.display = 'inline-flex';
+  searchBtn.style.alignItems = 'center';
+  searchBtn.style.justifyContent = 'center';
+  searchBtn.style.background = 'transparent'; // transparent like send button
   searchBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  searchBtn.style.background = 'rgba(255,255,255,0.06)';
-  searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
-  searchBtn.style.borderRadius = '4px';
+  searchBtn.style.borderRadius = '8px';
+  searchBtn.style.boxSizing = 'border-box';
+  searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
+  searchBtn.style.cursor = 'pointer';
+  // Inline SVG magnifier (line-art to match login eye icon style)
+  searchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
   const sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
+  // Softer look: fewer borders; keep subtle glass background
+  // Add a clear border per request
   sendBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  sendBtn.style.background = 'rgba(255,255,255,0.06)';
-  sendBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
-  sendBtn.style.borderRadius = '4px';
+  sendBtn.style.background = 'transparent';
+  sendBtn.style.color = 'var(--sf-tip-fg, #fff)';
+  sendBtn.style.borderRadius = '8px';
+  sendBtn.style.height = '40px';
+  sendBtn.style.padding = '0 14px';
+  // Even margin on all sides
+  sendBtn.style.margin = '0.3rem';
 
-  inputRow.appendChild(input);
-  inputRow.appendChild(searchBtn);
+  inputWrap.appendChild(input);
+  inputWrap.appendChild(searchBtn);
+  inputRow.appendChild(inputWrap);
   inputRow.appendChild(sendBtn);
 
   // State
@@ -145,11 +189,18 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   }
 
   function renderList() {
+    // Track current tab on the list itself for easier debugging
+    try { list.setAttribute('data-current-tab', String(currentTab)); } catch (_) {}
     list.innerHTML = '';
     const arr = messages.get(currentTab) || [];
-    arr.forEach(msg => {
+    arr.forEach((msg, idx) => {
       if (!lineIncludes(msg, filterTerm)) return;
       const div = document.createElement('div');
+      try {
+        div.setAttribute('data-name', 'chat-message');
+        div.setAttribute('data-index', String(idx));
+        div.setAttribute('data-tab', String(currentTab));
+      } catch (_) {}
       renderMessage(div, msg);
       list.appendChild(div);
     });
