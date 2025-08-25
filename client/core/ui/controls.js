@@ -88,3 +88,39 @@ export function wireFocusHighlight(inputEl, rowEl) {
     } catch (_) {}
   });
 }
+
+// Create a tabs bar with consistent button styling.
+// tabs: array of any. getKey(tab) -> unique key. getLabel(tab) -> display text.
+// onSelect(key): called when a tab is clicked.
+export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
+  const el = document.createElement('div');
+  el.style.display = 'flex';
+  el.style.gap = '6px';
+  el.style.flex = '0 0 auto';
+  el.style.marginBottom = '0';
+  el.style.borderTop = '0';
+
+  function render({ tabs = [], activeKey } = {}) {
+    el.innerHTML = '';
+    tabs.forEach((t) => {
+      const key = getKey ? getKey(t) : t;
+      const label = getLabel ? getLabel(t) : String(t);
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.style.padding = '4px 8px';
+      b.style.border = UI.border;
+      b.style.borderBottom = '0';
+      b.style.borderRadius = '0';
+      b.style.borderTopLeftRadius = '6px';
+      b.style.borderTopRightRadius = '6px';
+      const isActive = (key === activeKey);
+      b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
+      b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
+      b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
+      b.onclick = () => { if (typeof onSelect === 'function') onSelect(key); };
+      el.appendChild(b);
+    });
+  }
+
+  return { el, render };
+}

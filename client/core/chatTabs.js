@@ -1,6 +1,6 @@
 // Tabbed chat UI (JS-only, reusable)
 // Exports: createChatTabs({ mode: 'lobby' | 'game', onJoinGame(roomId), onOpenLink(href) })
-import { UI, createInputRow, createLeftIconInput, wireFocusHighlight } from './ui/controls.js';
+import { UI, createInputRow, createLeftIconInput, wireFocusHighlight, createTabsBar } from './ui/controls.js';
 // - Lobby tabs: Lobby / Whisper / News / Games / Server (read-only: News, Games, Server)
 // - Game tabs: Game / Whisper / Server (read-only: Server)
 // - Search: clicking the magnifier filters current tab to lines containing the input text; click with empty text clears filter
@@ -33,18 +33,14 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Debug labels for DOM inspection
   try { el.setAttribute('data-name', 'chat-root'); el.setAttribute('data-mode', String(mode)); } catch (_) {}
 
-  // Tabs row
-  const tabsRow = document.createElement('div');
-  tabsRow.style.display = 'flex';
-  tabsRow.style.gap = '6px';
-  // Tabs should touch the div below (no gap)
-  tabsRow.style.marginBottom = '0';
-  // No top border on the chat tabs row
-  tabsRow.style.borderTop = '0';
-  tabsRow.style.borderLeft = '0';
-  tabsRow.style.borderRight = '0';
-  try { tabsRow.setAttribute('data-name', 'chat-tabs-row'); } catch (_) {}
-  el.appendChild(tabsRow);
+  // Tabs row (shared)
+  const tabsCtl = createTabsBar({
+    getKey: (t) => t,
+    getLabel: (t) => t,
+    onSelect: (key) => switchTo(key),
+  });
+  try { tabsCtl.el.setAttribute('data-name', 'chat-tabs-row'); } catch (_) {}
+  el.appendChild(tabsCtl.el);
 
   // Messages area (glass surface; flexible to fill remaining height)
   const list = document.createElement('div');
@@ -107,26 +103,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   function isReadOnly(tab) { return readOnlyTabs.has(tab); }
 
   function renderTabs() {
-    tabsRow.innerHTML = '';
-    tabs.forEach(t => {
-      const b = document.createElement('button');
-      b.textContent = t;
-      b.style.padding = '4px 8px';
-      // Remove bottom border so tabs visually touch content below
-      b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-      b.style.borderBottom = '0';
-      // Only round top corners
-      b.style.borderRadius = '0';
-      b.style.borderTopLeftRadius = '6px';
-      b.style.borderTopRightRadius = '6px';
-      // Active vs inactive styling
-      const isActive = (t === currentTab);
-      b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
-      b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
-      b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
-      b.onclick = () => switchTo(t);
-      tabsRow.appendChild(b);
-    });
+    tabsCtl.render({ tabs, activeKey: currentTab });
   }
 
   function renderMessage(container, msg) {

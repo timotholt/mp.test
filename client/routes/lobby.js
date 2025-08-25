@@ -9,7 +9,7 @@ import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
 import { deriveGameId } from '../core/util/deriveGameId.js';
 import { ensureBanner } from '../core/ui/banner.js';
-import { UI, createInputRow, createLeftIconInput, wireFocusHighlight } from '../core/ui/controls.js';
+import { UI, createInputRow, createLeftIconInput, wireFocusHighlight, createTabsBar } from '../core/ui/controls.js';
 
 let lobbyPollId = null;
 let lobbyChat = null;
@@ -97,13 +97,15 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     htitle.textContent = title;
     htitle.style.fontWeight = '600';
     htitle.style.flex = '0 0 auto';
-    const tabsBar = document.createElement('div');
-    tabsBar.style.display = 'flex';
-    tabsBar.style.gap = '6px';
-    tabsBar.style.flex = '0 0 auto';
-    // No top border and no bottom spacing, so tabs sit directly on the list
-    tabsBar.style.marginBottom = '0';
-    tabsBar.style.borderTop = '0';
+    const tabsCtl = createTabsBar({
+      getKey: (t) => t.key,
+      getLabel: (t) => t.label,
+      onSelect: (key) => {
+        activeTab = key;
+        onRender({ listEl: list, tab: activeTab, data, filterText });
+        tabsCtl.render({ tabs, activeKey: activeTab });
+      },
+    });
     // Create shared left-icon input for search (bottom row will host it)
     const { wrap: searchWrap, input: searchInput, btn: searchBtn } = createLeftIconInput({
       placeholder: 'Search…',
@@ -113,7 +115,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     try { searchWrap.setAttribute('data-name', 'panel-search-wrap'); } catch (_) {}
     searchBtn.title = 'Search';
     header.appendChild(htitle);
-    header.appendChild(tabsBar);
+    header.appendChild(tabsCtl.el);
     // Search box belongs at the bottom; do not place in header
 
     const list = document.createElement('div');
@@ -142,24 +144,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     let data = [];
 
     function renderTabs() {
-      tabsBar.innerHTML = '';
-      tabs.forEach(t => {
-        const b = document.createElement('button');
-        b.textContent = t.label;
-        b.style.padding = '4px 8px';
-        // Chat tabs style: no bottom border, only top corners rounded
-        b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-        b.style.borderBottom = '0';
-        b.style.borderRadius = '0';
-        b.style.borderTopLeftRadius = '6px';
-        b.style.borderTopRightRadius = '6px';
-        const isActive = (t.key === activeTab);
-        b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
-        b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
-        b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
-        b.onclick = () => { activeTab = t.key; onRender({ listEl: list, tab: activeTab, data, filterText }); renderTabs(); };
-        tabsBar.appendChild(b);
-      });
+      tabsCtl.render({ tabs, activeKey: activeTab });
     }
 
     function setData(next) { data = Array.isArray(next) ? next : []; onRender({ listEl: list, tab: activeTab, data, filterText }); }
