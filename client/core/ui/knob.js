@@ -293,8 +293,8 @@ function ensureStyle() {
       inset -2px -2px 3px rgba(0,0,0,0.40),
       inset  2px  2px 2px rgba(255,255,255,0.14);
   }
-  .knob:focus { box-shadow: var(--kn-focus-ring, 0 0 0 2px rgba(100,160,255,0.5)), -2px -2px 3px rgba(255,255,255,0.28), 2px 2px 7px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0,0.40), inset 2px 2px 2px rgba(255,255,255,0.14); }
-  .knob:hover { box-shadow: -2px -2px 3px rgba(255,255,255, calc(0.28 + 0.06 * var(--kn-hover-strength, 1))), 2px 2px 8px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0, calc(0.40 + 0.06 * var(--kn-hover-strength, 1))), inset 2px 2px 2px rgba(255,255,255, calc(0.14 + 0.04 * var(--kn-hover-strength, 1))); }
+  .knob:focus { box-shadow: var(--kn-focus-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), var(--kn-focus-ring, 0 0 0 2px rgba(100,160,255,0.5)), -2px -2px 3px rgba(255,255,255,0.28), 2px 2px 7px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0,0.40), inset 2px 2px 2px rgba(255,255,255,0.14); }
+  .knob:hover { box-shadow: var(--kn-hover-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), -2px -2px 3px rgba(255,255,255, calc(0.28 + 0.06 * var(--kn-hover-strength, 1))), 2px 2px 8px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0, calc(0.40 + 0.06 * var(--kn-hover-strength, 1))), inset 2px 2px 2px rgba(255,255,255, calc(0.14 + 0.04 * var(--kn-hover-strength, 1))); }
 
   .knob .k-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; transform-origin: 50% 50%; }
   .knob .k-dot::after { content: ''; position: absolute; left: 50%; top: calc(6% + 5px);
@@ -308,5 +308,6 @@ function ensureStyle() {
     transform: translate(calc(-0.5 * var(--kn-seg-w, 2px)), calc(-0.5 * var(--kn-seg-h, 10px))) rotate(var(--ang)) translateY(calc(-0.5 * var(--kn-size) - var(--kn-ring-offset, 12px)));
   }
   .knob .k-seg.on { background: var(--kn-seg-on, #9fd0ff); opacity: 1; box-shadow: var(--kn-seg-glow, 0 0 6px rgba(120,170,255,0.9)); }
+  .knob:hover .k-seg.on, .knob:focus .k-seg.on { background: var(--kn-seg-on-bright, var(--ui-bright, #dff1ff)); box-shadow: var(--kn-seg-glow-strong, 0 0 14px rgba(120,170,255,0.95)); }
   `;
 }

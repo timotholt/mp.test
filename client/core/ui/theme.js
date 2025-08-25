@@ -9,20 +9,31 @@
   // Minimal theming engine
   const themes = {
     glassBlue: {
-      // Tooltip bubble
-      '--sf-tip-bg-top': 'rgba(10,18,26,0.46)',
-      '--sf-tip-bg-bottom': 'rgba(10,16,22,0.44)',
+      // Tooltip bubble (10% more transparent)
+      '--sf-tip-bg-top': 'rgba(10,18,26,0.41)',
+      '--sf-tip-bg-bottom': 'rgba(10,16,22,0.40)',
       '--sf-tip-border': 'rgba(120,170,255,0.70)',
       '--sf-tip-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
       '--sf-tip-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
       '--sf-tip-text-glow': '0 0 9px rgba(120,170,255,0.70)',
-      '--sf-tip-backdrop': 'blur(4px) saturate(1.2)',
+      '--sf-tip-backdrop': 'blur(3px) saturate(1.2)',
       '--sf-tip-arrow-glow': 'drop-shadow(0 0 9px rgba(120,170,255,0.35))',
 
       // Connector line
       '--sf-tip-line-color': 'rgba(120,170,255,0.70)',
       '--sf-tip-line-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
-      '--sf-tip-line-glow-core': '0 0 3px rgba(120,170,255,0.70)'
+      '--sf-tip-line-glow-core': '0 0 3px rgba(120,170,255,0.70)',
+
+      // Global bright + strong glow for high-visibility focus/hover
+      '--ui-bright': 'rgba(190,230,255,0.98)',
+      '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)'
+      ,
+      // Shared surface tokens (for modals/menus/panels to adopt)
+      '--ui-surface-bg-top': 'rgba(10,18,26,0.41)',
+      '--ui-surface-bg-bottom': 'rgba(10,16,22,0.40)',
+      '--ui-surface-border': 'rgba(120,170,255,0.70)',
+      '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
+      '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)'
     }
   };
 

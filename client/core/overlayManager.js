@@ -32,10 +32,11 @@ function ensureOverlay() {
     inner.style.pointerEvents = 'auto';
     inner.style.maxWidth = '640px';
     inner.style.margin = '40px auto';
-    inner.style.background = 'rgba(0,0,0,0.8)';
-    inner.style.border = '1px solid #444';
+    inner.style.background = 'linear-gradient(to bottom, var(--ui-surface-bg-top, rgba(10,18,26,0.41)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)) 100%)';
+    inner.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     inner.style.padding = '16px';
-    inner.style.boxShadow = '0 0 12px rgba(0,0,0,0.6)';
+    inner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
+    inner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(4px) saturate(1.2))';
     overlayEl.appendChild(inner);
     const appRoot = document.getElementById('app');
     if (appRoot) {
