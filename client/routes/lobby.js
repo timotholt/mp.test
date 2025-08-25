@@ -259,11 +259,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         // Layout container: grid with 2 rows (top panels fixed to 40vh, bottom chat fills remainder) and 2 columns
         const grid = document.createElement('div');
         grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gridTemplateColumns = '2fr 1fr';
         // Top fixed height reduced by 2rem; bottom grows to fill remainder
         grid.style.gridTemplateRows = 'calc(40vh - 2rem) 1fr';
-        // Horizontal gap 10px, vertical gap 1rem between panels and chat
-        grid.style.columnGap = '10px';
+        // Horizontal gap 2.5rem, vertical gap 1rem between panels and chat
+        grid.style.columnGap = '2.5rem';
         grid.style.rowGap = '1rem';
         grid.style.marginTop = '8px';
         // Fill viewport height minus content padding (2rem top + 4rem bottom = 6rem)
