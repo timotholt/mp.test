@@ -3,6 +3,12 @@
 
 import { presentSettingsPanel } from '../../modals/settings.js';
 
+// Hover timings
+// Start: slide animation duration when bar enters/leaves on hover
+// Exit: delay before auto-hiding after the pointer leaves
+const STATUSBAR_SLIDE_DURATION_MS = 1000;
+const STATUSBAR_HIDE_DELAY_MS = 1000;
+
 export function ensureStatusBar() {
   let bar = document.getElementById('hover-status-bar');
   if (!bar) {
@@ -20,8 +26,10 @@ export function ensureStatusBar() {
     bar.style.padding = '0 12px';
     // Blue glassmorphism look (more opaque). Theme override via --statusbar-bg
     bar.style.background = 'var(--statusbar-bg, linear-gradient(180deg, rgba(10,18,26,0.35) 0%, rgba(10,16,22,0.28) 100%))';
-    bar.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-    bar.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    // bar.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    // bar.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    bar.style.borderLeft = '0';
+    bar.style.borderRight = '0';
     bar.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     bar.style.borderTop = 'none';
     bar.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
@@ -31,7 +39,7 @@ export function ensureStatusBar() {
     bar.style.zIndex = '30000';
     // Slide animation (window shade): 1s down/up using transform
     bar.style.transform = 'translateY(-100%)';
-    bar.style.transition = 'transform 1s ease';
+    bar.style.transition = `transform ${STATUSBAR_SLIDE_DURATION_MS}ms ease`;
     bar.style.willChange = 'transform';
     bar.style.pointerEvents = 'none';
     const left = document.createElement('div');
@@ -74,7 +82,7 @@ export function ensureStatusBar() {
           bar.style.transform = 'translateY(-100%)';
           bar.style.pointerEvents = 'none';
         }
-      }, 3000);
+      }, STATUSBAR_HIDE_DELAY_MS);
     };
     bar.addEventListener('mouseenter', () => { hoveringBar = true; clearHide(); });
     bar.addEventListener('mouseleave', () => { hoveringBar = false; requestHide(); });
