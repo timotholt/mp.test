@@ -79,17 +79,19 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     const root = document.createElement('div');
     root.style.display = 'flex';
     root.style.flexDirection = 'column';
-    root.style.gap = '8px';
-    root.style.background = 'rgba(30,60,120,0.2)';
-    root.style.backdropFilter = 'blur(6px)';
-    root.style.border = '1px solid rgba(255,255,255,0.15)';
-    root.style.borderRadius = '8px';
-    root.style.padding = '8px';
+    // Match chat: tabs should touch the list (no outer gap/padding/border)
+    root.style.gap = '0';
+    root.style.background = 'transparent';
+    root.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
+    root.style.border = '0';
+    root.style.borderRadius = '0';
+    root.style.padding = '0';
 
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.alignItems = 'center';
     header.style.gap = '8px';
+    header.style.marginBottom = '0';
     const htitle = document.createElement('div');
     htitle.textContent = title;
     htitle.style.fontWeight = '600';
@@ -98,6 +100,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     tabsBar.style.display = 'flex';
     tabsBar.style.gap = '6px';
     tabsBar.style.flex = '0 0 auto';
+    // No top border and no bottom spacing, so tabs sit directly on the list
+    tabsBar.style.marginBottom = '0';
+    tabsBar.style.borderTop = '0';
     const searchWrap = document.createElement('div');
     searchWrap.style.marginLeft = 'auto';
     const searchInput = document.createElement('input');
@@ -106,11 +111,21 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     searchInput.style.display = 'none';
     searchInput.style.padding = '4px 6px';
     searchInput.style.borderRadius = '6px';
-    searchInput.style.border = '1px solid rgba(255,255,255,0.2)';
+    searchInput.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     const searchBtn = document.createElement('button');
-    searchBtn.textContent = '🔍';
     searchBtn.title = 'Toggle live search';
-    searchBtn.style.padding = '2px 6px';
+    // Chat-like search icon button
+    searchBtn.style.width = '32px';
+    searchBtn.style.height = '32px';
+    searchBtn.style.display = 'inline-flex';
+    searchBtn.style.alignItems = 'center';
+    searchBtn.style.justifyContent = 'center';
+    searchBtn.style.background = 'transparent';
+    searchBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    searchBtn.style.borderRadius = '8px';
+    searchBtn.style.boxSizing = 'border-box';
+    searchBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
+    searchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
     searchWrap.appendChild(searchBtn);
     searchWrap.appendChild(searchInput);
     header.appendChild(htitle);
@@ -119,8 +134,15 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
     const list = document.createElement('div');
     list.style.flex = '1 1 auto';
-    list.style.overflow = 'auto';
+    list.style.minHeight = '0';
     list.style.maxHeight = '100%';
+    list.style.overflowY = 'auto';
+    // Chat-like surface
+    list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+    list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    list.style.borderRadius = '4px 4px 0px 0px';
+    list.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
+    list.style.padding = '6px';
     try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
 
     root.appendChild(header);
@@ -136,9 +158,16 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         const b = document.createElement('button');
         b.textContent = t.label;
         b.style.padding = '4px 8px';
-        b.style.borderRadius = '6px';
-        b.style.border = '1px solid rgba(255,255,255,0.2)';
-        b.style.background = t.key === activeTab ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
+        // Chat tabs style: no bottom border, only top corners rounded
+        b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+        b.style.borderBottom = '0';
+        b.style.borderRadius = '0';
+        b.style.borderTopLeftRadius = '6px';
+        b.style.borderTopRightRadius = '6px';
+        const isActive = (t.key === activeTab);
+        b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
+        b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
+        b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
         b.onclick = () => { activeTab = t.key; onRender({ listEl: list, tab: activeTab, data, filterText }); renderTabs(); };
         tabsBar.appendChild(b);
       });
