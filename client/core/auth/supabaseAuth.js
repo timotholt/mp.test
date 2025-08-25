@@ -63,7 +63,7 @@ export async function getAccessToken() {
   return s?.access_token || null;
 }
 
-export function onAuthStateChange(cb) {
+export function onAuthStateCknge(cb) {
   return getClient().auth.onAuthStateChange((event, session) => {
     try { cb && cb({ event, session }); } catch (_) {}
   });
