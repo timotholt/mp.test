@@ -11,6 +11,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const { Server } = require('colyseus');
 const { WebSocketTransport } = require('@colyseus/ws-transport');
 const { NethackRoom } = require('./rooms/NethackRoom');
+const { LobbyRoom } = require('./rooms/LobbyRoom');
 
 const PORT = process.env.PORT || 2567;
 
@@ -90,6 +91,8 @@ const gameServer = new Server({
 
 // Define our authoritative room. We filter by gameId to group instances by game.
 gameServer.define('nethack', NethackRoom).filterBy(['gameId']);
+// Real-time lobby room broadcasting available rooms and lobby players
+gameServer.define('lobby', LobbyRoom);
 
 httpServer.listen(PORT, () => {
   console.log(`Colyseus listening on ws://localhost:${PORT}`);

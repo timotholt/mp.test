@@ -64,6 +64,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   tabs.forEach(t => messages.set(t, []));
   let currentTab = tabs[0];
   let filterTerm = '';
+  let searchMode = false;
 
   // Helpers
   function isReadOnly(tab) { return readOnlyTabs.has(tab); }
@@ -141,6 +142,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   function switchTo(tab) {
     if (!tabs.includes(tab)) return;
     currentTab = tab;
+    // Exiting search mode when switching tabs makes filtering less confusing
+    if (searchMode) disableSearchMode();
     updateReadOnlyUI();
     renderTabs();
     renderList();
@@ -163,10 +166,31 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     renderList();
   }
 
+  // Search mode helpers (live-as-you-type while active)
+  let __onLiveInput;
+  function enableSearchMode() {
+    if (searchMode) return;
+    searchMode = true;
+    searchBtn.style.background = 'rgba(100,150,220,0.25)';
+    searchBtn.title = 'Exit search (Esc)';
+    __onLiveInput = () => filter(input.value || '');
+    input.addEventListener('input', __onLiveInput);
+    // Start filtering immediately with current text
+    filter(input.value || '');
+  }
+  function disableSearchMode() {
+    if (!searchMode) return;
+    searchMode = false;
+    searchBtn.style.background = '';
+    searchBtn.title = 'Filter current tab by text';
+    try { if (__onLiveInput) input.removeEventListener('input', __onLiveInput); } catch (_) {}
+    __onLiveInput = null;
+    filter('');
+  }
+
   // Wire inputs
   searchBtn.onclick = () => {
-    const term = (input.value || '').trim();
-    filter(term);
+    if (!searchMode) enableSearchMode(); else disableSearchMode();
   };
   sendBtn.onclick = () => {
     if (isReadOnly(currentTab)) return;
@@ -175,8 +199,13 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     // Stub: echo locally. Integration will hook network later.
     appendMessage(currentTab, `You: ${msg}`);
     input.value = '';
+    if (searchMode) disableSearchMode();
   };
   input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (searchMode) { e.stopPropagation(); disableSearchMode(); }
+      return;
+    }
     if (e.key === 'Enter') sendBtn.click();
   });
 

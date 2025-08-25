@@ -19,6 +19,7 @@ const { addEntity, removeEntity } = require('./gamecode/occupancy');
 const { snapshotWorld, restoreWorld } = require('./gamecode/serialization');
 const { saveSnapshot, loadLatestSnapshot } = require('../persistence/supabase');
 const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify');
+const { upsertRoom, removeRoom } = require('./RoomsHub');
 
 // Autosave configuration (env with defaults)
 const AUTOSAVE_ENABLED = (process.env.AUTOSAVE_ENABLED ?? 'true') !== 'false';
@@ -112,7 +113,14 @@ class NethackRoom extends Room {
     this.setState(new GameState());
     this.state.gameId = options.gameId || `game-${Math.random().toString(36).slice(2, 8)}`;
     this.isPrivate = !!options.private;
-    this.setMetadata({ gameId: this.state.gameId, private: this.isPrivate });
+    // include additional metadata for lobby display
+    this.setMetadata({
+      gameId: this.state.gameId,
+      private: this.isPrivate,
+      name: options.name || '',
+      hostName: options.hostName || '',
+      maxPlayers: options.maxPlayers || options.maxClients || 0,
+    });
     // INFO: room identity (easy to remove later)
     console.log('[info] room created', { roomId: this.roomId, gameId: this.state.gameId });
 
@@ -314,6 +322,22 @@ class NethackRoom extends Room {
     ];
     this.nextColorIdx = 0;
     
+    // --- RoomsHub integration: keep lobby in sync ---
+    const updateHub = () => {
+      try {
+        const clientsCount = Array.isArray(this.clients) ? this.clients.length : (this.state.players?.size || 0);
+        const md = this.metadata || {};
+        upsertRoom({
+          roomId: this.roomId,
+          clients: clientsCount | 0,
+          maxClients: this.maxClients | 0,
+          metadata: md,
+        });
+      } catch (_) {}
+    };
+    // initial publish
+    updateHub();
+    
     // Attempt to restore latest snapshot (world primitives + offline players)
     (async () => {
       try {
@@ -456,6 +480,8 @@ class NethackRoom extends Room {
       }
       // Refresh confirm views for ready players (host + others)
       this.broadcastStartConfirmToReady();
+      // Update lobby rooms list
+      try { updateHub(); } catch (_) {}
       // If player has not completed selection, prompt them
       if (!(p.faction && p.classKey && p.loadout)) {
         try { client.send('showFCLSelect', { ...buildFCLPayload(id), complete: false }); } catch (_) {}
@@ -507,6 +533,15 @@ class NethackRoom extends Room {
     }
     // Drop mapping for targeted messages
     this.userClients.delete(id);
+    // Update lobby rooms list
+    try {
+      const clientsCount = Array.isArray(this.clients) ? this.clients.length : (this.state.players?.size || 0);
+      if (clientsCount <= 0) {
+        // when room empties, keep it listed until disposed; update count anyway
+      }
+      const md = this.metadata || {};
+      upsertRoom({ roomId: this.roomId, clients: clientsCount | 0, maxClients: this.maxClients | 0, metadata: md });
+    } catch (_) {}
   }
 
   processCommands() {
@@ -595,6 +630,10 @@ class NethackRoom extends Room {
   // Backwards-compatible wrapper (use calculateFOV instead)
   getFOVFor(player) {
     return calculateFOV(player, this.dungeonMap, { players: this.state.players });
+  }
+
+  async onDispose() {
+    try { removeRoom(this.roomId); } catch (_) {}
   }
 }
 
