@@ -14,8 +14,19 @@ const { NethackRoom } = require('./rooms/NethackRoom');
 const { LobbyRoom } = require('./rooms/LobbyRoom');
 // Initialize presence hub (singleton starts its sweep on require)
 require('./presence/PresenceHub');
+// Comprehensive diagnostics + idempotent DB bootstrap
+const { runFullBootstrap } = require('./bootstrap');
 
 const PORT = process.env.PORT || 2567;
+
+// Fire-and-forget bootstrap; surfaces PASS/FAIL logs and any errors
+try {
+  runFullBootstrap()
+    .then(() => console.log('[bootstrap] done'))
+    .catch((e) => console.warn('[bootstrap] error', (e && e.message) || e));
+} catch (e) {
+  console.warn('[bootstrap] fatal sync error', (e && e.message) || e);
+}
 
 // Create a basic Node HTTP server with minimal REST endpoints and attach Colyseus transport
 const httpServer = http.createServer(async (req, res) => {

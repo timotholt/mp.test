@@ -37,6 +37,7 @@ export function initSupabase() {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      storage: window.sessionStorage,
     },
     global: { headers: { 'x-application-name': 'mp.test-client' } },
   });

@@ -283,7 +283,21 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       // Realtime players feed -> update cache, mark recent, render panel
       try {
         lobbyRoom.onMessage('playersList', (players) => {
-          playersCache = Array.isArray(players) ? players : [];
+          // Legacy payload only includes id/name. Merge with existing cache so we don't
+          // blow away presence fields (status/ping) coming from Schema state.
+          const incoming = Array.isArray(players) ? players : [];
+          const prevById = new Map((playersCache || []).map(p => [String(p.id), p]));
+          const merged = incoming.map(p => {
+            const prev = prevById.get(String(p && p.id));
+            return {
+              id: p && p.id,
+              name: p && p.name,
+              // Preserve presence fields when available; legacy list doesn't include them
+              status: prev && typeof prev.status === 'string' ? prev.status : '',
+              pingMs: prev && typeof prev.pingMs === 'number' ? prev.pingMs : 0,
+            };
+          });
+          playersCache = merged;
           playersCache.forEach(p => { if (p && p.id) markRecent(p.id); });
           if (playersPanel) playersPanel.setData(playersCache);
         });
