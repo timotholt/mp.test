@@ -67,6 +67,27 @@ function ensureLoginStyles() {
     backdrop-filter: blur(6px) saturate(1.2);
     box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
   }
+  /* Make browser autofill match our glass style */
+  .input-glass:-webkit-autofill,
+  .input-glass:-webkit-autofill:hover,
+  .input-glass:-webkit-autofill:focus,
+  #overlay input:-webkit-autofill,
+  #overlay input:-webkit-autofill:hover,
+  #overlay input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #eaf6ff !important;
+    caret-color: #eaf6ff;
+    transition: background-color 9999s ease-in-out 0s; /* suppress yellow */
+    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
+    border: 1px solid rgba(120,170,255,0.60);
+    background-clip: content-box;
+  }
+  /* Firefox */
+  .input-glass:-moz-autofill,
+  #overlay input:-moz-autofill {
+    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
+    -moz-text-fill-color: #eaf6ff;
+    caret-color: #eaf6ff;
+  }
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
   .input-glass:hover { border-color: #dff1ff; }
   .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
@@ -209,9 +230,11 @@ export function presentLoginModal() {
   form.className = 'login-form';
 
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
-  const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'you@grim.dark'; emailInput.className = 'input-glass';
+  const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'Enter email address'; emailInput.className = 'input-glass';
+  try { emailInput.id = 'login-email'; } catch (_) {}
   const passLabel = document.createElement('label'); passLabel.textContent = 'Password:';
-  const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'; passInput.className = 'input-glass';
+  const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = 'Enter password'; passInput.className = 'input-glass';
+  try { passInput.id = 'login-password'; } catch (_) {}
 
   // Wrap inputs with optional icons
   const emailWrap = document.createElement('div'); emailWrap.className = 'input-wrap';
@@ -245,6 +268,17 @@ export function presentLoginModal() {
   try { attachTooltip(emailInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(emailInput, 'Enter your email address'); } catch (_) {}
   try { attachTooltip(passInput, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(passInput, 'Enter your password'); } catch (_) {}
 
+  // Prefill from temporary global if returning from Create Account cancel
+  try {
+    if (window.__loginPrefill) {
+      const e = String(window.__loginPrefill.email || '');
+      const p = String(window.__loginPrefill.password || '');
+      if (e) emailInput.value = e;
+      if (p) passInput.value = p;
+      try { delete window.__loginPrefill; } catch (_) {}
+    }
+  } catch (_) {}
+
   // Add to form
   form.appendChild(emailLabel); form.appendChild(emailWrap);
   form.appendChild(passLabel); form.appendChild(passWrap);
@@ -261,7 +295,15 @@ export function presentLoginModal() {
   signUpLink.type = 'button';
   signUpLink.className = 'login-link';
   signUpLink.textContent = 'Create Account';
-  signUpLink.onclick = () => { try { presentCreateAccountModal(); } catch (_) {} };
+  signUpLink.onclick = () => {
+    try {
+      window.__loginPrefill = {
+        email: String(emailInput.value || ''),
+        password: String(passInput.value || ''),
+      };
+    } catch (_) {}
+    try { presentCreateAccountModal(); } catch (_) {}
+  };
   const resetLink = document.createElement('button');
   resetLink.type = 'button';
   resetLink.className = 'login-link';
@@ -269,8 +311,9 @@ export function presentLoginModal() {
   resetLink.onclick = () => { try { presentForgotPasswordModal(); } catch (_) {} };
   // Tooltips on actions (favor bottom-right)
   try { attachTooltip(signInBtn, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
-  try { attachTooltip(signUpLink, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
-  try { attachTooltip(resetLink, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
+  // Place these as bottom hints so they come off the bottom edge of the link
+  try { attachTooltip(signUpLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
+  try { attachTooltip(resetLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
   // Centered primary button
   const linksWrap = document.createElement('div');
   linksWrap.className = 'login-links';

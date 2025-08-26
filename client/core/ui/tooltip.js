@@ -100,6 +100,18 @@ export function detachTooltip(targetEl) {
   if (TIP && TIP.target === targetEl) { TIP.visible = false; TIP.target = null; render(); }
 }
 
+// Immediately hide any visible tooltip and clear target.
+export function hideTooltipNow() {
+  try {
+    ensureTip();
+    if (!TIP) return;
+    TIP.visible = false;
+    TIP.target = null;
+    if (TIP.el) TIP.el.style.display = 'none';
+    if (TIP.line) TIP.line.style.display = 'none';
+  } catch (_) {}
+}
+
 function ensureTip() {
   if (TIP && TIP.el && document.body.contains(TIP.el)) return;
   ensureStyle();

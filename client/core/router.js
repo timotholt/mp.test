@@ -1,5 +1,6 @@
 // Micro Router (plain DOM) — extracted from client/main.js
 // Exports: APP_STATES, makeScreen, setRoute, toggleRenderer
+import { hideTooltipNow } from './ui/tooltip.js';
 
 export const APP_STATES = {
   LOGIN: 'LOGIN',
@@ -45,6 +46,8 @@ export function toggleRenderer(/* visible */) {
 
 export function setRoute(route, payload = {}) {
   currentRoute = route;
+  // Ensure no floating tooltips linger across screens
+  try { hideTooltipNow(); } catch (_) {}
   hideAllScreens();
   const el = screens.get(route);
   if (el) {

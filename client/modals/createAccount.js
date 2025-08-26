@@ -2,9 +2,37 @@
 // Lives under client/modals/ per project convention. Minimal inline styles.
 
 import { initSupabase, signUpWithPassword } from '../core/auth/supabaseAuth.js';
+import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
+import { presentLoginModal } from './login.js';
+
+function ensureCreateAccountStyles() {
+  if (document.getElementById('create-account-autofill-style')) return;
+  const st = document.createElement('style');
+  st.id = 'create-account-autofill-style';
+  st.textContent = `
+  /* Make browser autofill match our glass style inside overlay */
+  #overlay input:-webkit-autofill,
+  #overlay input:-webkit-autofill:hover,
+  #overlay input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #eaf6ff !important;
+    caret-color: #eaf6ff;
+    transition: background-color 9999s ease-in-out 0s;
+    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
+    border: 1px solid rgba(120,170,255,0.60);
+    background-clip: content-box;
+  }
+  #overlay input:-moz-autofill {
+    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
+    -moz-text-fill-color: #eaf6ff;
+    caret-color: #eaf6ff;
+  }
+  `;
+  document.head.appendChild(st);
+}
 
 export function presentCreateAccountModal() {
   initSupabase();
+  ensureCreateAccountStyles();
   const id = 'CREATE_ACCOUNT_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
@@ -37,7 +65,7 @@ export function presentCreateAccountModal() {
   center.style.padding = '24px';
 
   const card = document.createElement('div');
-  card.style.width = 'min(560px, calc(100vw - 32px))';
+  card.style.width = 'min(720px, calc(100vw - 32px))';
   card.style.color = '#dff1ff';
   card.style.borderRadius = '14px';
   card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
@@ -52,31 +80,88 @@ export function presentCreateAccountModal() {
   title.style.fontWeight = '700';
   title.style.marginBottom = '8px';
 
+  // Use same grid layout as login, but place art on the right
+  const grid = document.createElement('div'); grid.className = 'login-grid';
+  // Fallback inline styles if login styles are not present
+  try { grid.style.display = 'grid'; grid.style.gridTemplateColumns = '1fr 1.4fr'; grid.style.gap = '1rem'; grid.style.alignItems = 'stretch'; } catch (_) {}
+  const art = document.createElement('div'); art.className = 'login-art';
+  try { art.style.borderRadius = '10px'; art.style.border = '1px dashed rgba(120,170,255,0.45)'; art.style.minHeight = '220px'; art.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16))'; } catch (_) {}
+  const main = document.createElement('div'); main.className = 'login-main';
+  try { main.style.display = 'flex'; main.style.flexDirection = 'column'; main.style.minWidth = '0'; } catch (_) {}
+
   const form = document.createElement('div');
+  form.className = 'login-form';
+  // Inline grid style kept as fallback if login styles were not injected yet
   form.style.display = 'grid';
   form.style.gridTemplateColumns = 'max-content 1fr';
-  form.style.gap = '10px';
+  form.style.gap = '10px 10px';
   form.style.alignItems = 'center';
 
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
-  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'you@grim.dark';
+  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.textAlign = 'right'; emailLabel.style.opacity = '0.95'; } catch (_) {}
+  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address';
   styleInput(email);
-  const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:';
-  const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022';
+  const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:'; try { pwLabel.style.textAlign = 'right'; pwLabel.style.opacity = '0.95'; } catch (_) {}
+  const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = 'Enter password';
   styleInput(pw);
-  const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:';
-  const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022';
+  const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:'; try { pw2Label.style.textAlign = 'right'; pw2Label.style.opacity = '0.95'; } catch (_) {}
+  const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = 'Repeat password';
   styleInput(pw2);
 
-  form.appendChild(emailLabel); form.appendChild(email);
-  form.appendChild(pwLabel); form.appendChild(pw);
-  form.appendChild(pw2Label); form.appendChild(pw2);
+  // Wrap inputs to support right-side eye buttons like on login modal
+  const emailWrap = document.createElement('div'); emailWrap.className = 'input-wrap';
+  const pwWrap = document.createElement('div'); pwWrap.className = 'input-wrap'; try { pwWrap.classList.add('has-right'); } catch (_) {}
+  const pw2Wrap = document.createElement('div'); pw2Wrap.className = 'input-wrap'; try { pw2Wrap.classList.add('has-right'); } catch (_) {}
+
+  // Eye icons
+  const eyeOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 3l18 18"/><path d="M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17.7 17.7 0 0 1-3.2 3.8"/><path d="M6.1 6.1A17.7 17.7 0 0 0 2 12s4 7 10 7c1.1 0 2.1-.2 3.1-.5"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>';
+
+  const eyeBtn1 = document.createElement('button'); eyeBtn1.type = 'button'; eyeBtn1.className = 'input-icon-btn right';
+  const eyeBtn2 = document.createElement('button'); eyeBtn2.type = 'button'; eyeBtn2.className = 'input-icon-btn right';
+  let pw1Visible = false; let pw2Visible = false;
+  eyeBtn1.innerHTML = '<div class="icon-wrap icon-eye">' + eyeOpen + '</div>';
+  eyeBtn2.innerHTML = '<div class="icon-wrap icon-eye">' + eyeOpen + '</div>';
+  eyeBtn1.onclick = () => { try { pw1Visible = !pw1Visible; pw.type = pw1Visible ? 'text' : 'password'; eyeBtn1.innerHTML = '<div class="icon-wrap icon-eye">' + (pw1Visible ? eyeOff : eyeOpen) + '</div>'; updateTooltip(eyeBtn1, pw1Visible ? 'Hide password' : 'Show password'); } catch (_) {} };
+  eyeBtn2.onclick = () => { try { pw2Visible = !pw2Visible; pw2.type = pw2Visible ? 'text' : 'password'; eyeBtn2.innerHTML = '<div class="icon-wrap icon-eye">' + (pw2Visible ? eyeOff : eyeOpen) + '</div>'; updateTooltip(eyeBtn2, pw2Visible ? 'Hide password' : 'Show password'); } catch (_) {} };
+  try { attachTooltip(eyeBtn1, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(eyeBtn1, 'Show password'); } catch (_) {}
+  try { attachTooltip(eyeBtn2, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(eyeBtn2, 'Show password'); } catch (_) {}
+
+  // Assemble wraps
+  emailWrap.appendChild(email);
+  pwWrap.appendChild(pw); pwWrap.appendChild(eyeBtn1);
+  pw2Wrap.appendChild(pw2); pw2Wrap.appendChild(eyeBtn2);
+
+  form.appendChild(emailLabel); form.appendChild(emailWrap);
+  form.appendChild(pwLabel); form.appendChild(pwWrap);
+  form.appendChild(pw2Label); form.appendChild(pw2Wrap);
+
+  // Prefill from login modal if present
+  try {
+    const loginEmail = document.getElementById('login-email');
+    const loginPass = document.getElementById('login-password');
+    if (loginEmail && loginEmail.value) email.value = String(loginEmail.value || '');
+    if (loginPass && loginPass.value) {
+      const val = String(loginPass.value || '');
+      pw.value = val; pw2.value = val;
+    }
+    // Fallback to temp prefill object if DOM elements aren't present
+    if ((!email.value || !pw.value) && window.__loginPrefill) {
+      const e = String(window.__loginPrefill.email || '');
+      const p = String(window.__loginPrefill.password || '');
+      if (e && !email.value) email.value = e;
+      if (p) { if (!pw.value) pw.value = p; if (!pw2.value) pw2.value = p; }
+      try { delete window.__loginPrefill; } catch (_) {}
+    }
+  } catch (_) {}
 
   const actions = document.createElement('div');
+  actions.className = 'login-actions';
+  // Keep inline spacing as fallback if login styles are not injected
   actions.style.display = 'flex';
-  actions.style.gap = '10px';
-  actions.style.justifyContent = 'flex-end';
-  actions.style.marginTop = '12px';
+  actions.style.flexDirection = 'column';
+  actions.style.alignItems = 'center';
+  actions.style.gap = '8px';
+  actions.style.marginTop = '16px';
 
   const createBtn = makeBtn('Create');
   const cancelBtn = makeBtn('Cancel');
@@ -95,27 +180,66 @@ export function presentCreateAccountModal() {
     try {
       disable(true);
       await signUpWithPassword(e, p1);
-      setStatus('Check your email for a verification link. Then sign in.');
+      renderResult('Account created. Check your email to verify.');
     } catch (err) {
-      setStatus(err && (err.message || String(err)) || 'Sign up failed');
+      const msg = (err && (err.message || String(err))) || '';
+      if ((err && (err.code === 'user_already_exists' || err.status === 400)) || /already\s*(exists|registered)/i.test(msg)) {
+        renderResult('Account already exists. Check your email for verification email.');
+      } else {
+        setStatus(msg || 'Sign up failed');
+      }
     } finally {
       disable(false);
     }
   };
-  cancelBtn.onclick = () => { try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {} };
+  cancelBtn.onclick = () => {
+    // Prefill login with current entries for convenience
+    try { window.__loginPrefill = { email: String(email.value || ''), password: String(pw.value || '') }; } catch (_) {}
+    try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+    try { presentLoginModal(); } catch (_) {}
+  };
 
   actions.appendChild(cancelBtn);
   actions.appendChild(createBtn);
 
-  card.appendChild(title);
-  card.appendChild(form);
-  card.appendChild(actions);
-  card.appendChild(status);
+  // Build right-hand art layout: main content on left, art panel on right
+  main.appendChild(title);
+  main.appendChild(form);
+  main.appendChild(actions);
+  main.appendChild(status);
+  grid.appendChild(main);
+  grid.appendChild(art);
+  card.appendChild(grid);
   center.appendChild(card);
   content.appendChild(center);
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disable(d) { [email, pw, pw2, createBtn, cancelBtn].forEach(el => { try { el.disabled = !!d; } catch (_) {} }); }
+
+  function renderResult(message) {
+    try {
+      card.innerHTML = '';
+      const ok = document.createElement('div');
+      ok.textContent = message;
+      ok.style.margin = '4px 0 10px 0';
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.textContent = 'Go to Login';
+      link.style.cursor = 'pointer';
+      link.style.textDecoration = 'underline';
+      link.style.background = 'none';
+      link.style.border = '0';
+      link.style.color = '#dff1ff';
+      link.onclick = () => {
+        try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+        try { presentLoginModal(); } catch (_) {}
+      };
+      card.appendChild(ok);
+      card.appendChild(link);
+    } catch (_) {
+      setStatus(message);
+    }
+  }
 }
 
 function makeBtn(label) {
