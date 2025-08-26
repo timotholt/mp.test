@@ -108,4 +108,4 @@ async function listRecentGames(limit = 200) {
   }
 }
 
-module.exports = { saveSnapshot, loadLatestSnapshot, listRecentGames };
+module.exports = { saveSnapshot, loadLatestSnapshot, listRecentGames, getClient };
