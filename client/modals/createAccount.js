@@ -80,7 +80,7 @@ export function presentCreateAccountModal() {
   title.style.fontWeight = '700';
   title.style.marginBottom = '8px';
 
-  // Use same grid layout as login, but place art on the right
+  // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
   // Fallback inline styles if login styles are not present
   try { grid.style.display = 'grid'; grid.style.gridTemplateColumns = '1fr 1.4fr'; grid.style.gap = '1rem'; grid.style.alignItems = 'stretch'; } catch (_) {}
@@ -98,13 +98,13 @@ export function presentCreateAccountModal() {
   form.style.alignItems = 'center';
 
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.textAlign = 'right'; emailLabel.style.opacity = '0.95'; } catch (_) {}
-  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address';
+  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address'; try { email.className = 'input-glass'; } catch (_) {}
   styleInput(email);
   const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:'; try { pwLabel.style.textAlign = 'right'; pwLabel.style.opacity = '0.95'; } catch (_) {}
-  const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = 'Enter password';
+  const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = 'Enter password'; try { pw.className = 'input-glass'; } catch (_) {}
   styleInput(pw);
   const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:'; try { pw2Label.style.textAlign = 'right'; pw2Label.style.opacity = '0.95'; } catch (_) {}
-  const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = 'Repeat password';
+  const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = 'Repeat password'; try { pw2.className = 'input-glass'; } catch (_) {}
   styleInput(pw2);
 
   // Wrap inputs to support right-side eye buttons like on login modal
@@ -135,6 +135,17 @@ export function presentCreateAccountModal() {
   form.appendChild(pwLabel); form.appendChild(pwWrap);
   form.appendChild(pw2Label); form.appendChild(pw2Wrap);
 
+  // Status row under Confirm (hidden by default)
+  const matchStatus = document.createElement('div');
+  try {
+    matchStatus.style.display = 'none';
+    matchStatus.style.gridColumn = '2 / 3';
+    matchStatus.style.fontSize = '12.5px';
+    matchStatus.style.opacity = '0.95';
+    matchStatus.style.marginTop = '-4px';
+  } catch (_) {}
+  form.appendChild(matchStatus);
+
   // Prefill from login modal if present
   try {
     const loginEmail = document.getElementById('login-email');
@@ -156,12 +167,13 @@ export function presentCreateAccountModal() {
 
   const actions = document.createElement('div');
   actions.className = 'login-actions';
-  // Keep inline spacing as fallback if login styles are not injected
+  // Side-by-side buttons
   actions.style.display = 'flex';
-  actions.style.flexDirection = 'column';
+  actions.style.flexDirection = 'row';
+  actions.style.justifyContent = 'flex-end';
   actions.style.alignItems = 'center';
-  actions.style.gap = '8px';
-  actions.style.marginTop = '16px';
+  actions.style.gap = '10px';
+  actions.style.marginTop = '12px';
 
   const createBtn = makeBtn('Create');
   const cancelBtn = makeBtn('Cancel');
@@ -169,6 +181,9 @@ export function presentCreateAccountModal() {
   const status = document.createElement('div');
   status.style.marginTop = '8px';
   status.style.minHeight = '1.2em';
+
+  // Start disabled until valid
+  try { createBtn.disabled = true; } catch (_) {}
 
   createBtn.onclick = async () => {
     setStatus('');
@@ -202,19 +217,72 @@ export function presentCreateAccountModal() {
   actions.appendChild(cancelBtn);
   actions.appendChild(createBtn);
 
-  // Build right-hand art layout: main content on left, art panel on right
+  // Build layout: art panel on left, main content on right
   main.appendChild(title);
   main.appendChild(form);
   main.appendChild(actions);
   main.appendChild(status);
-  grid.appendChild(main);
   grid.appendChild(art);
+  grid.appendChild(main);
   card.appendChild(grid);
   center.appendChild(card);
   content.appendChild(center);
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disable(d) { [email, pw, pw2, createBtn, cancelBtn].forEach(el => { try { el.disabled = !!d; } catch (_) {} }); }
+
+  // Button hover highlight to match login
+  function wireBtnHover(b) {
+    try {
+      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
+      const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
+      b.addEventListener('mouseenter', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('mouseleave', () => { b.style.border = baseBorder; b.style.boxShadow = baseShadow; });
+      b.addEventListener('focus', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('blur', () => { b.style.border = baseBorder; b.style.boxShadow = baseShadow; });
+    } catch (_) {}
+  }
+  wireBtnHover(createBtn); wireBtnHover(cancelBtn);
+
+  // Input hover/focus highlight similar to login
+  function wireInputHoverFocus(input) {
+    try {
+      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)';
+      const focusShadow = 'inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30)';
+      input.addEventListener('mouseenter', () => { if (document.activeElement !== input) input.style.border = '#dff1ff 1px solid'; });
+      input.addEventListener('mouseleave', () => { if (document.activeElement !== input) input.style.border = baseBorder; });
+      input.addEventListener('focus', () => { input.style.border = '#dff1ff 1px solid'; input.style.boxShadow = focusShadow; });
+      input.addEventListener('blur', () => { input.style.border = baseBorder; input.style.boxShadow = baseShadow; });
+    } catch (_) {}
+  }
+  wireInputHoverFocus(email); wireInputHoverFocus(pw); wireInputHoverFocus(pw2);
+
+  // Validation + status row + enable rules
+  function updateState() {
+    const e = String(email.value || '').trim();
+    const p1 = String(pw.value || '');
+    const p2 = String(pw2.value || '');
+    let ok = false;
+    if (p1 && p2) {
+      matchStatus.style.display = '';
+      if (p1 === p2) {
+        matchStatus.textContent = 'Passwords match';
+        try { matchStatus.style.color = '#9fffb3'; } catch (_) {}
+      } else {
+        matchStatus.textContent = "Passwords don't match";
+        try { matchStatus.style.color = '#ffd1d1'; } catch (_) {}
+      }
+    } else {
+      matchStatus.style.display = 'none';
+    }
+    if (e && p1 && p2 && p1 === p2) ok = true;
+    try { createBtn.disabled = !ok; } catch (_) {}
+  }
+  [email, pw, pw2].forEach(el => { try { el.addEventListener('input', updateState); } catch (_) {} });
+  // Initialize
+  updateState();
 
   function renderResult(message) {
     try {
