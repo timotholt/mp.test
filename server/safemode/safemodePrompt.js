@@ -10,7 +10,7 @@ function promptForKeyWithTimeout(timeoutMs = 5000) {
     if (!stdin || !stdin.isTTY) {
       // No TTY available. Optional fallback: allow line-based input if FORCE_SAFEMODE_ON_BOOT is set.
       const force = String(process.env.FORCE_SAFEMODE_ON_BOOT || '').toLowerCase();
-      if (force === '1' || force === 'true' || force === 'yes') {
+      if (force === '1' || force === 'true') {
         try {
           const rl = require('readline').createInterface({ input: stdin, output: process.stdout });
           const timer = setTimeout(() => { try { rl.close(); } catch (_) {}; resolve(null); }, timeoutMs);
@@ -162,7 +162,7 @@ async function safeMode() {
   const hasVal = (envVal !== undefined) && (String(envVal).trim() !== '');
   const timeoutMs = hasVal ? (parseInt(envVal, 10) || 0) : 5000;
   const force = String(process.env.FORCE_SAFEMODE_ON_BOOT || '').toLowerCase();
-  const allowFallback = (force === '1' || force === 'true' || force === 'yes');
+  const allowFallback = (force === '1' || force === 'true');
   const hasTTY = !!(process.stdin && process.stdin.isTTY);
   const showPrompt = timeoutMs > 0 && (hasTTY || allowFallback);
 
@@ -170,7 +170,7 @@ async function safeMode() {
   if (timeoutMs > 0) {
     const secs = Math.max(1, Math.round(timeoutMs / 1000));
     const tip = (!hasTTY && !allowFallback)
-      ? " Tip: set FORCE_SAFEMODE_ON_BOOT=1 in server/.env or run 'npm run server' in a terminal to interact."
+      ? " Tip: set FORCE_SAFEMODE_ON_BOOT=1 (or true) in server/.env or run 'npm run server' in a terminal to interact."
       : '';
     console.log(`[boot] Server starting in ${secs} seconds. Press 'S' to enter safemode menu.${tip}`);
   }
@@ -186,7 +186,7 @@ async function safeMode() {
       } else if (key) {
         console.log(`[boot] Key '${String(key)}' pressed; ignoring (only 'S' enters safemode)`);
       } else {
-        console.log('[boot] No key pressed; continuing normal boot');
+        console.log('No keyboard input, skipping safemode and booting normally.');
       }
     } catch (e) {
       console.warn('[boot] prompt error', (e && e.message) || e);
@@ -194,6 +194,7 @@ async function safeMode() {
   } else if (timeoutMs > 0) {
     // No interactive input available; still respect the countdown delay
     await new Promise(resolve => setTimeout(resolve, timeoutMs));
+    console.log('No keyboard input, skipping safemode and booting normally.');
   }
 
   // No auto-bootstrap here; bootstrap should only run via safemode menu (I/V)
