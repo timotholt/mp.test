@@ -109,44 +109,52 @@ async function deleteAll(client) {
 }
 
 async function runSafemodeMenu() {
-  console.log('');
-  console.log('Safemode menu:');
-  console.log('V = (V)erify Supabase settings and schema');
-  console.log('I = (I)nit Supabase schema (then verify)');
-  console.log('S = delete all (S)avefiles');
-  console.log('U = delete all (U)ser Accounts');
-  console.log('C = delete all (C)hat Messages');
-  console.log('A = delete (A)ll (Savefiles, User Accounts, Chat Messages)');
-  console.log('Waiting 30s for selection...');
+  // Loop until user explicitly starts the server with 'S'
+  for (;;) {
+    console.log('');
+    console.log('Safemode menu:');
+    console.log('S = (S)tart server');
+    console.log('V = (V)erify Supabase settings and schema');
+    console.log('I = (I)nit Supabase schema (then verify)');
+    console.log('D = (D)elete all Savefiles');
+    console.log('U = delete all (U)ser Accounts');
+    console.log('C = delete all (C)hat Messages');
+    console.log('A = delete (A)ll (Savefiles, User Accounts, Chat Messages)');
+    console.log('Q = (Q)uit');
+    console.log('Waiting 30s for selection...');
 
-  const key = await promptForKeyWithTimeout(30000);
-  if (!key) { console.log('[safemode] no selection; continuing'); return; }
-  const k = String(key).toUpperCase();
-  let client = null;
-  try {
-    if (k === 'V' || k === 'I') {
-      // Temporarily override RUN_DB_BOOTSTRAP for this run
-      const prev = process.env.RUN_DB_BOOTSTRAP;
-      try {
-        process.env.RUN_DB_BOOTSTRAP = (k === 'I') ? 'true' : 'false';
-        const { runFullBootstrap } = require('../bootstrap');
-        await runFullBootstrap();
-      } catch (e) {
-        console.log('[safemode] bootstrap run failed:', (e && e.message) || e);
-      } finally {
-        if (prev === undefined) delete process.env.RUN_DB_BOOTSTRAP; else process.env.RUN_DB_BOOTSTRAP = prev;
+    const key = await promptForKeyWithTimeout(30000);
+    if (!key) { console.log('[safemode] no selection; menu will repeat'); continue; }
+    const k = String(key).toUpperCase();
+    if (k === 'S') { console.log('[safemode] starting server...'); return; }
+    if (k === 'Q') { console.log('[safemode] quitting'); process.exit(0); }
+
+    let client = null;
+    try {
+      if (k === 'V' || k === 'I') {
+        // Temporarily override RUN_DB_BOOTSTRAP for this run
+        const prev = process.env.RUN_DB_BOOTSTRAP;
+        try {
+          process.env.RUN_DB_BOOTSTRAP = (k === 'I') ? 'true' : 'false';
+          const { runFullBootstrap } = require('../bootstrap');
+          await runFullBootstrap();
+        } catch (e) {
+          console.log('[safemode] bootstrap run failed:', (e && e.message) || e);
+        } finally {
+          if (prev === undefined) delete process.env.RUN_DB_BOOTSTRAP; else process.env.RUN_DB_BOOTSTRAP = prev;
+        }
+      } else if (k === 'D' || k === 'U' || k === 'C' || k === 'A') {
+        client = await _connectDb();
+        if (!client) { console.log('[safemode] no DB connection; aborting action'); continue; }
+        if (k === 'D') { await deleteSavefiles(client); }
+        else if (k === 'U') { await deleteUserAccounts(client); }
+        else if (k === 'C') { await deleteChatMessages(client); }
+        else if (k === 'A') { await deleteAll(client); }
       }
-    } else if (k === 'S' || k === 'U' || k === 'C' || k === 'A') {
-      client = await _connectDb();
-      if (!client) { console.log('[safemode] no DB connection; aborting'); return; }
-      if (k === 'S') { await deleteSavefiles(client); }
-      else if (k === 'U') { await deleteUserAccounts(client); }
-      else if (k === 'C') { await deleteChatMessages(client); }
-      else if (k === 'A') { await deleteAll(client); }
+      else { console.log(`[safemode] unknown option '${k}'`); }
+    } finally {
+      try { if (client) await client.end(); } catch (_) {}
     }
-    else { console.log(`[safemode] unknown option '${k}'`); }
-  } finally {
-    try { if (client) await client.end(); } catch (_) {}
   }
 }
 
