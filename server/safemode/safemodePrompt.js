@@ -13,7 +13,7 @@ function promptForKeyWithTimeout(timeoutMs = 5000) {
       if (force === '1' || force === 'true') {
         try {
           const rl = require('readline').createInterface({ input: stdin, output: process.stdout });
-          const timer = setTimeout(() => { try { rl.close(); } catch (_) {}; resolve(null); }, timeoutMs);
+          let timer; if (timeoutMs > 0) { timer = setTimeout(() => { try { rl.close(); } catch (_) {}; resolve(null); }, timeoutMs); }
           rl.question("Type 'S' then Enter to enter safemode (or wait to continue): ", (answer) => {
             try { clearTimeout(timer); } catch (_) {}
             try { rl.close(); } catch (_) {}
@@ -53,7 +53,7 @@ function promptForKeyWithTimeout(timeoutMs = 5000) {
       stdin.setRawMode && stdin.setRawMode(true);
       stdin.resume();
       stdin.on('data', onData);
-      timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs);
+      if (timeoutMs > 0) { timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs); }
     } catch (_) {
       // If raw mode fails, just resolve immediately
       try { cleanup(); } catch (__) {}
@@ -121,9 +121,9 @@ async function runSafemodeMenu() {
     console.log('C = delete all (C)hat Messages');
     console.log('A = delete (A)ll (Savefiles, User Accounts, Chat Messages)');
     console.log('Q = (Q)uit');
-    console.log('Waiting 30s for selection...');
+    console.log('Waiting for selection...');
 
-    const key = await promptForKeyWithTimeout(30000);
+    const key = await promptForKeyWithTimeout(0);
     if (!key) { console.log('[safemode] no selection; menu will repeat'); continue; }
     const k = String(key).toUpperCase();
     if (k === 'S') { console.log('[safemode] starting server...'); return; }
