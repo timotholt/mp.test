@@ -35,8 +35,8 @@ function ensureLoginStyles() {
     backdrop-filter: var(--sf-tip-backdrop, blur(8px) saturate(1.25));
     padding: 1rem; /* Ensure inner padding so nothing touches edges */
   }
-  .login-title { font-size: 22px; font-weight: 700; margin: 0 0 0 0; }
-  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 20px 0; }
+  .login-title { font-size: 22px; font-weight: 700; margin: 0 0 0 0; user-select: none; }
+  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 20px 0; user-select: none; }
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
   .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
   .btn:disabled { opacity: 0.6; cursor: default; }
@@ -57,9 +57,9 @@ function ensureLoginStyles() {
   .icon-wrap.icon-google { transform: translateY(-4px); }
   .icon-wrap.icon-discord svg { transform: scale(1.28); transform-origin: 50% 50%; }
   .icon-wrap.icon-eye svg { transform: scale(1.35); transform-origin: 50% 50%; }
-  .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; }
+  .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; user-select: none; }
   .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
-  .login-form label { opacity: 0.95; text-align: right; }
+  .login-form label { opacity: 0.95; text-align: right; user-select: none; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
     border: 1px solid rgba(120,170,255,0.60); border-radius: 10px; padding: 0 10px; height: 46px;
@@ -105,7 +105,7 @@ function ensureLoginStyles() {
   .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
   .login-link { color: #dff1ff; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
   .login-link:hover { color: #ffffff; opacity: 1; }
-  .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); }
+  .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); user-select: none; }
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
   .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); min-height: 220px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }

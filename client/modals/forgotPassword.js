@@ -4,6 +4,7 @@
 import { initSupabase, sendPasswordReset } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
+import { presentResetPasswordRequestModal } from './resetRequestConfirm.js';
 
 export function presentForgotPasswordModal() {
   initSupabase();
@@ -58,24 +59,25 @@ export function presentForgotPasswordModal() {
   title.style.fontSize = '22px';
   title.style.fontWeight = '700';
   title.style.marginBottom = '2px';
+  title.style.userSelect = 'none';
 
   // Subtitle with random grimdark taglines (20), styled per uiStandards
   const taglines = [
     'A whisper in the dark says: change your key.',
-    'Even shadows forget. We won’t—verify anew.',
+    'Even shadows forget. We won’t — verify anew.',
     'The dungeon keeps secrets. Rotate yours.',
     'Keys rust in the abyss. Forge another.',
     'Mistakes drift like echoes. Reset and return.',
     'A lost word isn’t the end—only a turning.',
-    'The gate creaks. Offer a new sigil.',
+    'The gate creaks. Offer it a new sigil.',
     'Trust is a candle; relight it.',
     'Courage, then cadence. Reset, then stride.',
     'The lock smiles. Show it a fresh grin.',
     'When memory falters, resolve sharpens.',
     'New key, same legend. Continue.',
     'The dark tests; you adapt.',
-    'Let the old passphrase rest. Raise the new.',
-    'All doors can open—bring the right word.',
+    'Let the old password rest. Raise the new.',
+    'All doors can open — bring the right word.',
     'From error, a path. From path, return.',
     'Your tale pauses, not ends. Reset onward.',
     'A seal breaks; another is set.',
@@ -84,7 +86,7 @@ export function presentForgotPasswordModal() {
   ];
   const subtitle = document.createElement('div');
   subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = '#cfe6ff'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   const form = document.createElement('div');
   form.style.display = 'grid';
@@ -92,7 +94,7 @@ export function presentForgotPasswordModal() {
   form.style.gap = '10px';
   form.style.alignItems = 'center';
 
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
+  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.userSelect = 'none'; } catch (_) {}
   const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address';
   try { email.className = 'input-glass'; } catch (_) {}
   styleInput(email);
@@ -115,6 +117,7 @@ export function presentForgotPasswordModal() {
   const status = document.createElement('div');
   status.style.marginTop = '8px';
   status.style.minHeight = '1.2em';
+  status.style.userSelect = 'none';
 
   // Hover/focus behavior to match Login/Create
   function wireBtnHover(b) {
@@ -174,7 +177,9 @@ export function presentForgotPasswordModal() {
     try {
       disable(true);
       await sendPasswordReset(e);
-      setStatus('If an account exists, a reset email has been sent.');
+      // After a successful request, show confirmation modal and close this one
+      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+      try { presentResetPasswordRequestModal(e); } catch (_) {}
     } catch (err) {
       setStatus(err && (err.message || String(err)) || 'Unable to send reset email');
     } finally {

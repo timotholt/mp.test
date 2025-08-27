@@ -4,6 +4,7 @@
 import { initSupabase, signUpWithPassword } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
+import { presentForgotPasswordModal } from './forgotPassword.js';
 
 function ensureCreateAccountStyles() {
   if (document.getElementById('create-account-autofill-style')) return;
@@ -77,10 +78,11 @@ export function presentCreateAccountModal() {
   card.style.padding = '16px';
 
   const title = document.createElement('div');
-  title.textContent = 'Create Account';
+  title.textContent = 'Create Grimdark Account';
   title.style.fontSize = '22px';
   title.style.fontWeight = '700';
   title.style.marginBottom = '2px';
+  title.style.userSelect = 'none';
 
   // Fun taglines shown under the title. Easy to edit.
   const taglines = [
@@ -97,7 +99,7 @@ export function presentCreateAccountModal() {
     'We have cookies. They may be cursed.',
     'Glory or grave. Sometimes both.',
     'Equip courage. Unequip hesitation.',
-    'The dungeon hums. It’s hungry.',
+    'The dungeon growls. It’s hungry.',
     'Step lightly. The floor remembers.',
     'Your legend awaits… with a wicked grin.',
     'Ink your pact. Adventure signs back.',
@@ -107,7 +109,7 @@ export function presentCreateAccountModal() {
   ];
   const subtitle = document.createElement('div');
   subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 16px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 16px 0'; subtitle.style.color = '#cfe6ff'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
@@ -126,13 +128,13 @@ export function presentCreateAccountModal() {
   form.style.gap = '10px 10px';
   form.style.alignItems = 'center';
 
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.textAlign = 'right'; emailLabel.style.opacity = '0.95'; } catch (_) {}
+  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.textAlign = 'right'; emailLabel.style.opacity = '0.95'; emailLabel.style.userSelect = 'none'; } catch (_) {}
   const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address'; try { email.className = 'input-glass'; } catch (_) {}
   styleInput(email);
-  const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:'; try { pwLabel.style.textAlign = 'right'; pwLabel.style.opacity = '0.95'; } catch (_) {}
+  const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:'; try { pwLabel.style.textAlign = 'right'; pwLabel.style.opacity = '0.95'; pwLabel.style.userSelect = 'none'; } catch (_) {}
   const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = 'Enter password'; try { pw.className = 'input-glass'; } catch (_) {}
   styleInput(pw);
-  const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:'; try { pw2Label.style.textAlign = 'right'; pw2Label.style.opacity = '0.95'; } catch (_) {}
+  const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:'; try { pw2Label.style.textAlign = 'right'; pw2Label.style.opacity = '0.95'; pw2Label.style.userSelect = 'none'; } catch (_) {}
   const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = 'Repeat password'; try { pw2.className = 'input-glass'; } catch (_) {}
   styleInput(pw2);
 
@@ -176,6 +178,7 @@ export function presentCreateAccountModal() {
     matchStatus.style.fontSize = '12.5px';
     matchStatus.style.opacity = '0.95';
     matchStatus.style.marginTop = '-4px';
+    matchStatus.style.userSelect = 'none';
   } catch (_) {}
   form.appendChild(matchStatus);
 
@@ -217,6 +220,7 @@ export function presentCreateAccountModal() {
   const status = document.createElement('div');
   status.style.marginTop = '8px';
   status.style.minHeight = '1.2em';
+  status.style.userSelect = 'none';
 
   // Start disabled until valid
   try { createBtn.disabled = true; } catch (_) {}
@@ -230,12 +234,17 @@ export function presentCreateAccountModal() {
     if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
     try {
       disable(true);
-      await signUpWithPassword(e, p1);
-      renderResult('Account created. Check your email to verify.');
+      const data = await signUpWithPassword(e, p1);
+      // Supabase may return success with identities: [] if the user already exists (anti-enumeration)
+      if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        renderResult('exists', e);
+      } else {
+        renderResult('success', e);
+      }
     } catch (err) {
       const msg = (err && (err.message || String(err))) || '';
       if ((err && (err.code === 'user_already_exists' || err.status === 400)) || /already\s*(exists|registered)/i.test(msg)) {
-        renderResult('Account already exists. Check your email for verification email.');
+        renderResult('exists', e);
       } else {
         setStatus(msg || 'Sign up failed');
       }
@@ -369,29 +378,135 @@ export function presentCreateAccountModal() {
     try { email.focus(); } catch (_) {}
   } catch (_) {}
 
-  function renderResult(message) {
+  function renderResult(kind, emailValue) {
     try {
+      // Rebuild the card content to match UI guidelines
       card.innerHTML = '';
-      const ok = document.createElement('div');
-      ok.textContent = message;
-      ok.style.margin = '4px 0 10px 0';
-      const link = document.createElement('button');
-      link.type = 'button';
-      link.textContent = 'Go to Login';
-      link.style.cursor = 'pointer';
-      link.style.textDecoration = 'underline';
-      link.style.background = 'none';
-      link.style.border = '0';
-      link.style.color = '#dff1ff';
-      link.onclick = () => {
+      // Compact width for the result (similar to reset confirmation)
+      if (kind === 'success' || kind === 'exists') {
+        try {
+          const narrow = 'min(420px, calc(100vw - 32px))';
+          card.style.width = narrow; card.style.maxWidth = narrow;
+        } catch (_) {}
+      }
+
+      const wrap = document.createElement('div');
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      wrap.style.minWidth = '0';
+
+      const resTitle = document.createElement('div');
+      resTitle.style.fontSize = '22px';
+      resTitle.style.fontWeight = '700';
+      resTitle.style.marginBottom = '2px';
+      resTitle.style.userSelect = 'none';
+      resTitle.textContent = kind === 'success' ? 'Grimdark Account Created' : 'Account Already Exists';
+
+      const resSub = document.createElement('div');
+      resSub.style.fontSize = '13px';
+      resSub.style.opacity = '0.9';
+      resSub.style.margin = '0 0 20px 0';
+      resSub.style.color = '#cfe6ff';
+      resSub.style.userSelect = 'none';
+      if (kind === 'success') {
+        // Use the same tagline pool as the main modal
+        try { resSub.textContent = taglines[Math.floor(Math.random() * taglines.length)]; } catch (_) { resSub.textContent = 'Welcome, brave soul.'; }
+      } else {
+        // Exists view should also show a tagline under the title
+        try { resSub.textContent = taglines[Math.floor(Math.random() * taglines.length)]; } catch (_) { resSub.textContent = 'A familiar echo in the dark.'; }
+      }
+
+      const resStatus = document.createElement('div');
+      resStatus.style.minHeight = '1.2em';
+      resStatus.style.userSelect = 'none';
+      // Clearer whitespace between tagline and message
+      resStatus.style.marginTop = '8px';
+      // Extra whitespace after message for the 'exists' view
+      resStatus.style.marginBottom = (kind === 'exists') ? '10px' : '0';
+      // Success: explicit verification instruction with email; Exists: show email only
+      if (kind === 'success') {
+        const shown = String(emailValue || '').trim();
+        resStatus.textContent = shown
+          ? `Check your email at ${shown} to verify your account, then return to sign in.`
+          : 'Check your email to verify your account, then return to sign in.';
+      } else {
+        // Inline the email into the exists message
+        const shown = String(emailValue || '').trim();
+        resStatus.textContent = shown
+          ? `An account with email ${shown} already exists. You can sign in or reset your password.`
+          : 'An account with this email already exists. You can sign in or reset your password.';
+      }
+
+      const resActions = document.createElement('div');
+      resActions.className = 'login-actions';
+      resActions.style.display = 'flex';
+      resActions.style.flexDirection = 'row';
+      resActions.style.justifyContent = 'flex-end';
+      resActions.style.alignItems = 'center';
+      resActions.style.gap = '10px';
+      // Keep a comfortable gap above the buttons; exists needs a bit more space
+      resActions.style.marginTop = (kind === 'exists') ? '28px' : '16px';
+
+      const goLogin = makeBtn('Go To Login');
+      const resetBtn = kind === 'exists' ? makeBtn('Forgot Password') : null;
+      try { attachTooltip(goLogin, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(goLogin, 'Return to the login page'); } catch (_) {}
+      if (resetBtn) { try { attachTooltip(resetBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(resetBtn, 'Reset your password'); } catch (_) {} }
+      // Match hover/focus visuals used elsewhere
+      try { wireBtnHover(goLogin); } catch (_) {}
+      if (resetBtn) { try { wireBtnHover(resetBtn); } catch (_) {} }
+
+    goLogin.onclick = () => {
+      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+      try { presentLoginModal(); } catch (_) {}
+    };
+    if (resetBtn) {
+      resetBtn.onclick = () => {
         try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
-        try { presentLoginModal(); } catch (_) {}
+        try { presentForgotPasswordModal(); } catch (_) {}
       };
-      card.appendChild(ok);
-      card.appendChild(link);
-    } catch (_) {
-      setStatus(message);
     }
+
+    if (resetBtn) resActions.appendChild(resetBtn);
+    resActions.appendChild(goLogin);
+
+    wrap.appendChild(resTitle);
+    wrap.appendChild(resSub);
+    wrap.appendChild(resStatus);
+    wrap.appendChild(resActions);
+    card.appendChild(wrap);
+
+    // Result-state focus trap: cycle between the action buttons only
+    try {
+      const getFocusables = () => {
+        const arr = [];
+        if (resetBtn) arr.push(resetBtn);
+        arr.push(goLogin);
+        return arr;
+      };
+      const resultTrap = (ev) => {
+        if (ev.key !== 'Tab') return;
+        // Prevent the original form trap from running
+        try { ev.stopImmediatePropagation(); } catch (_) {}
+        ev.preventDefault();
+        const focusables = getFocusables();
+        if (!focusables.length) return;
+        const active = document.activeElement;
+        const idx = focusables.indexOf(active);
+        if (ev.shiftKey) {
+          const prev = idx <= 0 ? focusables[focusables.length - 1] : focusables[idx - 1];
+          try { prev.focus(); } catch (_) {}
+        } else {
+          const next = idx < 0 || idx >= focusables.length - 1 ? focusables[0] : focusables[idx + 1];
+          try { next.focus(); } catch (_) {}
+        }
+      };
+      // Capture phase so we pre-empt previously registered listeners
+      card.addEventListener('keydown', resultTrap, true);
+      // Set initial focus to the left-most action
+      try { (resetBtn || goLogin).focus(); } catch (_) {}
+    } catch (_) {}
+  } catch (e) {
+    setStatus(kind === 'success' ? 'Account created. Check your email to verify.' : 'Account already exists.');
   }
 }
 
@@ -423,4 +538,6 @@ function styleInput(input) {
   input.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)';
   input.style.backdropFilter = 'blur(6px) saturate(1.2)';
   input.style.boxSizing = 'border-box';
+}
+
 }
