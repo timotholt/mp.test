@@ -427,7 +427,21 @@ function presentSettingsOverlay() {
     const overlay = document.getElementById('overlay');
     const content = overlay ? overlay.querySelector('#overlay-content') : null;
     if (!content) return false;
-    content.innerHTML = '';
+    // Do NOT clear shared overlay content; create our own mount layer instead
+    // Remove any stale instance from a previous open
+    try {
+      const prev = content.querySelector('#settings-overlay-root');
+      if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+    } catch (_) {}
+    const mount = document.createElement('div');
+    mount.id = 'settings-overlay-root';
+    // Fixed full-viewport layer so it overlays existing lobby/login siblings
+    mount.style.position = 'fixed';
+    mount.style.inset = '0';
+    mount.style.zIndex = '20001';
+    // Allow this layer to capture pointer events (modal blocks background)
+    mount.style.pointerEvents = 'auto';
+    try { content.appendChild(mount); } catch (_) {}
 
     // Darker backdrop to emphasize modal
     try {
@@ -841,7 +855,8 @@ function presentSettingsOverlay() {
     card.appendChild(tabsBar.el);
     card.appendChild(contentWrap);
     center.appendChild(card);
-    content.appendChild(center);
+    // Mount settings centered UI into our dedicated layer
+    mount.appendChild(center);
 
     // Focus trap within the card
     try {
@@ -876,11 +891,15 @@ function presentSettingsOverlay() {
         presentInlineConfirm('You have unsaved changes. Discard them?').then((discard) => {
           if (!discard) return;
           try { if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler); } catch (_) {}
+          // Clean up our mount layer
+          try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
           try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
         });
         return;
       }
       try { if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler); } catch (_) {}
+      // Clean up our mount layer
+      try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     };
 

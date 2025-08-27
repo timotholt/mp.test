@@ -136,7 +136,8 @@ export function presentLoginModal() {
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
     if (window.OverlayManager) {
-      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM });
+      // Mark as external so OverlayManager.renderTop() will not clear/replace our DOM
+      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
   } catch (_) {}
 
