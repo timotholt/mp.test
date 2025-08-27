@@ -132,7 +132,7 @@ function createSettingsPanel() {
     // Sharp top-left corner only
     content.style.borderRadius = '0 6px 6px 6px';
     content.style.padding = '10px';
-    content.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
+    content.style.background = 'linear-gradient(180deg, rgba(10,18,26, calc(0.20 * var(--ui-opacity-mult, 1))) 0%, rgba(10,16,22, calc(0.16 * var(--ui-opacity-mult, 1))) 100%)';
   } catch (_) {}
   panel.appendChild(content);
 
@@ -224,6 +224,40 @@ function renderSettingsContent(panel) {
       try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
     };
     themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
+
+    // UI Opacity Strength slider
+    const opRow = document.createElement('div');
+    opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
+    const opLbl = document.createElement('label'); opLbl.textContent = 'UI Opacity Strength:'; opLbl.style.minWidth = '140px';
+    const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
+    const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-val';
+    // Initialize from storage, default 1. Read both namespaced and raw keys for compatibility
+    try {
+      const MMAX = 2.5; // 100% -> full opacity
+      let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
+      let mult = parseFloat(LS.getItem('ui_opacity_mult', raw != null ? raw : '1'));
+      if (!Number.isFinite(mult) || mult < 0) mult = 1;
+      const p = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
+      opRng.value = String(p);
+      const pct = String(p) + '%';
+      opVal.textContent = pct; opRng.title = pct;
+      // Clamp CSS var to the new scale so old values (e.g., 12.5) don't overdrive
+      const multClamped = (p / 100) * MMAX;
+      document.documentElement.style.setProperty('--ui-opacity-mult', String(multClamped));
+    } catch (_) {}
+    opRng.oninput = () => {
+      const MMAX = 2.5;
+      const p = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
+      if (String(p) !== opRng.value) opRng.value = String(p);
+      const mult = (p / 100) * MMAX;
+      const pct = String(p) + '%';
+      opVal.textContent = pct; opRng.title = pct;
+      try { document.documentElement.style.setProperty('--ui-opacity-mult', String(mult)); } catch (_) {}
+      try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+      try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+    };
+    opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
+    content.appendChild(opRow);
   } else if (tab === 'Sound') {
     content.appendChild(makeSection('Sound'));
     // Space between section title and knobs (increase spacing to 1rem)
@@ -808,6 +842,39 @@ function presentSettingsOverlay() {
         try { const saved = LS.getItem('theme', null); if (saved) sel.value = saved; if (window.setTheme) window.setTheme(sel.value || saved || 'dark'); } catch (_) {}
         sel.onchange = () => { try { LS.setItem('theme', sel.value); } catch (_) {} try { window.setTheme && window.setTheme(sel.value); } catch (_) {} };
         themeRow.appendChild(lbl); themeRow.appendChild(sel); contentWrap.appendChild(themeRow);
+
+        // UI Opacity Strength slider
+        const opRow = document.createElement('div');
+        opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
+        const opLbl = document.createElement('label'); opLbl.textContent = 'UI Opacity Strength:'; opLbl.style.minWidth = '140px';
+        const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
+        const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-val';
+        try {
+          const MMAX = 2.5; // 100% maps to full opacity
+          let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
+          let mult = parseFloat(LS.getItem('ui_opacity_mult', raw != null ? raw : '1'));
+          if (!Number.isFinite(mult) || mult < 0) mult = 1;
+          const p = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
+          opRng.value = String(p);
+          const pct = String(p) + '%';
+          opVal.textContent = pct; opRng.title = pct;
+          const multClamped = (p / 100) * MMAX;
+          document.documentElement.style.setProperty('--ui-opacity-mult', String(multClamped));
+        } catch (_) {}
+        opRng.oninput = () => {
+          const MMAX = 2.5;
+          const p = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
+          if (String(p) !== opRng.value) opRng.value = String(p);
+          const mult = (p / 100) * MMAX;
+          const pct = String(p) + '%';
+          opVal.textContent = pct; opRng.title = pct;
+          try { document.documentElement.style.setProperty('--ui-opacity-mult', String(mult)); } catch (_) {}
+          try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+          try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+          setDirty(true);
+        };
+        opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
+        contentWrap.appendChild(opRow);
       } else if (tab === 'Sound')  {
         contentWrap.appendChild(makeSection('Sound Mixer', ''));
         // Space between section title and knobs (increase spacing to 1rem)

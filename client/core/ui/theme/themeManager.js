@@ -8,9 +8,11 @@
 
   const themes = {
     glassBlue: {
+      // Global opacity multiplier (single source of truth for transparency strength)
+      '--ui-opacity-mult': '1',
       // Tooltip bubble (10% more transparent)
-      '--sf-tip-bg-top': 'rgba(10,18,26,0.41)',
-      '--sf-tip-bg-bottom': 'rgba(10,16,22,0.40)',
+      '--sf-tip-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
+      '--sf-tip-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
       '--sf-tip-border': 'rgba(120,170,255,0.70)',
       '--sf-tip-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
       '--sf-tip-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
@@ -28,8 +30,8 @@
       '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)',
 
       // Shared surface tokens (for modals/menus/panels to adopt)
-      '--ui-surface-bg-top': 'rgba(10,18,26,0.41)',
-      '--ui-surface-bg-bottom': 'rgba(10,16,22,0.40)',
+      '--ui-surface-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
+      '--ui-surface-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
       '--ui-surface-border': 'rgba(120,170,255,0.70)',
       '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
       '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)'
@@ -64,6 +66,19 @@
   // Apply default theme immediately
   applyTheme('glassBlue');
 
+  // Apply persisted UI opacity multiplier early, if present (clamped to current ceiling)
+  try {
+    const MMAX = 2.5;
+    const v = parseFloat(localStorage.getItem('ui_opacity_mult'));
+    if (Number.isFinite(v) && v > 0) {
+      const clamped = Math.min(MMAX, Math.max(0, v));
+      root.style.setProperty('--ui-opacity-mult', String(clamped));
+      if (clamped !== v) {
+        try { localStorage.setItem('ui_opacity_mult', String(clamped)); } catch (_) {}
+      }
+    }
+  } catch (_) {}
+
   // Expose lightweight API for future theme switching
   try {
     window.UITheme = {
@@ -81,13 +96,14 @@ export function ensureThemeSupport() {
   const st = document.createElement('style');
   st.id = 'theme-style';
   st.textContent = `:root{
-    --ui-bg: rgba(0,0,0,0.8);
+    --ui-opacity-mult: 1;
+    --ui-bg: rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)));
     --ui-fg: #fff;
     --ui-muted: #ccc;
     --ui-accent: #4caf50;
-    --bar-bg: rgba(20,20,20,0.9);
-    --banner-bg: rgba(32,32,32,0.95);
-    --control-bg: rgba(0,0,0,0.6);
+    --bar-bg: rgba(20,20,20, calc(0.9 * var(--ui-opacity-mult, 1)));
+    --banner-bg: rgba(32,32,32, calc(0.95 * var(--ui-opacity-mult, 1)));
+    --control-bg: rgba(0,0,0, calc(0.6 * var(--ui-opacity-mult, 1)));
     --control-border: #444;
   }
   body, button, input, select, textarea {
@@ -97,12 +113,12 @@ export function ensureThemeSupport() {
   window.setTheme = function(theme) {
     // Simple placeholder for future themes
     const dark = theme !== 'light';
-    document.documentElement.style.setProperty('--ui-bg', dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)');
+    document.documentElement.style.setProperty('--ui-bg', dark ? 'rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)))' : 'rgba(255,255,255, calc(0.9 * var(--ui-opacity-mult, 1)))');
     document.documentElement.style.setProperty('--ui-fg', dark ? '#fff' : '#111');
     document.documentElement.style.setProperty('--ui-muted', dark ? '#ccc' : '#333');
-    document.documentElement.style.setProperty('--bar-bg', dark ? 'rgba(20,20,20,0.9)' : 'rgba(240,240,240,0.9)');
-    document.documentElement.style.setProperty('--banner-bg', dark ? 'rgba(32,32,32,0.95)' : 'rgba(250,250,250,0.95)');
-    document.documentElement.style.setProperty('--control-bg', dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)');
+    document.documentElement.style.setProperty('--bar-bg', dark ? 'rgba(20,20,20, calc(0.9 * var(--ui-opacity-mult, 1)))' : 'rgba(240,240,240, calc(0.9 * var(--ui-opacity-mult, 1)))');
+    document.documentElement.style.setProperty('--banner-bg', dark ? 'rgba(32,32,32, calc(0.95 * var(--ui-opacity-mult, 1)))' : 'rgba(250,250,250, calc(0.95 * var(--ui-opacity-mult, 1)))');
+    document.documentElement.style.setProperty('--control-bg', dark ? 'rgba(0,0,0, calc(0.6 * var(--ui-opacity-mult, 1)))' : 'rgba(255,255,255, calc(0.7 * var(--ui-opacity-mult, 1)))');
     document.documentElement.style.setProperty('--control-border', dark ? '#444' : '#bbb');
   };
 }
