@@ -38,7 +38,7 @@ This document captures shared UI values and behaviors for auth modals and relate
 ## Layout and Centering
 
 - Center all modals both vertically and horizontally:
-  - Use a wrapper with `display: flex; align-items: center; justify-content: center; min-height: 100%; padding: 24px;`.
+  - Use a wrapper with `display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px;`.
 - Modal card uses a glass surface with rounded corners and consistent border/shadow (see Colors and Shadows above).
 
 ## Taglines

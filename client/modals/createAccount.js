@@ -58,11 +58,13 @@ export function presentCreateAccountModal() {
   } catch (_) {}
 
   const center = document.createElement('div');
-  center.style.minHeight = '100%';
+  center.style.minHeight = '100vh';
   center.style.display = 'flex';
   center.style.alignItems = 'center';
   center.style.justifyContent = 'center';
   center.style.padding = '24px';
+  // Slight upward nudge for visual centering parity with Login/Reset
+  center.style.transform = 'translateY(-2vh)';
 
   const card = document.createElement('div');
   card.style.width = 'min(720px, calc(100vw - 32px))';
@@ -78,7 +80,7 @@ export function presentCreateAccountModal() {
   title.textContent = 'Create Account';
   title.style.fontSize = '22px';
   title.style.fontWeight = '700';
-  title.style.marginBottom = '8px';
+  title.style.marginBottom = '2px';
 
   // Fun taglines shown under the title. Easy to edit.
   const taglines = [
@@ -105,7 +107,7 @@ export function presentCreateAccountModal() {
   ];
   const subtitle = document.createElement('div');
   subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '-4px 0 10px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 16px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
@@ -167,7 +169,9 @@ export function presentCreateAccountModal() {
   // Status row under Confirm (hidden by default)
   const matchStatus = document.createElement('div');
   try {
-    matchStatus.style.display = 'none';
+    // Reserve space so the modal does not jump when text appears
+    matchStatus.style.minHeight = '1.2em';
+    matchStatus.style.visibility = 'hidden';
     matchStatus.style.gridColumn = '2 / 3';
     matchStatus.style.fontSize = '12.5px';
     matchStatus.style.opacity = '0.95';
@@ -315,7 +319,7 @@ export function presentCreateAccountModal() {
     const p2 = String(pw2.value || '');
     let ok = false;
     if (p1 && p2) {
-      matchStatus.style.display = '';
+      matchStatus.style.visibility = 'visible';
       if (p1 === p2) {
         matchStatus.textContent = 'Passwords match';
         try { matchStatus.style.color = '#9fffb3'; } catch (_) {}
@@ -324,7 +328,8 @@ export function presentCreateAccountModal() {
         try { matchStatus.style.color = '#ff4d4f'; } catch (_) {}
       }
     } else {
-      matchStatus.style.display = 'none';
+      matchStatus.style.visibility = 'hidden';
+      matchStatus.textContent = '';
     }
     if (e && p1 && p2 && p1 === p2) ok = true;
     try { createBtn.disabled = !ok; } catch (_) {}

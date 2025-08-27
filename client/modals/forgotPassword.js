@@ -32,14 +32,16 @@ export function presentForgotPasswordModal() {
   } catch (_) {}
 
   const center = document.createElement('div');
-  center.style.minHeight = '100%';
+  center.style.minHeight = '100vh';
   center.style.display = 'flex';
   center.style.alignItems = 'center';
   center.style.justifyContent = 'center';
   center.style.padding = '24px';
+  // Slight upward nudge to match Login/Create
+  center.style.transform = 'translateY(-2vh)';
 
   const card = document.createElement('div');
-  card.style.width = 'min(520px, calc(100vw - 32px))';
+  card.style.width = 'min(420px, calc(100vw - 32px))';
   card.style.color = '#dff1ff';
   card.style.borderRadius = '14px';
   card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
@@ -47,12 +49,42 @@ export function presentForgotPasswordModal() {
   card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
   card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
   card.style.padding = '16px';
+  // Make the card a column so actions can pin to the bottom
+  card.style.display = 'flex';
+  card.style.flexDirection = 'column';
 
   const title = document.createElement('div');
   title.textContent = 'Reset Password';
   title.style.fontSize = '22px';
   title.style.fontWeight = '700';
-  title.style.marginBottom = '8px';
+  title.style.marginBottom = '2px';
+
+  // Subtitle with random grimdark taglines (20), styled per uiStandards
+  const taglines = [
+    'A whisper in the dark says: change your key.',
+    'Even shadows forget. We won’t—verify anew.',
+    'The dungeon keeps secrets. Rotate yours.',
+    'Keys rust in the abyss. Forge another.',
+    'Mistakes drift like echoes. Reset and return.',
+    'A lost word isn’t the end—only a turning.',
+    'The gate creaks. Offer a new sigil.',
+    'Trust is a candle; relight it.',
+    'Courage, then cadence. Reset, then stride.',
+    'The lock smiles. Show it a fresh grin.',
+    'When memory falters, resolve sharpens.',
+    'New key, same legend. Continue.',
+    'The dark tests; you adapt.',
+    'Let the old passphrase rest. Raise the new.',
+    'All doors can open—bring the right word.',
+    'From error, a path. From path, return.',
+    'Your tale pauses, not ends. Reset onward.',
+    'A seal breaks; another is set.',
+    'Ink fades; intention doesn’t. Reset.',
+    'The vault is patient. So are you.'
+  ];
+  const subtitle = document.createElement('div');
+  subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
 
   const form = document.createElement('div');
   form.style.display = 'grid';
@@ -71,12 +103,13 @@ export function presentForgotPasswordModal() {
   actions.style.display = 'flex';
   actions.style.gap = '10px';
   actions.style.justifyContent = 'flex-end';
-  actions.style.marginTop = '12px';
+  // Pin actions to modal bottom
+  actions.style.marginTop = 'auto';
 
   const sendBtn = makeBtn('Send Reset Link');
   const cancelBtn = makeBtn('Cancel');
   // Bottom action row tooltips should prefer bottom placement
-  try { attachTooltip(sendBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(sendBtn, 'Send reset link'); } catch (_) {}
+  try { attachTooltip(sendBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(sendBtn, 'Enter a valid email to send reset link'); } catch (_) {}
   try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
 
   const status = document.createElement('div');
@@ -91,10 +124,10 @@ export function presentForgotPasswordModal() {
       const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
       const applyBase = () => {
         if (b.disabled) {
-          b.style.opacity = '0.6'; b.style.cursor = 'default';
+          b.style.opacity = '0.5'; b.style.cursor = 'default'; b.style.color = '#9fb1c6';
           b.style.border = baseBorder; b.style.boxShadow = baseShadow;
         } else {
-          b.style.opacity = '1'; b.style.cursor = 'pointer';
+          b.style.opacity = '1'; b.style.cursor = 'pointer'; b.style.color = '#dff1ff';
           b.style.border = baseBorder; b.style.boxShadow = baseShadow;
         }
       };
@@ -116,13 +149,28 @@ export function presentForgotPasswordModal() {
       input.addEventListener('blur', () => { input.style.border = baseBorder; input.style.boxShadow = baseShadow; });
     } catch (_) {}
   }
+  // Start with Send disabled until valid email
+  try { sendBtn.disabled = true; } catch (_) {}
   wireBtnHover(sendBtn); wireBtnHover(cancelBtn);
   wireInputHoverFocus(email);
+
+  // Email validation + dynamic Send button state/tooltip
+  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val || '').trim());
+  function updateSendState() {
+    const e = String(email.value || '').trim();
+    const ok = isValidEmail(e);
+    try { sendBtn.disabled = !ok; } catch (_) {}
+    try { updateTooltip(sendBtn, ok ? 'Send reset link' : 'Enter a valid email to send reset link'); } catch (_) {}
+    // Refresh visuals to reflect disabled/enabled
+    try { sendBtn.dispatchEvent(new Event('mouseleave')); } catch (_) {}
+  }
+  email.addEventListener('input', updateSendState);
+  updateSendState();
 
   sendBtn.onclick = async () => {
     setStatus('');
     const e = String(email.value || '').trim();
-    if (!e) { setStatus('Please enter your email.'); return; }
+    if (!isValidEmail(e)) { setStatus('Please enter a valid email.'); return; }
     try {
       disable(true);
       await sendPasswordReset(e);
@@ -144,11 +192,38 @@ export function presentForgotPasswordModal() {
   actions.appendChild(sendBtn);
 
   card.appendChild(title);
+  card.appendChild(subtitle);
   card.appendChild(form);
-  card.appendChild(actions);
   card.appendChild(status);
+  card.appendChild(actions);
   center.appendChild(card);
   content.appendChild(center);
+
+  // Focus trap: Email → Cancel → Send (if enabled) → back to Email
+  try {
+    const getFocusables = () => {
+      const arr = [email, cancelBtn];
+      if (!sendBtn.disabled) arr.push(sendBtn);
+      return arr;
+    };
+    const trap = (ev) => {
+      if (ev.key !== 'Tab') return;
+      const f = getFocusables();
+      if (!f.length) return;
+      const idx = f.indexOf(document.activeElement);
+      ev.preventDefault();
+      if (ev.shiftKey) {
+        const prev = idx <= 0 ? f[f.length - 1] : f[idx - 1];
+        try { prev.focus(); } catch (_) {}
+      } else {
+        const next = idx < 0 || idx >= f.length - 1 ? f[0] : f[idx + 1];
+        try { next.focus(); } catch (_) {}
+      }
+    };
+    card.addEventListener('keydown', trap);
+    // Initial focus
+    try { email.focus(); } catch (_) {}
+  } catch (_) {}
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disable(d) { [email, sendBtn, cancelBtn].forEach(el => { try { el.disabled = !!d; } catch (_) {} }); }

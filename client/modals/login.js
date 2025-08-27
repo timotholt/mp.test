@@ -21,7 +21,7 @@ function ensureLoginStyles() {
   st.id = 'login-modal-style';
   st.textContent = `
   /* Page backdrop tint (deep blue) applied to #overlay by presentLoginModal */
-  .login-center { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; transform: translateY(-2vh); }
   .login-card {
     width: min(720px, calc(100vw - 32px));
     color: #dff1ff;
@@ -35,8 +35,8 @@ function ensureLoginStyles() {
     backdrop-filter: var(--sf-tip-backdrop, blur(8px) saturate(1.25));
     padding: 1rem; /* Ensure inner padding so nothing touches edges */
   }
-  .login-title { font-size: 22px; font-weight: 700; margin: 0 0 6px 0; }
-  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 14px 0; }
+  .login-title { font-size: 22px; font-weight: 700; margin: 0 0 0 0; }
+  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 20px 0; }
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
   .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
   .btn:disabled { opacity: 0.6; cursor: default; }
@@ -244,6 +244,8 @@ export function presentLoginModal() {
 
   // Right eye icon for password (toggle visibility)
   const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.className = 'input-icon-btn right';
+  // Not a tab stop per UX
+  try { eyeBtn.tabIndex = -1; } catch (_) {}
   // Line-art eye icons (stroke) for better readability
   const eyeOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
   const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 3l18 18"/><path d="M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17.7 17.7 0 0 1-3.2 3.8"/><path d="M6.1 6.1A17.7 17.7 0 0 0 2 12s4 7 10 7c1.1 0 2.1-.2 3.1-.5"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>';
@@ -290,6 +292,16 @@ export function presentLoginModal() {
     await signInWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
     await afterAuthSuccess(id);
   });
+  // Disable Sign In until both fields are filled; keep tooltip in sync
+  function updateSignInState() {
+    const e = String(emailInput.value || '').trim();
+    const p = String(passInput.value || '');
+    const ok = !!(e && p);
+    try { signInBtn.disabled = !ok; } catch (_) {}
+    try { updateTooltip(signInBtn, ok ? 'Sign In' : 'Enter email and password'); } catch (_) {}
+  }
+  try { emailInput.addEventListener('input', updateSignInState); passInput.addEventListener('input', updateSignInState); } catch (_) {}
+  updateSignInState();
   // Inline link-style actions
   const signUpLink = document.createElement('button');
   signUpLink.type = 'button';
@@ -351,6 +363,28 @@ export function presentLoginModal() {
   card.appendChild(grid);
   center.appendChild(card);
   content.appendChild(center);
+
+  // Focus trap & tab order: Google → Discord → Facebook → Email → Password → Sign In → Create Account → Forgot password → Google
+  try {
+    const getFocusables = () => [googleBtn, discordBtn, facebookBtn, emailInput, passInput, signInBtn, signUpLink, resetLink].filter(el => el && !el.disabled);
+    const trap = (ev) => {
+      if (ev.key !== 'Tab') return;
+      const f = getFocusables();
+      if (!f.length) return;
+      const idx = f.indexOf(document.activeElement);
+      ev.preventDefault();
+      if (ev.shiftKey) {
+        const prev = idx <= 0 ? f[f.length - 1] : f[idx - 1];
+        try { prev.focus(); } catch (_) {}
+      } else {
+        const next = idx < 0 || idx >= f.length - 1 ? f[0] : f[idx + 1];
+        try { next.focus(); } catch (_) {}
+      }
+    };
+    card.addEventListener('keydown', trap);
+    // Initial focus at top of cycle
+    try { googleBtn.focus(); } catch (_) {}
+  } catch (_) {}
 }
 
 async function afterAuthSuccess(modalId) {
