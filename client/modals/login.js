@@ -36,7 +36,7 @@ function ensureLoginStyles() {
     padding: 1rem; /* Ensure inner padding so nothing touches edges */
   }
   .login-title { font-size: 22px; font-weight: 700; margin: 0 0 6px 0; }
-  .login-sub { opacity: 0.9; margin: 0 0 14px 0; }
+  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 14px 0; }
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
   .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
   .btn:disabled { opacity: 0.6; cursor: default; }
@@ -310,7 +310,7 @@ export function presentLoginModal() {
   resetLink.textContent = 'Forgot password?';
   resetLink.onclick = () => { try { presentForgotPasswordModal(); } catch (_) {} };
   // Tooltips on actions (favor bottom-right)
-  try { attachTooltip(signInBtn, { mode: 'far', placement: 'br,r,rc,b,t' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
+  try { attachTooltip(signInBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(signInBtn, 'Sign In'); } catch (_) {}
   // Place these as bottom hints so they come off the bottom edge of the link
   try { attachTooltip(signUpLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
   try { attachTooltip(resetLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}

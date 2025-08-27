@@ -2,6 +2,8 @@
 // Lives under client/modals/. Minimal inline styles; consistent with login/create account.
 
 import { initSupabase, sendPasswordReset } from '../core/auth/supabaseAuth.js';
+import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
+import { presentLoginModal } from './login.js';
 
 export function presentForgotPasswordModal() {
   initSupabase();
@@ -48,7 +50,7 @@ export function presentForgotPasswordModal() {
 
   const title = document.createElement('div');
   title.textContent = 'Reset Password';
-  title.style.fontSize = '20px';
+  title.style.fontSize = '22px';
   title.style.fontWeight = '700';
   title.style.marginBottom = '8px';
 
@@ -59,7 +61,8 @@ export function presentForgotPasswordModal() {
   form.style.alignItems = 'center';
 
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
-  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'you@grim.dark';
+  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address';
+  try { email.className = 'input-glass'; } catch (_) {}
   styleInput(email);
 
   form.appendChild(emailLabel); form.appendChild(email);
@@ -72,10 +75,49 @@ export function presentForgotPasswordModal() {
 
   const sendBtn = makeBtn('Send Reset Link');
   const cancelBtn = makeBtn('Cancel');
+  // Bottom action row tooltips should prefer bottom placement
+  try { attachTooltip(sendBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(sendBtn, 'Send reset link'); } catch (_) {}
+  try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
 
   const status = document.createElement('div');
   status.style.marginTop = '8px';
   status.style.minHeight = '1.2em';
+
+  // Hover/focus behavior to match Login/Create
+  function wireBtnHover(b) {
+    try {
+      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
+      const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
+      const applyBase = () => {
+        if (b.disabled) {
+          b.style.opacity = '0.6'; b.style.cursor = 'default';
+          b.style.border = baseBorder; b.style.boxShadow = baseShadow;
+        } else {
+          b.style.opacity = '1'; b.style.cursor = 'pointer';
+          b.style.border = baseBorder; b.style.boxShadow = baseShadow;
+        }
+      };
+      b.addEventListener('mouseenter', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('mouseleave', applyBase);
+      b.addEventListener('focus', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('blur', applyBase);
+      applyBase();
+    } catch (_) {}
+  }
+  function wireInputHoverFocus(input) {
+    try {
+      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)';
+      const focusShadow = 'inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30)';
+      input.addEventListener('mouseenter', () => { if (document.activeElement !== input) input.style.border = '#dff1ff 1px solid'; });
+      input.addEventListener('mouseleave', () => { if (document.activeElement !== input) input.style.border = baseBorder; });
+      input.addEventListener('focus', () => { input.style.border = '#dff1ff 1px solid'; input.style.boxShadow = focusShadow; });
+      input.addEventListener('blur', () => { input.style.border = baseBorder; input.style.boxShadow = baseShadow; });
+    } catch (_) {}
+  }
+  wireBtnHover(sendBtn); wireBtnHover(cancelBtn);
+  wireInputHoverFocus(email);
 
   sendBtn.onclick = async () => {
     setStatus('');
@@ -89,9 +131,14 @@ export function presentForgotPasswordModal() {
       setStatus(err && (err.message || String(err)) || 'Unable to send reset email');
     } finally {
       disable(false);
+      // Refresh button visuals after disabled state changes
+      try { sendBtn.dispatchEvent(new Event('mouseleave')); cancelBtn.dispatchEvent(new Event('mouseleave')); } catch (_) {}
     }
   };
-  cancelBtn.onclick = () => { try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {} };
+  cancelBtn.onclick = () => {
+    try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+    try { presentLoginModal(); } catch (_) {}
+  };
 
   actions.appendChild(cancelBtn);
   actions.appendChild(sendBtn);

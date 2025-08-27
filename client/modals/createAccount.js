@@ -76,9 +76,36 @@ export function presentCreateAccountModal() {
 
   const title = document.createElement('div');
   title.textContent = 'Create Account';
-  title.style.fontSize = '20px';
+  title.style.fontSize = '22px';
   title.style.fontWeight = '700';
   title.style.marginBottom = '8px';
+
+  // Fun taglines shown under the title. Easy to edit.
+  const taglines = [
+    'One step closer to your doom. Proceed wisely.',
+    'Dare to join the abyss? We saved you a seat.',
+    'Heroes enter. Few return.',
+    'Welcome, brave soul. Your saga begins in the dark.',
+    'Steel your nerves. Adventure echoes below.',
+    'Sign here to tempt fate.',
+    'Darkness calls your name. Will you answer?',
+    'Fortune favors the doomed.',
+    'The gates creak open. Mind the teeth.',
+    'Abandon hope? Optional. Curiosity? Required.',
+    'We have cookies. They may be cursed.',
+    'Glory or grave. Sometimes both.',
+    'Equip courage. Unequip hesitation.',
+    'The dungeon hums. It’s hungry.',
+    'Step lightly. The floor remembers.',
+    'Your legend awaits… with a wicked grin.',
+    'Ink your pact. Adventure signs back.',
+    'You bring the spark. We bring the gloom.',
+    'Tread where the brave whisper.',
+    'Roll the dice. The dark rolls back.'
+  ];
+  const subtitle = document.createElement('div');
+  subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '-4px 0 10px 0'; subtitle.style.color = '#cfe6ff'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
@@ -121,6 +148,8 @@ export function presentCreateAccountModal() {
   let pw1Visible = false; let pw2Visible = false;
   eyeBtn1.innerHTML = '<div class="icon-wrap icon-eye">' + eyeOpen + '</div>';
   eyeBtn2.innerHTML = '<div class="icon-wrap icon-eye">' + eyeOpen + '</div>';
+  // Per UX: icon subcontrols are not tab stops
+  try { eyeBtn1.tabIndex = -1; eyeBtn2.tabIndex = -1; } catch (_) {}
   eyeBtn1.onclick = () => { try { pw1Visible = !pw1Visible; pw.type = pw1Visible ? 'text' : 'password'; eyeBtn1.innerHTML = '<div class="icon-wrap icon-eye">' + (pw1Visible ? eyeOff : eyeOpen) + '</div>'; updateTooltip(eyeBtn1, pw1Visible ? 'Hide password' : 'Show password'); } catch (_) {} };
   eyeBtn2.onclick = () => { try { pw2Visible = !pw2Visible; pw2.type = pw2Visible ? 'text' : 'password'; eyeBtn2.innerHTML = '<div class="icon-wrap icon-eye">' + (pw2Visible ? eyeOff : eyeOpen) + '</div>'; updateTooltip(eyeBtn2, pw2Visible ? 'Hide password' : 'Show password'); } catch (_) {} };
   try { attachTooltip(eyeBtn1, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(eyeBtn1, 'Show password'); } catch (_) {}
@@ -173,10 +202,13 @@ export function presentCreateAccountModal() {
   actions.style.justifyContent = 'flex-end';
   actions.style.alignItems = 'center';
   actions.style.gap = '10px';
-  actions.style.marginTop = '12px';
+  actions.style.marginTop = 'auto';
 
   const createBtn = makeBtn('Create');
   const cancelBtn = makeBtn('Cancel');
+  // Far tooltips for primary actions (bottom-first for bottom action row)
+  try { attachTooltip(createBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); } catch (_) {}
+  try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
 
   const status = document.createElement('div');
   status.style.marginTop = '8px';
@@ -219,9 +251,11 @@ export function presentCreateAccountModal() {
 
   // Build layout: art panel on left, main content on right
   main.appendChild(title);
+  main.appendChild(subtitle);
   main.appendChild(form);
-  main.appendChild(actions);
+  // Keep general status above bottom actions so actions can pin to modal bottom
   main.appendChild(status);
+  main.appendChild(actions);
   grid.appendChild(art);
   grid.appendChild(main);
   card.appendChild(grid);
@@ -237,10 +271,25 @@ export function presentCreateAccountModal() {
       const baseBorder = '1px solid rgba(120,170,255,0.60)';
       const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
       const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
-      b.addEventListener('mouseenter', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
-      b.addEventListener('mouseleave', () => { b.style.border = baseBorder; b.style.boxShadow = baseShadow; });
-      b.addEventListener('focus', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
-      b.addEventListener('blur', () => { b.style.border = baseBorder; b.style.boxShadow = baseShadow; });
+      const applyBase = () => {
+        if (b.disabled) {
+          b.style.opacity = '0.5'; b.style.cursor = 'default';
+          // Disabled text: #9fb1c6 (rgb 159,177,198)
+          b.style.color = '#9fb1c6';
+          b.style.border = baseBorder; b.style.boxShadow = baseShadow;
+        } else {
+          b.style.opacity = '1'; b.style.cursor = 'pointer';
+          // Enabled text: #dff1ff (rgb 223,241,255)
+          b.style.color = '#dff1ff';
+          b.style.border = baseBorder; b.style.boxShadow = baseShadow;
+        }
+      };
+      b.addEventListener('mouseenter', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('mouseleave', applyBase);
+      b.addEventListener('focus', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('blur', applyBase);
+      // Initialize base visuals
+      applyBase();
     } catch (_) {}
   }
   wireBtnHover(createBtn); wireBtnHover(cancelBtn);
@@ -272,17 +321,48 @@ export function presentCreateAccountModal() {
         try { matchStatus.style.color = '#9fffb3'; } catch (_) {}
       } else {
         matchStatus.textContent = "Passwords don't match";
-        try { matchStatus.style.color = '#ffd1d1'; } catch (_) {}
+        try { matchStatus.style.color = '#ff4d4f'; } catch (_) {}
       }
     } else {
       matchStatus.style.display = 'none';
     }
     if (e && p1 && p2 && p1 === p2) ok = true;
     try { createBtn.disabled = !ok; } catch (_) {}
+    // Refresh button visuals to ensure disabled state is dimmed and non-glowy
+    try { createBtn.dispatchEvent(new Event('mouseleave')); } catch (_) {}
+    // Dynamic tooltip based on validity
+    try { updateTooltip(createBtn, ok ? 'Create your account' : 'Fill in all fields properly to create an account'); } catch (_) {}
   }
   [email, pw, pw2].forEach(el => { try { el.addEventListener('input', updateState); } catch (_) {} });
   // Initialize
   updateState();
+
+  // Focus trap: keep Tab within modal (inputs + primary buttons; icon subcontrols excluded)
+  try {
+    const getFocusables = () => {
+      const arr = [email, pw, pw2, cancelBtn];
+      if (!createBtn.disabled) arr.push(createBtn);
+      return arr;
+    };
+    const trap = (ev) => {
+      if (ev.key !== 'Tab') return;
+      const focusables = getFocusables();
+      if (!focusables.length) return;
+      const active = document.activeElement;
+      const idx = focusables.indexOf(active);
+      ev.preventDefault();
+      if (ev.shiftKey) {
+        const prev = idx <= 0 ? focusables[focusables.length - 1] : focusables[idx - 1];
+        try { prev.focus(); } catch (_) {}
+      } else {
+        const next = idx < 0 || idx >= focusables.length - 1 ? focusables[0] : focusables[idx + 1];
+        try { next.focus(); } catch (_) {}
+      }
+    };
+    card.addEventListener('keydown', trap);
+    // Initial focus
+    try { email.focus(); } catch (_) {}
+  } catch (_) {}
 
   function renderResult(message) {
     try {
