@@ -226,15 +226,28 @@ function renderSettingsContent(panel) {
     themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
   } else if (tab === 'Sound') {
     content.appendChild(makeSection('Sound'));
-    // Space between section title and knobs (increase spacing)
-    { const spacer = document.createElement('div'); spacer.style.height = '10px'; content.appendChild(spacer); }
+    // Space between section title and knobs (increase spacing to 1rem)
+    { const spacer = document.createElement('div'); spacer.style.height = '1rem'; content.appendChild(spacer); }
     // Volume knobs (smaller)
     content.appendChild(makeVolumeKnobsGrid());
 
     // Spacer above Notifications
     { const spacer = document.createElement('div'); spacer.style.height = '12px'; content.appendChild(spacer); }
-    // Notifications
-    content.appendChild(makeSection('Notifications', 'Choose which alerts to receive.'));
+    // Notifications (style description to match top modal tagline)
+    {
+      const sec = makeSection('Notifications', 'Choose which alerts to receive.');
+      try {
+        const desc = sec.children && sec.children[1];
+        if (desc) {
+          desc.style.fontSize = '13px';
+          desc.style.opacity = '0.9';
+          desc.style.margin = '0 0 10px 0';
+          desc.style.color = '#cfe6ff';
+          desc.style.userSelect = 'none';
+        }
+      } catch (_) {}
+      content.appendChild(sec);
+    }
     content.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
     content.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
     content.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
@@ -783,8 +796,8 @@ function presentSettingsOverlay() {
         themeRow.appendChild(lbl); themeRow.appendChild(sel); contentWrap.appendChild(themeRow);
       } else if (tab === 'Sound')  {
         contentWrap.appendChild(makeSection('Sound Mixer', ''));
-        // Space between section title and knobs (increase spacing)
-        { const spacer = document.createElement('div'); spacer.style.height = '10px'; contentWrap.appendChild(spacer); }
+        // Space between section title and knobs (increase spacing to 1rem)
+        { const spacer = document.createElement('div'); spacer.style.height = '1rem'; contentWrap.appendChild(spacer); }
         // Volume knobs (smaller)
         contentWrap.appendChild(makeVolumeKnobsGrid());
         // Mark dirty when user adjusts any knob
@@ -794,7 +807,21 @@ function presentSettingsOverlay() {
           window.addEventListener('ui:volume:adjusting', volAdjustHandler);
         } catch (_) {}
         const spacer = document.createElement('div'); spacer.style.height = '12px'; contentWrap.appendChild(spacer);
-        contentWrap.appendChild(makeSection('Notifications', 'Choose which alerts to receive.'));
+        // Notifications (style description to match top modal tagline)
+        {
+          const sec = makeSection('Notifications', 'Choose which alerts to receive.');
+          try {
+            const desc = sec.children && sec.children[1];
+            if (desc) {
+              desc.style.fontSize = '13px';
+              desc.style.opacity = '0.9';
+              desc.style.margin = '0 0 10px 0';
+              desc.style.color = '#cfe6ff';
+              desc.style.userSelect = 'none';
+            }
+          } catch (_) {}
+          contentWrap.appendChild(sec);
+        }
         contentWrap.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
         contentWrap.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
         contentWrap.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
