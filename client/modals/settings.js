@@ -1,5 +1,8 @@
 import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumeGroupManager.js';
+import { createVolumeKnob } from '../core/audio/volumeKnob.js';
 import * as LS from '../core/localStorage.js';
+import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow } from '../core/ui/controls.js';
+import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -21,6 +24,8 @@ function computeAccountEnabled() {
 }
 
 export function presentSettingsPanel() {
+  // Prefer overlay modal when available for dark backdrop + centering
+  try { if (presentSettingsOverlay && presentSettingsOverlay()) return; } catch (_) {}
   let panel = document.getElementById('settings-panel');
   if (!panel) panel = createSettingsPanel();
   // Update auth-gated state each open
@@ -104,6 +109,31 @@ function createSettingsPanel() {
   content.style.overflow = 'auto';
   content.style.maxHeight = '58vh';
   content.style.paddingRight = '6px';
+  // Thin blue scrollbar styling (scoped)
+  try {
+    content.classList.add('thin-blue-scroll');
+    content.style.scrollbarWidth = 'thin';
+    content.style.scrollbarColor = 'rgba(120,170,255,0.60) transparent';
+    if (!document.getElementById('thin-blue-scroll-style')) {
+      const st = document.createElement('style'); st.id = 'thin-blue-scroll-style';
+      st.textContent = `
+      .thin-blue-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,170,255,0.60) transparent; }
+      .thin-blue-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+      .thin-blue-scroll::-webkit-scrollbar-track { background: transparent; }
+      .thin-blue-scroll::-webkit-scrollbar-thumb { background: rgba(120,170,255,0.50); border-radius: 8px; box-shadow: 0 0 8px rgba(120,170,255,0.35); }
+      .thin-blue-scroll::-webkit-scrollbar-thumb:hover { background: rgba(140,190,255,0.70); }
+      `;
+      document.head.appendChild(st);
+    }
+  } catch (_) {}
+  // Visible border around tab content in fallback panel
+  try {
+    content.style.border = UI.border;
+    // Sharp top-left corner only
+    content.style.borderRadius = '0 6px 6px 6px';
+    content.style.padding = '10px';
+    content.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
+  } catch (_) {}
   panel.appendChild(content);
 
   document.body.appendChild(panel);
@@ -170,7 +200,7 @@ function renderSettingsContent(panel) {
       content.appendChild(makeNote('You are logged in.'));
     }
   } else if (tab === 'Profile') {
-    content.appendChild(makeSection('Profile', 'Name, avatar, and bio.'));
+    content.appendChild(makeSection('Profile'));
     if (!__settingsState.accountEnabled) {
       content.appendChild(makeNote('Please login to a game server first to change your profile settings.'));
     } else {
@@ -195,13 +225,11 @@ function renderSettingsContent(panel) {
     };
     themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
   } else if (tab === 'Sound') {
-    content.appendChild(makeSection('Sound', 'Configure audio volumes and notifications.'));
-
-    // Volumes
-    content.appendChild(makeVolumeRow('Master volume', 'volume', '__volume', 'ui:volume'));
-    content.appendChild(makeVolumeRow('Game volume', 'volume_game', '__volumeGame', 'ui:volume:game'));
-    content.appendChild(makeVolumeRow('Music volume', 'volume_music', '__volumeMusic', 'ui:volume:music'));
-    content.appendChild(makeVolumeRow('Voice volume', 'volume_voice', '__volumeVoice', 'ui:volume:voice'));
+    content.appendChild(makeSection('Sound'));
+    // Space between section title and knobs (increase spacing)
+    { const spacer = document.createElement('div'); spacer.style.height = '10px'; content.appendChild(spacer); }
+    // Volume knobs (smaller)
+    content.appendChild(makeVolumeKnobsGrid());
 
     // Spacer above Notifications
     { const spacer = document.createElement('div'); spacer.style.height = '12px'; content.appendChild(spacer); }
@@ -223,8 +251,11 @@ function renderSettingsContent(panel) {
 function makeSection(title, desc) {
   const wrap = document.createElement('div');
   const t = document.createElement('div'); t.textContent = title; t.style.fontWeight = 'bold'; t.style.margin = '6px 0';
-  const d = document.createElement('div'); d.textContent = desc; d.style.color = '#bbb'; d.style.marginBottom = '8px';
-  wrap.appendChild(t); wrap.appendChild(d);
+  wrap.appendChild(t);
+  if (desc) {
+    const d = document.createElement('div'); d.textContent = desc; d.style.color = '#bbb'; d.style.marginBottom = '8px';
+    wrap.appendChild(d);
+  }
   return wrap;
 }
 
@@ -246,6 +277,45 @@ function makeInput(type, value) {
 function makeNote(text) {
   const d = document.createElement('div'); d.textContent = text; d.style.color = '#bbb'; d.style.fontSize = '12px'; d.style.marginBottom = '8px';
   return d;
+}
+
+// Knobs grid for Sound tab (MASTER, GAME, MUSIC, VOICE)
+function makeVolumeKnobsGrid() {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.gap = '14px';
+  wrap.style.alignItems = 'center';
+  wrap.style.justifyContent = 'flex-start';
+
+  const groups = [
+    { id: 'MASTER', label: 'Master' },
+    { id: 'GAME', label: 'Game' },
+    { id: 'MUSIC', label: 'Music' },
+    { id: 'VOICE', label: 'Voice' },
+  ];
+
+  groups.forEach(g => {
+    const cell = document.createElement('div');
+    cell.style.display = 'flex';
+    cell.style.flexDirection = 'column';
+    cell.style.alignItems = 'center';
+    cell.style.width = '110px';
+
+    const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: 64, segments: 20 });
+    const cap = document.createElement('div');
+    cap.textContent = g.label;
+    cap.style.marginTop = '6px';
+    cap.style.color = '#cfe6ff';
+    cap.style.opacity = '0.9';
+    cap.style.fontSize = '12px';
+
+    cell.appendChild(el);
+    cell.appendChild(cap);
+    wrap.appendChild(cell);
+  });
+
+  return wrap;
 }
 
 // Helpers for Sound tab
@@ -320,13 +390,496 @@ function makeCheckboxRow(labelText, storageKey, eventName) {
   row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '6px';
   const cb = document.createElement('input'); cb.type = 'checkbox';
   try { cb.checked = LS.getItem(storageKey, '0') === '1'; } catch (_) { cb.checked = false; }
-  const lbl = document.createElement('label'); lbl.textContent = labelText;
+  const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '12px'; lbl.style.lineHeight = '1.2';
+  // Link label to checkbox for accessibility
+  try { const id = `settings-${String(storageKey)}`; cb.id = id; lbl.htmlFor = id; } catch (_) {}
   cb.onchange = () => {
     try { LS.setItem(storageKey, cb.checked ? '1' : '0'); } catch (_) {}
     try { window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled: cb.checked } })); } catch (_) {}
   };
   row.appendChild(cb); row.appendChild(lbl);
   return row;
+}
+
+// Overlay-based Settings Modal (preferred). Returns true if shown, false to fall back.
+function presentSettingsOverlay() {
+  try {
+    if (!window.OverlayManager) return false;
+    const id = 'SETTINGS_MODAL';
+    const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
+    try {
+      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
+    } catch (_) {}
+
+    const overlay = document.getElementById('overlay');
+    const content = overlay ? overlay.querySelector('#overlay-content') : null;
+    if (!content) return false;
+    content.innerHTML = '';
+
+    // Darker backdrop to emphasize modal
+    try {
+      overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, rgba(12,24,48,0.65) 0%, rgba(4,8,18,0.78) 60%, rgba(2,4,10,0.88) 100%)';
+      // Follow OverlayManager defaults so background passes clicks through
+      // and only the modal content captures input. Keep zIndex modest.
+      overlay.style.zIndex = '20000';
+      overlay.style.pointerEvents = 'none';
+      if (content && content.style) {
+        content.style.zIndex = '20001';
+        content.style.pointerEvents = 'auto';
+        content.style.position = 'relative';
+      }
+    } catch (_) {}
+    const prevFocus = document.activeElement;
+
+    // Centered container
+    const center = document.createElement('div');
+    center.style.minHeight = '100vh';
+    center.style.display = 'flex';
+    center.style.alignItems = 'center';
+    center.style.justifyContent = 'center';
+    center.style.padding = '24px';
+    center.style.transform = 'translateY(-2vh)';
+
+    // Card
+    const card = document.createElement('div');
+    card.style.width = 'min(50vw, 820px, calc(100vw - 32px))';
+    card.style.maxWidth = 'min(50vw, 820px, calc(100vw - 32px))';
+    card.style.color = '#dff1ff';
+    card.style.borderRadius = '14px';
+    card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
+    card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
+    card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
+    card.style.padding = '16px';
+    card.style.maxHeight = 'min(80vh, 820px)';
+    card.style.height = 'min(80vh, 820px)';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.minWidth = '0';
+    try { card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); } catch (_) {}
+
+    // Header row (title left, close right)
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.marginBottom = '2px';
+    const title = document.createElement('div');
+    title.textContent = 'Settings';
+    title.style.fontSize = '22px';
+    title.style.fontWeight = '700';
+    title.style.userSelect = 'none';
+    try { title.id = 'settings-modal-title'; card.setAttribute('aria-labelledby', 'settings-modal-title'); } catch (_) {}
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = '1px solid rgba(120,170,255,0.60)';
+    closeBtn.style.borderRadius = '8px';
+    closeBtn.style.color = '#dff1ff';
+    closeBtn.style.cursor = 'pointer';
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Settings-specific taglines
+    const settingsTaglines = [
+      'Tune the dials. Tame the darkness.',
+      'Make the abyss more habitable.',
+      'Adjust reality to your liking.',
+      'Personalization: because doom is unique.',
+      'Polish your experience. Leave the grime.',
+      'Twist the knobs; not your fate.',
+      'Balance chaos with preferences.',
+      'Sharper fangs, softer UI.',
+      'Comfort meets calamity.',
+      'Where control meets the void.',
+      'Temper the noise. Amplify the legend.',
+      'Set the stage for heroics.',
+      'Make the night yours.',
+      'Silence the wraiths, not the music.',
+      'Buttons for the brave.',
+      'Your dungeon, your rules.',
+      'Fine‑tune the fear factor.',
+      'Dial back the doom, if you must.',
+      'Refine the ritual settings.',
+      'Customize the chaos.'
+    ];
+    const tagline = document.createElement('div');
+    try {
+      tagline.textContent = settingsTaglines[Math.floor(Math.random() * settingsTaglines.length)];
+      tagline.style.fontSize = '13px';
+      tagline.style.opacity = '0.9';
+      tagline.style.margin = '0 0 10px 0';
+      tagline.style.color = '#cfe6ff';
+      tagline.style.userSelect = 'none';
+    } catch (_) {}
+    try { tagline.id = 'settings-modal-desc'; card.setAttribute('aria-describedby', 'settings-modal-desc'); } catch (_) {}
+
+    // Tabs bar
+    const tabsBar = createTabsBar({ onSelect: onSelectTab });
+    const allTabs = ['Account', 'Profile', 'Display', 'Sound', 'Controls'];
+
+    // Bordered content area with scroll
+    const contentWrap = document.createElement('div');
+    contentWrap.style.overflow = 'auto';
+    contentWrap.style.padding = '10px';
+    contentWrap.style.paddingRight = '6px';
+    contentWrap.style.marginTop = '0px';
+    contentWrap.style.minHeight = '240px';
+    contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
+    // Thin blue scrollbar styling (scoped)
+    try {
+      contentWrap.classList.add('thin-blue-scroll');
+      contentWrap.style.scrollbarWidth = 'thin';
+      contentWrap.style.scrollbarColor = 'rgba(120,170,255,0.60) transparent';
+      if (!document.getElementById('thin-blue-scroll-style')) {
+        const st = document.createElement('style'); st.id = 'thin-blue-scroll-style';
+        st.textContent = `
+        .thin-blue-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,170,255,0.60) transparent; }
+        .thin-blue-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .thin-blue-scroll::-webkit-scrollbar-track { background: transparent; }
+        .thin-blue-scroll::-webkit-scrollbar-thumb { background: rgba(120,170,255,0.50); border-radius: 8px; box-shadow: 0 0 8px rgba(120,170,255,0.35); }
+        .thin-blue-scroll::-webkit-scrollbar-thumb:hover { background: rgba(140,190,255,0.70); }
+        `;
+        document.head.appendChild(st);
+      }
+    } catch (_) {}
+    try {
+      contentWrap.style.border = UI.border;
+      // Sharp top-left corner only
+      contentWrap.style.borderRadius = '0 8px 8px 8px';
+      contentWrap.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
+    } catch (_) {}
+
+    // Local UI state for this overlay instance
+    let activeTab = __settingsState.activeTab || 'Profile';
+    let dirty = false;
+    let loggedIn = false;
+    let nicknameVal = '';
+    let bioVal = '';
+    let volAdjustHandler = null;
+
+    // Simple inline-styled confirm overlay within this card
+    function presentInlineConfirm(message = 'Discard changes?') {
+      return new Promise((resolve) => {
+        try {
+          const scrim = document.createElement('div');
+          scrim.style.position = 'absolute';
+          scrim.style.inset = '0';
+          scrim.style.background = 'rgba(0,0,0,0.45)';
+          scrim.style.backdropFilter = 'blur(1px)';
+          scrim.style.display = 'flex';
+          scrim.style.alignItems = 'center';
+          scrim.style.justifyContent = 'center';
+          scrim.style.zIndex = '10';
+
+          const box = document.createElement('div');
+          box.style.minWidth = '280px';
+          box.style.maxWidth = '90%';
+          box.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.52) 0%, rgba(8,14,28,0.48) 100%)';
+          box.style.border = '1px solid rgba(120,170,255,0.70)';
+          box.style.borderRadius = '10px';
+          box.style.boxShadow = '0 0 20px rgba(120,170,255,0.33)';
+          box.style.padding = '12px';
+          box.style.color = '#eaf6ff';
+
+          const msg = document.createElement('div');
+          msg.textContent = String(message || 'Are you sure?');
+          msg.style.marginBottom = '10px';
+          msg.style.fontWeight = '600';
+          box.appendChild(msg);
+
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.justifyContent = 'flex-end';
+          row.style.gap = '8px';
+
+          const noBtn = document.createElement('button');
+          noBtn.textContent = 'Cancel';
+          const yesBtn = document.createElement('button');
+          yesBtn.textContent = 'Discard';
+          [noBtn, yesBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '6px 10px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid rgba(120,170,255,0.60)'; b.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)'; });
+
+          noBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(false); };
+          yesBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(true); };
+
+          row.appendChild(noBtn); row.appendChild(yesBtn);
+          box.appendChild(row);
+          scrim.appendChild(box);
+          card.appendChild(scrim);
+          try { yesBtn.focus(); } catch (_) {}
+        } catch (_) { resolve(false); }
+      });
+    }
+
+    function onSelectTab(name) {
+      // Unsaved-changes guard
+      if (dirty) {
+        presentInlineConfirm('You have unsaved changes. Discard them?').then((discard) => {
+          if (!discard) return;
+          dirty = false;
+          activeTab = String(name || 'Profile');
+          __settingsState.activeTab = activeTab;
+          render();
+        });
+        return;
+      }
+      activeTab = String(name || 'Profile');
+      __settingsState.activeTab = activeTab;
+      render();
+    }
+
+    function setDirty(v) { dirty = !!v; }
+
+    function render() {
+      // Tabs UI
+      try { tabsBar.render({ tabs: allTabs, activeKey: activeTab }); } catch (_) {}
+      // After rendering tabs, set up ARIA linkage and ids
+      try {
+        const btns = tabsBar.el.querySelectorAll('button[data-tab-key]');
+        btns.forEach((b) => {
+          const key = b.getAttribute('data-tab-key') || '';
+          const safe = String(key).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+          if (!b.id) b.id = `settings-tab-${safe}`;
+        });
+        contentWrap.setAttribute('role', 'tabpanel');
+        const activeBtn = tabsBar.el.querySelector(`button[data-tab-key="${activeTab}"]`);
+        if (activeBtn && activeBtn.id) contentWrap.setAttribute('aria-labelledby', activeBtn.id);
+      } catch (_) {}
+
+      // Body
+      contentWrap.innerHTML = '';
+      const tab = activeTab;
+      if (tab === 'Account') {
+        contentWrap.appendChild(makeSection('Account', 'Manage your account, authentication and linked providers.'));
+        if (!loggedIn) {
+          contentWrap.appendChild(makeNote('Login required. Sign in to manage your account.'));
+        } else {
+          contentWrap.appendChild(makeNote('You are logged in.')); // Placeholder until account UI is added
+        }
+      } else if (tab === 'Profile') {
+        contentWrap.appendChild(makeSection('Profile'));
+        if (!loggedIn) {
+          contentWrap.appendChild(makeNote('Login required. Sign in to edit your profile.'));
+        } else {
+          // Nickname row with right-side dice button inside the input (like login password eye)
+          const nickRow = createInputRow({ dataName: 'nickname' });
+          const nickLabel = document.createElement('label'); nickLabel.textContent = 'Nickname:'; nickLabel.style.minWidth = '100px';
+          const diceSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/></svg>';
+
+          const nickWrap = document.createElement('div');
+          nickWrap.style.position = 'relative';
+          nickWrap.style.display = 'flex';
+          nickWrap.style.alignItems = 'center';
+          nickWrap.style.flex = '1';
+
+          const nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.placeholder = 'Pick a unique nickname';
+          nameInput.value = nicknameVal || '';
+          nameInput.style.display = 'inline-block';
+          nameInput.style.height = '40px';
+          nameInput.style.lineHeight = '40px';
+          nameInput.style.background = 'transparent';
+          nameInput.style.outline = 'none';
+          nameInput.style.color = 'var(--sf-tip-fg, #fff)';
+          nameInput.style.border = '0';
+          nameInput.style.borderRadius = '8px';
+          nameInput.style.padding = `0 calc(${UI.iconSize}px + ${UI.leftGap}) 0 10px`;
+          nameInput.style.boxShadow = UI.insetShadow;
+          nameInput.style.flex = '1';
+          nameInput.style.width = '100%';
+          nameInput.oninput = () => { nicknameVal = String(nameInput.value || ''); setDirty(true); };
+          try { nameInput.id = 'settings-nickname'; nickLabel.htmlFor = 'settings-nickname'; } catch (_) {}
+
+          const diceBtn = document.createElement('button');
+          diceBtn.type = 'button';
+          diceBtn.title = 'Roll a random nickname';
+          diceBtn.style.position = 'absolute';
+          diceBtn.style.right = '0';
+          diceBtn.style.top = '50%';
+          diceBtn.style.transform = 'translateY(-50%)';
+          diceBtn.style.width = `${UI.iconSize}px`;
+          diceBtn.style.height = `${UI.iconSize}px`;
+          diceBtn.style.display = 'inline-flex';
+          diceBtn.style.alignItems = 'center';
+          diceBtn.style.justifyContent = 'center';
+          diceBtn.style.background = 'transparent';
+          diceBtn.style.border = UI.border;
+          diceBtn.style.borderRadius = '8px';
+          diceBtn.style.boxSizing = 'border-box';
+          diceBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
+          diceBtn.style.cursor = 'pointer';
+          diceBtn.innerHTML = diceSvg;
+          diceBtn.onclick = async () => {
+            try {
+              const base = ['Vox', 'Hex', 'Gloom', 'Iron', 'Vermilion', 'Ash', 'Rune', 'Blight', 'Grim', 'Cipher'];
+              const suf = ['fang', 'shade', 'mark', 'wrath', 'spire', 'veil', 'shard', 'brand', 'wraith', 'mourn'];
+              const nick = base[Math.floor(Math.random()*base.length)] + suf[Math.floor(Math.random()*suf.length)] + Math.floor(Math.random()*90+10);
+              nameInput.value = nick; nicknameVal = nick; setDirty(true);
+            } catch (_) {}
+          };
+
+          nickWrap.appendChild(nameInput);
+          nickWrap.appendChild(diceBtn);
+          nickRow.appendChild(nickLabel);
+          nickRow.appendChild(nickWrap);
+          contentWrap.appendChild(nickRow);
+          try { wireFocusHighlight(nameInput, nickRow); } catch (_) {}
+
+          // Bio (multiline, fixed container height so the card size doesn’t jump)
+          const bioRow = document.createElement('div');
+          bioRow.style.display = 'flex'; bioRow.style.flexDirection = 'column'; bioRow.style.gap = '6px'; bioRow.style.marginBottom = '8px';
+          const bioLbl = document.createElement('label'); bioLbl.textContent = 'Bio:';
+          const bioWrap = document.createElement('div');
+          bioWrap.style.position = 'relative';
+          bioWrap.style.display = 'flex';
+          bioWrap.style.flex = '1';
+          try { bioWrap.style.border = UI.border; bioWrap.style.borderRadius = '8px'; bioWrap.style.boxShadow = UI.insetShadow; } catch (_) {}
+          const bio = document.createElement('textarea');
+          bio.placeholder = 'Whisper your legend into the static...';
+          bio.value = bioVal || '';
+          bio.rows = 5; // fixed visual height
+          bio.style.resize = 'vertical';
+          bio.style.minHeight = '120px'; bio.style.maxHeight = '200px';
+          bio.style.border = '0'; bio.style.outline = 'none';
+          bio.style.padding = '8px 10px'; bio.style.color = '#eaf6ff';
+          bio.style.background = 'transparent'; bio.style.width = '100%';
+          bio.oninput = () => { bioVal = String(bio.value || ''); setDirty(true); };
+          try { bio.id = 'settings-bio'; bioLbl.htmlFor = 'settings-bio'; } catch (_) {}
+          bioWrap.appendChild(bio);
+          bioRow.appendChild(bioLbl); bioRow.appendChild(bioWrap);
+          contentWrap.appendChild(bioRow);
+          try { wireFocusHighlight(bio, bioWrap); } catch (_) {}
+
+          // Save/Cancel actions
+          const actions = document.createElement('div');
+          actions.style.display = 'flex'; actions.style.gap = '10px'; actions.style.justifyContent = 'flex-end';
+          const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save';
+          const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel';
+          [saveBtn, cancelBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '8px 12px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid rgba(120,170,255,0.60)'; b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)'; });
+          saveBtn.onclick = async () => {
+            // TODO: wire to server profile update once nickname APIs exist
+            // For now, store locally to avoid data loss between tab switches
+            try { LS.setItem('draft:nickname', nicknameVal || ''); LS.setItem('draft:bio', bioVal || ''); } catch (_) {}
+            setDirty(false);
+          };
+          cancelBtn.onclick = () => {
+            // Revert fields from last saved draft
+            try { nicknameVal = LS.getItem('draft:nickname', '') || ''; bioVal = LS.getItem('draft:bio', '') || ''; } catch (_) {}
+            render(); setDirty(false);
+          };
+          actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
+          contentWrap.appendChild(actions);
+        }
+      } else if (tab === 'Display') {
+        contentWrap.appendChild(makeSection('Display', 'Theme and rendering.'));
+        const themeRow = document.createElement('div');
+        themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
+        const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
+        const sel = document.createElement('select');
+        ['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
+        try { const saved = LS.getItem('theme', null); if (saved) sel.value = saved; if (window.setTheme) window.setTheme(sel.value || saved || 'dark'); } catch (_) {}
+        sel.onchange = () => { try { LS.setItem('theme', sel.value); } catch (_) {} try { window.setTheme && window.setTheme(sel.value); } catch (_) {} };
+        themeRow.appendChild(lbl); themeRow.appendChild(sel); contentWrap.appendChild(themeRow);
+      } else if (tab === 'Sound')  {
+        contentWrap.appendChild(makeSection('Sound Mixer', ''));
+        // Space between section title and knobs (increase spacing)
+        { const spacer = document.createElement('div'); spacer.style.height = '10px'; contentWrap.appendChild(spacer); }
+        // Volume knobs (smaller)
+        contentWrap.appendChild(makeVolumeKnobsGrid());
+        // Mark dirty when user adjusts any knob
+        try {
+          if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+          volAdjustHandler = (e) => { if (e && e.detail && e.detail.adjusting) setDirty(true); };
+          window.addEventListener('ui:volume:adjusting', volAdjustHandler);
+        } catch (_) {}
+        const spacer = document.createElement('div'); spacer.style.height = '12px'; contentWrap.appendChild(spacer);
+        contentWrap.appendChild(makeSection('Notifications', 'Choose which alerts to receive.'));
+        contentWrap.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
+        contentWrap.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
+        contentWrap.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
+        contentWrap.appendChild(makeCheckboxRow('Friend game created', 'notif_friendGameCreated', 'ui:notif:friendGameCreated'));
+        contentWrap.appendChild(makeCheckboxRow('New lobby chat message', 'notif_lobbyChat', 'ui:notif:lobbyChat'));
+        contentWrap.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
+        contentWrap.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
+      } else if (tab === 'Controls') {
+        contentWrap.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
+        contentWrap.appendChild(makeNote('Keybinding editor will appear here.'));
+      }
+    }
+
+    // Assemble
+    card.appendChild(header);
+    card.appendChild(tagline);
+    card.appendChild(tabsBar.el);
+    card.appendChild(contentWrap);
+    center.appendChild(card);
+    content.appendChild(center);
+
+    // Focus trap within the card
+    try {
+      const trap = (ev) => {
+        if (ev.key === 'Escape') {
+          ev.preventDefault(); ev.stopPropagation();
+          try { closeBtn.click(); } catch (_) {}
+          return;
+        }
+        if (ev.key !== 'Tab') return;
+        const nodes = card.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(nodes).filter(el => !el.disabled && el.offsetParent !== null);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); try { last.focus(); } catch (_) {} }
+        else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); try { first.focus(); } catch (_) {} }
+      };
+      card.addEventListener('keydown', trap);
+      // Initial focus to first button/input
+      setTimeout(() => {
+        try {
+          const nodes = card.querySelectorAll('input, button, select, textarea');
+          for (const n of nodes) { if (!n.disabled) { n.focus(); break; } }
+        } catch (_) {}
+      }, 0);
+    } catch (_) {}
+
+    // Close handling with unsaved-check
+    closeBtn.onclick = () => {
+      if (dirty) {
+        presentInlineConfirm('You have unsaved changes. Discard them?').then((discard) => {
+          if (!discard) return;
+          try { if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler); } catch (_) {}
+          try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+        });
+        return;
+      }
+      try { if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler); } catch (_) {}
+      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+    };
+
+    // Resolve auth, drafts, and server profile, then render
+    (async () => {
+      try { loggedIn = !!(await getUser()); } catch (_) { loggedIn = false; }
+      // Load local drafts first
+      try { nicknameVal = LS.getItem('draft:nickname', '') || ''; } catch (_) {}
+      try { bioVal = LS.getItem('draft:bio', '') || ''; } catch (_) {}
+      // If logged in and no local nickname draft, prefill from server profile (creates one if missing)
+      if (loggedIn && !nicknameVal) {
+        try {
+          const prof = await ensureProfileForCurrentUser();
+          if (prof && prof.display_name && !nicknameVal) nicknameVal = String(prof.display_name);
+        } catch (_) {}
+      }
+      render();
+    })();
+
+    // Initial render (before async auth completes)
+    render();
+
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Optional global exposure for quick access/debug

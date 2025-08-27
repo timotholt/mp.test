@@ -118,6 +118,7 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
   el.style.flex = '0 0 auto';
   el.style.marginBottom = '0';
   el.style.borderTop = '0';
+  try { el.setAttribute('role', 'tablist'); } catch (_) {}
 
   function render({ tabs = [], activeKey } = {}) {
     el.innerHTML = '';
@@ -128,6 +129,7 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.textContent = label;
       // Expose the tab key for callers that want to update labels (e.g., counts)
       try { b.setAttribute('data-tab-key', String(key)); } catch (_) {}
+      try { b.setAttribute('role', 'tab'); } catch (_) {}
       b.style.padding = '4px 8px';
       b.style.border = UI.border;
       b.style.borderBottom = '0';
@@ -138,9 +140,39 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
       b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
       b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
+      try { b.setAttribute('aria-selected', isActive ? 'true' : 'false'); } catch (_) {}
+      try { b.tabIndex = isActive ? 0 : -1; } catch (_) {}
       b.onclick = () => { if (typeof onSelect === 'function') onSelect(key); };
       el.appendChild(b);
     });
+
+    // Keyboard navigation (Left/Right/Home/End) with roving tabindex
+    el.onkeydown = (ev) => {
+      const code = ev.key;
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(code)) return;
+      const btns = Array.from(el.querySelectorAll('button[data-tab-key]'));
+      if (!btns.length) return;
+      const active = document.activeElement;
+      let idx = btns.indexOf(active);
+      if (idx < 0) idx = btns.findIndex(b => b.getAttribute('aria-selected') === 'true');
+      if (idx < 0) idx = 0;
+      if (code === 'ArrowLeft') idx = (idx - 1 + btns.length) % btns.length;
+      else if (code === 'ArrowRight') idx = (idx + 1) % btns.length;
+      else if (code === 'Home') idx = 0;
+      else if (code === 'End') idx = btns.length - 1;
+      const nextBtn = btns[idx];
+      const nextKey = nextBtn ? nextBtn.getAttribute('data-tab-key') : null;
+      if (!nextKey) return;
+      ev.preventDefault();
+      if (typeof onSelect === 'function') onSelect(nextKey);
+      // Focus the newly active tab after parent re-renders
+      setTimeout(() => {
+        try {
+          const q = el.querySelector(`button[data-tab-key="${CSS.escape(String(nextKey))}"]`);
+          if (q) q.focus();
+        } catch (_) {}
+      }, 0);
+    };
   }
 
   return { el, render };

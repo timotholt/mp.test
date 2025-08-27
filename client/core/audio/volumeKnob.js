@@ -57,6 +57,14 @@ export function createVolumeKnob(opts = {}) {
     },
   });
 
+  // Prefer tooltip to appear below the knob ("far" mode is set in createKnob)
+  // Set placement priority and a slightly larger gap so it renders clearly under the control.
+  try {
+    el.__sfTipPlacementPriority = 'b,bc,bl,br';
+    el.__sfTipGapRem = 3.2;
+    el.__sfTipStart = 'edge';
+  } catch (_) {}
+
   // External sync -> update UI silently (ignore own echoes)
   const onExternal = (e) => {
     try {
