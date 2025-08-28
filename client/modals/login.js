@@ -35,7 +35,7 @@ function ensureLoginStyles() {
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     box-shadow: 0 0 22px rgba(80,140,255,0.33);
     box-shadow: var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33));
-    backdrop-filter: var(--sf-tip-backdrop, blur(8px) saturate(1.25));
+    backdrop-filter: var(--sf-tip-backdrop, blur(3px) saturate(1.2));
     padding: 1rem; /* Ensure inner padding so nothing touches edges */
   }
   .login-title { font-size: 22px; font-weight: 700; margin: 0 0 0 0; user-select: none; }

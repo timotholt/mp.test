@@ -668,7 +668,7 @@ function presentSettingsOverlay() {
     card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
     card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-    card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
+    card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
     card.style.padding = '16px';
     card.style.maxHeight = 'min(80vh, 820px)';
     card.style.height = 'min(80vh, 820px)';

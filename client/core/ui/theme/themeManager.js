@@ -212,13 +212,13 @@
       const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlpha + 0.02)})`;
       const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
 
-      // Surfaces (use opacity multiplier via CSS on consumption sites)
-      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / 0.41)`;
-      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / 0.40)`;
+      // Surfaces (alpha scaled by --ui-opacity-mult for consistency with zoom control)
+      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(0.41 * var(--ui-opacity-mult, 1)))`;
+      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(0.40 * var(--ui-opacity-mult, 1)))`;
 
-      // Tooltips
-      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / ${tipTopA})`;
-      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / ${tipBotA})`;
+      // Tooltips (alpha also scaled by --ui-opacity-mult)
+      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(${tipTopA} * var(--ui-opacity-mult, 1)))`;
+      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(${tipBotA} * var(--ui-opacity-mult, 1)))`;
 
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);

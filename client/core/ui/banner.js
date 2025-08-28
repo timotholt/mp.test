@@ -24,7 +24,7 @@ export function ensureBanner() {
     banner.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     banner.style.borderTop = 'none';
     banner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-    banner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
+    banner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
     banner.style.borderRadius = '6px';
     banner.style.padding = '0 12px';
     // Keep banner above overlay (zIndex 20000) and status bar (30000)

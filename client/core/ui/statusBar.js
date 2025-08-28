@@ -33,7 +33,7 @@ export function ensureStatusBar() {
     bar.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     bar.style.borderTop = 'none';
     bar.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-    bar.style.backdropFilter = 'var(--sf-tip-backdrop, blur(8px) saturate(1.25))';
+    bar.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
     bar.style.color = 'var(--ui-fg)';
     // Keep status bar above overlays
     bar.style.zIndex = '30000';
