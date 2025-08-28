@@ -39,6 +39,10 @@
       '--ui-surface-border': 'rgba(120,170,255,0.70)',
       '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
       '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
+      // Defaults for new dynamic controls
+      '--ui-gradient': '60',
+      '--ui-backdrop-blur': '3px',
+      '--ui-overlay-darkness': '0.5',
       // Scrollbar tokens (glass)
       '--ui-scrollbar-width': '10px',
       '--ui-scrollbar-radius': '8px',
@@ -171,14 +175,24 @@
       // Fallbacks when CSS vars are not yet set.
       const currentGradient = parseFloat(cs.getPropertyValue('--ui-gradient') || '60') || 60;
       const currentMilkiness = parseFloat(cs.getPropertyValue('--ui-backdrop-blur') || '3') || 3;
+      // Additional new controls (persisted in LS):
+      let currentBorderStrength = parseFloat(localStorage.getItem('ui_border_intensity'));
+      if (!Number.isFinite(currentBorderStrength)) currentBorderStrength = 70; // default ~0.70 border alpha baseline
+      let currentGlowStrength = parseFloat(localStorage.getItem('ui_glow_strength'));
+      if (!Number.isFinite(currentGlowStrength)) currentGlowStrength = 60; // default matches prior glow look
+      let currentOverlayDarkness = parseFloat(localStorage.getItem('ui_overlay_darkness'));
+      if (!Number.isFinite(currentOverlayDarkness)) currentOverlayDarkness = 50; // 50% darkness baseline
 
       const hue = clamp(params.hue != null ? params.hue : currentHue, 0, 360);
       const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
       const fontScale = clamp(params.fontScale != null ? params.fontScale : currentScale, 0.8, 1.2);
       const gradient = clamp(params.gradient != null ? params.gradient : currentGradient, 0, 100);
       const milkiness = clamp(params.milkiness != null ? params.milkiness : currentMilkiness, 0, 8);
+      const borderStrength = clamp(params.borderStrength != null ? params.borderStrength : currentBorderStrength, 0, 100);
+      const glowStrength = clamp(params.glowStrength != null ? params.glowStrength : currentGlowStrength, 0, 100);
+      const overlayDarkness = clamp(params.overlayDarkness != null ? params.overlayDarkness : currentOverlayDarkness, 0, 100);
       // Debug: entry point (verify sliders call into here)
-      try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale, gradient, milkiness }); } catch (_) {}
+      try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale, gradient, milkiness, borderStrength, glowStrength, overlayDarkness }); } catch (_) {}
 
       // Optional: accept transparency multiplier from callers (e.g., Settings slider)
       if (params.opacityMult != null) {
@@ -193,12 +207,18 @@
         } catch (_) {}
       }
 
+      // Apply overlay darkness (0..100 -> 0..1 alpha) and persist
+      try { root.style.setProperty('--ui-overlay-darkness', String(overlayDarkness / 100)); } catch (_) {}
+      try { localStorage.setItem('ui_overlay_darkness', String(overlayDarkness)); } catch (_) {}
+
       // Persist user prefs
       try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
       try { localStorage.setItem('ui_intensity', String(intensity)); } catch (_) {}
       try { localStorage.setItem('ui_font_scale', toFixed(fontScale, 3)); } catch (_) {}
       try { localStorage.setItem('ui_gradient', String(gradient)); } catch (_) {}
       try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
+      try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
+      try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
 
       // Reflect new controls as CSS variables for other components to read if needed
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
@@ -212,7 +232,10 @@
       const sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
       const light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
-      const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.33
+      const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
+      // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
+      const borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
+      const glowAlphaEff = clamp(glowAlpha * (glowStrength / 60), 0, 1);
 
       // Tooltip surface uses slightly different (more transparent) mapping
       const tipTopA0 = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
@@ -228,9 +251,9 @@
 
       // Derive common tokens from hue/intensity (HSL)
       const accent = `hsl(${hue} ${sat}% ${light}%)`;
-      const border = `hsl(${hue} ${sat}% ${Math.max(30, light - 5)}% / ${borderAlpha})`;
-      const glowOuter = `0 0 18px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlpha})`;
-      const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlpha + 0.02)})`;
+      const border = `hsl(${hue} ${sat}% ${Math.max(30, light - 5)}% / ${borderAlphaEff})`;
+      const glowOuter = `0 0 18px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlphaEff})`;
+      const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlphaEff + 0.02)})`;
       const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
@@ -260,7 +283,7 @@
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-bright', bright);
       // Strong glow used by interactive hover/focus (two-layer glow for pop)
-      const strongGlow = `0 0 36px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.60, glowAlpha + 0.20)}), 0 0 10px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.88, glowAlpha + 0.40)})`;
+      const strongGlow = `0 0 36px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.60, glowAlphaEff + 0.20)}), 0 0 10px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.88, glowAlphaEff + 0.40)})`;
       root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
       root.style.setProperty('--ui-surface-bg-bottom', surfBot);
@@ -269,15 +292,15 @@
       root.style.setProperty('--sf-tip-bg-top', tipTop);
       root.style.setProperty('--sf-tip-bg-bottom', tipBot);
       root.style.setProperty('--sf-tip-border', border);
-      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
+      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlphaEff})`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
       root.style.setProperty('--sf-tip-text-glow', `0 0 9px hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.70)`);
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px hsl(${hue} ${sat}% ${light}% / 0.35))`);
       root.style.setProperty('--sf-tip-line-color', border);
-      root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
-      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.85, borderAlpha + 0.15)})`);
+      root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlphaEff})`);
+      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.85, borderAlphaEff + 0.15)})`);
       // Debug: exit point (verify full execution)
       try {
         const cssHue = getComputedStyle(root).getPropertyValue('--ui-hue').trim();

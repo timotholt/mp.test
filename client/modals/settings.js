@@ -215,11 +215,11 @@ function renderSettingsContent(panel) {
         resetBtn.addEventListener('focus', onHover);
         resetBtn.addEventListener('blur', onLeave);
         resetBtn.onclick = () => {
-          const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
+          const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 85) / 100) * MMAX; // reversed semantics: 85% clear
           // Reset theme
           try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
           // Reset dynamic theme knobs
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3 }); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
           try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
           try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
           try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
@@ -231,13 +231,17 @@ function renderSettingsContent(panel) {
           try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
           try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
           try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
+          // Reset new sliders
+          try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
+          try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
+          try { gsRng.value = '60'; gsVal.textContent = '60%'; gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); } catch (_) {}
           // Reset opacity
-          const p = Math.round((defMult / MMAX) * 100);
+          const p = 85; // transparency percent
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
           if (OPDBG) {
             try {
               const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-              console.debug(`[opacity] reset(panel) css=${css} p=${p} mult=${defMult}`);
+              console.debug(`[opacity] reset(panel,rev) css=${css} p=${p} mult=${defMult}`);
             } catch (_) {}
           }
         };
@@ -357,12 +361,12 @@ function renderSettingsContent(panel) {
       try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
     };
     grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
-    content.appendChild(grRow);
+    // Note: appended after Transparency for new ordering
 
-    // Milkiness slider (backdrop blur 0-8px)
+    // Blur slider (backdrop blur 0-8px)
     const mkRow = document.createElement('div');
     mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Milkiness:'; mkLbl.style.minWidth = '140px';
+    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
     const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness';
     const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-val';
     try {
@@ -383,63 +387,95 @@ function renderSettingsContent(panel) {
       try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
     };
     mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
-    content.appendChild(mkRow);
+    // Note: appended after Transparency for new ordering
 
-    // Transparency slider
+    // Transparency slider (reversed: 100% = clear, 0% = opaque)
     const opRow = document.createElement('div');
     opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
-    const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px';
+    const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
     const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
     const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-val';
     // Initialize from storage, default 1. Read both namespaced and raw keys for compatibility
     try {
-      const OPDBG = true; // TEMP debug logging toggle
-      const MMAX = 2.5; // 100% -> full opacity
+      const OPDBG = true; const MMAX = 2.5; // ceiling for opacity multiplier
       let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
       let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
-      let mult;
-      let p;
+      let mult = null; let p = 85; // default transparency percent
       if (raw != null || ns != null) {
         mult = parseFloat(ns != null ? ns : raw);
-        if (!Number.isFinite(mult) || mult < 0) mult = 1;
-        p = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
-      } else {
-        // Default to 85% transparency when no prior value exists
-        p = 85;
-        mult = (p / 100) * MMAX;
-        try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
-        try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+        if (!Number.isFinite(mult) || mult < 0) mult = 0.375; // fallback ~85% clear
+        // Detect legacy semantics (old stored mult was proportional to opacity, not transparency)
+        if (mult > 1.25) {
+          const pOld = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
+          p = Math.max(0, Math.min(100, 100 - pOld));
+        } else {
+          // New semantics: mult = (100 - p)/100 * MMAX
+          p = Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100)));
+        }
       }
+      // Apply and persist remapped multiplier
+      const multClamped = ((100 - p) / 100) * MMAX;
       opRng.value = String(p);
-      const pct = String(p) + '%';
-      opVal.textContent = pct; opRng.title = pct;
-      // Clamp CSS var to the new scale so old values (e.g., 12.5) don't overdrive
-      const multClamped = (p / 100) * MMAX;
+      const pct = String(p) + '%'; opVal.textContent = pct; opRng.title = pct;
       document.documentElement.style.setProperty('--ui-opacity-mult', String(multClamped));
-      if (OPDBG) {
-        try {
-          const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-          console.debug(`[opacity] display-tab-init(panel) css=${css} p=${p} multClamped=${multClamped} rawLS=${raw}`);
-        } catch (_) {}
-      }
+      try { LS.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
+      try { localStorage.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
+      if (OPDBG) { try {
+        const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+        console.debug(`[opacity] display-tab-init(panel,rev) css=${css} p=${p} multClamped=${multClamped} rawLS=${raw}`);
+      } catch (_) {} }
     } catch (_) {}
     opRng.oninput = () => {
       const OPDBG = true; const MMAX = 2.5;
       const p = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
       if (String(p) !== opRng.value) opRng.value = String(p);
-      const mult = (p / 100) * MMAX;
+      const mult = ((100 - p) / 100) * MMAX;
       const pct = String(p) + '%';
       opVal.textContent = pct; opRng.title = pct;
       try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
+      // Gradient tooltip visible only when panels aren’t fully clear
+      try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
       if (OPDBG) {
         try {
           const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-          console.debug(`[opacity] slider(panel) css=${css} p=${p} mult=${mult}`);
+          console.debug(`[opacity] slider(panel,rev) css=${css} p=${p} mult=${mult}`);
         } catch (_) {}
       }
     };
     opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
     content.appendChild(opRow);
+
+    // Place Gradient and Blur after Transparency now
+    try { const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0))); if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
+    content.appendChild(grRow);
+    content.appendChild(mkRow);
+
+    // New: Overlay Darkness (0-100)
+    const odRow = document.createElement('div'); odRow.style.display = 'flex'; odRow.style.alignItems = 'center'; odRow.style.gap = '8px'; odRow.style.marginBottom = '8px';
+    const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.title = 'Dimming behind dialogs/menus';
+    const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness';
+    const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-val';
+    try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
+    odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} };
+    odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); content.appendChild(odRow);
+
+    // New: Border Intensity (0-100)
+    const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
+    const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.title = 'Strength of panel borders';
+    const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity';
+    const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-val';
+    try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
+    biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
+    biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); content.appendChild(biRow);
+
+    // New: Glow Strength (0-100)
+    const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
+    const gsLbl = document.createElement('label'); gsLbl.textContent = 'Glow Strength:'; gsLbl.style.minWidth = '140px'; gsLbl.title = 'Strength of panel glow and highlights';
+    const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength';
+    const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-val';
+    try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; } catch (_) {}
+    gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+    gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); content.appendChild(gsRow);
 
     // Reset button moved to section header (see above)
   } else if (tab === 'Sound') {
@@ -1043,26 +1079,31 @@ function presentSettingsOverlay() {
             resetBtn.addEventListener('focus', onHover);
             resetBtn.addEventListener('blur', onLeave);
             resetBtn.onclick = () => {
-              const OPDBG = true; const MMAX = 2.5; const defMult = 2.125;
+              const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 85) / 100) * MMAX; // reversed semantics
               try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3 }); } catch (_) {}
+              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
               try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
               try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
               try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
               try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
               try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
               try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
-              // Reset gradient and milkiness
+              // Reset gradient and blur
               try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
               try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
               try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
               try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
-              const p = Math.round((defMult / MMAX) * 100);
+              // Reset new sliders
+              try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
+              try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
+              try { gsRng.value = '60'; gsVal.textContent = '60%'; gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); } catch (_) {}
+              // Reset transparency slider percent
+              const p = 85;
               try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
               if (OPDBG) {
                 try {
                   const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-                  console.debug(`[opacity] reset(overlay) css=${css} p=${p} mult=${defMult}`);
+                  console.debug(`[opacity] reset(overlay,rev) css=${css} p=${p} mult=${defMult}`);
                 } catch (_) {}
               }
             };
@@ -1182,12 +1223,12 @@ function presentSettingsOverlay() {
           try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
         };
         grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
-        contentWrap.appendChild(grRow);
+        // Note: appended after Transparency for new ordering
 
-        // Milkiness slider (backdrop blur 0-8px)
+        // Blur slider (backdrop blur 0-8px)
         const mkRow = document.createElement('div');
         mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Milkiness:'; mkLbl.style.minWidth = '140px';
+        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
         const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness-ovl';
         const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-ovl-val';
         try {
@@ -1208,38 +1249,39 @@ function presentSettingsOverlay() {
           try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
         };
         mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
-        contentWrap.appendChild(mkRow);
+        // Note: appended after Transparency for new ordering
 
-        // Transparency slider
+        // Transparency slider (reversed: 100% = clear, 0% = opaque)
         const opRow = document.createElement('div');
         opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
-        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px';
+        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
         const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity-ovl';
         const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-ovl-val';
         try {
-          const OPDBG = true; const MMAX = 2.5;
+          const OPDBG = true; const MMAX = 2.5; // ceiling
           let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
           let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
-          let mult; let p;
+          let mult = null; let p = 85;
           if (raw != null || ns != null) {
             mult = parseFloat(ns != null ? ns : raw);
-            if (!Number.isFinite(mult) || mult < 0) mult = 1;
-            p = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
-          } else {
-            p = 85; // default 85%
-            mult = (p / 100) * MMAX;
-            try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
-            try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+            if (!Number.isFinite(mult) || mult < 0) mult = 0.375;
+            if (mult > 1.25) {
+              const pOld = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
+              p = Math.max(0, Math.min(100, 100 - pOld));
+            } else {
+              p = Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100)));
+            }
           }
+          const multClamped = ((100 - p) / 100) * MMAX;
           opRng.value = String(p);
-          const pct = String(p) + '%';
-          opVal.textContent = pct; opRng.title = pct;
-          const multClamped = (p / 100) * MMAX;
+          const pct = String(p) + '%'; opVal.textContent = pct; opRng.title = pct;
           document.documentElement.style.setProperty('--ui-opacity-mult', String(multClamped));
+          try { LS.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
+          try { localStorage.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
           if (OPDBG) {
             try {
               const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-              console.debug(`[opacity] display-tab-init(overlay) css=${css} p=${p} multClamped=${multClamped} rawLS=${raw}`);
+              console.debug(`[opacity] display-tab-init(overlay,rev) css=${css} p=${p} multClamped=${multClamped} rawLS=${raw}`);
             } catch (_) {}
           }
         } catch (_) {}
@@ -1247,19 +1289,53 @@ function presentSettingsOverlay() {
           const OPDBG = true; const MMAX = 2.5;
           const p = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
           if (String(p) !== opRng.value) opRng.value = String(p);
-          const mult = (p / 100) * MMAX;
+          const mult = ((100 - p) / 100) * MMAX;
           const pct = String(p) + '%';
           opVal.textContent = pct; opRng.title = pct;
           try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
+          // Gradient tooltip visible when not fully clear
+          try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
           if (OPDBG) {
             try {
               const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-              console.debug(`[opacity] slider(overlay) css=${css} p=${p} mult=${mult}`);
+              console.debug(`[opacity] slider(overlay,rev) css=${css} p=${p} mult=${mult}`);
             } catch (_) {}
           }
         };
         opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
         contentWrap.appendChild(opRow);
+
+        // Place Gradient and Blur after Transparency now
+        try { const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0))); if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
+        contentWrap.appendChild(grRow);
+        contentWrap.appendChild(mkRow);
+
+        // New: Overlay Darkness (0-100)
+        const odRow = document.createElement('div'); odRow.style.display = 'flex'; odRow.style.alignItems = 'center'; odRow.style.gap = '8px'; odRow.style.marginBottom = '8px';
+        const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.title = 'Dimming behind dialogs/menus';
+        const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness-ovl';
+        const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-ovl-val';
+        try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
+        odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} };
+        odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); contentWrap.appendChild(odRow);
+
+        // New: Border Intensity (0-100)
+        const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
+        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.title = 'Strength of panel borders';
+        const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
+        const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
+        try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
+        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
+        biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); contentWrap.appendChild(biRow);
+
+        // New: Glow Strength (0-100)
+        const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
+        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Glow Strength:'; gsLbl.style.minWidth = '140px'; gsLbl.title = 'Strength of panel glow and highlights';
+        const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
+        const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
+        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; } catch (_) {}
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+        gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
 
         // Reset button moved to section header (see above)
       } else if (tab === 'Sound')  {
