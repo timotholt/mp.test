@@ -107,7 +107,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Add a clear border per request
   sendBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   sendBtn.style.background = 'transparent';
-  sendBtn.style.color = 'var(--sf-tip-fg, #fff)';
+  sendBtn.style.color = 'var(--ui-fg, #eee)';
   sendBtn.style.borderRadius = '8px';
   sendBtn.style.height = '40px';
   sendBtn.style.padding = '0 14px';

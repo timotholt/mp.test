@@ -26,6 +26,7 @@
 
       // Global bright + strong glow for high-visibility focus/hover
       '--ui-bright': 'rgba(190,230,255,0.98)',
+      '--ui-fg': 'rgba(220,235,255,0.96)',
       '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)'
       ,
       // Shared surface tokens (for modals/menus/panels to adopt)
@@ -101,6 +102,29 @@
       style.type = 'text/css';
       style.textContent = css;
       document.head.appendChild(style);
+    }
+  } catch (_) {}
+
+  // Inject minimal select/option theming so dropdowns aren't white-on-blue
+  try {
+    const STYLE_ID2 = 'ui-controls-style';
+    if (!document.getElementById(STYLE_ID2)) {
+      const css2 = `
+        select, .ui-select {
+          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
+          color: var(--ui-fg, #eee);
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: 8px;
+        }
+        select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
+        select option { background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))); color: var(--ui-fg, #eee); }
+        select option:checked, select option:hover { background-color: rgba(120,170,255,0.20); color: var(--ui-fg, #eee); }
+      `;
+      const style2 = document.createElement('style');
+      style2.id = STYLE_ID2;
+      style2.type = 'text/css';
+      style2.textContent = css2;
+      document.head.appendChild(style2);
     }
   } catch (_) {}
 

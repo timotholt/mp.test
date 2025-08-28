@@ -428,13 +428,57 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               nameInput.style.lineHeight = '40px';
               nameInput.style.background = 'transparent';
               nameInput.style.outline = 'none';
-              nameInput.style.color = 'var(--sf-tip-fg, #fff)';
+              nameInput.style.color = 'var(--ui-fg, #eee)';
               nameInput.style.border = UI.border;
               nameInput.style.borderRadius = '8px';
               nameInput.style.padding = '0 10px';
               try { nameLbl.htmlFor = nameInput.id; } catch (_) {}
               nameRow.appendChild(nameInput);
+              // Password — compact input with right-side copy icon on same row
+              const passWrap = document.createElement('div');
+              passWrap.style.position = 'relative';
+              passWrap.style.display = 'inline-block';
+              passWrap.style.flex = '0 0 auto';
+              passWrap.style.marginLeft = '8px';
+              const passInput = document.createElement('input');
+              passInput.type = 'text';
+              passInput.placeholder = '(optional password)';
+              passInput.id = 'lobby-create-pass';
+              passInput.style.width = '180px';
+              passInput.style.height = '40px';
+              passInput.style.lineHeight = '40px';
+              passInput.style.background = 'transparent';
+              passInput.style.outline = 'none';
+              passInput.style.color = 'var(--ui-fg, #eee)';
+              passInput.style.border = UI.border;
+              passInput.style.borderRadius = '8px';
+              passInput.style.padding = '0 34px 0 10px';
+              const copyBtn = document.createElement('button');
+              copyBtn.type = 'button';
+              copyBtn.title = 'Copy password';
+              copyBtn.style.position = 'absolute';
+              copyBtn.style.top = '50%';
+              copyBtn.style.right = '8px';
+              copyBtn.style.transform = 'translateY(-50%)';
+              copyBtn.style.width = '24px';
+              copyBtn.style.height = '24px';
+              copyBtn.style.background = 'none';
+              copyBtn.style.border = '0';
+              copyBtn.style.color = 'var(--ui-bright, #dff1ff)';
+              copyBtn.style.opacity = '0.9';
+              copyBtn.style.cursor = 'pointer';
+              copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+              copyBtn.onclick = async () => {
+                const txt = passInput.value || '';
+                try { await navigator.clipboard.writeText(txt); } catch (_) {
+                  try { passInput.select(); document.execCommand('copy'); } catch (e) {}
+                }
+              };
+              passWrap.appendChild(passInput);
+              passWrap.appendChild(copyBtn);
+              nameRow.appendChild(passWrap);
               try { wireFocusHighlight(nameInput, nameRow); } catch (_) {}
+              try { wireFocusHighlight(passInput, nameRow); } catch (_) {}
               form.appendChild(nameRow);
 
               // Description (UI-only, not sent yet) — single-line input
@@ -447,7 +491,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               desc.style.height = '40px';
               desc.style.lineHeight = '40px';
               desc.style.background = 'transparent';
-              desc.style.color = 'var(--sf-tip-fg, #fff)';
+              desc.style.color = 'var(--ui-fg, #eee)';
               desc.style.border = UI.border;
               desc.style.borderRadius = '8px';
               desc.style.padding = '0 10px';
@@ -476,11 +520,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               maxSelect.style.flex = '0 0 120px';
               maxSelect.style.height = '40px';
               maxSelect.style.background = 'transparent';
-              maxSelect.style.color = 'var(--sf-tip-fg, #fff)';
+              maxSelect.style.color = 'var(--ui-fg, #eee)';
               maxSelect.style.border = UI.border;
               maxSelect.style.borderRadius = '8px';
               maxSelect.style.padding = '0 8px';
-              [1,2,3,4,6,8,12,16].forEach((n) => { const o = document.createElement('option'); o.value = String(n); o.textContent = String(n); maxSelect.appendChild(o); });
+              [1,2,3,4].forEach((n) => { const o = document.createElement('option'); o.value = String(n); o.textContent = (n === 1) ? 'Solo' : String(n); o.style.color = 'var(--ui-fg, #eee)'; o.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))'; maxSelect.appendChild(o); });
               try { maxSelect.value = '4'; } catch (_) {}
               try { maxLbl.htmlFor = maxSelect.id; } catch (_) {}
               maxWrap.appendChild(maxLbl);
@@ -500,71 +544,21 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               turnSelect.style.flex = '0 0 180px';
               turnSelect.style.height = '40px';
               turnSelect.style.background = 'transparent';
-              turnSelect.style.color = 'var(--sf-tip-fg, #fff)';
+              turnSelect.style.color = 'var(--ui-fg, #eee)';
               turnSelect.style.border = UI.border;
               turnSelect.style.borderRadius = '8px';
               turnSelect.style.padding = '0 8px';
               const turnOptions = [100, 250, 500, 1000];
-              turnOptions.forEach((ms) => { const o = document.createElement('option'); o.value = String(ms); o.textContent = `${ms} ms`; turnSelect.appendChild(o); });
+              turnOptions.forEach((ms) => { const o = document.createElement('option'); o.value = String(ms); o.textContent = `${ms} ms`; o.style.color = 'var(--ui-fg, #eee)'; o.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))'; turnSelect.appendChild(o); });
               try { turnSelect.value = '500'; } catch (_) {}
               try { turnLbl.htmlFor = turnSelect.id; } catch (_) {}
               turnWrap.appendChild(turnLbl);
               turnWrap.appendChild(turnSelect);
-
+              // Append settings groups to the row and attach the row to the form
               settingsRow.appendChild(maxWrap);
               settingsRow.appendChild(turnWrap);
               form.appendChild(settingsRow);
-
-              // Password — compact input with right-side copy icon
-              const { row: passRow, lbl: passLbl } = makeRow('Password');
-              const passWrap = document.createElement('div');
-              passWrap.style.position = 'relative';
-              passWrap.style.display = 'inline-block';
-              passWrap.style.flex = '0 0 auto';
-              const passInput = document.createElement('input');
-              passInput.type = 'text';
-              passInput.placeholder = '(optional password)';
-              passInput.id = 'lobby-create-pass';
-              passInput.style.width = '220px';
-              passInput.style.height = '40px';
-              passInput.style.lineHeight = '40px';
-              passInput.style.background = 'transparent';
-              passInput.style.outline = 'none';
-              passInput.style.color = 'var(--sf-tip-fg, #fff)';
-              passInput.style.border = UI.border;
-              passInput.style.borderRadius = '8px';
-              passInput.style.padding = '0 34px 0 10px';
-              const copyBtn = document.createElement('button');
-              copyBtn.type = 'button';
-              copyBtn.title = 'Copy password';
-              copyBtn.style.position = 'absolute';
-              copyBtn.style.top = '50%';
-              copyBtn.style.right = '8px';
-              copyBtn.style.transform = 'translateY(-50%)';
-              copyBtn.style.width = '24px';
-              copyBtn.style.height = '24px';
-              copyBtn.style.background = 'none';
-              copyBtn.style.border = '0';
-              copyBtn.style.color = 'var(--ui-bright, #dff1ff)';
-              copyBtn.style.opacity = '0.9';
-              copyBtn.style.cursor = 'pointer';
-              copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-              copyBtn.onclick = async () => {
-                const txt = passInput.value || '';
-                try { await navigator.clipboard.writeText(txt); } catch (_) {
-                  try { passInput.select(); document.execCommand('copy'); } catch (e) {}
-                }
-              };
-              try { passLbl.htmlFor = passInput.id; } catch (_) {}
-              passWrap.appendChild(passInput);
-              passWrap.appendChild(copyBtn);
-              passRow.appendChild(passWrap);
-              try { wireFocusHighlight(passInput, passRow); } catch (_) {}
-              form.appendChild(passRow);
-
-              
-
-              // Actions
+              // Actions row (Create button)
               const actions = document.createElement('div');
               actions.style.display = 'flex';
               actions.style.gap = '8px';
@@ -574,14 +568,19 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               create.textContent = 'Create';
               create.style.border = UI.border;
               create.style.borderRadius = '8px';
-              create.style.padding = '6px 10px';
+              create.style.height = '40px';
+              create.style.padding = '0 14px';
+              create.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+              create.style.color = 'var(--ui-fg, #eee)';
+              create.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
+              create.style.cursor = 'pointer';
               create.onclick = async () => {
                 const cname = LS.getItem('name', 'Hero');
                 const name = String(nameInput.value || '').trim() || 'Hack40k Room';
                 // milliseconds
                 const turnLength = Math.max(100, Math.min(1000, parseInt(turnSelect.value, 10) || 500));
                 const roomPass = passInput.value || '';
-                const maxPlayers = Math.max(1, Math.min(16, parseInt(maxSelect.value, 10) || 4));
+                const maxPlayers = Math.max(1, Math.min(4, parseInt(maxSelect.value, 10) || 4));
                 try {
                   const newRoom = await client.create('nethack', {
                     name, turnLength, roomPass, maxPlayers,
