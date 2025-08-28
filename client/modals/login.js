@@ -10,7 +10,8 @@ import {
   getUser,
 } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
-import { getRandomLoginPhrase } from '../core/util/loginPhrases.js';
+import { LOGIN_PHRASES } from '../core/util/loginPhrases.js';
+import { getQuip } from '../core/ui/quip.js';
 import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
@@ -130,7 +131,7 @@ function ensureLoginStyles() {
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); user-select: none; }
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
-  .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); border: 1px dashed var(--ui-surface-border, rgba(120,170,255,0.45)); min-height: 220px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
+  .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); border: 1px dashed var(--ui-surface-border, rgba(120,170,255,0.45)); min-height: 240px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
   .login-main { display: flex; flex-direction: column; min-width: 0; }
   @media (max-width: 700px) { .login-grid { grid-template-columns: 1fr; } }
   `;
@@ -203,12 +204,22 @@ export function presentLoginModal() {
   title.className = 'login-title';
   title.textContent = "Welcome to Grimdark";
 
-  const sub = document.createElement('div');
-  sub.className = 'login-sub';
-  sub.textContent = 'Sign in with a provider or email. ' + getRandomLoginPhrase();
+  // Quip line directly under the title
+  const quip = document.createElement('div');
+  quip.className = 'login-sub';
+  quip.textContent = getQuip('auth.login.tagline', LOGIN_PHRASES);
+
+  // Hint line sits below the quip and above the auth buttons
+  const hint = document.createElement('div');
+  hint.className = 'login-sub';
+  hint.textContent = 'Sign in with a provider or email.';
+  // Match separator size; left-align and pull closer to buttons
+  try { hint.style.textAlign = 'left'; hint.style.fontSize = '14px'; hint.style.marginBottom = '6px'; } catch (_) {}
 
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';
+  // Pull buttons closer to the hint (override class top margin)
+  try { buttons.style.marginTop = '4px'; } catch (_) {}
 
   const mkBtn = (label, onClick) => {
     const b = document.createElement('button');
@@ -378,7 +389,8 @@ export function presentLoginModal() {
   const main = document.createElement('div'); main.className = 'login-main';
 
   main.appendChild(title);
-  main.appendChild(sub);
+  main.appendChild(quip);
+  main.appendChild(hint);
   main.appendChild(buttons);
   main.appendChild(sep);
   main.appendChild(form);

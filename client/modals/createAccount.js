@@ -5,6 +5,7 @@ import { initSupabase, signUpWithPassword } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
+import { getQuip } from '../core/ui/quip.js';
 
 function ensureCreateAccountStyles() {
   if (document.getElementById('create-account-autofill-style')) return;
@@ -89,8 +90,8 @@ export function presentCreateAccountModal() {
   title.style.marginBottom = '2px';
   title.style.userSelect = 'none';
 
-  // Fun taglines shown under the title. Easy to edit.
-  const taglines = [
+  // Fun quips shown under the title. Easy to edit.
+  const quips = [
     'One step closer to your doom. Proceed wisely.',
     'Dare to join the abyss? We saved you a seat.',
     'Heroes enter. Few return.',
@@ -113,7 +114,8 @@ export function presentCreateAccountModal() {
     'Roll the dice. The dark rolls back.'
   ];
   const subtitle = document.createElement('div');
-  subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  // Centralized rotating quip for consistency
+  subtitle.textContent = getQuip('auth.create.tagline', quips);
   try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 16px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
@@ -413,13 +415,8 @@ export function presentCreateAccountModal() {
       resSub.style.margin = '0 0 20px 0';
       resSub.style.color = 'var(--ui-fg, #eee)';
       resSub.style.userSelect = 'none';
-      if (kind === 'success') {
-        // Use the same tagline pool as the main modal
-        try { resSub.textContent = taglines[Math.floor(Math.random() * taglines.length)]; } catch (_) { resSub.textContent = 'Welcome, brave soul.'; }
-      } else {
-        // Exists view should also show a tagline under the title
-        try { resSub.textContent = taglines[Math.floor(Math.random() * taglines.length)]; } catch (_) { resSub.textContent = 'A familiar echo in the dark.'; }
-      }
+      // Use centralized rotating quip in result view as well
+      try { resSub.textContent = getQuip('auth.create.tagline.result', quips); } catch (_) { resSub.textContent = kind === 'success' ? 'Welcome, brave soul.' : 'A familiar echo in the dark.'; }
 
       const resStatus = document.createElement('div');
       resStatus.style.minHeight = '1.2em';

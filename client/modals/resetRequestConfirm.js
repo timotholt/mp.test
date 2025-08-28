@@ -2,6 +2,7 @@
 // Lives under client/modals/. Minimal inline styles; matches Login/Create aesthetics.
 
 import { presentLoginModal } from './login.js';
+import { getQuip } from '../core/ui/quip.js';
 
 export function presentResetPasswordRequestModal(emailValue) {
   const id = 'RESET_PASSWORD_REQUEST_MODAL';
@@ -56,15 +57,16 @@ export function presentResetPasswordRequestModal(emailValue) {
   title.style.marginBottom = '2px';
   title.style.userSelect = 'none';
 
-  // Subtitle with a short grimdark tagline
-  const taglines = [
+  // Subtitle with a short grimdark quips
+  const quips = [
     'Keys rust; resolve doesn\'t.',
     'The lock listens for new words.',
     'A candle relit in the dark.',
     'Reset, return, resume the delve.'
   ];
   const subtitle = document.createElement('div');
-  subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  // Centralized rotating quip for consistency
+  subtitle.textContent = getQuip('auth.resetConfirm.tagline', quips);
   try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   const message = document.createElement('div');

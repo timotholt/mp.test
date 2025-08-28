@@ -130,7 +130,7 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       // Expose the tab key for callers that want to update labels (e.g., counts)
       try { b.setAttribute('data-tab-key', String(key)); } catch (_) {}
       try { b.setAttribute('role', 'tab'); } catch (_) {}
-      b.style.padding = '4px 8px';
+      b.style.padding = '6px 10px';
       b.style.border = UI.border;
       b.style.borderBottom = '0';
       b.style.borderRadius = '0';
@@ -212,6 +212,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   btn.style.borderRadius = '10px';
   btn.style.cursor = 'pointer';
   btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.25))';
+  try { btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false'); } catch (_) {}
 
   const btnLabel = document.createElement('span');
   btnLabel.textContent = placeholder;
@@ -239,6 +240,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   menu.style.borderRadius = '10px';
   menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.35))';
   try { menu.classList.add('ui-glass-scrollbar'); } catch (_) {}
+  try { menu.setAttribute('role', 'listbox'); menu.tabIndex = -1; } catch (_) {}
 
   const list = document.createElement('div');
   list.style.padding = '4px 0';
@@ -246,18 +248,22 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
 
   let _items = Array.isArray(items) ? items.slice() : [];
   let _value = value;
+  let _typeBuffer = '';
+  let _typeTimer = 0;
 
   function renderMenu() {
     list.innerHTML = '';
-    _items.forEach((it) => {
+    _items.forEach((it, idx) => {
       const row = document.createElement('div');
       row.textContent = it.label != null ? String(it.label) : String(it.value);
       row.setAttribute('data-value', String(it.value));
       row.style.padding = '8px 10px';
       row.style.cursor = 'pointer';
       row.style.userSelect = 'none';
-      row.style.color = (it.value === _value) ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.95))';
-      row.style.background = (it.value === _value) ? 'rgba(255,255,255,0.08)' : 'transparent';
+      const isSel = (it.value === _value);
+      row.style.color = isSel ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.95))';
+      row.style.background = isSel ? 'rgba(255,255,255,0.08)' : 'transparent';
+      try { row.setAttribute('role', 'option'); row.setAttribute('aria-selected', isSel ? 'true' : 'false'); row.id = `dd-opt-${idx}`; } catch (_) {}
       row.onmouseenter = () => { row.style.background = 'rgba(255,255,255,0.10)'; };
       row.onmouseleave = () => { row.style.background = (it.value === _value) ? 'rgba(255,255,255,0.08)' : 'transparent'; };
       row.onclick = () => {
@@ -279,6 +285,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
     window.addEventListener('wheel', onDoc, { passive: true, capture: true });
     menu.setAttribute('data-onDoc', '1');
     menu._onDoc = onDoc;
+    try { btn.setAttribute('aria-expanded', 'true'); } catch (_) {}
   }
 
   function close() {
@@ -288,6 +295,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
       window.removeEventListener('wheel', menu._onDoc, { capture: true });
       menu._onDoc = null;
     }
+    try { btn.setAttribute('aria-expanded', 'false'); btn.focus(); } catch (_) {}
   }
 
   function setItems(items) {
@@ -308,6 +316,73 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   btn.onclick = () => {
     if (menu.style.display === 'none') open(); else close();
   };
+
+  function findIndexByValue(v) {
+    return _items.findIndex(it => it.value === v);
+  }
+
+  function clampIndex(i) {
+    const n = _items.length;
+    if (n <= 0) return -1;
+    return (i + n) % n;
+  }
+
+  function selectByOffset(delta, fire = true) {
+    if (!_items.length) return;
+    const cur = findIndexByValue(_value);
+    const next = clampIndex((cur < 0 ? 0 : cur) + delta);
+    const it = _items[next];
+    if (it) setValue(it.value, fire);
+  }
+
+  function selectFirstLast(which = 'first', fire = true) {
+    if (!_items.length) return;
+    const idx = which === 'last' ? _items.length - 1 : 0;
+    const it = _items[idx];
+    if (it) setValue(it.value, fire);
+  }
+
+  function typeAhead(ch) {
+    try { ch = String(ch || '').toLowerCase(); } catch (_) { return; }
+    if (!/^[\w\-\s]$/.test(ch)) return;
+    clearTimeout(_typeTimer);
+    _typeBuffer += ch;
+    _typeTimer = setTimeout(() => { _typeBuffer = ''; }, 750);
+    const start = Math.max(0, findIndexByValue(_value));
+    const n = _items.length;
+    for (let off = 1; off <= n; off++) {
+      const it = _items[(start + off) % n];
+      if (!it) continue;
+      const label = (it.label != null ? String(it.label) : String(it.value)).toLowerCase();
+      if (label.startsWith(_typeBuffer)) { setValue(it.value, true); break; }
+    }
+  }
+
+  function onKeyDown(ev) {
+    const k = ev.key;
+    if (k === 'ArrowDown') { ev.preventDefault(); selectByOffset(1, true); return; }
+    if (k === 'ArrowUp') { ev.preventDefault(); selectByOffset(-1, true); return; }
+    if (k === 'Home') { ev.preventDefault(); selectFirstLast('first', true); return; }
+    if (k === 'End') { ev.preventDefault(); selectFirstLast('last', true); return; }
+    if (k === 'Enter' || k === ' ') {
+      ev.preventDefault();
+      if (menu.style.display === 'none') open(); else close();
+      return;
+    }
+    if (k === 'Escape') { if (menu.style.display !== 'none') { ev.preventDefault(); close(); } return; }
+    // Type-ahead for letters/numbers and space
+    if (k && k.length === 1) { typeAhead(k); }
+  }
+
+  btn.addEventListener('keydown', onKeyDown);
+  // When menu is open, allow same navigation keys
+  menu.addEventListener('keydown', (ev) => {
+    const k = ev.key;
+    if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Home' || k === 'End') { onKeyDown(ev); return; }
+    if (k === 'Enter' || k === ' ') { ev.preventDefault(); close(); return; }
+    if (k === 'Escape') { ev.preventDefault(); close(); return; }
+    if (k && k.length === 1) { typeAhead(k); }
+  });
 
   wrap.appendChild(btn);
   wrap.appendChild(menu);

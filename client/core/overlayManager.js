@@ -84,10 +84,10 @@ const OverlayManager = (() => {
       const route = getRoute();
       // Recompute input gate when overlays change
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE);
-      // Shade follows route when no modal
+      // Hide screen shade when no modal is present (prevents lingering black tint)
       try {
         const shade = document.getElementById('screen-shade');
-        if (shade) shade.style.display = (route !== getStates().GAMEPLAY_ACTIVE) ? '' : 'none';
+        if (shade) shade.style.display = 'none';
       } catch (_) {}
       return;
     }

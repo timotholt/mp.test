@@ -3,6 +3,7 @@ import { createVolumeKnob } from '../core/audio/volumeKnob.js';
 import * as LS from '../core/localStorage.js';
 import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
+import { getQuip } from '../core/ui/quip.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -23,11 +24,91 @@ function computeAccountEnabled() {
   return false;
 }
 
+// Shared helpers across panel and overlay
+function attachHover(rng, labelEl) {
+  const on = () => {
+    try { labelEl.style.color = 'var(--ui-bright, #dff1ff)'; } catch (_) {}
+    try { rng.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; } catch (_) {}
+    try { rng.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {}
+  };
+  const off = () => {
+    try { labelEl.style.color = ''; } catch (_) {}
+    try { rng.style.boxShadow = 'none'; } catch (_) {}
+    try { rng.style.outline = 'none'; } catch (_) {}
+  };
+  try {
+    rng.addEventListener('mouseenter', on);
+    rng.addEventListener('mouseleave', off);
+    rng.addEventListener('focus', on);
+    rng.addEventListener('blur', off);
+  } catch (_) {}
+}
+
+function attachWheel(rng) {
+  try {
+    rng.addEventListener('wheel', (e) => {
+      // Ignore if user holds modifier keys (allow browser gestures)
+      if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return;
+      if (e && e.cancelable !== false) e.preventDefault();
+      let step = parseFloat(rng.step);
+      if (!Number.isFinite(step)) step = 1;
+      let min = parseFloat(rng.min); if (!Number.isFinite(min)) min = 0;
+      let max = parseFloat(rng.max); if (!Number.isFinite(max)) max = 100;
+      let val = parseFloat(rng.value); if (!Number.isFinite(val)) val = min;
+      // Wheel up -> increase, wheel down -> decrease
+      val += (e.deltaY < 0 ? step : -step);
+      // Clamp and snap to step precision
+      val = Math.min(max, Math.max(min, val));
+      const decs = (String(step).split('.')[1] || '').length;
+      if (decs) val = parseFloat(val.toFixed(decs));
+      rng.value = String(val);
+      try { rng.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) { try { rng.oninput && rng.oninput(); } catch (_) {} }
+    }, { passive: false });
+  } catch (_) {}
+}
+
 export function presentSettingsPanel() {
   // Prefer overlay modal when available for dark backdrop + centering
   try { if (presentSettingsOverlay && presentSettingsOverlay()) return; } catch (_) {}
   let panel = document.getElementById('settings-panel');
   if (!panel) panel = createSettingsPanel();
+  // Ensure tagline exists even for panels created before tagline feature
+  try {
+    if (!panel.querySelector('#settings-panel-tagline')) {
+      const settingsTaglines = [
+        'Tune the dials. Tame the darkness.',
+        'Make the abyss more habitable.',
+        'Adjust reality to your liking.',
+        'Personalization: because every doom is unique.',
+        'Polish your experience. Leave the grime.',
+        'Twist the knobs; not your fate.',
+        'Balance chaos with preferences.',
+        'Sharper fangs, softer UI.',
+        'Your look, your feel, your death',
+        'Dye your death, attenuate your scream.',
+        "You just have to touch everything don't you.",
+        'Set the stage for heroics.',
+        "Change your settings all you want. It won't help.",
+        'Paint your pixels, we paint your doom',
+        'Buttons for the brave.',
+        'Your dungeon, your rules.',
+        'Fine‑tune the fear factor.',
+        'Dial-in the doom.',
+        'Refine the ritual.',
+        'Customize the chaos.'
+      ];
+      const t = document.createElement('div');
+      t.id = 'settings-panel-tagline';
+      t.textContent = getQuip('settings.panel.header', settingsTaglines);
+      t.style.fontSize = '13px';
+      t.style.opacity = '0.9';
+      t.style.margin = '0 0 1rem 0';
+      t.style.color = 'var(--ui-fg, #eee)';
+      t.style.userSelect = 'none';
+      const tabsEl = panel.querySelector('#settings-tabs');
+      if (tabsEl) panel.insertBefore(t, tabsEl); else panel.appendChild(t);
+    }
+  } catch (_) {}
   // Update auth-gated state each open
   __settingsState.accountEnabled = computeAccountEnabled();
   renderSettingsContent(panel);
@@ -92,6 +173,40 @@ function createSettingsPanel() {
   header.appendChild(title);
   header.appendChild(closeBtn);
   panel.appendChild(header);
+
+  // Settings-specific tagline under header (stable per panel instance)
+  try {
+    const settingsTaglines = [
+      'Tune the dials. Tame the darkness.',
+      'Make the abyss more habitable.',
+      'Adjust reality to your liking.',
+      'Personalization: because every doom is unique.',
+      'Polish your experience. Leave the grime.',
+      'Twist the knobs; not your fate.',
+      'Balance chaos with preferences.',
+      'Sharper fangs, softer UI.',
+      'Your look, your feel, your death',
+      'Dye your death, attenuate your scream.',
+      "You just have to touch everything don't you.",
+      'Set the stage for heroics.',
+      "Change your settings all you want. It won't help.",
+      'Paint your pixels, we paint your doom',
+      'Buttons for the brave.',
+      'Your dungeon, your rules.',
+      'Fine‑tune the fear factor.',
+      'Dial-in the doom.',
+      'Refine the ritual.',
+      'Customize the chaos.'
+    ];
+    const tagline = document.createElement('div');
+    tagline.textContent = getQuip('settings.panel.header', settingsTaglines);
+    tagline.style.fontSize = '13px';
+    tagline.style.opacity = '0.9';
+    tagline.style.margin = '0 0 1rem 0';
+    tagline.style.color = 'var(--ui-fg, #eee)';
+    tagline.style.userSelect = 'none';
+    panel.appendChild(tagline);
+  } catch (_) {}
 
   // Tabs header
   const tabs = document.createElement('div');
@@ -201,7 +316,7 @@ function renderSettingsContent(panel) {
       "Change all you want, it won't help you",
       "It's not the color, it's how you use it",
     ];
-    const sec = makeSection(colorQuipsPanel[Math.floor(Math.random() * colorQuipsPanel.length)], '');
+    const sec = makeSection(getQuip('settings.panel.themeTag', colorQuipsPanel), '');
     // Insert Reset button into the Theme section header (right side)
     try {
       const hdr = sec.firstChild; // title div
@@ -308,13 +423,14 @@ function renderSettingsContent(panel) {
       try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
       try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
     };
+    attachWheel(hueRng); attachHover(hueRng, hueLbl);
     hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
     content.appendChild(hueRow);
 
     // Saturation slider
     const inRow = document.createElement('div');
     inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '12px';
+    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '12px'; inLbl.style.textAlign = 'left'; // Added text-align: left
     const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity';
     const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-val';
     try {
@@ -332,13 +448,14 @@ function renderSettingsContent(panel) {
       try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
       try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
     };
+    attachWheel(inRng); attachHover(inRng, inLbl);
     inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
     content.appendChild(inRow);
 
     // Gradient strength slider (0-100)
     const grRow = document.createElement('div');
     grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
-    const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px';
+    const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px'; grLbl.style.textAlign = 'left'; // Added text-align: left
     const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient';
     const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.style.paddingRight = '6px'; grVal.id = 'settings-ui-gradient-val';
     try {
@@ -356,13 +473,14 @@ function renderSettingsContent(panel) {
       try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {}
       try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
     };
+    attachWheel(grRng); attachHover(grRng, grLbl);
     grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
     // Note: appended after Transparency for new ordering
 
     // Blur slider (backdrop blur 0-10px)
     const mkRow = document.createElement('div');
     mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
+    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays'; mkLbl.style.textAlign = 'left'; // Added text-align: left
     const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '10'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness';
     const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.style.paddingRight = '6px'; mkVal.id = 'settings-ui-milkiness-val';
     try {
@@ -382,13 +500,14 @@ function renderSettingsContent(panel) {
       try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {}
       try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
     };
+    attachWheel(mkRng); attachHover(mkRng, mkLbl);
     mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
     // Note: appended after Transparency for new ordering
 
     // Transparency slider (reversed: 100% = clear, 0% = opaque)
     const opRow = document.createElement('div');
     opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
-    const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
+    const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid'; opLbl.style.textAlign = 'left'; // Added text-align: left
     const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
     const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.style.paddingRight = '6px'; opVal.id = 'settings-ui-opacity-val';
     // Initialize from storage, default 15% transparency. Read both namespaced and raw keys for compatibility
@@ -438,6 +557,7 @@ function renderSettingsContent(panel) {
         } catch (_) {}
       }
     };
+    attachWheel(opRng); attachHover(opRng, opLbl);
     opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
     content.appendChild(opRow);
 
@@ -572,10 +692,22 @@ function renderSettingsContent(panel) {
 
 function makeSection(title, desc) {
   const wrap = document.createElement('div');
-  const t = document.createElement('div'); t.textContent = title; t.style.fontWeight = 'bold'; t.style.margin = '6px 0';
+  const t = document.createElement('div');
+  t.textContent = title;
+  // Standardize via CSS variables with sensible fallbacks
+  t.style.fontSize = 'var(--settings-sec-title-size, calc(14px * var(--ui-font-scale, 1)))';
+  t.style.fontWeight = 'var(--settings-sec-title-weight, 700)';
+  t.style.lineHeight = 'var(--settings-sec-title-line, 1.25)';
+  t.style.margin = 'var(--settings-sec-title-margin, 8px 0 4px 0)';
   wrap.appendChild(t);
   if (desc) {
-    const d = document.createElement('div'); d.textContent = desc; d.style.color = 'var(--ui-fg, #eee)'; d.style.marginBottom = '8px';
+    const d = document.createElement('div');
+    d.textContent = desc;
+    d.style.fontSize = 'var(--settings-sec-subtitle-size, calc(13px * var(--ui-font-scale, 1)))';
+    d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
+    d.style.color = 'var(--settings-sec-subtitle-color, var(--ui-bright, #dff1ff))';
+    d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
+    d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
     wrap.appendChild(d);
   }
   return wrap;
@@ -833,6 +965,9 @@ function presentSettingsOverlay() {
     header.appendChild(title);
     header.appendChild(closeBtn);
 
+    // Cache random quip for overlay header (hoisted before use)
+    let _quipSettings = null;
+
     // Settings-specific taglines
     const settingsTaglines = [
       'Tune the dials. Tame the darkness.',
@@ -843,25 +978,26 @@ function presentSettingsOverlay() {
       'Twist the knobs; not your fate.',
       'Balance chaos with preferences.',
       'Sharper fangs, softer UI.',
-      'Your look, your feel, your death',
-      'Dye your death, attenuate your scream.',
-      'Temper the noise. Amplify the legend.',
+      'Your look, your feel, your death.',
+      'Silence your screams, dye your death.',
+      "You just have to touch everything don't you.",
       'Set the stage for heroics.',
-      'Paint the town anyway you like.',
-      'Paint your pixels, we paint your doom',
+      "Change your settings all you want. It won't help.",
+      'Paint your pixels, we paint your doom.',
       'Buttons for the brave.',
       'Your dungeon, your rules.',
       'Fine‑tune the fear factor.',
-      'Dial-in  the doom',
+      'Dial-in the doom.',
       'Refine the ritual.',
       'Customize the chaos.'
     ];
     const tagline = document.createElement('div');
     try {
-      tagline.textContent = settingsTaglines[Math.floor(Math.random() * settingsTaglines.length)];
+      _quipSettings = getQuip('settings.overlay.header', settingsTaglines);
+      tagline.textContent = _quipSettings;
       tagline.style.fontSize = '13px';
       tagline.style.opacity = '0.9';
-      tagline.style.margin = '0 0 10px 0';
+      tagline.style.margin = '0 0 1rem 0';
       tagline.style.color = 'var(--ui-fg, #eee)';
       tagline.style.userSelect = 'none';
     } catch (_) {}
@@ -876,8 +1012,7 @@ function presentSettingsOverlay() {
     const contentWrap = document.createElement('div');
     try { contentWrap.classList.add('ui-glass-scrollbar'); } catch (_) {}
     contentWrap.style.overflow = 'auto';
-    contentWrap.style.padding = '10px';
-    contentWrap.style.paddingRight = '6px';
+    contentWrap.style.padding = '1.0rem';
     contentWrap.style.marginTop = '0px';
     contentWrap.style.minHeight = '240px';
     contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
@@ -895,6 +1030,36 @@ function presentSettingsOverlay() {
     let nicknameVal = '';
     let bioVal = '';
     let volAdjustHandler = null;
+    // Cache random quips so they don't change on re-render
+    let _quipThemeColor = null;
+    let _quipBorder = null;
+    let _quipTransparency = null;
+    let _quipSoundMixer = null;
+    let _quipNotif = null;
+
+    // Add mouse wheel support for range sliders in overlay
+    function attachWheel(rng) {
+      try {
+        rng.addEventListener('wheel', (e) => {
+          // Ignore if user holds modifier keys (allow browser gestures)
+          if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return;
+          if (e && e.cancelable !== false) e.preventDefault();
+          let step = parseFloat(rng.step);
+          if (!Number.isFinite(step)) step = 1;
+          let min = parseFloat(rng.min); if (!Number.isFinite(min)) min = 0;
+          let max = parseFloat(rng.max); if (!Number.isFinite(max)) max = 100;
+          let val = parseFloat(rng.value); if (!Number.isFinite(val)) val = min;
+          // Wheel up -> increase, wheel down -> decrease
+          val += (e.deltaY < 0 ? step : -step);
+          // Clamp and snap to step precision
+          val = Math.min(max, Math.max(min, val));
+          const decs = (String(step).split('.')[1] || '').length;
+          if (decs) val = parseFloat(val.toFixed(decs));
+          rng.value = String(val);
+          try { rng.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) { try { rng.oninput && rng.oninput(); } catch (_) {} }
+        }, { passive: false });
+      } catch (_) {}
+    }
 
     // Simple inline-styled confirm overlay within this card
     function presentInlineConfirm(message = 'Discard changes?') {
@@ -1104,11 +1269,13 @@ function presentSettingsOverlay() {
         const colorQuips = [
           'Your color is your personality.',
           'Death knows no color, but we do.',
+          'Paint the town any color you want.',
           'Hue today, gone tomorrow.',
           'Saturate your soul.',
           'Pick a vibe, survive the dungeon.'
         ];
-        const sec = makeSection(colorQuips[Math.floor(Math.random() * colorQuips.length)], '');
+        if (_quipThemeColor == null) { _quipThemeColor = getQuip('settings.overlay.themeTag', colorQuips); }
+        const sec = makeSection(_quipThemeColor, '');
         // Insert Reset button into the Theme section header (overlay)
         try {
           const hdr = sec.firstChild; // title div
@@ -1160,7 +1327,7 @@ function presentSettingsOverlay() {
         themeGroup.style.display = 'flex';
         themeGroup.style.alignItems = 'center';
         themeGroup.style.gap = '8px';
-        const lbl = document.createElement('label'); lbl.textContent = 'Preset:'; lbl.style.fontSize = 'calc(14px * var(--ui-font-scale, 1))';
+        const lbl = document.createElement('label'); lbl.textContent = 'Preset:'; lbl.style.fontSize = 'calc(16px * var(--ui-font-scale, 1))'; lbl.style.fontWeight = '600';
         let dd = null;
         try {
           let savedPreset = LS.getItem('ui_preset', null);
@@ -1216,7 +1383,7 @@ function presentSettingsOverlay() {
         // Hue slider
         const hueRow = document.createElement('div');
         hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
-        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '14px';
+        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '14px'; hueLbl.style.textAlign = 'left'; hueLbl.title = 'Overall accent color hue (0–360)';
         const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue-ovl';
         const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.style.paddingRight = '6px'; hueVal.id = 'settings-ui-hue-ovl-val';
         try {
@@ -1234,14 +1401,14 @@ function presentSettingsOverlay() {
           try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
           try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
-        };
+        }; attachWheel(hueRng); attachHover(hueRng, hueLbl);
         hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
         contentWrap.appendChild(hueRow);
 
         // Saturation slider
         const inRow = document.createElement('div');
         inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '14px';
+        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '14px'; inLbl.style.textAlign = 'left'; inLbl.title = 'Color saturation/intensity';
         const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity-ovl';
         const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-ovl-val';
         try {
@@ -1259,7 +1426,7 @@ function presentSettingsOverlay() {
           try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
           try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
-        };
+        }; attachWheel(inRng); attachHover(inRng, inLbl);
         inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
         contentWrap.appendChild(inRow);
 
@@ -1274,25 +1441,26 @@ function presentSettingsOverlay() {
             'Borders define the void',
             'Edge control, edge comfort'
           ];
-          contentWrap.appendChild(makeSection(borderQuips[Math.floor(Math.random() * borderQuips.length)], ''));
+          if (_quipBorder == null) { _quipBorder = getQuip('settings.overlay.borderTag', borderQuips); }
+          contentWrap.appendChild(makeSection(_quipBorder, ''));
         } catch (_) {}
 
         // New: Border Intensity (0-100)
         const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
-        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.style.fontSize = '14px'; biLbl.title = 'Strength of panel borders';
+        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.style.fontSize = '14px'; biLbl.style.textAlign = 'left'; biLbl.title = 'Strength of panel borders';
         const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
         const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
-        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
+        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }; attachWheel(biRng); attachHover(biRng, biLbl);
         biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); contentWrap.appendChild(biRow);
 
         // New: Glow Strength (0-100)
         const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
-        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.title = 'Strength of panel glow and highlights';
+        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.style.textAlign = 'left'; gsLbl.title = 'Strength of panel glow and highlights';
         const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
         const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
-        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }; attachWheel(gsRng); attachHover(gsRng, gsLbl);
         gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
         // Space before Transparency tagline
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
@@ -1305,14 +1473,15 @@ function presentSettingsOverlay() {
             "It's the little things that matter",
             'It whispers, not shouts.'
           ];
-          const trSec = makeSection(subtleQuips[Math.floor(Math.random() * subtleQuips.length)], '');
+          if (_quipTransparency == null) { _quipTransparency = getQuip('settings.overlay.transparencyTag', subtleQuips); }
+          const trSec = makeSection(_quipTransparency, '');
           contentWrap.appendChild(trSec);
         } catch (_) {}
 
         // Gradient strength slider (0-100)
         const grRow = document.createElement('div');
         grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
-        const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px'; grLbl.style.fontSize = '14px';
+        const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px'; grLbl.style.fontSize = '14px'; grLbl.style.textAlign = 'left'; grLbl.title = 'Surface gradient amount';
         const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient-ovl';
         const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.id = 'settings-ui-gradient-ovl-val';
         try {
@@ -1330,14 +1499,14 @@ function presentSettingsOverlay() {
           try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {}
           try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
-        };
+        }; attachWheel(grRng); attachHover(grRng, grLbl);
         grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
         // Note: appended after Transparency for new ordering
 
         // Blur slider (backdrop blur 0-10px)
         const mkRow = document.createElement('div');
         mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.style.fontSize = '14px'; mkLbl.title = 'Background blur behind panels/overlays';
+        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.style.fontSize = '14px'; mkLbl.style.textAlign = 'left'; mkLbl.title = 'Background blur behind panels/overlays';
         const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '10'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness-ovl';
         const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-ovl-val';
         try {
@@ -1357,14 +1526,14 @@ function presentSettingsOverlay() {
           try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {}
           try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
-        };
+        }; attachWheel(mkRng); attachHover(mkRng, mkLbl);
         mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
         // Note: appended after Transparency for new ordering
 
         // Transparency slider (reversed: 100% = clear, 0% = opaque)
         const opRow = document.createElement('div');
         opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
-        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.style.fontSize = '14px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
+        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.style.fontSize = '14px'; opLbl.style.textAlign = 'left'; opLbl.title = 'Higher = clearer panels; lower = more solid';
         const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity-ovl';
         const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-ovl-val';
         try {
@@ -1412,7 +1581,7 @@ function presentSettingsOverlay() {
             } catch (_) {}
           }
           try { selectCustomPreset(); } catch (_) {}
-        };
+        }; attachWheel(opRng); attachHover(opRng, opLbl);
         opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
         contentWrap.appendChild(opRow);
 
@@ -1422,11 +1591,11 @@ function presentSettingsOverlay() {
 
         // New: Overlay Darkness (0-100)
         const odRow = document.createElement('div'); odRow.style.display = 'flex'; odRow.style.alignItems = 'center'; odRow.style.gap = '8px'; odRow.style.marginBottom = '8px';
-        const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.style.fontSize = '14px'; odLbl.title = 'Dimming behind dialogs/menus';
+        const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.style.fontSize = '14px'; odLbl.style.textAlign = 'left'; odLbl.title = 'Dimming behind dialogs/menus';
         const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness-ovl';
         const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
-        odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
+        odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }; attachWheel(odRng); attachHover(odRng, odLbl);
         odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); contentWrap.appendChild(odRow);
         // Place Overlay Blur after Overlay Darkness
         contentWrap.appendChild(mkRow);
@@ -1546,7 +1715,22 @@ function presentSettingsOverlay() {
         fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
         contentWrap.appendChild(fsRow);
       } else if (tab === 'Sound')  {
-        contentWrap.appendChild(makeSection('Sound Mixer', ''));
+        // Sound Mixer with random tagline
+        try {
+          const mixerQuips = [
+            "Softness is weakness. Turn it up.",
+            'Turn it up until your neighbors complain, then turn it up more.',
+            'Silence is deadly. Volume is deadlier.',
+            "Those pretty knobs are just begging to be touched.",
+            "Hurry up. Those pretty knobs aren't going to touch themselves.",
+            'Temper the noise, amplify the legend.',
+            'Turn it up. Your speakers will thank you.'
+          ];
+          if (_quipSoundMixer == null) { _quipSoundMixer = getQuip('settings.overlay.soundMixerTag', mixerQuips); }
+          contentWrap.appendChild(makeSection('Sound Mixer', _quipSoundMixer));
+        } catch (_) {
+          contentWrap.appendChild(makeSection('Sound Mixer', ''));
+        }
         // Space between section title and knobs (increase spacing to 1rem)
         { const spacer = document.createElement('div'); spacer.style.height = '1rem'; contentWrap.appendChild(spacer); }
         // Volume knobs (smaller)
@@ -1558,9 +1742,17 @@ function presentSettingsOverlay() {
           window.addEventListener('ui:volume:adjusting', volAdjustHandler);
         } catch (_) {}
         const spacer = document.createElement('div'); spacer.style.height = '12px'; contentWrap.appendChild(spacer);
-        // Notifications (style description to match top modal tagline)
+        // Notifications (random tagline; style description to match top modal tagline)
         {
-          const sec = makeSection('Notifications', 'Choose which alerts to receive.');
+          const notifQuips = [
+            'Only the alerts that matter.',
+            'Hear what hurts. Ignore the rest.',
+            'Signals in the noise.',
+            'Ping when the plot thickens.',
+            'Stay alert, stay alive.'
+          ];
+          if (_quipNotif == null) { _quipNotif = getQuip('settings.overlay.notificationsTag', notifQuips); }
+          const sec = makeSection('Notifications', _quipNotif);
           try {
             const desc = sec.children && sec.children[1];
             if (desc) {
@@ -1573,13 +1765,21 @@ function presentSettingsOverlay() {
           } catch (_) {}
           contentWrap.appendChild(sec);
         }
-        contentWrap.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
-        contentWrap.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
-        contentWrap.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
-        contentWrap.appendChild(makeCheckboxRow('Friend game created', 'notif_friendGameCreated', 'ui:notif:friendGameCreated'));
-        contentWrap.appendChild(makeCheckboxRow('New lobby chat message', 'notif_lobbyChat', 'ui:notif:lobbyChat'));
-        contentWrap.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
-        contentWrap.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
+        // Two-column layout for notification toggles
+        const notifGrid = document.createElement('div');
+        notifGrid.style.display = 'grid';
+        notifGrid.style.gridTemplateColumns = '1fr 1fr';
+        notifGrid.style.columnGap = '12px';
+        notifGrid.style.rowGap = '6px';
+        contentWrap.appendChild(notifGrid);
+
+        notifGrid.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
+        notifGrid.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
+        notifGrid.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
+        notifGrid.appendChild(makeCheckboxRow('Friend game created', 'notif_friendGameCreated', 'ui:notif:friendGameCreated'));
+        notifGrid.appendChild(makeCheckboxRow('New lobby chat message', 'notif_lobbyChat', 'ui:notif:lobbyChat'));
+        notifGrid.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
+        notifGrid.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
       } else if (tab === 'Controls') {
         contentWrap.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
         contentWrap.appendChild(makeNote('Keybinding editor will appear here.'));
@@ -1630,8 +1830,10 @@ function presentSettingsOverlay() {
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     };
 
-    // Resolve auth, drafts, and server profile, then render
+    // Resolve auth, drafts, and server profile, then conditionally render
     (async () => {
+      const prevLoggedIn = loggedIn;
+      const prevNick = nicknameVal;
       try { loggedIn = !!(await getUser()); } catch (_) { loggedIn = false; }
       // Load local drafts first
       try { nicknameVal = LS.getItem('draft:nickname', '') || ''; } catch (_) {}
@@ -1643,7 +1845,11 @@ function presentSettingsOverlay() {
           if (prof && prof.display_name && !nicknameVal) nicknameVal = String(prof.display_name);
         } catch (_) {}
       }
-      render();
+      // Only re-render if we're on Account/Profile and auth or nickname changed
+      const tabNeedsAuth = (activeTab === 'Account' || activeTab === 'Profile');
+      if (tabNeedsAuth && (loggedIn !== prevLoggedIn || nicknameVal !== prevNick)) {
+        render();
+      }
     })();
 
     // Initial render (before async auth completes)

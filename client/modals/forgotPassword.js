@@ -5,6 +5,7 @@ import { initSupabase, sendPasswordReset } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentResetPasswordRequestModal } from './resetRequestConfirm.js';
+import { getQuip } from '../core/ui/quip.js';
 
 export function presentForgotPasswordModal() {
   initSupabase();
@@ -66,8 +67,8 @@ export function presentForgotPasswordModal() {
   title.style.marginBottom = '2px';
   title.style.userSelect = 'none';
 
-  // Subtitle with random grimdark taglines (20), styled per uiStandards
-  const taglines = [
+  // Subtitle with random grimdark quips (20), styled per uiStandards
+  const quips = [
     'A whisper in the dark says: change your key.',
     'Even shadows forget. We won’t — verify anew.',
     'The dungeon keeps secrets. Rotate yours.',
@@ -90,7 +91,8 @@ export function presentForgotPasswordModal() {
     'The vault is patient. So are you.'
   ];
   const subtitle = document.createElement('div');
-  subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  // Centralized rotating quip for consistency
+  subtitle.textContent = getQuip('auth.forgot.tagline', quips);
   try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   const form = document.createElement('div');
