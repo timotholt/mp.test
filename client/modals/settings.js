@@ -190,15 +190,32 @@ function renderSettingsContent(panel) {
     } else {
       content.appendChild(makeRow('Display Name', makeInput('text', LS.getItem('name', '') || '')));
     }
-  } else if (tab === 'Display') {
-    const sec = makeSection('Display', 'Theme and rendering.');
-    // Insert Reset button into the Display section header (right side)
+  } else if (tab === 'Theme') {
+    // Theme tab (Panel): rename header to "Overall Color" with a fun random tagline
+    const colorQuipsPanel = [
+      'Your color is your personality.',
+      'Death knows no color, but we do.',
+      'Hue today, gone tomorrow.',
+      'Saturate your soul.',
+      'Pick a vibe, survive the dungeon.',
+      "Change all you want, it won't help you",
+      "It's not the color, it's how you use it",
+    ];
+    const sec = makeSection(colorQuipsPanel[Math.floor(Math.random() * colorQuipsPanel.length)], '');
+    // Insert Reset button into the Theme section header (right side)
     try {
       const hdr = sec.firstChild; // title div
       if (hdr) {
         hdr.style.display = 'flex';
         hdr.style.alignItems = 'center';
         hdr.style.justifyContent = 'space-between';
+        // Create a left container in the header to hold the Theme dropdown (to the left of Reset)
+        const leftBox = document.createElement('div');
+        leftBox.id = 'theme-hdr-left-panel';
+        leftBox.style.display = 'flex';
+        leftBox.style.alignItems = 'center';
+        leftBox.style.gap = '8px';
+        hdr.appendChild(leftBox);
         const resetBtn = document.createElement('button');
         resetBtn.textContent = 'Reset';
         resetBtn.style.background = 'transparent';
@@ -215,7 +232,7 @@ function renderSettingsContent(panel) {
         resetBtn.addEventListener('focus', onHover);
         resetBtn.addEventListener('blur', onLeave);
         resetBtn.onclick = () => {
-          const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 85) / 100) * MMAX; // reversed semantics: 85% clear
+          const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 15) / 100) * MMAX; // reversed semantics: 15% clear
           // Reset theme
           try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
           // Reset dynamic theme knobs
@@ -234,14 +251,14 @@ function renderSettingsContent(panel) {
           // Reset new sliders
           try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
           try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
-          try { gsRng.value = '60'; gsVal.textContent = '60%'; gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); } catch (_) {}
+          try { gsRng.value = '60'; /* value display updated below */ gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); try { const px = Math.round(18 * (0.8 + 60 / 60)); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
           // Reset opacity
-          const p = 85; // transparency percent
+          const p = 15; // transparency percent
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
           if (OPDBG) {
             try {
               const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-              console.debug(`[opacity] reset(panel,rev) css=${css} p=${p} mult=${defMult}`);
+              console.debug(`[opacity] display-tab-reset(panel,rev) css=${css}`);
             } catch (_) {}
           }
         };
@@ -249,6 +266,7 @@ function renderSettingsContent(panel) {
       }
     } catch (_) {}
     content.appendChild(sec);
+    // Theme selector moved into header leftBox (left of Reset)
     const themeRow = document.createElement('div');
     themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
     const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
@@ -264,39 +282,17 @@ function renderSettingsContent(panel) {
       try { LS.setItem('theme', sel.value); } catch (_) {}
       try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
     };
-    themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
+    themeRow.appendChild(lbl); themeRow.appendChild(sel);
+    try { const left = sec.querySelector('#theme-hdr-left-panel'); if (left) left.appendChild(themeRow); else content.appendChild(themeRow); } catch (_) { try { content.appendChild(themeRow); } catch (_) {} }
 
-    // Font Size slider (root rem scale)
-    const fsRow = document.createElement('div');
-    fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
-    const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
-    const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale';
-    const fsVal = document.createElement('span'); fsVal.style.width = '46px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-val';
-    try {
-      let scale = parseFloat(localStorage.getItem('ui_font_scale'));
-      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-      const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
-      fsRng.value = String(p);
-      fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
-    } catch (_) {}
-    fsRng.oninput = () => {
-      const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
-      if (String(p) !== fsRng.value) fsRng.value = String(p);
-      const scale = p / 100;
-      fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
-      try { console.debug(`[display] fontScale(panel) p=${p} scale=${scale}`); } catch (_) {}
-      try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
-      try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
-    };
-    fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
-    content.appendChild(fsRow);
+    // Font Size moved to Display tab
 
     // Hue slider
     const hueRow = document.createElement('div');
     hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
-    const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px';
+    const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '12px';
     const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue';
-    const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-val';
+    const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.style.paddingRight = '6px'; hueVal.id = 'settings-ui-hue-val';
     try {
       let hue = parseFloat(localStorage.getItem('ui_hue'));
       if (!Number.isFinite(hue)) hue = 210;
@@ -318,20 +314,20 @@ function renderSettingsContent(panel) {
     // Saturation slider
     const inRow = document.createElement('div');
     inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px';
+    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '12px';
     const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity';
-    const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-val';
+    const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-val';
     try {
       let intensity = parseFloat(localStorage.getItem('ui_intensity'));
       if (!Number.isFinite(intensity)) intensity = 60;
       const p = Math.max(0, Math.min(100, Math.round(intensity)));
       inRng.value = String(p);
-      inVal.textContent = `${p}`; inRng.title = `${p}`;
+      inVal.textContent = `${p}%`; inRng.title = `${p}%`;
     } catch (_) {}
     inRng.oninput = () => {
       const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
       if (String(p) !== inRng.value) inRng.value = String(p);
-      inVal.textContent = `${p}`; inRng.title = `${p}`;
+      inVal.textContent = `${p}%`; inRng.title = `${p}%`;
       try { console.debug(`[display] intensity(panel) p=${p}`); } catch (_) {}
       try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
       try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
@@ -344,7 +340,7 @@ function renderSettingsContent(panel) {
     grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
     const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px';
     const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient';
-    const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.id = 'settings-ui-gradient-val';
+    const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.style.paddingRight = '6px'; grVal.id = 'settings-ui-gradient-val';
     try {
       let g = parseFloat(localStorage.getItem('ui_gradient'));
       if (!Number.isFinite(g)) g = 60;
@@ -363,23 +359,23 @@ function renderSettingsContent(panel) {
     grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
     // Note: appended after Transparency for new ordering
 
-    // Blur slider (backdrop blur 0-8px)
+    // Blur slider (backdrop blur 0-10px)
     const mkRow = document.createElement('div');
     mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
-    const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness';
-    const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-val';
+    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
+    const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '10'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness';
+    const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.style.paddingRight = '6px'; mkVal.id = 'settings-ui-milkiness-val';
     try {
       let m = parseFloat(localStorage.getItem('ui_milkiness'));
       if (!Number.isFinite(m)) m = 3;
-      const v = Math.max(0, Math.min(8, m));
+      let v = Math.max(0, Math.min(10, m));
       mkRng.value = String(v);
       mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
     } catch (_) {}
     mkRng.oninput = () => {
       let v = parseFloat(mkRng.value);
       if (!Number.isFinite(v)) v = 3;
-      v = Math.max(0, Math.min(8, v));
+      v = Math.max(0, Math.min(10, v));
       mkRng.value = String(v);
       mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
       try { console.debug(`[display] milkiness(panel) v=${v}`); } catch (_) {}
@@ -394,16 +390,16 @@ function renderSettingsContent(panel) {
     opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
     const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
     const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
-    const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-val';
-    // Initialize from storage, default 1. Read both namespaced and raw keys for compatibility
+    const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.style.paddingRight = '6px'; opVal.id = 'settings-ui-opacity-val';
+    // Initialize from storage, default 15% transparency. Read both namespaced and raw keys for compatibility
     try {
       const OPDBG = true; const MMAX = 2.5; // ceiling for opacity multiplier
       let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
       let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
-      let mult = null; let p = 85; // default transparency percent
+      let mult = null; let p = 15; // default transparency percent
       if (raw != null || ns != null) {
         mult = parseFloat(ns != null ? ns : raw);
-        if (!Number.isFinite(mult) || mult < 0) mult = 0.375; // fallback ~85% clear
+        if (!Number.isFinite(mult) || mult < 0) mult = 0.375; // fallback to previous default if corrupted
         // Detect legacy semantics (old stored mult was proportional to opacity, not transparency)
         if (mult > 1.25) {
           const pOld = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
@@ -448,22 +444,23 @@ function renderSettingsContent(panel) {
     // Place Gradient and Blur after Transparency now
     try { const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0))); if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
     content.appendChild(grRow);
-    content.appendChild(mkRow);
 
     // New: Overlay Darkness (0-100)
     const odRow = document.createElement('div'); odRow.style.display = 'flex'; odRow.style.alignItems = 'center'; odRow.style.gap = '8px'; odRow.style.marginBottom = '8px';
     const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.title = 'Dimming behind dialogs/menus';
     const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness';
-    const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-val';
+    const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.style.paddingRight = '6px'; odVal.id = 'settings-ui-overlay-darkness-val';
     try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
     odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} };
     odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); content.appendChild(odRow);
+    // Place Overlay Blur after Overlay Darkness
+    content.appendChild(mkRow);
 
     // New: Border Intensity (0-100)
     const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
     const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.title = 'Strength of panel borders';
     const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity';
-    const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-val';
+    const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.style.paddingRight = '6px'; biVal.id = 'settings-ui-border-intensity-val';
     try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
     biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
     biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); content.appendChild(biRow);
@@ -472,12 +469,70 @@ function renderSettingsContent(panel) {
     const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
     const gsLbl = document.createElement('label'); gsLbl.textContent = 'Glow Strength:'; gsLbl.style.minWidth = '140px'; gsLbl.title = 'Strength of panel glow and highlights';
     const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength';
-    const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-val';
-    try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; } catch (_) {}
-    gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+    const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.style.paddingRight = '6px'; gsVal.id = 'settings-ui-glow-strength-val';
+    try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
+    gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
     gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); content.appendChild(gsRow);
 
-    // Reset button moved to section header (see above)
+  } else if (tab === 'Display') {
+    // Display tab: font size in pixels with Reset
+    const sec = makeSection('Display', 'Legibility and scale.');
+    try {
+      const hdr = sec.firstChild; // title div
+      if (hdr) {
+        hdr.style.display = 'flex';
+        hdr.style.alignItems = 'center';
+        hdr.style.justifyContent = 'space-between';
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset';
+        resetBtn.style.background = 'transparent';
+        resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+        resetBtn.style.borderRadius = '10px';
+        resetBtn.style.color = 'var(--ui-fg, #eee)';
+        resetBtn.style.padding = '4px 10px';
+        resetBtn.style.cursor = 'pointer';
+        const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+        const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+        resetBtn.addEventListener('mouseenter', onHover);
+        resetBtn.addEventListener('mouseleave', onLeave);
+        resetBtn.addEventListener('focus', onHover);
+        resetBtn.addEventListener('blur', onLeave);
+        resetBtn.onclick = () => {
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1 }); } catch (_) {}
+          try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+          try { fsRng.value = '100'; fsVal.textContent = '16px'; fsRng.title = '16px'; } catch (_) {}
+        };
+        hdr.appendChild(resetBtn);
+      }
+    } catch (_) {}
+    content.appendChild(sec);
+
+    // Font Size slider (root rem scale) shown in pixels
+    const fsRow = document.createElement('div');
+    fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
+    const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
+    const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale';
+    const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-val';
+    try {
+      let scale = parseFloat(localStorage.getItem('ui_font_scale'));
+      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+      const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
+      fsRng.value = String(p);
+      const px = Math.round(16 * (p / 100));
+      fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
+    } catch (_) {}
+    fsRng.oninput = () => {
+      const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
+      if (String(p) !== fsRng.value) fsRng.value = String(p);
+      const scale = p / 100;
+      const px = Math.round(16 * scale);
+      fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
+      try { console.debug(`[display] fontScale(panel/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
+      try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
+    };
+    fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
+    content.appendChild(fsRow);
   } else if (tab === 'Sound') {
     content.appendChild(makeSection('Sound'));
     // Space between section title and knobs (increase spacing to 1rem)
@@ -666,18 +721,8 @@ function makeCheckboxRow(labelText, storageKey, eventName) {
     cb.style.outlineOffset = '2px';
     cb.style.cursor = 'pointer';
     // Hover/Focus glow using theme outer glow. Inline events to avoid CSS pseudo-classes.
-    const onHover = () => {
-      try {
-        cb.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
-        cb.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-      } catch (_) {}
-    };
-    const onLeave = () => {
-      try {
-        cb.style.boxShadow = 'none';
-        cb.style.outline = 'none';
-      } catch (_) {}
-    };
+    const onHover = () => { try { cb.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; cb.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+    const onLeave = () => { try { cb.style.boxShadow = 'none'; cb.style.outline = 'none'; } catch (_) {} };
     cb.addEventListener('mouseenter', onHover);
     cb.addEventListener('mouseleave', onLeave);
     cb.addEventListener('focus', onHover);
@@ -723,12 +768,10 @@ function presentSettingsOverlay() {
     mount.style.pointerEvents = 'auto';
     try { content.appendChild(mount); } catch (_) {}
 
-    // Darker backdrop to emphasize modal
+    // Darker backdrop to emphasize modal (use shared overlay darkness variable)
     try {
-      overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, '
-        + 'var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, '
-        + 'var(--ui-surface-bg-bottom, rgba(4,8,18,0.78)) 60%, '
-        + 'var(--ui-surface-bg-bottom, rgba(2,4,10,0.88)) 100%)';
+      // Important: use the same CSS var as OverlayManager so the slider affects this backdrop.
+      overlay.style.background = 'rgba(0,0,0, var(--ui-overlay-darkness, 0.5))';
       // Follow OverlayManager defaults so background passes clicks through
       // and only the modal content captures input. Keep zIndex modest.
       overlay.style.zIndex = '20000';
@@ -795,22 +838,22 @@ function presentSettingsOverlay() {
       'Tune the dials. Tame the darkness.',
       'Make the abyss more habitable.',
       'Adjust reality to your liking.',
-      'Personalization: because doom is unique.',
+      'Personalization: because your doom is unique.',
       'Polish your experience. Leave the grime.',
       'Twist the knobs; not your fate.',
       'Balance chaos with preferences.',
       'Sharper fangs, softer UI.',
-      'Comfort meets calamity.',
-      'Where control meets the void.',
+      'Your look, your feel, your death',
+      'Dye your death, attenuate your scream.',
       'Temper the noise. Amplify the legend.',
       'Set the stage for heroics.',
       'Make the night yours.',
-      'Silence the wraiths, not the music.',
+      'Paint your pixels, we paint your doom',
       'Buttons for the brave.',
       'Your dungeon, your rules.',
       'Fine‑tune the fear factor.',
       'Dial back the doom, if you must.',
-      'Refine the ritual settings.',
+      'Refine the ritual.',
       'Customize the chaos.'
     ];
     const tagline = document.createElement('div');
@@ -826,7 +869,8 @@ function presentSettingsOverlay() {
 
     // Tabs bar
     const tabsBar = createTabsBar({ onSelect: onSelectTab });
-    const allTabs = ['Account', 'Profile', 'Display', 'Sound', 'Controls'];
+    // Rename Display -> Theme, and introduce a separate Display tab
+    const allTabs = ['Account', 'Profile', 'Theme', 'Display', 'Sound', 'Controls'];
 
     // Bordered content area with scroll
     const contentWrap = document.createElement('div');
@@ -1055,67 +1099,40 @@ function presentSettingsOverlay() {
           actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
           contentWrap.appendChild(actions);
         }
-      } else if (tab === 'Display') {
-        const sec = makeSection('Display', 'Theme and rendering.');
-        // Insert Reset button into the Display section header (overlay)
+      } else if (tab === 'Theme') {
+        // Theme tab (Overlay): rename header to "Overall Color" with a fun random tagline
+        const colorQuips = [
+          'Your color is your personality.',
+          'Death knows no color, but we do.',
+          'Hue today, gone tomorrow.',
+          'Saturate your soul.',
+          'Pick a vibe, survive the dungeon.'
+        ];
+        const sec = makeSection(colorQuips[Math.floor(Math.random() * colorQuips.length)], '');
+        // Insert Reset button into the Theme section header (overlay)
         try {
-          const hdr = sec.firstChild;
+          const hdr = sec.firstChild; // title div
           if (hdr) {
             hdr.style.display = 'flex';
             hdr.style.alignItems = 'center';
-            hdr.style.justifyContent = 'space-between';
-            const resetBtn = document.createElement('button');
-            resetBtn.textContent = 'Reset';
-            resetBtn.style.background = 'transparent';
-            resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-            resetBtn.style.borderRadius = '10px';
-            resetBtn.style.color = 'var(--ui-fg, #eee)';
-            resetBtn.style.padding = '4px 10px';
-            resetBtn.style.cursor = 'pointer';
-            const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-            const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
-            resetBtn.addEventListener('mouseenter', onHover);
-            resetBtn.addEventListener('mouseleave', onLeave);
-            resetBtn.addEventListener('focus', onHover);
-            resetBtn.addEventListener('blur', onLeave);
-            resetBtn.onclick = () => {
-              const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 85) / 100) * MMAX; // reversed semantics
-              try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
-              try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
-              try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
-              try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
-              try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-              try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
-              try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
-              // Reset gradient and blur
-              try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
-              try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
-              try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
-              try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
-              // Reset new sliders
-              try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
-              try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
-              try { gsRng.value = '60'; gsVal.textContent = '60%'; gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); } catch (_) {}
-              // Reset transparency slider percent
-              const p = 85;
-              try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
-              if (OPDBG) {
-                try {
-                  const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-                  console.debug(`[opacity] reset(overlay,rev) css=${css} p=${p} mult=${defMult}`);
-                } catch (_) {}
-              }
-            };
-            hdr.appendChild(resetBtn);
+            hdr.style.justifyContent = 'flex-start';
           }
         } catch (_) {}
-        contentWrap.appendChild(sec);
-        const themeRow = document.createElement('div');
-        themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
-        const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
-        const sel = document.createElement('select');
-        // Build theme selector
+        // Theme selector row (above the color tagline), with Reset on the same line
+        const themeTopRow = document.createElement('div');
+        themeTopRow.style.display = 'flex';
+        themeTopRow.style.alignItems = 'center';
+        themeTopRow.style.justifyContent = 'space-between';
+        themeTopRow.style.gap = '8px';
+        themeTopRow.style.marginBottom = '8px';
+
+        const themeGroup = document.createElement('div');
+        themeGroup.style.display = 'flex';
+        themeGroup.style.alignItems = 'center';
+        themeGroup.style.gap = '8px';
+
+        const lbl = document.createElement('label'); lbl.textContent = 'Theme:'; lbl.style.fontSize = 'calc(14px * var(--ui-font-scale, 1))';
+        const sel = document.createElement('select'); sel.style.padding = '4px 10px'; sel.style.borderRadius = '10px'; sel.style.width = '240px'; sel.style.minWidth = '240px'; sel.style.maxWidth = '240px'; sel.style.flex = '0 0 240px';
         ;['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
         try {
           const saved = LS.getItem('theme', null);
@@ -1126,39 +1143,69 @@ function presentSettingsOverlay() {
           try { LS.setItem('theme', sel.value); } catch (_) {}
           try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
         };
-        themeRow.appendChild(lbl); themeRow.appendChild(sel); contentWrap.appendChild(themeRow);
+        themeGroup.appendChild(lbl); themeGroup.appendChild(sel);
 
-        // Font Size slider (root rem scale)
-        const fsRow = document.createElement('div');
-        fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
-        const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
-        const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale-ovl';
-        const fsVal = document.createElement('span'); fsVal.style.width = '46px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-ovl-val';
-        try {
-          let scale = parseFloat(localStorage.getItem('ui_font_scale'));
-          if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-          const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
-          fsRng.value = String(p);
-          fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
-        } catch (_) {}
-        fsRng.oninput = () => {
-          const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
-          if (String(p) !== fsRng.value) fsRng.value = String(p);
-          const scale = p / 100;
-          fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
-          try { console.debug(`[display] fontScale(overlay) p=${p} scale=${scale}`); } catch (_) {}
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
-          try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset';
+        resetBtn.style.background = 'transparent';
+        resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+        resetBtn.style.borderRadius = '10px';
+        resetBtn.style.color = 'var(--ui-fg, #eee)';
+        resetBtn.style.padding = '4px 10px';
+        resetBtn.style.cursor = 'pointer';
+        const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+        const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+        resetBtn.addEventListener('mouseenter', onHover);
+        resetBtn.addEventListener('mouseleave', onLeave);
+        resetBtn.addEventListener('focus', onHover);
+        resetBtn.addEventListener('blur', onLeave);
+        resetBtn.onclick = () => {
+          const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 15) / 100) * MMAX; // reversed semantics: 15% clear default
+          try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
+          try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
+          try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
+          try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
+          try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+          try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+          try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
+          // Reset gradient and milkiness
+          try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
+          try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
+          try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
+          try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
+          // Reset new sliders
+          try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
+          try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
+          try { gsRng.value = '60'; /* value display updated below */ gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); try { const px = Math.round(18 * (0.8 + 60 / 60)); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
+          // Reset transparency slider percent
+          const p = 15;
+          try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
+          if (OPDBG) {
+            try {
+              const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+              console.debug(`[opacity] display-reset(overlay,rev) css=${css}`);
+            } catch (_) {}
+          }
         };
-        fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
-        contentWrap.appendChild(fsRow);
+
+        themeTopRow.appendChild(themeGroup);
+        themeTopRow.appendChild(resetBtn);
+        contentWrap.appendChild(themeTopRow);
+
+        // Spacer before the color tagline
+        { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
+
+        contentWrap.appendChild(sec);
+
+        // Font Size moved to Display tab (overlay)
 
         // Hue slider
         const hueRow = document.createElement('div');
         hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
-        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px';
+        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '14px';
         const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue-ovl';
-        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-ovl-val';
+        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.style.paddingRight = '6px'; hueVal.id = 'settings-ui-hue-ovl-val';
         try {
           let hue = parseFloat(localStorage.getItem('ui_hue'));
           if (!Number.isFinite(hue)) hue = 210;
@@ -1180,31 +1227,45 @@ function presentSettingsOverlay() {
         // Saturation slider
         const inRow = document.createElement('div');
         inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px';
+        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '14px';
         const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity-ovl';
-        const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-ovl-val';
+        const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-ovl-val';
         try {
           let intensity = parseFloat(localStorage.getItem('ui_intensity'));
           if (!Number.isFinite(intensity)) intensity = 60;
           const p = Math.max(0, Math.min(100, Math.round(intensity)));
           inRng.value = String(p);
-          inVal.textContent = `${p}`; inRng.title = `${p}`;
+          inVal.textContent = `${p}%`; inRng.title = `${p}%`;
         } catch (_) {}
         inRng.oninput = () => {
           const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
           if (String(p) !== inRng.value) inRng.value = String(p);
-          inVal.textContent = `${p}`; inRng.title = `${p}`;
+          inVal.textContent = `${p}%`; inRng.title = `${p}%`;
           try { console.debug(`[display] intensity(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
           try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
         };
         inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
         contentWrap.appendChild(inRow);
+        // Space before Transparency tagline
+        { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
+        // Insert a new section header for Transparency Effects with a subtle/random tagline
+        try {
+          const subtleQuips = [
+            'Big movements, subtle changes.',
+            'If you do not look closely, you may miss it.',
+            'Subtle shifts shape the mood.',
+            "It's the little things that matter",
+            'It whispers, not shouts.'
+          ];
+          const trSec = makeSection(subtleQuips[Math.floor(Math.random() * subtleQuips.length)], '');
+          contentWrap.appendChild(trSec);
+        } catch (_) {}
 
         // Gradient strength slider (0-100)
         const grRow = document.createElement('div');
         grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
-        const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px';
+        const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px'; grLbl.style.fontSize = '14px';
         const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient-ovl';
         const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.id = 'settings-ui-gradient-ovl-val';
         try {
@@ -1225,23 +1286,23 @@ function presentSettingsOverlay() {
         grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
         // Note: appended after Transparency for new ordering
 
-        // Blur slider (backdrop blur 0-8px)
+        // Blur slider (backdrop blur 0-10px)
         const mkRow = document.createElement('div');
         mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
-        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.title = 'Background blur behind panels/overlays';
-        const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness-ovl';
+        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Overlay Blur:'; mkLbl.style.minWidth = '140px'; mkLbl.style.fontSize = '14px'; mkLbl.title = 'Background blur behind panels/overlays';
+        const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '10'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness-ovl';
         const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-ovl-val';
         try {
           let m = parseFloat(localStorage.getItem('ui_milkiness'));
           if (!Number.isFinite(m)) m = 3;
-          let v = Math.max(0, Math.min(8, m));
+          let v = Math.max(0, Math.min(10, m));
           mkRng.value = String(v);
           mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
         } catch (_) {}
         mkRng.oninput = () => {
           let v = parseFloat(mkRng.value);
           if (!Number.isFinite(v)) v = 3;
-          v = Math.max(0, Math.min(8, v));
+          v = Math.max(0, Math.min(10, v));
           mkRng.value = String(v);
           mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
           try { console.debug(`[display] milkiness(overlay) v=${v}`); } catch (_) {}
@@ -1254,7 +1315,7 @@ function presentSettingsOverlay() {
         // Transparency slider (reversed: 100% = clear, 0% = opaque)
         const opRow = document.createElement('div');
         opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
-        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
+        const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.style.fontSize = '14px'; opLbl.title = 'Higher = clearer panels; lower = more solid';
         const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity-ovl';
         const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-ovl-val';
         try {
@@ -1308,20 +1369,34 @@ function presentSettingsOverlay() {
         // Place Gradient and Blur after Transparency now
         try { const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0))); if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
         contentWrap.appendChild(grRow);
-        contentWrap.appendChild(mkRow);
 
         // New: Overlay Darkness (0-100)
         const odRow = document.createElement('div'); odRow.style.display = 'flex'; odRow.style.alignItems = 'center'; odRow.style.gap = '8px'; odRow.style.marginBottom = '8px';
-        const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.title = 'Dimming behind dialogs/menus';
+        const odLbl = document.createElement('label'); odLbl.textContent = 'Overlay Darkness:'; odLbl.style.minWidth = '140px'; odLbl.style.fontSize = '14px'; odLbl.title = 'Dimming behind dialogs/menus';
         const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness-ovl';
         const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
         odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} };
         odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); contentWrap.appendChild(odRow);
+        // Place Overlay Blur after Overlay Darkness
+        contentWrap.appendChild(mkRow);
+        // Space before Border tagline
+        { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
+        // New header before border-related controls (random tagline)
+        try {
+          const borderQuips = [
+            'Life is brighter living on the edge',
+            'Sharpen the edges, sharpen your blade',
+            'Outline the chaos',
+            'Borders define the void',
+            'Edge control, edge comfort'
+          ];
+          contentWrap.appendChild(makeSection(borderQuips[Math.floor(Math.random() * borderQuips.length)], ''));
+        } catch (_) {}
 
         // New: Border Intensity (0-100)
         const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
-        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.title = 'Strength of panel borders';
+        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.style.fontSize = '14px'; biLbl.title = 'Strength of panel borders';
         const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
         const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
@@ -1330,14 +1405,72 @@ function presentSettingsOverlay() {
 
         // New: Glow Strength (0-100)
         const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
-        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Glow Strength:'; gsLbl.style.minWidth = '140px'; gsLbl.title = 'Strength of panel glow and highlights';
+        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.title = 'Strength of panel glow and highlights';
         const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
         const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
-        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; } catch (_) {}
-        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); gsVal.textContent = `${p}%`; gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
         gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
 
-        // Reset button moved to section header (see above)
+      } else if (tab === 'Display') {
+        // Display tab (Overlay): font size in pixels with Reset
+        const sec = makeSection('Display', 'Legibility and scale.');
+        try {
+          const hdr = sec.firstChild; // title div
+          if (hdr) {
+            hdr.style.display = 'flex';
+            hdr.style.alignItems = 'center';
+            hdr.style.justifyContent = 'space-between';
+            const resetBtn = document.createElement('button');
+            resetBtn.textContent = 'Reset';
+            resetBtn.style.background = 'transparent';
+            resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+            resetBtn.style.borderRadius = '10px';
+            resetBtn.style.color = 'var(--ui-fg, #eee)';
+            resetBtn.style.padding = '4px 10px';
+            resetBtn.style.cursor = 'pointer';
+            const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+            const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+            resetBtn.addEventListener('mouseenter', onHover);
+            resetBtn.addEventListener('mouseleave', onLeave);
+            resetBtn.addEventListener('focus', onHover);
+            resetBtn.addEventListener('blur', onLeave);
+            resetBtn.onclick = () => {
+              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1 }); } catch (_) {}
+              try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+              try { fsRng.value = '100'; fsVal.textContent = '16px'; fsRng.title = '16px'; } catch (_) {}
+            };
+            hdr.appendChild(resetBtn);
+          }
+        } catch (_) {}
+        contentWrap.appendChild(sec);
+
+        // Font Size slider (root rem scale) shown in pixels
+        const fsRow = document.createElement('div');
+        fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
+        const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
+        const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale-ovl';
+        const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-ovl-val';
+        try {
+          let scale = parseFloat(localStorage.getItem('ui_font_scale'));
+          if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+          const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
+          fsRng.value = String(p);
+          const px = Math.round(16 * (p / 100));
+          fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
+        } catch (_) {}
+        fsRng.oninput = () => {
+          const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
+          if (String(p) !== fsRng.value) fsRng.value = String(p);
+          const scale = p / 100;
+          const px = Math.round(16 * scale);
+          fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
+          try { console.debug(`[display] fontScale(overlay/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
+          try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
+        };
+        fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
+        contentWrap.appendChild(fsRow);
       } else if (tab === 'Sound')  {
         contentWrap.appendChild(makeSection('Sound Mixer', ''));
         // Space between section title and knobs (increase spacing to 1rem)

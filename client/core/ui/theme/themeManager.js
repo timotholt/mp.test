@@ -115,19 +115,20 @@
         .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
         .ui-glass-scrollbar::-webkit-scrollbar { width: var(--ui-scrollbar-width, 10px); height: var(--ui-scrollbar-width, 10px); }
         .ui-glass-scrollbar::-webkit-scrollbar-track {
-          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
+          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))) !important;
           border-radius: var(--ui-scrollbar-radius, 8px);
           box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
         }
         .ui-glass-scrollbar::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45));
+          background-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) !important;
           border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
           border-radius: var(--ui-scrollbar-radius, 8px);
           box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33));
         }
         .ui-glass-scrollbar:hover::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb-hover, rgba(120,170,255,0.65));
+          background-color: var(--ui-scrollbar-thumb-hover, rgba(120,170,255,0.65)) !important;
         }
+        .ui-glass-scrollbar::-webkit-scrollbar-corner { background: transparent !important; }
       `;
       const style = document.createElement('style');
       style.id = STYLE_ID;
@@ -151,6 +152,45 @@
         select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
         select option { background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))); color: var(--ui-fg, #eee); }
         select option:checked, select option:hover { background-color: rgba(120,170,255,0.20); color: var(--ui-fg, #eee); }
+        /* Make form sliders reflect the current theme hue */
+        input[type="range"] { accent-color: var(--ui-accent, #6cf); }
+        /* Always-white track for range controls (thumb/progress stays themed) */
+        input[type="range"]::-webkit-slider-runnable-track {
+          height: 6px;
+          background: #ffffff !important;
+          border-radius: 999px;
+        }
+        input[type="range"]::-moz-range-track {
+          height: 6px;
+          background: #ffffff !important;
+          border-radius: 999px;
+        }
+        input[type="range"]:disabled::-webkit-slider-runnable-track { background: #ffffff !important; opacity: 0.6; }
+        input[type="range"]:disabled::-moz-range-track { background: #ffffff !important; opacity: 0.6; }
+        /* Firefox: color the filled progress portion with the accent */
+        input[type="range"]::-moz-range-progress {
+          height: 6px;
+          background: var(--ui-accent, #6cf);
+          border-radius: 999px;
+        }
+        /* Center the thumb across browsers */
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px; height: 14px;
+          margin-top: -4px; /* (thumbHeight - trackHeight) / 2 */
+          background: var(--ui-accent, #6cf);
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: 50%;
+          box-shadow: var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.33));
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 14px; height: 14px;
+          background: var(--ui-accent, #6cf);
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: 50%;
+          box-shadow: var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.33));
+        }
       `;
       const style2 = document.createElement('style');
       style2.id = STYLE_ID2;
@@ -168,13 +208,18 @@
     try {
       // Read existing or provided values
       const cs = getComputedStyle(root);
-      const currentHue = parseFloat(cs.getPropertyValue('--ui-hue') || '210') || 210;
-      const currentIntensity = parseFloat(cs.getPropertyValue('--ui-intensity') || '60') || 60;
-      const currentScale = parseFloat(cs.getPropertyValue('--ui-font-scale') || '1') || 1;
+      // Respect 0 values (avoid "|| fallback" after parseFloat which treats 0 as falsy)
+      const readCssNum = (name, fallback) => {
+        const v = parseFloat(cs.getPropertyValue(name));
+        return Number.isFinite(v) ? v : fallback;
+      };
+      const currentHue = readCssNum('--ui-hue', 210);
+      const currentIntensity = readCssNum('--ui-intensity', 60);
+      const currentScale = readCssNum('--ui-font-scale', 1);
       // New controls: gradient strength (0..100), milkiness/backdrop blur (0..8 px)
       // Fallbacks when CSS vars are not yet set.
-      const currentGradient = parseFloat(cs.getPropertyValue('--ui-gradient') || '60') || 60;
-      const currentMilkiness = parseFloat(cs.getPropertyValue('--ui-backdrop-blur') || '3') || 3;
+      const currentGradient = readCssNum('--ui-gradient', 60);
+      const currentMilkiness = readCssNum('--ui-backdrop-blur', 3);
       // Additional new controls (persisted in LS):
       let currentBorderStrength = parseFloat(localStorage.getItem('ui_border_intensity'));
       if (!Number.isFinite(currentBorderStrength)) currentBorderStrength = 70; // default ~0.70 border alpha baseline
@@ -187,7 +232,8 @@
       const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
       const fontScale = clamp(params.fontScale != null ? params.fontScale : currentScale, 0.8, 1.2);
       const gradient = clamp(params.gradient != null ? params.gradient : currentGradient, 0, 100);
-      const milkiness = clamp(params.milkiness != null ? params.milkiness : currentMilkiness, 0, 8);
+      // Allow heavier blur (will be exposed by the slider up to 10px)
+      const milkiness = clamp(params.milkiness != null ? params.milkiness : currentMilkiness, 0, 10);
       const borderStrength = clamp(params.borderStrength != null ? params.borderStrength : currentBorderStrength, 0, 100);
       const glowStrength = clamp(params.glowStrength != null ? params.glowStrength : currentGlowStrength, 0, 100);
       const overlayDarkness = clamp(params.overlayDarkness != null ? params.overlayDarkness : currentOverlayDarkness, 0, 100);
@@ -235,7 +281,9 @@
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
       const borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
-      const glowAlphaEff = clamp(glowAlpha * (glowStrength / 60), 0, 1);
+      // Much stronger glow: scale towards 1.0 quickly as glowStrength increases
+      // 0% -> ~0.6x base, 100% -> ~3.0x (clamped to 1)
+      const glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4), 0, 1);
 
       // Tooltip surface uses slightly different (more transparent) mapping
       const tipTopA0 = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
@@ -251,9 +299,14 @@
 
       // Derive common tokens from hue/intensity (HSL)
       const accent = `hsl(${hue} ${sat}% ${light}%)`;
-      const border = `hsl(${hue} ${sat}% ${Math.max(30, light - 5)}% / ${borderAlphaEff})`;
-      const glowOuter = `0 0 18px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlphaEff})`;
-      const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlphaEff + 0.02)})`;
+      // Boost border contrast at high strength by nudging lightness a bit
+      const borderLightBase = Math.max(30, light - 5);
+      const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.30, 20, 90);
+      const border = `hsl(${hue} ${sat}% ${borderLight}% / ${borderAlphaEff})`;
+      // Scale outer/inset glow radius with strength for more dramatic effect at 100%
+      const glowR = Math.round(18 * (0.8 + glowStrength / 60));
+      const glowOuter = `0 0 ${glowR}px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlphaEff}), 0 0 ${Math.round(glowR / 2)}px hsl(${hue} ${sat}% ${Math.min(95, light + 30)}% / ${Math.min(1, glowAlphaEff + 0.25)})`;
+      const glowInset = `inset 0 0 ${glowR}px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.30, glowAlphaEff + 0.06)})`;
       const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
@@ -282,8 +335,15 @@
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-bright', bright);
+      // Scrollbar colors follow current hue
+      try {
+        root.style.setProperty('--ui-scrollbar-thumb', `hsl(${hue} ${sat}% ${light}% / 0.45)`);
+        root.style.setProperty('--ui-scrollbar-thumb-hover', `hsl(${hue} ${Math.min(90, sat + 10)}% ${Math.min(95, light + 12)}% / 0.65)`);
+      } catch (_) {}
       // Strong glow used by interactive hover/focus (two-layer glow for pop)
-      const strongGlow = `0 0 36px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.60, glowAlphaEff + 0.20)}), 0 0 10px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.88, glowAlphaEff + 0.40)})`;
+      // Strong glow: larger and brighter at high strength (still clamped visually)
+      const glowSizeFactor = clamp(0.8 + glowStrength / 40, 0.8, 3.0);
+      const strongGlow = `0 0 ${Math.round(36 * glowSizeFactor)}px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.72, glowAlphaEff + 0.35)}), 0 0 ${Math.round(10 * glowSizeFactor)}px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.98, glowAlphaEff + 0.55)})`;
       root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
       root.style.setProperty('--ui-surface-bg-bottom', surfBot);
