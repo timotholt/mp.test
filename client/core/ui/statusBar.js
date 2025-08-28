@@ -24,8 +24,8 @@ export function ensureStatusBar() {
     bar.style.alignItems = 'center';
     bar.style.justifyContent = 'space-between';
     bar.style.padding = '0 12px';
-    // Blue glassmorphism look (more opaque). Theme override via --statusbar-bg
-    bar.style.background = 'var(--statusbar-bg, linear-gradient(180deg, rgba(10,18,26,0.35) 0%, rgba(10,16,22,0.28) 100%))';
+    // Themed glassmorphism look. Theme override via --statusbar-bg; fallback ties to surface tokens
+    bar.style.background = 'var(--statusbar-bg, linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.35)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.28)) 100%))';
     // bar.style.borderLeft = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     // bar.style.borderRight = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     bar.style.borderLeft = '0';

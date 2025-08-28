@@ -93,8 +93,8 @@ export function wireFocusHighlight(inputEl, rowEl) {
         rowEl.setAttribute('data-saved-boxshadow', rowEl.style.boxShadow || '');
       }
       const prev = rowEl.getAttribute('data-saved-boxshadow') || '';
-      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px #fff'].filter(Boolean).join(', ');
-      rowEl.style.borderColor = '#fff';
+      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px var(--ui-bright, #fff)'].filter(Boolean).join(', ');
+      rowEl.style.borderColor = 'var(--ui-bright, #fff)';
     } catch (_) {}
   });
   inputEl.addEventListener('blur', () => {
@@ -137,9 +137,11 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.style.borderTopLeftRadius = '6px';
       b.style.borderTopRightRadius = '6px';
       const isActive = (key === activeKey);
-      b.style.background = isActive ? 'rgba(120,170,255,0.32)' : 'rgba(255,255,255,0.06)';
+      b.style.background = isActive
+        ? 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.35)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.28)) 100%)'
+        : 'rgba(255,255,255,0.06)';
       b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
-      b.style.textShadow = isActive ? '0 0 6px rgba(140,190,255,0.75)' : '';
+      b.style.textShadow = isActive ? 'var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.75))' : '';
       try { b.setAttribute('aria-selected', isActive ? 'true' : 'false'); } catch (_) {}
       try { b.tabIndex = isActive ? 0 : -1; } catch (_) {}
       b.onclick = () => { if (typeof onSelect === 'function') onSelect(key); };

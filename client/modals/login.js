@@ -30,7 +30,10 @@ function ensureLoginStyles() {
       var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%,
       var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%
     );
+    /* Fallback first, then variable override for broad browser support */
+    border: 1px solid rgba(120,170,255,0.70);
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    box-shadow: 0 0 22px rgba(80,140,255,0.33);
     box-shadow: var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33));
     backdrop-filter: var(--sf-tip-backdrop, blur(8px) saturate(1.25));
     padding: 1rem; /* Ensure inner padding so nothing touches edges */
@@ -43,10 +46,17 @@ function ensureLoginStyles() {
   .btn-outline-glass {
     background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
     color: #dff1ff;
+    border: 1px solid rgba(120,170,255,0.70);
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     box-shadow: inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22);
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22));
   }
-  .btn-outline-glass:hover { border-color: #dff1ff; box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
+  .btn-outline-glass:hover {
+    border-color: #dff1ff;
+    border-color: var(--ui-bright, #dff1ff);
+    box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30);
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
+  }
   .btn svg { width: 18px; height: 18px; }
   /* Provider buttons fixed height */
   .login-providers .btn { height: 46px; padding-top: 0; padding-bottom: 0; }
@@ -62,24 +72,31 @@ function ensureLoginStyles() {
   .login-form label { opacity: 0.95; text-align: right; user-select: none; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70)); border-radius: 10px; padding: 0 10px; height: 46px;
+    border: 1px solid rgba(120,170,255,0.70); border-radius: 10px; padding: 0 10px; height: 46px;
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     outline: none; box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18);
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10)), var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.18));
     backdrop-filter: blur(6px) saturate(1.2);
     box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
   }
   /* Make browser autofill match our glass style */
   .input-glass:-webkit-autofill,
-  .input-glass:-webkit-autofill:hover,
   .input-glass:-webkit-autofill:focus,
   #overlay input:-webkit-autofill,
-  #overlay input:-webkit-autofill:hover,
   #overlay input:-webkit-autofill:focus {
     -webkit-text-fill-color: #eaf6ff !important;
     caret-color: #eaf6ff;
     transition: background-color 9999s ease-in-out 0s; /* suppress yellow */
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
+    border: 1px solid rgba(120,170,255,0.70);
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     background-clip: content-box;
+  }
+  /* Allow hover color to win over autofill styles */
+  .input-glass:-webkit-autofill:hover,
+  #overlay input:-webkit-autofill:hover {
+    border-color: var(--ui-bright, #dff1ff);
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
   }
   /* Firefox */
   .input-glass:-moz-autofill,
@@ -89,8 +106,13 @@ function ensureLoginStyles() {
     caret-color: #eaf6ff;
   }
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-  .input-glass:hover { border-color: #dff1ff; }
-  .input-glass:focus { border-color: #dff1ff; box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30); }
+  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-bright, #dff1ff); }
+  .input-glass:focus {
+    border-color: #dff1ff;
+    border-color: var(--ui-bright, #dff1ff);
+    box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30);
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
+  }
   /* Input wrapper with optional left/right icon buttons */
   .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
   .input-wrap.has-left .input-glass { padding-left: 34px; }
@@ -108,7 +130,7 @@ function ensureLoginStyles() {
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); user-select: none; }
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
-  .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); min-height: 220px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
+  .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); border: 1px dashed var(--ui-surface-border, rgba(120,170,255,0.45)); min-height: 220px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
   .login-main { display: flex; flex-direction: column; min-width: 0; }
   @media (max-width: 700px) { .login-grid { grid-template-columns: 1fr; } }
   `;
@@ -146,7 +168,13 @@ export function presentLoginModal() {
   if (!content) return;
   content.innerHTML = '';
   // Apply deep blue translucent backdrop to overlay and make content transparent; center our card
-  try { overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, rgba(12,24,48,0.65) 0%, rgba(4,8,18,0.75) 60%, rgba(2,4,10,0.85) 100%)'; } catch (_) {}
+  // Use theme-driven surface variables so hue/intensity affect the backdrop
+  try {
+    overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, '
+      + 'var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, '
+      + 'var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, '
+      + 'var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)';
+  } catch (_) {}
   try {
     content.style.background = 'transparent';
     content.style.border = 'none';
@@ -383,8 +411,7 @@ export function presentLoginModal() {
       }
     };
     card.addEventListener('keydown', trap);
-    // Initial focus at top of cycle
-    try { googleBtn.focus(); } catch (_) {}
+    // Do not force initial focus on any button
   } catch (_) {}
 }
 
