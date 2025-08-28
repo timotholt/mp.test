@@ -565,6 +565,32 @@ function makeCheckboxRow(labelText, storageKey, eventName) {
   row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '6px';
   const cb = document.createElement('input'); cb.type = 'checkbox';
   try { cb.checked = LS.getItem(storageKey, '0') === '1'; } catch (_) { cb.checked = false; }
+  // Themed checkbox: use accentColor + subtle border/glow on hover/focus
+  try {
+    // Primary check color follows theme, fallback to blue-ish
+    cb.style.accentColor = 'var(--ui-bright, rgba(120,170,255,0.90))';
+    // No persistent outline; set during hover/focus only
+    cb.style.outline = 'none';
+    cb.style.outlineOffset = '2px';
+    cb.style.cursor = 'pointer';
+    // Hover/Focus glow using theme outer glow. Inline events to avoid CSS pseudo-classes.
+    const onHover = () => {
+      try {
+        cb.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
+        cb.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+      } catch (_) {}
+    };
+    const onLeave = () => {
+      try {
+        cb.style.boxShadow = 'none';
+        cb.style.outline = 'none';
+      } catch (_) {}
+    };
+    cb.addEventListener('mouseenter', onHover);
+    cb.addEventListener('mouseleave', onLeave);
+    cb.addEventListener('focus', onHover);
+    cb.addEventListener('blur', onLeave);
+  } catch (_) {}
   const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '12px'; lbl.style.lineHeight = '1.2';
   // Link label to checkbox for accessibility
   try { const id = `settings-${String(storageKey)}`; cb.id = id; lbl.htmlFor = id; } catch (_) {}
