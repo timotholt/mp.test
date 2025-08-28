@@ -73,7 +73,7 @@ export function presentForgotPasswordModal() {
     'The dungeon keeps secrets. Rotate yours.',
     'Keys rust in the abyss. Forge another.',
     'Mistakes drift like echoes. Reset and return.',
-    'A lost word isn’t the end—only a turning.',
+    'A lost password isn’t the end—only a turning.',
     'The gate creaks. Offer it a new sigil.',
     'Trust is a candle; relight it.',
     'Courage, then cadence. Reset, then stride.',

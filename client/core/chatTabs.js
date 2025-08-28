@@ -56,10 +56,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // List: glow on left, top, right only; omit bottom for seamless join with input row
   list.style.borderBottom = '0';
   // Keep crisp borders on glow sides for clear edge definition
-  // Inline glow (subtle) so it renders without relying on external CSS
-  const glowColor = 'var(--ui-surface-glow-color, rgba(120,170,255,0.33))';
-  // Outside glow on top/left/right only. Use small offsets and negative spread to avoid bottom bleed.
-  list.style.boxShadow = `0 -2px 16px -6px ${glowColor}, -2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}`;
+  // Unified glow via theme variable
+  list.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
   list.style.padding = '6px';
   try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
   // Assign ID expected by theme styles for chat glow
@@ -76,9 +74,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Ensure the input row has a surface for inset glow and add side-specific glows
   try {
     inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-    // Outside glow on left/right/bottom only. Use small offsets and negative spread to avoid any top glow.
-    inputRow.style.boxShadow = `-2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}, 0 2px 16px -6px ${glowColor}`;
-    // Crisp separator line between messages area and input row
+    inputRow.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
     inputRow.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   } catch (_) {}
 

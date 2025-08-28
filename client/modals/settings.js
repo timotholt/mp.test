@@ -109,23 +109,7 @@ function createSettingsPanel() {
   content.style.overflow = 'auto';
   content.style.maxHeight = '58vh';
   content.style.paddingRight = '6px';
-  // Thin blue scrollbar styling (scoped)
-  try {
-    content.classList.add('thin-blue-scroll');
-    content.style.scrollbarWidth = 'thin';
-    content.style.scrollbarColor = 'rgba(120,170,255,0.60) transparent';
-    if (!document.getElementById('thin-blue-scroll-style')) {
-      const st = document.createElement('style'); st.id = 'thin-blue-scroll-style';
-      st.textContent = `
-      .thin-blue-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,170,255,0.60) transparent; }
-      .thin-blue-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-      .thin-blue-scroll::-webkit-scrollbar-track { background: transparent; }
-      .thin-blue-scroll::-webkit-scrollbar-thumb { background: rgba(120,170,255,0.50); border-radius: 8px; box-shadow: 0 0 8px rgba(120,170,255,0.35); }
-      .thin-blue-scroll::-webkit-scrollbar-thumb:hover { background: rgba(140,190,255,0.70); }
-      `;
-      document.head.appendChild(st);
-    }
-  } catch (_) {}
+  try { content.classList.add('ui-glass-scrollbar'); } catch (_) {}
   // Visible border around tab content in fallback panel
   try {
     content.style.border = UI.border;
@@ -450,7 +434,7 @@ function makeSection(title, desc) {
   const t = document.createElement('div'); t.textContent = title; t.style.fontWeight = 'bold'; t.style.margin = '6px 0';
   wrap.appendChild(t);
   if (desc) {
-    const d = document.createElement('div'); d.textContent = desc; d.style.color = '#bbb'; d.style.marginBottom = '8px';
+    const d = document.createElement('div'); d.textContent = desc; d.style.color = 'var(--ui-fg, #eee)'; d.style.marginBottom = '8px';
     wrap.appendChild(d);
   }
   return wrap;
@@ -760,29 +744,13 @@ function presentSettingsOverlay() {
 
     // Bordered content area with scroll
     const contentWrap = document.createElement('div');
+    try { contentWrap.classList.add('ui-glass-scrollbar'); } catch (_) {}
     contentWrap.style.overflow = 'auto';
     contentWrap.style.padding = '10px';
     contentWrap.style.paddingRight = '6px';
     contentWrap.style.marginTop = '0px';
     contentWrap.style.minHeight = '240px';
     contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
-    // Thin blue scrollbar styling (scoped)
-    try {
-      contentWrap.classList.add('thin-blue-scroll');
-      contentWrap.style.scrollbarWidth = 'thin';
-      contentWrap.style.scrollbarColor = 'rgba(120,170,255,0.60) transparent';
-      if (!document.getElementById('thin-blue-scroll-style')) {
-        const st = document.createElement('style'); st.id = 'thin-blue-scroll-style';
-        st.textContent = `
-        .thin-blue-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,170,255,0.60) transparent; }
-        .thin-blue-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-        .thin-blue-scroll::-webkit-scrollbar-track { background: transparent; }
-        .thin-blue-scroll::-webkit-scrollbar-thumb { background: rgba(120,170,255,0.50); border-radius: 8px; box-shadow: 0 0 8px rgba(120,170,255,0.35); }
-        .thin-blue-scroll::-webkit-scrollbar-thumb:hover { background: rgba(140,190,255,0.70); }
-        `;
-        document.head.appendChild(st);
-      }
-    } catch (_) {}
     try {
       contentWrap.style.border = UI.border;
       // Sharp top-left corner only

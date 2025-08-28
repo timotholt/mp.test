@@ -4,7 +4,6 @@
 import OverlayManager, { PRIORITY } from '../core/overlayManager.js';
 import { getAccessToken } from '../core/auth/supabaseAuth.js';
 import { createChatTabs } from '../core/chatTabs.js';
-import { presentRoomCreateModal } from '../modals/roomCreate.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
 import { deriveGameId } from '../core/util/deriveGameId.js';
@@ -119,6 +118,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
         activeTab = key;
         onRender({ listEl: list, tab: activeTab, data, filterText });
         tabsCtl.render({ tabs, activeKey: activeTab });
+        // Reclaim space on 'create' tabs by hiding the bottom search row
+        try { if (inputRow) inputRow.style.display = (key === 'create') ? 'none' : ''; } catch (_) {}
       },
     });
     // Create shared left-icon input for search (bottom row will host it)
@@ -159,10 +160,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
     list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     list.style.borderRadius = '4px 4px 0px 0px';
-    // Match chat: subtle outer glow on top/left/right; omit bottom to avoid glow overlap with input row
-    const glowColor = 'var(--ui-surface-glow-color, rgba(120,170,255,0.33))';
+    // Match chat: unified glow via theme variable
     list.style.borderBottom = '0';
-    list.style.boxShadow = `0 -2px 16px -6px ${glowColor}, -2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}`;
+    list.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
     list.style.padding = '6px';
     try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
 
@@ -176,7 +176,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     // Match chat input row: left/right/bottom glow only; crisp top border as separator
     try {
       inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-      inputRow.style.boxShadow = `-2px 0 16px -6px ${glowColor}, 2px 0 16px -6px ${glowColor}, 0 2px 16px -6px ${glowColor}`;
+      inputRow.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
       inputRow.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     } catch (_) {}
 
@@ -396,32 +396,209 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
           onRender: ({ listEl, tab, data, filterText }) => {
             listEl.innerHTML = '';
             if (tab === 'create') {
-              const info = document.createElement('div');
-              info.textContent = 'Create a new room and invite friends';
-              const btn = document.createElement('button');
-              btn.textContent = 'Create Game';
-              btn.style.marginTop = '8px';
-              btn.onclick = () => {
-                presentRoomCreateModal({
-                  onSubmit: async ({ name, turnLength, roomPass, maxPlayers }) => {
-                    const cname = LS.getItem('name', 'Hero');
-                    try {
-                      const newRoom = await client.create('nethack', {
-                        name, turnLength, roomPass, maxPlayers,
-                        private: !!roomPass,
-                        hostName: cname,
-                        gameId: deriveGameId(name, cname),
-                        access_token: await getAccessToken(),
-                      });
-                      await afterJoin(newRoom);
-                    } catch (e) {
-                      console.warn('create failed', e);
-                    }
-                  }
-                });
+              // Inline create form (themed). Payload remains identical to modal.
+              const form = document.createElement('div');
+              form.style.display = 'grid';
+              form.style.gridTemplateColumns = '1fr';
+              form.style.rowGap = '10px';
+              form.style.padding = '4px';
+
+              const makeRow = (labelText) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+                const lbl = document.createElement('label');
+                lbl.textContent = labelText;
+                lbl.style.minWidth = '140px';
+                lbl.style.color = 'var(--ui-fg, #eee)';
+                row.appendChild(lbl);
+                return { row, lbl };
               };
-              listEl.appendChild(info);
-              listEl.appendChild(btn);
+
+              // Game Name
+              const { row: nameRow, lbl: nameLbl } = makeRow('Game Name');
+              const nameInput = document.createElement('input');
+              nameInput.type = 'text';
+              nameInput.placeholder = 'Hack40k Room';
+              nameInput.value = 'Hack40k Room';
+              nameInput.id = 'lobby-create-name';
+              nameInput.style.flex = '1';
+              nameInput.style.height = '40px';
+              nameInput.style.lineHeight = '40px';
+              nameInput.style.background = 'transparent';
+              nameInput.style.outline = 'none';
+              nameInput.style.color = 'var(--sf-tip-fg, #fff)';
+              nameInput.style.border = UI.border;
+              nameInput.style.borderRadius = '8px';
+              nameInput.style.padding = '0 10px';
+              try { nameLbl.htmlFor = nameInput.id; } catch (_) {}
+              nameRow.appendChild(nameInput);
+              try { wireFocusHighlight(nameInput, nameRow); } catch (_) {}
+              form.appendChild(nameRow);
+
+              // Description (UI-only, not sent yet) — single-line input
+              const { row: descRow, lbl: descLbl } = makeRow('Description');
+              const desc = document.createElement('input');
+              desc.type = 'text';
+              desc.id = 'lobby-create-desc';
+              desc.placeholder = '(optional) Short description';
+              desc.style.flex = '1';
+              desc.style.height = '40px';
+              desc.style.lineHeight = '40px';
+              desc.style.background = 'transparent';
+              desc.style.color = 'var(--sf-tip-fg, #fff)';
+              desc.style.border = UI.border;
+              desc.style.borderRadius = '8px';
+              desc.style.padding = '0 10px';
+              try { descLbl.htmlFor = desc.id; } catch (_) {}
+              descRow.appendChild(desc);
+              try { wireFocusHighlight(desc, descRow); } catch (_) {}
+              form.appendChild(descRow);
+
+              // Settings row: Max Players + Turn Length (ms) on the same line
+              const settingsRow = document.createElement('div');
+              settingsRow.style.display = 'flex';
+              settingsRow.style.alignItems = 'center';
+              settingsRow.style.gap = '16px';
+
+              // Max Players (dropdown)
+              const maxWrap = document.createElement('div');
+              maxWrap.style.display = 'flex';
+              maxWrap.style.alignItems = 'center';
+              maxWrap.style.gap = '8px';
+              const maxLbl = document.createElement('label');
+              maxLbl.textContent = 'Max Players';
+              maxLbl.style.minWidth = '140px';
+              maxLbl.style.color = 'var(--ui-fg, #eee)';
+              const maxSelect = document.createElement('select');
+              maxSelect.id = 'lobby-create-max';
+              maxSelect.style.flex = '0 0 120px';
+              maxSelect.style.height = '40px';
+              maxSelect.style.background = 'transparent';
+              maxSelect.style.color = 'var(--sf-tip-fg, #fff)';
+              maxSelect.style.border = UI.border;
+              maxSelect.style.borderRadius = '8px';
+              maxSelect.style.padding = '0 8px';
+              [1,2,3,4,6,8,12,16].forEach((n) => { const o = document.createElement('option'); o.value = String(n); o.textContent = String(n); maxSelect.appendChild(o); });
+              try { maxSelect.value = '4'; } catch (_) {}
+              try { maxLbl.htmlFor = maxSelect.id; } catch (_) {}
+              maxWrap.appendChild(maxLbl);
+              maxWrap.appendChild(maxSelect);
+
+              // Turn Length (milliseconds)
+              const turnWrap = document.createElement('div');
+              turnWrap.style.display = 'flex';
+              turnWrap.style.alignItems = 'center';
+              turnWrap.style.gap = '8px';
+              const turnLbl = document.createElement('label');
+              turnLbl.textContent = 'Turn Length';
+              turnLbl.style.minWidth = '140px';
+              turnLbl.style.color = 'var(--ui-fg, #eee)';
+              const turnSelect = document.createElement('select');
+              turnSelect.id = 'lobby-create-turn';
+              turnSelect.style.flex = '0 0 180px';
+              turnSelect.style.height = '40px';
+              turnSelect.style.background = 'transparent';
+              turnSelect.style.color = 'var(--sf-tip-fg, #fff)';
+              turnSelect.style.border = UI.border;
+              turnSelect.style.borderRadius = '8px';
+              turnSelect.style.padding = '0 8px';
+              const turnOptions = [100, 250, 500, 1000];
+              turnOptions.forEach((ms) => { const o = document.createElement('option'); o.value = String(ms); o.textContent = `${ms} ms`; turnSelect.appendChild(o); });
+              try { turnSelect.value = '500'; } catch (_) {}
+              try { turnLbl.htmlFor = turnSelect.id; } catch (_) {}
+              turnWrap.appendChild(turnLbl);
+              turnWrap.appendChild(turnSelect);
+
+              settingsRow.appendChild(maxWrap);
+              settingsRow.appendChild(turnWrap);
+              form.appendChild(settingsRow);
+
+              // Password — compact input with right-side copy icon
+              const { row: passRow, lbl: passLbl } = makeRow('Password');
+              const passWrap = document.createElement('div');
+              passWrap.style.position = 'relative';
+              passWrap.style.display = 'inline-block';
+              passWrap.style.flex = '0 0 auto';
+              const passInput = document.createElement('input');
+              passInput.type = 'text';
+              passInput.placeholder = '(optional password)';
+              passInput.id = 'lobby-create-pass';
+              passInput.style.width = '220px';
+              passInput.style.height = '40px';
+              passInput.style.lineHeight = '40px';
+              passInput.style.background = 'transparent';
+              passInput.style.outline = 'none';
+              passInput.style.color = 'var(--sf-tip-fg, #fff)';
+              passInput.style.border = UI.border;
+              passInput.style.borderRadius = '8px';
+              passInput.style.padding = '0 34px 0 10px';
+              const copyBtn = document.createElement('button');
+              copyBtn.type = 'button';
+              copyBtn.title = 'Copy password';
+              copyBtn.style.position = 'absolute';
+              copyBtn.style.top = '50%';
+              copyBtn.style.right = '8px';
+              copyBtn.style.transform = 'translateY(-50%)';
+              copyBtn.style.width = '24px';
+              copyBtn.style.height = '24px';
+              copyBtn.style.background = 'none';
+              copyBtn.style.border = '0';
+              copyBtn.style.color = 'var(--ui-bright, #dff1ff)';
+              copyBtn.style.opacity = '0.9';
+              copyBtn.style.cursor = 'pointer';
+              copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+              copyBtn.onclick = async () => {
+                const txt = passInput.value || '';
+                try { await navigator.clipboard.writeText(txt); } catch (_) {
+                  try { passInput.select(); document.execCommand('copy'); } catch (e) {}
+                }
+              };
+              try { passLbl.htmlFor = passInput.id; } catch (_) {}
+              passWrap.appendChild(passInput);
+              passWrap.appendChild(copyBtn);
+              passRow.appendChild(passWrap);
+              try { wireFocusHighlight(passInput, passRow); } catch (_) {}
+              form.appendChild(passRow);
+
+              
+
+              // Actions
+              const actions = document.createElement('div');
+              actions.style.display = 'flex';
+              actions.style.gap = '8px';
+              actions.style.justifyContent = 'flex-end';
+              actions.style.marginTop = '4px';
+              const create = document.createElement('button');
+              create.textContent = 'Create';
+              create.style.border = UI.border;
+              create.style.borderRadius = '8px';
+              create.style.padding = '6px 10px';
+              create.onclick = async () => {
+                const cname = LS.getItem('name', 'Hero');
+                const name = String(nameInput.value || '').trim() || 'Hack40k Room';
+                // milliseconds
+                const turnLength = Math.max(100, Math.min(1000, parseInt(turnSelect.value, 10) || 500));
+                const roomPass = passInput.value || '';
+                const maxPlayers = Math.max(1, Math.min(16, parseInt(maxSelect.value, 10) || 4));
+                try {
+                  const newRoom = await client.create('nethack', {
+                    name, turnLength, roomPass, maxPlayers,
+                    private: !!roomPass,
+                    hostName: cname,
+                    gameId: deriveGameId(name, cname),
+                    access_token: await getAccessToken(),
+                  });
+                  await afterJoin(newRoom);
+                } catch (e) {
+                  console.warn('create failed', e);
+                }
+              };
+              actions.appendChild(create);
+
+              listEl.appendChild(form);
+              listEl.appendChild(actions);
               return;
             }
 
