@@ -29,13 +29,21 @@
       // Global bright + strong glow for high-visibility focus/hover
       '--ui-bright': 'rgba(190,230,255,0.98)',
       '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)',
+      // Foreground and link color
+      '--ui-fg': 'rgba(220,235,255,0.96)',
+      '--ui-link': '#6cf',
 
       // Shared surface tokens (for modals/menus/panels to adopt)
       '--ui-surface-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
       '--ui-surface-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
       '--ui-surface-border': 'rgba(120,170,255,0.70)',
       '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
-      '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)'
+      '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
+      // Scrollbar tokens (glass)
+      '--ui-scrollbar-width': '10px',
+      '--ui-scrollbar-radius': '8px',
+      '--ui-scrollbar-thumb': 'rgba(120,170,255,0.45)',
+      '--ui-scrollbar-thumb-hover': 'rgba(120,170,255,0.65)'
     }
   };
 
@@ -85,6 +93,62 @@
           const raw = localStorage.getItem('ui_opacity_mult');
           console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
         } catch (_) {}
+      }
+    }
+  } catch (_) {}
+
+  // Inject glassmorphism scrollbar styles (scoped to .ui-glass-scrollbar)
+  try {
+    const STYLE_ID = 'ui-glass-scrollbar-style';
+    if (!document.getElementById(STYLE_ID)) {
+      const css = `
+        .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
+        .ui-glass-scrollbar::-webkit-scrollbar { width: var(--ui-scrollbar-width, 10px); height: var(--ui-scrollbar-width, 10px); }
+        .ui-glass-scrollbar::-webkit-scrollbar-track {
+          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
+          border-radius: var(--ui-scrollbar-radius, 8px);
+          box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
+        }
+        .ui-glass-scrollbar::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45));
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: var(--ui-scrollbar-radius, 8px);
+          box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33));
+        }
+        .ui-glass-scrollbar:hover::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb-hover, rgba(120,170,255,0.65));
+        }
+      `;
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.type = 'text/css';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  } catch (_) {}
+
+  // Inject minimal select/option theming so dropdowns aren't white-on-blue
+  try {
+    const STYLE_ID2 = 'ui-controls-style';
+    if (!document.getElementById(STYLE_ID2)) {
+      const css2 = `
+        select, .ui-select {
+          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
+          color: var(--ui-fg, #eee);
+          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+          border-radius: 8px;
+        }
+        select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
+        select option { background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))); color: var(--ui-fg, #eee); }
+        select option:checked, select option:hover { background-color: rgba(120,170,255,0.20); color: var(--ui-fg, #eee); }
+      `;
+      const style2 = document.createElement('style');
+      style2.id = STYLE_ID2;
+      style2.type = 'text/css';
+      style2.textContent = css2;
+      document.head.appendChild(style2);
+    }
+  } catch (_) {}
 
   // --- Dynamic Theme: font scale, hue, intensity ---
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
@@ -101,6 +165,21 @@
       const hue = clamp(params.hue != null ? params.hue : currentHue, 0, 360);
       const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
       const fontScale = clamp(params.fontScale != null ? params.fontScale : currentScale, 0.8, 1.2);
+      // Debug: entry point (verify sliders call into here)
+      try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale }); } catch (_) {}
+
+      // Optional: accept transparency multiplier from callers (e.g., Settings slider)
+      if (params.opacityMult != null) {
+        const MMAX = 2.5; // ceiling used by Settings panel
+        const m = clamp(Number(params.opacityMult), 0, MMAX);
+        try { root.style.setProperty('--ui-opacity-mult', String(m)); } catch (_) {}
+        try { localStorage.setItem('ui_opacity_mult', String(m)); } catch (_) {}
+        // Debug: reflect opacity change
+        try {
+          const cssOp = getComputedStyle(root).getPropertyValue('--ui-opacity-mult').trim();
+          console.debug(`[theme] opacityMult set -> m=${m} css=${cssOp}`);
+        } catch (_) {}
+      }
 
       // Persist user prefs
       try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
@@ -165,6 +244,14 @@
       root.style.setProperty('--sf-tip-line-color', border);
       root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
       root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.85, borderAlpha + 0.15)})`);
+      // Debug: exit point (verify full execution)
+      try {
+        const cssHue = getComputedStyle(root).getPropertyValue('--ui-hue').trim();
+        const cssInt = getComputedStyle(root).getPropertyValue('--ui-intensity').trim();
+        const cssScale = getComputedStyle(root).getPropertyValue('--ui-font-scale').trim();
+        const cssOp = getComputedStyle(root).getPropertyValue('--ui-opacity-mult').trim();
+        console.debug('[theme] applyDynamicTheme(done)', { hue: cssHue, intensity: cssInt, fontScale: cssScale, opacityMult: cssOp });
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -178,9 +265,6 @@
     if (Number.isFinite(intensity)) params.intensity = intensity;
     if (Number.isFinite(fontScale)) params.fontScale = fontScale;
     applyDynamicTheme(params);
-  } catch (_) {}
-      }
-    }
   } catch (_) {}
 
   // Expose lightweight API for future theme switching

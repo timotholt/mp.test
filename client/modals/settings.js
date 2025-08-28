@@ -219,7 +219,7 @@ function renderSettingsContent(panel) {
           // Reset theme
           try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
           // Reset dynamic theme knobs
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult }); } catch (_) {}
           try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
           try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
           try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
@@ -228,9 +228,6 @@ function renderSettingsContent(panel) {
           try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
           // Reset opacity
           const p = Math.round((defMult / MMAX) * 100);
-          try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
-          try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-          try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
           if (OPDBG) {
             try {
@@ -378,9 +375,7 @@ function renderSettingsContent(panel) {
       const mult = (p / 100) * MMAX;
       const pct = String(p) + '%';
       opVal.textContent = pct; opRng.title = pct;
-      try { document.documentElement.style.setProperty('--ui-opacity-mult', String(mult)); } catch (_) {}
-      try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
-      try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
       if (OPDBG) {
         try {
           const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
@@ -995,7 +990,7 @@ function presentSettingsOverlay() {
             resetBtn.onclick = () => {
               const OPDBG = true; const MMAX = 2.5; const defMult = 2.125;
               try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult }); } catch (_) {}
               try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
               try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
               try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
@@ -1003,9 +998,6 @@ function presentSettingsOverlay() {
               try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
               try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
               const p = Math.round((defMult / MMAX) * 100);
-              try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
-              try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-              try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
               try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
               if (OPDBG) {
                 try {
@@ -1148,9 +1140,7 @@ function presentSettingsOverlay() {
           const mult = (p / 100) * MMAX;
           const pct = String(p) + '%';
           opVal.textContent = pct; opRng.title = pct;
-          try { document.documentElement.style.setProperty('--ui-opacity-mult', String(mult)); } catch (_) {}
-          try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
-          try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
           if (OPDBG) {
             try {
               const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
