@@ -838,7 +838,7 @@ function presentSettingsOverlay() {
       'Tune the dials. Tame the darkness.',
       'Make the abyss more habitable.',
       'Adjust reality to your liking.',
-      'Personalization: because your doom is unique.',
+      'Personalization: because every doom is unique.',
       'Polish your experience. Leave the grime.',
       'Twist the knobs; not your fate.',
       'Balance chaos with preferences.',
@@ -847,12 +847,12 @@ function presentSettingsOverlay() {
       'Dye your death, attenuate your scream.',
       'Temper the noise. Amplify the legend.',
       'Set the stage for heroics.',
-      'Make the night yours.',
+      'Paint the town anyway you like.',
       'Paint your pixels, we paint your doom',
       'Buttons for the brave.',
       'Your dungeon, your rules.',
       'Fine‑tune the fear factor.',
-      'Dial back the doom, if you must.',
+      'Dial-in  the doom',
       'Refine the ritual.',
       'Customize the chaos.'
     ];
@@ -1247,6 +1247,38 @@ function presentSettingsOverlay() {
         };
         inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
         contentWrap.appendChild(inRow);
+
+        // Space before Border controls
+        { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
+        // New header before border-related controls (random tagline)
+        try {
+          const borderQuips = [
+            'Life is brighter living on the edge',
+            'Sharpen the edges, sharpen your blade',
+            'Outline the chaos',
+            'Borders define the void',
+            'Edge control, edge comfort'
+          ];
+          contentWrap.appendChild(makeSection(borderQuips[Math.floor(Math.random() * borderQuips.length)], ''));
+        } catch (_) {}
+
+        // New: Border Intensity (0-100)
+        const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
+        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.style.fontSize = '14px'; biLbl.title = 'Strength of panel borders';
+        const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
+        const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
+        try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
+        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
+        biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); contentWrap.appendChild(biRow);
+
+        // New: Glow Strength (0-100)
+        const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
+        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.title = 'Strength of panel glow and highlights';
+        const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
+        const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
+        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+        gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
         // Space before Transparency tagline
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
         // Insert a new section header for Transparency Effects with a subtle/random tagline
@@ -1380,37 +1412,7 @@ function presentSettingsOverlay() {
         odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); contentWrap.appendChild(odRow);
         // Place Overlay Blur after Overlay Darkness
         contentWrap.appendChild(mkRow);
-        // Space before Border tagline
-        { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
-        // New header before border-related controls (random tagline)
-        try {
-          const borderQuips = [
-            'Life is brighter living on the edge',
-            'Sharpen the edges, sharpen your blade',
-            'Outline the chaos',
-            'Borders define the void',
-            'Edge control, edge comfort'
-          ];
-          contentWrap.appendChild(makeSection(borderQuips[Math.floor(Math.random() * borderQuips.length)], ''));
-        } catch (_) {}
 
-        // New: Border Intensity (0-100)
-        const biRow = document.createElement('div'); biRow.style.display = 'flex'; biRow.style.alignItems = 'center'; biRow.style.gap = '8px'; biRow.style.marginBottom = '8px';
-        const biLbl = document.createElement('label'); biLbl.textContent = 'Border Intensity:'; biLbl.style.minWidth = '140px'; biLbl.style.fontSize = '14px'; biLbl.title = 'Strength of panel borders';
-        const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
-        const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
-        try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
-        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
-        biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); contentWrap.appendChild(biRow);
-
-        // New: Glow Strength (0-100)
-        const gsRow = document.createElement('div'); gsRow.style.display = 'flex'; gsRow.style.alignItems = 'center'; gsRow.style.gap = '8px'; gsRow.style.marginBottom = '8px';
-        const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.title = 'Strength of panel glow and highlights';
-        const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
-        const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
-        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
-        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
-        gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
 
       } else if (tab === 'Display') {
         // Display tab (Overlay): font size in pixels with Reset

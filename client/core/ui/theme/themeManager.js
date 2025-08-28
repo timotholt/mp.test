@@ -154,19 +154,19 @@
         select option:checked, select option:hover { background-color: rgba(120,170,255,0.20); color: var(--ui-fg, #eee); }
         /* Make form sliders reflect the current theme hue */
         input[type="range"] { accent-color: var(--ui-accent, #6cf); }
-        /* Always-white track for range controls (thumb/progress stays themed) */
+        /* Accent-colored track for range controls (thumb/progress matches theme) */
         input[type="range"]::-webkit-slider-runnable-track {
           height: 6px;
-          background: #ffffff !important;
+          background: var(--ui-accent, #6cf) !important;
           border-radius: 999px;
         }
         input[type="range"]::-moz-range-track {
           height: 6px;
-          background: #ffffff !important;
+          background: var(--ui-accent, #6cf) !important;
           border-radius: 999px;
         }
-        input[type="range"]:disabled::-webkit-slider-runnable-track { background: #ffffff !important; opacity: 0.6; }
-        input[type="range"]:disabled::-moz-range-track { background: #ffffff !important; opacity: 0.6; }
+        input[type="range"]:disabled::-webkit-slider-runnable-track { background: var(--ui-accent, #6cf) !important; opacity: 0.6; }
+        input[type="range"]:disabled::-moz-range-track { background: var(--ui-accent, #6cf) !important; opacity: 0.6; }
         /* Firefox: color the filled progress portion with the accent */
         input[type="range"]::-moz-range-progress {
           height: 6px;
@@ -182,14 +182,14 @@
           background: var(--ui-accent, #6cf);
           border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
           border-radius: 50%;
-          box-shadow: var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.33));
+          box-shadow: none; /* no glow on the thumb */
         }
         input[type="range"]::-moz-range-thumb {
           width: 14px; height: 14px;
           background: var(--ui-accent, #6cf);
           border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
           border-radius: 50%;
-          box-shadow: var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.33));
+          box-shadow: none; /* no glow on the thumb */
         }
       `;
       const style2 = document.createElement('style');
