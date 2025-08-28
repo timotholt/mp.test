@@ -377,10 +377,12 @@
     const hue = parseFloat(localStorage.getItem('ui_hue'));   // 0..360
     const intensity = parseFloat(localStorage.getItem('ui_intensity')); // 0..100
     const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
+    const gradient = parseFloat(localStorage.getItem('ui_gradient')); // 0..100
     const params = {};
     if (Number.isFinite(hue)) params.hue = hue;
     if (Number.isFinite(intensity)) params.intensity = intensity;
     if (Number.isFinite(fontScale)) params.fontScale = fontScale;
+    if (Number.isFinite(gradient)) params.gradient = gradient;
     applyDynamicTheme(params);
   } catch (_) {}
 
