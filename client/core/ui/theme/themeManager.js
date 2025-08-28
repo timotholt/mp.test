@@ -9,7 +9,8 @@
   const themes = {
     glassBlue: {
       // Global opacity multiplier (single source of truth for transparency strength)
-      '--ui-opacity-mult': '1',
+      // Default to 85% of the current ceiling (2.5) => 2.125 on first run
+      '--ui-opacity-mult': '2.125',
       // Tooltip bubble (10% more transparent)
       '--sf-tip-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
       '--sf-tip-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
@@ -76,6 +77,15 @@
       if (clamped !== v) {
         try { localStorage.setItem('ui_opacity_mult', String(clamped)); } catch (_) {}
       }
+      // TEMP DEBUG: toggle to false to disable
+      const OPDBG = true;
+      if (OPDBG) {
+        try {
+          const css = getComputedStyle(root).getPropertyValue('--ui-opacity-mult').trim();
+          const raw = localStorage.getItem('ui_opacity_mult');
+          console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
+        } catch (_) {}
+      }
     }
   } catch (_) {}
 
@@ -96,7 +106,7 @@ export function ensureThemeSupport() {
   const st = document.createElement('style');
   st.id = 'theme-style';
   st.textContent = `:root{
-    --ui-opacity-mult: 1;
+    --ui-opacity-mult: 2.125;
     --ui-bg: rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)));
     --ui-fg: #fff;
     --ui-muted: #ccc;
