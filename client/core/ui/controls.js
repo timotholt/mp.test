@@ -179,3 +179,142 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
 
   return { el, render };
 }
+
+// Create a custom dropdown with themed styling (button + overlay menu)
+// Usage:
+//   const dd = createDropdown({
+//     items: [{ label: 'Item A', value: 'a' }, ...],
+//     value: 'a',
+//     onChange: (val) => {},
+//     width: '240px'
+//   });
+//   parent.appendChild(dd.el);
+export function createDropdown({ items = [], value = null, onChange, width = '220px', placeholder = 'Select' } = {}) {
+  const wrap = document.createElement('div');
+  wrap.style.position = 'relative';
+  wrap.style.display = 'inline-block';
+  wrap.style.flex = '0 0 auto';
+  wrap.style.minWidth = width;
+  wrap.style.maxWidth = width;
+  wrap.style.width = width;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.style.display = 'flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'space-between';
+  btn.style.gap = '8px';
+  btn.style.padding = '6px 10px';
+  btn.style.width = '100%';
+  btn.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
+  btn.style.color = 'var(--ui-fg, #eee)';
+  btn.style.border = UI.border;
+  btn.style.borderRadius = '10px';
+  btn.style.cursor = 'pointer';
+  btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.25))';
+
+  const btnLabel = document.createElement('span');
+  btnLabel.textContent = placeholder;
+  btnLabel.style.flex = '1';
+  btnLabel.style.textAlign = 'left';
+  btn.appendChild(btnLabel);
+
+  const caret = document.createElement('span');
+  caret.textContent = '▾';
+  caret.style.opacity = '0.9';
+  btn.appendChild(caret);
+
+  const menu = document.createElement('div');
+  menu.style.position = 'absolute';
+  menu.style.left = '0';
+  menu.style.top = 'calc(100% + 4px)';
+  menu.style.zIndex = '100000';
+  menu.style.minWidth = '100%';
+  menu.style.maxHeight = '240px';
+  menu.style.overflowY = 'auto';
+  menu.style.display = 'none';
+  menu.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.95) 0%, rgba(10,16,22,0.92) 100%)';
+  menu.style.color = 'var(--ui-fg, #eee)';
+  menu.style.border = UI.border;
+  menu.style.borderRadius = '10px';
+  menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.35))';
+  try { menu.classList.add('ui-glass-scrollbar'); } catch (_) {}
+
+  const list = document.createElement('div');
+  list.style.padding = '4px 0';
+  menu.appendChild(list);
+
+  let _items = Array.isArray(items) ? items.slice() : [];
+  let _value = value;
+
+  function renderMenu() {
+    list.innerHTML = '';
+    _items.forEach((it) => {
+      const row = document.createElement('div');
+      row.textContent = it.label != null ? String(it.label) : String(it.value);
+      row.setAttribute('data-value', String(it.value));
+      row.style.padding = '8px 10px';
+      row.style.cursor = 'pointer';
+      row.style.userSelect = 'none';
+      row.style.color = (it.value === _value) ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.95))';
+      row.style.background = (it.value === _value) ? 'rgba(255,255,255,0.08)' : 'transparent';
+      row.onmouseenter = () => { row.style.background = 'rgba(255,255,255,0.10)'; };
+      row.onmouseleave = () => { row.style.background = (it.value === _value) ? 'rgba(255,255,255,0.08)' : 'transparent'; };
+      row.onclick = () => {
+        setValue(it.value, true);
+        close();
+      };
+      list.appendChild(row);
+    });
+  }
+
+  function open() {
+    menu.style.display = 'block';
+    // Focus trapping lightweight
+    setTimeout(() => { try { menu.focus(); } catch (_) {} }, 0);
+    const onDoc = (ev) => {
+      if (!wrap.contains(ev.target)) { close(); }
+    };
+    window.addEventListener('mousedown', onDoc, { capture: true });
+    window.addEventListener('wheel', onDoc, { passive: true, capture: true });
+    menu.setAttribute('data-onDoc', '1');
+    menu._onDoc = onDoc;
+  }
+
+  function close() {
+    menu.style.display = 'none';
+    if (menu._onDoc) {
+      window.removeEventListener('mousedown', menu._onDoc, { capture: true });
+      window.removeEventListener('wheel', menu._onDoc, { capture: true });
+      menu._onDoc = null;
+    }
+  }
+
+  function setItems(items) {
+    _items = Array.isArray(items) ? items.slice() : [];
+    renderMenu();
+  }
+
+  function setValue(v, fire) {
+    _value = v;
+    const found = _items.find(it => it.value === v);
+    btnLabel.textContent = found ? (found.label != null ? String(found.label) : String(found.value)) : placeholder;
+    renderMenu();
+    if (fire && typeof onChange === 'function') onChange(v);
+  }
+
+  function getValue() { return _value; }
+
+  btn.onclick = () => {
+    if (menu.style.display === 'none') open(); else close();
+  };
+
+  wrap.appendChild(btn);
+  wrap.appendChild(menu);
+
+  // Initialize
+  setItems(_items);
+  setValue(_value, false);
+
+  return { el: wrap, button: btn, menu, setItems, setValue, getValue, open, close };
+}

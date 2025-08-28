@@ -1,7 +1,7 @@
 import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumeGroupManager.js';
 import { createVolumeKnob } from '../core/audio/volumeKnob.js';
 import * as LS from '../core/localStorage.js';
-import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow } from '../core/ui/controls.js';
+import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
 
 // Self-contained Settings Panel (always-available)
@@ -1129,31 +1129,31 @@ function presentSettingsOverlay() {
         // Preset definitions (hue, saturation, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
         const themePresets = {
           // Ordered by Hue around the color wheel
-          'Blood Red':      { hue: 0,   saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Ember Glow':     { hue: 20,  saturation: 70, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Old Photos':     { hue: 40,  saturation: 30, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Amber Forge':    { hue: 50,  saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Golden Dusk':    { hue: 60,  saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Desert Mirage':  { hue: 75,  saturation: 55, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Lime Spark':     { hue: 90,  saturation: 70, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Moss Crown':     { hue: 110, saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Verdant Veil':   { hue: 140, saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 }, // formerly "Emerald"
-          'Teal Tide':      { hue: 160, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Sea Glass':      { hue: 175, saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Cyan Frost':     { hue: 180, saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Steel Blue':     { hue: 199, saturation: 50, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Azure Storm':    { hue: 210, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Cobalt Drift':   { hue: 225, saturation: 55, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Cerulean Surge': { hue: 240, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Indigo Night':   { hue: 260, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Midnight Iris':  { hue: 270, saturation: 55, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Royal Violet':   { hue: 280, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Neon Magenta':   { hue: 300, saturation: 90, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Hot Pink':       { hue: 320, saturation: 100,border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Fuchsia Bloom':  { hue: 330, saturation: 85, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Rose Storm':     { hue: 340, saturation: 75, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Coral Blade':    { hue: 350, saturation: 70, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 },
-          'Crimson Dawn':   { hue: 355, saturation: 60, border: 100, glow: 18, transparency: 0, gradient: 40, overlayDarkness: 60, blur: 3 }
+          'Blood Red':      { hue: 0,   saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Ember Glow':     { hue: 20,  saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Old Photos':     { hue: 40,  saturation: 30, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Amber Forge':    { hue: 50,  saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Golden Dusk':    { hue: 60,  saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Desert Mirage':  { hue: 75,  saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Lime Spark':     { hue: 90,  saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Moss Crown':     { hue: 110, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Verdant Veil':   { hue: 140, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }, // formerly "Emerald"
+          'Teal Tide':      { hue: 160, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Sea Glass':      { hue: 175, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cyan Frost':     { hue: 180, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Steel Blue':     { hue: 199, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Azure Storm':    { hue: 210, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cobalt Drift':   { hue: 225, saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cerulean Surge': { hue: 240, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Indigo Night':   { hue: 260, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Midnight Iris':  { hue: 270, saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Royal Violet':   { hue: 280, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Neon Magenta':   { hue: 300, saturation: 90, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Hot Pink':       { hue: 320, saturation: 80, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Fuchsia Bloom':  { hue: 330, saturation: 85, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Rose Storm':     { hue: 340, saturation: 75, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Coral Blade':    { hue: 350, saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Crimson Dawn':   { hue: 355, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }
         };
 
         const themeGroup = document.createElement('div');
@@ -1161,21 +1161,21 @@ function presentSettingsOverlay() {
         themeGroup.style.alignItems = 'center';
         themeGroup.style.gap = '8px';
         const lbl = document.createElement('label'); lbl.textContent = 'Preset:'; lbl.style.fontSize = 'calc(14px * var(--ui-font-scale, 1))';
-        const sel = document.createElement('select'); sel.style.padding = '4px 10px'; sel.style.borderRadius = '10px'; sel.style.width = '240px'; sel.style.minWidth = '240px'; sel.style.maxWidth = '240px'; sel.style.flex = '0 0 240px';
-        // Populate preset options
-        Object.keys(themePresets).forEach((name) => { const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });
+        let dd = null;
         try {
           let savedPreset = LS.getItem('ui_preset', null);
-          // Migrate old name to new two-word name
           if (savedPreset === 'Emerald') { savedPreset = 'Verdant Veil'; try { LS.setItem('ui_preset', savedPreset); } catch (_) {} }
-          if (savedPreset && themePresets[savedPreset]) sel.value = savedPreset; else sel.value = 'Steel Blue';
-        } catch (_) { sel.value = 'Steel Blue'; }
-        // Handler will be wired after sliders are created via applyPreset()
-        sel.onchange = () => {
-          try { LS.setItem('ui_preset', sel.value); } catch (_) {}
-          try { if (typeof applyPreset === 'function') applyPreset(sel.value); } catch (_) {}
-        };
-        themeGroup.appendChild(lbl); themeGroup.appendChild(sel);
+          const names = Object.keys(themePresets);
+          const items = [{ label: 'Custom', value: 'Custom' }].concat(names.map(n => ({ label: n, value: n })));
+          if (!savedPreset || (!themePresets[savedPreset] && savedPreset !== 'Custom')) savedPreset = 'Steel Blue';
+          dd = createDropdown({ items, value: savedPreset, width: '240px', onChange: (val) => {
+            try { LS.setItem('ui_preset', val); } catch (_) {}
+            if (val !== 'Custom') { try { if (typeof applyPreset === 'function') applyPreset(val); } catch (_) {} }
+          }});
+        } catch (_) {
+          dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '240px' });
+        }
+        themeGroup.appendChild(lbl); if (dd) themeGroup.appendChild(dd.el);
 
         const resetBtn = document.createElement('button');
         resetBtn.textContent = 'Reset';
@@ -1193,8 +1193,7 @@ function presentSettingsOverlay() {
         resetBtn.addEventListener('blur', onLeave);
         resetBtn.onclick = () => {
           // Reset to base Steel Blue preset (85% Transparency)
-          try { sel.value = 'Steel Blue'; LS.setItem('ui_preset', 'Steel Blue'); } catch (_) {}
-          try { if (typeof applyPreset === 'function') applyPreset('Steel Blue'); } catch (_) {}
+          try { dd && dd.setValue('Steel Blue', true); } catch (_) {}
         };
 
         themeTopRow.appendChild(themeGroup);
@@ -1205,6 +1204,12 @@ function presentSettingsOverlay() {
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
 
         contentWrap.appendChild(sec);
+
+        // Helper: when any slider changes, mark preset as Custom (do not re-apply values)
+        function selectCustomPreset() {
+          try { LS.setItem('ui_preset', 'Custom'); } catch (_) {}
+          try { dd && dd.setValue('Custom', false); } catch (_) {}
+        }
 
         // Font Size moved to Display tab (overlay)
 
@@ -1228,6 +1233,7 @@ function presentSettingsOverlay() {
           try { console.debug(`[display] hue(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
           try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
+          try { selectCustomPreset(); } catch (_) {}
         };
         hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
         contentWrap.appendChild(hueRow);
@@ -1252,6 +1258,7 @@ function presentSettingsOverlay() {
           try { console.debug(`[display] intensity(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
           try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
+          try { selectCustomPreset(); } catch (_) {}
         };
         inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
         contentWrap.appendChild(inRow);
@@ -1276,7 +1283,7 @@ function presentSettingsOverlay() {
         const biRng = document.createElement('input'); biRng.type = 'range'; biRng.min = '0'; biRng.max = '100'; biRng.step = '1'; biRng.style.flex = '1'; biRng.id = 'settings-ui-border-intensity-ovl';
         const biVal = document.createElement('span'); biVal.style.width = '46px'; biVal.style.textAlign = 'right'; biVal.style.color = '#ccc'; biVal.id = 'settings-ui-border-intensity-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(v)) v = 70; const p = Math.max(0, Math.min(100, Math.round(v))); biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; } catch (_) {}
-        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} };
+        biRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(biRng.value) || 0))); if (String(p) !== biRng.value) biRng.value = String(p); biVal.textContent = `${p}%`; biRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { localStorage.setItem('ui_border_intensity', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
         biRow.appendChild(biLbl); biRow.appendChild(biRng); biRow.appendChild(biVal); contentWrap.appendChild(biRow);
 
         // New: Glow Strength (0-100)
@@ -1285,7 +1292,7 @@ function presentSettingsOverlay() {
         const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
         const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
-        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
         gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
         // Space before Transparency tagline
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
@@ -1322,6 +1329,7 @@ function presentSettingsOverlay() {
           try { console.debug(`[display] gradient(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {}
           try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
+          try { selectCustomPreset(); } catch (_) {}
         };
         grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
         // Note: appended after Transparency for new ordering
@@ -1348,6 +1356,7 @@ function presentSettingsOverlay() {
           try { console.debug(`[display] milkiness(overlay) v=${v}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {}
           try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
+          try { selectCustomPreset(); } catch (_) {}
         };
         mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
         // Note: appended after Transparency for new ordering
@@ -1402,6 +1411,7 @@ function presentSettingsOverlay() {
               console.debug(`[opacity] slider(overlay,rev) css=${css} p=${p} mult=${mult}`);
             } catch (_) {}
           }
+          try { selectCustomPreset(); } catch (_) {}
         };
         opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
         contentWrap.appendChild(opRow);
@@ -1416,7 +1426,7 @@ function presentSettingsOverlay() {
         const odRng = document.createElement('input'); odRng.type = 'range'; odRng.min = '0'; odRng.max = '100'; odRng.step = '1'; odRng.style.flex = '1'; odRng.id = 'settings-ui-overlay-darkness-ovl';
         const odVal = document.createElement('span'); odVal.style.width = '46px'; odVal.style.textAlign = 'right'; odVal.style.color = '#ccc'; odVal.id = 'settings-ui-overlay-darkness-ovl-val';
         try { let v = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(v)) v = 50; const p = Math.max(0, Math.min(100, Math.round(v))); odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; } catch (_) {}
-        odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} };
+        odRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(odRng.value) || 0))); if (String(p) !== odRng.value) odRng.value = String(p); odVal.textContent = `${p}%`; odRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { localStorage.setItem('ui_overlay_darkness', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} };
         odRow.appendChild(odLbl); odRow.appendChild(odRng); odRow.appendChild(odVal); contentWrap.appendChild(odRow);
         // Place Overlay Blur after Overlay Darkness
         contentWrap.appendChild(mkRow);
@@ -1454,6 +1464,22 @@ function presentSettingsOverlay() {
             try { let m = Number(p.blur); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkRng.value = String(m); mkVal.textContent = `${m.toFixed(1)}px`; mkRng.title = `${m.toFixed(1)}px`; } catch (_) {}
             try { const od = Math.max(0, Math.min(100, Math.round(p.overlayDarkness))); odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`; } catch (_) {}
             try { opRng.value = String(t); opVal.textContent = `${t}%`; opRng.title = `${t}%`; } catch (_) {}
+
+            // Persist values so preset selection survives reloads and Reset applies correctly
+            try {
+              localStorage.setItem('ui_hue', String(p.hue));
+              localStorage.setItem('ui_intensity', String(Math.max(0, Math.min(100, Math.round(p.saturation)))));
+              localStorage.setItem('ui_border_intensity', String(Math.max(0, Math.min(100, Math.round(p.border)))));
+              localStorage.setItem('ui_glow_strength', String(Math.max(0, Math.min(100, Math.round(p.glow)))));
+              localStorage.setItem('ui_gradient', String(Math.max(0, Math.min(100, Math.round(p.gradient)))));
+              // blur (milkiness) allows decimals, clamp to [0,10]
+              const mLS = Math.max(0, Math.min(10, Number(p.blur)));
+              localStorage.setItem('ui_milkiness', String(mLS));
+              localStorage.setItem('ui_overlay_darkness', String(Math.max(0, Math.min(100, Math.round(p.overlayDarkness)))));
+              // store opacity multiplier in both LS wrappers for compatibility
+              try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+              localStorage.setItem('ui_opacity_mult', String(mult));
+            } catch (_) {}
 
             try { LS.setItem('ui_preset', name); } catch (_) {}
           } catch (_) {}
