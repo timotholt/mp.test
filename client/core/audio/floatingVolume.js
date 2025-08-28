@@ -69,7 +69,7 @@ function injectStyleOnce() {
     padding: 6px; display: flex; align-items: center; gap: 6px; color: var(--ui-fg, #eee); }
   #floating-volume-v2 .panel { display: none; align-items: center; gap: 6px; }
   #floating-volume-v2:hover .panel, #floating-volume-v2.extended .panel, #floating-volume-v2.hovered .panel { display: flex; }
-  #floating-volume-v2 .pin { background: transparent; color: var(--ui-fg, #eee); border: 1px solid #555; border-radius: 4px; cursor: pointer; }
+  #floating-volume-v2 .pin { background: transparent; color: var(--ui-fg, #eee); border: 1px solid var(--control-border, #555); border-radius: 4px; cursor: pointer; }
   #floating-volume-v2 .vol-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
   #floating-volume-v2 .vol-col label { font-size: 10px; opacity: 0.9; }
   #floating-volume-v2 .vol-col .val { font-size: 10px; color: #ccc; min-width: 28px; text-align: center; }

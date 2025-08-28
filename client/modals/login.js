@@ -43,7 +43,7 @@ function ensureLoginStyles() {
   .btn-outline-glass {
     background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
     color: #dff1ff;
-    border: 1px solid rgba(120,170,255,0.60);
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     box-shadow: inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22);
   }
   .btn-outline-glass:hover { border-color: #dff1ff; box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30); }
@@ -62,7 +62,7 @@ function ensureLoginStyles() {
   .login-form label { opacity: 0.95; text-align: right; user-select: none; }
   .input-glass { 
     width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
-    border: 1px solid rgba(120,170,255,0.60); border-radius: 10px; padding: 0 10px; height: 46px;
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70)); border-radius: 10px; padding: 0 10px; height: 46px;
     outline: none; box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18);
     backdrop-filter: blur(6px) saturate(1.2);
     box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
@@ -78,7 +78,7 @@ function ensureLoginStyles() {
     caret-color: #eaf6ff;
     transition: background-color 9999s ease-in-out 0s; /* suppress yellow */
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    border: 1px solid rgba(120,170,255,0.60);
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     background-clip: content-box;
   }
   /* Firefox */

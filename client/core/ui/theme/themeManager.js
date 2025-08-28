@@ -85,6 +85,97 @@
           const raw = localStorage.getItem('ui_opacity_mult');
           console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
         } catch (_) {}
+
+  // --- Dynamic Theme: font scale, hue, intensity ---
+  function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+  function toFixed(n, d = 3) { try { return String(Number(n).toFixed(d)); } catch (_) { return String(n); } }
+
+  function applyDynamicTheme(params = {}) {
+    try {
+      // Read existing or provided values
+      const cs = getComputedStyle(root);
+      const currentHue = parseFloat(cs.getPropertyValue('--ui-hue') || '210') || 210;
+      const currentIntensity = parseFloat(cs.getPropertyValue('--ui-intensity') || '60') || 60;
+      const currentScale = parseFloat(cs.getPropertyValue('--ui-font-scale') || '1') || 1;
+
+      const hue = clamp(params.hue != null ? params.hue : currentHue, 0, 360);
+      const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
+      const fontScale = clamp(params.fontScale != null ? params.fontScale : currentScale, 0.8, 1.2);
+
+      // Persist user prefs
+      try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
+      try { localStorage.setItem('ui_intensity', String(intensity)); } catch (_) {}
+      try { localStorage.setItem('ui_font_scale', toFixed(fontScale, 3)); } catch (_) {}
+
+      // Base mappings (human-readable, conservative)
+      // Saturation rises slightly with intensity; lightness adjusts inversely to keep readable contrast.
+      const sat = clamp(35 + intensity * 0.4, 20, 85);     // 35%..75%
+      const light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
+      const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
+      const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.33
+
+      // Tooltip surface uses slightly different (more transparent) mapping
+      const tipTopA = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
+      const tipBotA = clamp(0.30 + intensity * 0.001, 0.28, 0.43);
+
+      // Apply core knobs first
+      root.style.setProperty('--ui-hue', String(hue));
+      root.style.setProperty('--ui-intensity', String(intensity));
+      root.style.setProperty('--ui-font-scale', toFixed(fontScale, 3));
+
+      // Drive root font-size from fontScale (rem-based typography enabler)
+      try { root.style.fontSize = `calc(16px * var(--ui-font-scale, 1))`; } catch (_) {}
+
+      // Derive common tokens from hue/intensity (HSL)
+      const accent = `hsl(${hue} ${sat}% ${light}%)`;
+      const border = `hsl(${hue} ${sat}% ${Math.max(30, light - 5)}% / ${borderAlpha})`;
+      const glowOuter = `0 0 18px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlpha})`;
+      const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlpha + 0.02)})`;
+      const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
+
+      // Surfaces (use opacity multiplier via CSS on consumption sites)
+      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / 0.41)`;
+      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / 0.40)`;
+
+      // Tooltips
+      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / ${tipTopA})`;
+      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / ${tipBotA})`;
+
+      // Apply tokens referenced across UI
+      root.style.setProperty('--ui-accent', accent);
+      root.style.setProperty('--ui-surface-border', border);
+      root.style.setProperty('--ui-surface-glow-outer', glowOuter);
+      root.style.setProperty('--ui-surface-glow-inset', glowInset);
+      root.style.setProperty('--ui-bright', bright);
+      root.style.setProperty('--ui-surface-bg-top', surfTop);
+      root.style.setProperty('--ui-surface-bg-bottom', surfBot);
+
+      // Tooltip related
+      root.style.setProperty('--sf-tip-bg-top', tipTop);
+      root.style.setProperty('--sf-tip-bg-bottom', tipBot);
+      root.style.setProperty('--sf-tip-border', border);
+      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
+      root.style.setProperty('--sf-tip-glow-inset', glowInset);
+      root.style.setProperty('--sf-tip-text-glow', `0 0 9px hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.70)`);
+      root.style.setProperty('--sf-tip-backdrop', 'blur(3px) saturate(1.2)');
+      root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px hsl(${hue} ${sat}% ${light}% / 0.35))`);
+      root.style.setProperty('--sf-tip-line-color', border);
+      root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
+      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.85, borderAlpha + 0.15)})`);
+    } catch (_) {}
+  }
+
+  // Apply persisted dynamic theme knobs at boot
+  try {
+    const hue = parseFloat(localStorage.getItem('ui_hue'));   // 0..360
+    const intensity = parseFloat(localStorage.getItem('ui_intensity')); // 0..100
+    const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
+    const params = {};
+    if (Number.isFinite(hue)) params.hue = hue;
+    if (Number.isFinite(intensity)) params.intensity = intensity;
+    if (Number.isFinite(fontScale)) params.fontScale = fontScale;
+    applyDynamicTheme(params);
+  } catch (_) {}
       }
     }
   } catch (_) {}
@@ -94,6 +185,7 @@
     window.UITheme = {
       applyTheme,
       registerTheme,
+      applyDynamicTheme,
       themes,
       get active() { return state.active; }
     };
@@ -107,6 +199,9 @@ export function ensureThemeSupport() {
   st.id = 'theme-style';
   st.textContent = `:root{
     --ui-opacity-mult: 2.125;
+    --ui-font-scale: 1;
+    --ui-hue: 210;
+    --ui-intensity: 60;
     --ui-bg: rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)));
     --ui-fg: #fff;
     --ui-muted: #ccc;
@@ -116,6 +211,7 @@ export function ensureThemeSupport() {
     --control-bg: rgba(0,0,0, calc(0.6 * var(--ui-opacity-mult, 1)));
     --control-border: #444;
   }
+  html { font-size: calc(16px * var(--ui-font-scale, 1)); }
   body, button, input, select, textarea {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }`;

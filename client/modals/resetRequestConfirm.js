@@ -122,23 +122,23 @@ function makeBtn(label) {
   b.style.fontSize = '14px';
   b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
   b.style.color = '#dff1ff';
-  b.style.border = '1px solid rgba(120,170,255,0.60)';
+  b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
   return b;
 }
 
 function wireBtnHover(b) {
   try {
-    const baseBorder = '1px solid rgba(120,170,255,0.60)';
+    const baseBorder = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
     const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
     const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
     const applyBase = () => {
       b.style.opacity = '1'; b.style.cursor = 'pointer'; b.style.color = '#dff1ff';
       b.style.border = baseBorder; b.style.boxShadow = baseShadow;
     };
-    b.addEventListener('mouseenter', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+    b.addEventListener('mouseenter', () => { b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
     b.addEventListener('mouseleave', applyBase);
-    b.addEventListener('focus', () => { b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+    b.addEventListener('focus', () => { b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
     b.addEventListener('blur', applyBase);
     applyBase();
   } catch (_) {}

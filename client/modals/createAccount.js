@@ -19,7 +19,7 @@ function ensureCreateAccountStyles() {
     caret-color: #eaf6ff;
     transition: background-color 9999s ease-in-out 0s;
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    border: 1px solid rgba(120,170,255,0.60);
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     background-clip: content-box;
   }
   #overlay input:-moz-autofill {
@@ -281,7 +281,7 @@ export function presentCreateAccountModal() {
   // Button hover highlight to match login
   function wireBtnHover(b) {
     try {
-      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseBorder = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
       const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
       const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
       const applyBase = () => {
@@ -297,9 +297,9 @@ export function presentCreateAccountModal() {
           b.style.border = baseBorder; b.style.boxShadow = baseShadow;
         }
       };
-      b.addEventListener('mouseenter', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('mouseenter', () => { if (b.disabled) return; b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
       b.addEventListener('mouseleave', applyBase);
-      b.addEventListener('focus', () => { if (b.disabled) return; b.style.border = '#dff1ff 1px solid'; b.style.boxShadow = hoverShadow; });
+      b.addEventListener('focus', () => { if (b.disabled) return; b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
       b.addEventListener('blur', applyBase);
       // Initialize base visuals
       applyBase();
@@ -310,12 +310,12 @@ export function presentCreateAccountModal() {
   // Input hover/focus highlight similar to login
   function wireInputHoverFocus(input) {
     try {
-      const baseBorder = '1px solid rgba(120,170,255,0.60)';
+      const baseBorder = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
       const baseShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)';
       const focusShadow = 'inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30)';
-      input.addEventListener('mouseenter', () => { if (document.activeElement !== input) input.style.border = '#dff1ff 1px solid'; });
+      input.addEventListener('mouseenter', () => { if (document.activeElement !== input) input.style.borderColor = '#dff1ff'; });
       input.addEventListener('mouseleave', () => { if (document.activeElement !== input) input.style.border = baseBorder; });
-      input.addEventListener('focus', () => { input.style.border = '#dff1ff 1px solid'; input.style.boxShadow = focusShadow; });
+      input.addEventListener('focus', () => { input.style.borderColor = '#dff1ff'; input.style.boxShadow = focusShadow; });
       input.addEventListener('blur', () => { input.style.border = baseBorder; input.style.boxShadow = baseShadow; });
     } catch (_) {}
   }
@@ -521,7 +521,7 @@ function makeBtn(label) {
   b.style.fontSize = '14px';
   b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
   b.style.color = '#dff1ff';
-  b.style.border = '1px solid rgba(120,170,255,0.60)';
+  b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
   return b;
 }
@@ -530,7 +530,7 @@ function styleInput(input) {
   input.style.width = '100%';
   input.style.color = '#eaf6ff';
   input.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
-  input.style.border = '1px solid rgba(120,170,255,0.60)';
+  input.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   input.style.borderRadius = '10px';
   input.style.padding = '0 10px';
   input.style.height = '46px';

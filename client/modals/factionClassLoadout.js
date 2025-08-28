@@ -47,7 +47,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
         btn.style.justifyContent = 'center';
         btn.style.padding = '6px 8px';
         btn.style.minWidth = '90px';
-        btn.style.border = (it.key === selectedKey) ? '2px solid #6cf' : '1px solid #444';
+        btn.style.border = (it.key === selectedKey) ? '2px solid var(--ui-accent, #6cf)' : '1px solid var(--ui-surface-border, #444)';
         btn.style.background = (it.key === selectedKey) ? 'rgba(80,120,200,0.2)' : 'rgba(0,0,0,0.2)';
         btn.style.color = '#fff';
         const icon = document.createElement('div');
@@ -120,7 +120,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
       btn.style.justifyContent = 'center';
       btn.style.padding = '6px 8px';
       btn.style.minWidth = '90px';
-      btn.style.border = (it.key === selLoadout) ? '2px solid #6cf' : '1px solid #444';
+      btn.style.border = (it.key === selLoadout) ? '2px solid var(--ui-accent, #6cf)' : '1px solid var(--ui-surface-border, #444)';
       btn.style.background = (it.key === selLoadout) ? 'rgba(80,120,200,0.2)' : 'rgba(0,0,0,0.2)';
       btn.style.color = '#fff';
       btn.dataset.key = it.key;
@@ -139,7 +139,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
           Array.from(loRow.children).forEach((child) => {
             const k = child && child.dataset ? child.dataset.key : null;
             if (!k) return;
-            child.style.border = (k === it.key) ? '2px solid #6cf' : '1px solid #444';
+            child.style.border = (k === it.key) ? '2px solid var(--ui-accent, #6cf)' : '1px solid var(--ui-surface-border, #444)';
             child.style.background = (k === it.key) ? 'rgba(80,120,200,0.2)' : 'rgba(0,0,0,0.2)';
           });
         } catch (_) {}
@@ -161,7 +161,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
     readyBtn.textContent = 'Ready';
     readyBtn.style.padding = '6px 12px';
     readyBtn.style.background = 'rgba(0,0,0,0.2)';
-    readyBtn.style.border = '1px solid #444';
+    readyBtn.style.border = '1px solid var(--ui-surface-border, #444)';
     readyBtn.style.color = '#fff';
     readyBtn.disabled = !(selFaction && selClass && selLoadout);
     readyBtn.onclick = () => {

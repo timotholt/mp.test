@@ -460,7 +460,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               row.style.alignItems = 'center';
               row.style.justifyContent = 'space-between';
               row.style.padding = '6px 8px';
-              row.style.border = '1px solid rgba(255,255,255,0.12)';
+              row.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
               row.style.borderRadius = '6px';
               row.style.margin = '4px 0';
               // Make games list font smaller to allow denser rows

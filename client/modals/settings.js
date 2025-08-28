@@ -83,7 +83,7 @@ function createSettingsPanel() {
   closeBtn.textContent = '✕';
   closeBtn.title = 'Close';
   closeBtn.style.background = 'transparent';
-  closeBtn.style.border = '1px solid #555';
+  closeBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   closeBtn.style.borderRadius = '4px';
   closeBtn.style.color = 'var(--ui-fg, #eee)';
   closeBtn.style.cursor = 'pointer';
@@ -225,6 +225,76 @@ function renderSettingsContent(panel) {
     };
     themeRow.appendChild(lbl); themeRow.appendChild(sel); content.appendChild(themeRow);
 
+    // Font Size slider (root rem scale)
+    const fsRow = document.createElement('div');
+    fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
+    const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
+    const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale';
+    const fsVal = document.createElement('span'); fsVal.style.width = '46px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-val';
+    try {
+      let scale = parseFloat(localStorage.getItem('ui_font_scale'));
+      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+      const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
+      fsRng.value = String(p);
+      fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+    } catch (_) {}
+    fsRng.oninput = () => {
+      const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
+      if (String(p) !== fsRng.value) fsRng.value = String(p);
+      const scale = p / 100;
+      fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
+      try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
+    };
+    fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
+    content.appendChild(fsRow);
+
+    // Hue slider
+    const hueRow = document.createElement('div');
+    hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
+    const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px';
+    const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue';
+    const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-val';
+    try {
+      let hue = parseFloat(localStorage.getItem('ui_hue'));
+      if (!Number.isFinite(hue)) hue = 210;
+      const p = Math.max(0, Math.min(360, Math.round(hue)));
+      hueRng.value = String(p);
+      hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+    } catch (_) {}
+    hueRng.oninput = () => {
+      const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
+      if (String(p) !== hueRng.value) hueRng.value = String(p);
+      hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
+      try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
+    };
+    hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
+    content.appendChild(hueRow);
+
+    // Intensity slider
+    const inRow = document.createElement('div');
+    inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
+    const inLbl = document.createElement('label'); inLbl.textContent = 'Intensity:'; inLbl.style.minWidth = '140px';
+    const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity';
+    const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-val';
+    try {
+      let intensity = parseFloat(localStorage.getItem('ui_intensity'));
+      if (!Number.isFinite(intensity)) intensity = 60;
+      const p = Math.max(0, Math.min(100, Math.round(intensity)));
+      inRng.value = String(p);
+      inVal.textContent = `${p}`; inRng.title = `${p}`;
+    } catch (_) {}
+    inRng.oninput = () => {
+      const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
+      if (String(p) !== inRng.value) inRng.value = String(p);
+      inVal.textContent = `${p}`; inRng.title = `${p}`;
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
+      try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
+    };
+    inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
+    content.appendChild(inRow);
+
     // Transparency slider
     const opRow = document.createElement('div');
     opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
@@ -293,6 +363,14 @@ function renderSettingsContent(panel) {
         const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
         // Reset theme
         try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+        // Reset dynamic theme knobs
+        try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+        try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
+        try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
+        try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
+        try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+        try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+        try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
         // Reset opacity
         const p = Math.round((defMult / MMAX) * 100);
         try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
@@ -584,7 +662,7 @@ function presentSettingsOverlay() {
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✕';
     closeBtn.style.background = 'transparent';
-    closeBtn.style.border = '1px solid rgba(120,170,255,0.60)';
+    closeBtn.style.border = '1px solid var(--ui-surface-border)';
     closeBtn.style.borderRadius = '8px';
     closeBtn.style.color = '#dff1ff';
     closeBtn.style.cursor = 'pointer';
@@ -687,7 +765,7 @@ function presentSettingsOverlay() {
           box.style.minWidth = '280px';
           box.style.maxWidth = '90%';
           box.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.52) 0%, rgba(8,14,28,0.48) 100%)';
-          box.style.border = '1px solid rgba(120,170,255,0.70)';
+          box.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
           box.style.borderRadius = '10px';
           box.style.boxShadow = '0 0 20px rgba(120,170,255,0.33)';
           box.style.padding = '12px';
@@ -708,7 +786,7 @@ function presentSettingsOverlay() {
           noBtn.textContent = 'Cancel';
           const yesBtn = document.createElement('button');
           yesBtn.textContent = 'Discard';
-          [noBtn, yesBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '6px 10px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid rgba(120,170,255,0.60)'; b.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)'; });
+          [noBtn, yesBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '6px 10px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))'; b.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)'; });
 
           noBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(false); };
           yesBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(true); };
@@ -857,7 +935,7 @@ function presentSettingsOverlay() {
           actions.style.display = 'flex'; actions.style.gap = '10px'; actions.style.justifyContent = 'flex-end';
           const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save';
           const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel';
-          [saveBtn, cancelBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '8px 12px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid rgba(120,170,255,0.60)'; b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)'; });
+          [saveBtn, cancelBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '8px 12px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))'; b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)'; });
           saveBtn.onclick = async () => {
             // TODO: wire to server profile update once nickname APIs exist
             // For now, store locally to avoid data loss between tab switches
@@ -878,20 +956,97 @@ function presentSettingsOverlay() {
         themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
         const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
         const sel = document.createElement('select');
-        ['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
-        try { const saved = LS.getItem('theme', null); if (saved) sel.value = saved; if (window.setTheme) window.setTheme(sel.value || saved || 'dark'); } catch (_) {}
-        sel.onchange = () => { try { LS.setItem('theme', sel.value); } catch (_) {} try { window.setTheme && window.setTheme(sel.value); } catch (_) {} };
+        // Build theme selector
+        ;['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
+        try {
+          const saved = LS.getItem('theme', null);
+          if (saved) sel.value = saved;
+          if (window.setTheme) window.setTheme(sel.value || saved || 'dark');
+        } catch (_) {}
+        sel.onchange = () => {
+          try { LS.setItem('theme', sel.value); } catch (_) {}
+          try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
+        };
         themeRow.appendChild(lbl); themeRow.appendChild(sel); contentWrap.appendChild(themeRow);
+
+        // Font Size slider (root rem scale)
+        const fsRow = document.createElement('div');
+        fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
+        const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
+        const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale-ovl';
+        const fsVal = document.createElement('span'); fsVal.style.width = '46px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-ovl-val';
+        try {
+          let scale = parseFloat(localStorage.getItem('ui_font_scale'));
+          if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+          const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
+          fsRng.value = String(p);
+          fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+        } catch (_) {}
+        fsRng.oninput = () => {
+          const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
+          if (String(p) !== fsRng.value) fsRng.value = String(p);
+          const scale = p / 100;
+          fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
+          try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
+        };
+        fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
+        contentWrap.appendChild(fsRow);
+
+        // Hue slider
+        const hueRow = document.createElement('div');
+        hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
+        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px';
+        const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue-ovl';
+        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-ovl-val';
+        try {
+          let hue = parseFloat(localStorage.getItem('ui_hue'));
+          if (!Number.isFinite(hue)) hue = 210;
+          const p = Math.max(0, Math.min(360, Math.round(hue)));
+          hueRng.value = String(p);
+          hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+        } catch (_) {}
+        hueRng.oninput = () => {
+          const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
+          if (String(p) !== hueRng.value) hueRng.value = String(p);
+          hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
+          try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
+        };
+        hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
+        contentWrap.appendChild(hueRow);
+
+        // Intensity slider
+        const inRow = document.createElement('div');
+        inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
+        const inLbl = document.createElement('label'); inLbl.textContent = 'Intensity:'; inLbl.style.minWidth = '140px';
+        const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity-ovl';
+        const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-ovl-val';
+        try {
+          let intensity = parseFloat(localStorage.getItem('ui_intensity'));
+          if (!Number.isFinite(intensity)) intensity = 60;
+          const p = Math.max(0, Math.min(100, Math.round(intensity)));
+          inRng.value = String(p);
+          inVal.textContent = `${p}`; inRng.title = `${p}`;
+        } catch (_) {}
+        inRng.oninput = () => {
+          const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
+          if (String(p) !== inRng.value) inRng.value = String(p);
+          inVal.textContent = `${p}`; inRng.title = `${p}`;
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
+          try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
+        };
+        inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
+        contentWrap.appendChild(inRow);
 
         // Transparency slider
         const opRow = document.createElement('div');
         opRow.style.display = 'flex'; opRow.style.alignItems = 'center'; opRow.style.gap = '8px'; opRow.style.marginBottom = '8px';
         const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px';
-        const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
-        const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-val';
+        const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity-ovl';
+        const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.id = 'settings-ui-opacity-ovl-val';
         try {
-          const OPDBG = true; // TEMP debug logging toggle
-          const MMAX = 2.5; // 100% maps to full opacity
+          const OPDBG = true; const MMAX = 2.5;
           let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
           let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
           let mult; let p;
@@ -900,8 +1055,7 @@ function presentSettingsOverlay() {
             if (!Number.isFinite(mult) || mult < 0) mult = 1;
             p = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
           } else {
-            // Default to 85% when no prior value exists
-            p = 85;
+            p = 85; // default 85%
             mult = (p / 100) * MMAX;
             try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
             try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
@@ -948,6 +1102,14 @@ function presentSettingsOverlay() {
             const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
             // Reset theme
             try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+            // Reset dynamic theme knobs
+            try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+            try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
+            try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
+            try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
+            try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+            try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+            try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
             // Reset opacity
             const p = Math.round((defMult / MMAX) * 100);
             try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
