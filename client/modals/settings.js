@@ -219,13 +219,18 @@ function renderSettingsContent(panel) {
           // Reset theme
           try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
           // Reset dynamic theme knobs
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult }); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3 }); } catch (_) {}
           try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
           try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
           try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
           try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
           try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
           try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
+          // Reset gradient and milkiness
+          try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
+          try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
+          try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
+          try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
           // Reset opacity
           const p = Math.round((defMult / MMAX) * 100);
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
@@ -306,10 +311,10 @@ function renderSettingsContent(panel) {
     hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
     content.appendChild(hueRow);
 
-    // Intensity slider
+    // Saturation slider
     const inRow = document.createElement('div');
     inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-    const inLbl = document.createElement('label'); inLbl.textContent = 'Intensity:'; inLbl.style.minWidth = '140px';
+    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px';
     const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity';
     const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-val';
     try {
@@ -329,6 +334,56 @@ function renderSettingsContent(panel) {
     };
     inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
     content.appendChild(inRow);
+
+    // Gradient strength slider (0-100)
+    const grRow = document.createElement('div');
+    grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
+    const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px';
+    const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient';
+    const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.id = 'settings-ui-gradient-val';
+    try {
+      let g = parseFloat(localStorage.getItem('ui_gradient'));
+      if (!Number.isFinite(g)) g = 60;
+      const p = Math.max(0, Math.min(100, Math.round(g)));
+      grRng.value = String(p);
+      grVal.textContent = `${p}%`; grRng.title = `${p}%`;
+    } catch (_) {}
+    grRng.oninput = () => {
+      const p = Math.max(0, Math.min(100, Math.round(parseFloat(grRng.value) || 0)));
+      if (String(p) !== grRng.value) grRng.value = String(p);
+      grVal.textContent = `${p}%`; grRng.title = `${p}%`;
+      try { console.debug(`[display] gradient(panel) p=${p}`); } catch (_) {}
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {}
+      try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
+    };
+    grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
+    content.appendChild(grRow);
+
+    // Milkiness slider (backdrop blur 0-8px)
+    const mkRow = document.createElement('div');
+    mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
+    const mkLbl = document.createElement('label'); mkLbl.textContent = 'Milkiness:'; mkLbl.style.minWidth = '140px';
+    const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness';
+    const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-val';
+    try {
+      let m = parseFloat(localStorage.getItem('ui_milkiness'));
+      if (!Number.isFinite(m)) m = 3;
+      const v = Math.max(0, Math.min(8, m));
+      mkRng.value = String(v);
+      mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
+    } catch (_) {}
+    mkRng.oninput = () => {
+      let v = parseFloat(mkRng.value);
+      if (!Number.isFinite(v)) v = 3;
+      v = Math.max(0, Math.min(8, v));
+      mkRng.value = String(v);
+      mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
+      try { console.debug(`[display] milkiness(panel) v=${v}`); } catch (_) {}
+      try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {}
+      try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
+    };
+    mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
+    content.appendChild(mkRow);
 
     // Transparency slider
     const opRow = document.createElement('div');
@@ -990,13 +1045,18 @@ function presentSettingsOverlay() {
             resetBtn.onclick = () => {
               const OPDBG = true; const MMAX = 2.5; const defMult = 2.125;
               try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult }); } catch (_) {}
+              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3 }); } catch (_) {}
               try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
               try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
               try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
               try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
               try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
               try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
+              // Reset gradient and milkiness
+              try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
+              try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
+              try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
+              try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
               const p = Math.round((defMult / MMAX) * 100);
               try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
               if (OPDBG) {
@@ -1076,10 +1136,10 @@ function presentSettingsOverlay() {
         hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
         contentWrap.appendChild(hueRow);
 
-        // Intensity slider
+        // Saturation slider
         const inRow = document.createElement('div');
         inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-        const inLbl = document.createElement('label'); inLbl.textContent = 'Intensity:'; inLbl.style.minWidth = '140px';
+        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px';
         const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity-ovl';
         const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.id = 'settings-ui-intensity-ovl-val';
         try {
@@ -1099,6 +1159,56 @@ function presentSettingsOverlay() {
         };
         inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
         contentWrap.appendChild(inRow);
+
+        // Gradient strength slider (0-100)
+        const grRow = document.createElement('div');
+        grRow.style.display = 'flex'; grRow.style.alignItems = 'center'; grRow.style.gap = '8px'; grRow.style.marginBottom = '8px';
+        const grLbl = document.createElement('label'); grLbl.textContent = 'Gradient:'; grLbl.style.minWidth = '140px';
+        const grRng = document.createElement('input'); grRng.type = 'range'; grRng.min = '0'; grRng.max = '100'; grRng.step = '1'; grRng.style.flex = '1'; grRng.id = 'settings-ui-gradient-ovl';
+        const grVal = document.createElement('span'); grVal.style.width = '46px'; grVal.style.textAlign = 'right'; grVal.style.color = '#ccc'; grVal.id = 'settings-ui-gradient-ovl-val';
+        try {
+          let g = parseFloat(localStorage.getItem('ui_gradient'));
+          if (!Number.isFinite(g)) g = 60;
+          const p = Math.max(0, Math.min(100, Math.round(g)));
+          grRng.value = String(p);
+          grVal.textContent = `${p}%`; grRng.title = `${p}%`;
+        } catch (_) {}
+        grRng.oninput = () => {
+          const p = Math.max(0, Math.min(100, Math.round(parseFloat(grRng.value) || 0)));
+          if (String(p) !== grRng.value) grRng.value = String(p);
+          grVal.textContent = `${p}%`; grRng.title = `${p}%`;
+          try { console.debug(`[display] gradient(overlay) p=${p}`); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {}
+          try { localStorage.setItem('ui_gradient', String(p)); } catch (_) {}
+        };
+        grRow.appendChild(grLbl); grRow.appendChild(grRng); grRow.appendChild(grVal);
+        contentWrap.appendChild(grRow);
+
+        // Milkiness slider (backdrop blur 0-8px)
+        const mkRow = document.createElement('div');
+        mkRow.style.display = 'flex'; mkRow.style.alignItems = 'center'; mkRow.style.gap = '8px'; mkRow.style.marginBottom = '8px';
+        const mkLbl = document.createElement('label'); mkLbl.textContent = 'Milkiness:'; mkLbl.style.minWidth = '140px';
+        const mkRng = document.createElement('input'); mkRng.type = 'range'; mkRng.min = '0'; mkRng.max = '8'; mkRng.step = '0.1'; mkRng.style.flex = '1'; mkRng.id = 'settings-ui-milkiness-ovl';
+        const mkVal = document.createElement('span'); mkVal.style.width = '46px'; mkVal.style.textAlign = 'right'; mkVal.style.color = '#ccc'; mkVal.id = 'settings-ui-milkiness-ovl-val';
+        try {
+          let m = parseFloat(localStorage.getItem('ui_milkiness'));
+          if (!Number.isFinite(m)) m = 3;
+          let v = Math.max(0, Math.min(8, m));
+          mkRng.value = String(v);
+          mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
+        } catch (_) {}
+        mkRng.oninput = () => {
+          let v = parseFloat(mkRng.value);
+          if (!Number.isFinite(v)) v = 3;
+          v = Math.max(0, Math.min(8, v));
+          mkRng.value = String(v);
+          mkVal.textContent = `${v.toFixed(1)}px`; mkRng.title = `${v.toFixed(1)}px`;
+          try { console.debug(`[display] milkiness(overlay) v=${v}`); } catch (_) {}
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {}
+          try { localStorage.setItem('ui_milkiness', String(v)); } catch (_) {}
+        };
+        mkRow.appendChild(mkLbl); mkRow.appendChild(mkRng); mkRow.appendChild(mkVal);
+        contentWrap.appendChild(mkRow);
 
         // Transparency slider
         const opRow = document.createElement('div');

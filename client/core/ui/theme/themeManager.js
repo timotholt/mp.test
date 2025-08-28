@@ -94,6 +94,12 @@
           console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
         } catch (_) {}
       }
+    } else {
+      // No stored value: set and persist default (85% of 2.5 => 2.125) to avoid later jumps
+      const def = 2.125;
+      try { root.style.setProperty('--ui-opacity-mult', String(def)); } catch (_) {}
+      try { localStorage.setItem('ui_opacity_mult', String(def)); } catch (_) {}
+      try { console.debug(`[opacity] app-load default applied def=${def}`); } catch (_) {}
     }
   } catch (_) {}
 
@@ -161,12 +167,18 @@
       const currentHue = parseFloat(cs.getPropertyValue('--ui-hue') || '210') || 210;
       const currentIntensity = parseFloat(cs.getPropertyValue('--ui-intensity') || '60') || 60;
       const currentScale = parseFloat(cs.getPropertyValue('--ui-font-scale') || '1') || 1;
+      // New controls: gradient strength (0..100), milkiness/backdrop blur (0..8 px)
+      // Fallbacks when CSS vars are not yet set.
+      const currentGradient = parseFloat(cs.getPropertyValue('--ui-gradient') || '60') || 60;
+      const currentMilkiness = parseFloat(cs.getPropertyValue('--ui-backdrop-blur') || '3') || 3;
 
       const hue = clamp(params.hue != null ? params.hue : currentHue, 0, 360);
       const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
       const fontScale = clamp(params.fontScale != null ? params.fontScale : currentScale, 0.8, 1.2);
+      const gradient = clamp(params.gradient != null ? params.gradient : currentGradient, 0, 100);
+      const milkiness = clamp(params.milkiness != null ? params.milkiness : currentMilkiness, 0, 8);
       // Debug: entry point (verify sliders call into here)
-      try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale }); } catch (_) {}
+      try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale, gradient, milkiness }); } catch (_) {}
 
       // Optional: accept transparency multiplier from callers (e.g., Settings slider)
       if (params.opacityMult != null) {
@@ -185,17 +197,26 @@
       try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
       try { localStorage.setItem('ui_intensity', String(intensity)); } catch (_) {}
       try { localStorage.setItem('ui_font_scale', toFixed(fontScale, 3)); } catch (_) {}
+      try { localStorage.setItem('ui_gradient', String(gradient)); } catch (_) {}
+      try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
+
+      // Reflect new controls as CSS variables for other components to read if needed
+      try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
+      try { root.style.setProperty('--ui-backdrop-blur', `${toFixed(milkiness, 2)}px`); } catch (_) {}
 
       // Base mappings (human-readable, conservative)
       // Saturation rises slightly with intensity; lightness adjusts inversely to keep readable contrast.
-      const sat = clamp(35 + intensity * 0.4, 20, 85);     // 35%..75%
+      // Experiment: allow grayscale at the far-left (intensity = 0)
+      // Previous mapping had a 35% baseline and a 20% lower clamp, preventing grayscale.
+      // New mapping is linear with no baseline so intensity=0 -> sat=0.
+      const sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
       const light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.33
 
       // Tooltip surface uses slightly different (more transparent) mapping
-      const tipTopA = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
-      const tipBotA = clamp(0.30 + intensity * 0.001, 0.28, 0.43);
+      const tipTopA0 = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
+      const tipBotA0 = clamp(0.30 + intensity * 0.001, 0.28, 0.43);
 
       // Apply core knobs first
       root.style.setProperty('--ui-hue', String(hue));
@@ -212,13 +233,25 @@
       const glowInset = `inset 0 0 18px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.24, glowAlpha + 0.02)})`;
       const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
 
-      // Surfaces (alpha scaled by --ui-opacity-mult for consistency with zoom control)
-      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(0.41 * var(--ui-opacity-mult, 1)))`;
-      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(0.40 * var(--ui-opacity-mult, 1)))`;
+      // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
+      const lt0 = Math.max(18, light - 30);
+      const lb0 = Math.max(14, light - 34);
+      const lmid = (lt0 + lb0) / 2;
+      const f = gradient / 100; // 0..1
+      const lt = (1 - f) * lmid + f * lt0;
+      const lb = (1 - f) * lmid + f * lb0;
+      const sAvgA = (0.41 + 0.40) / 2; // ~0.405
+      const sTopA = clamp((1 - f) * sAvgA + f * 0.60, 0, 1);
+      const sBotA = clamp((1 - f) * sAvgA + f * 0.00, 0, 1);
+      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${lt}% / calc(${toFixed(sTopA, 3)} * var(--ui-opacity-mult, 1)))`;
+      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${lb}% / calc(${toFixed(sBotA, 3)} * var(--ui-opacity-mult, 1)))`;
 
-      // Tooltips (alpha also scaled by --ui-opacity-mult)
-      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(${tipTopA} * var(--ui-opacity-mult, 1)))`;
-      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(${tipBotA} * var(--ui-opacity-mult, 1)))`;
+      // Tooltips (alpha also scaled by --ui-opacity-mult); tie gradient strength to tooltip as well
+      const tMidA = (tipTopA0 + tipBotA0) / 2;
+      const tTopA = clamp((1 - f) * tMidA + f * 0.50, 0, 1);
+      const tBotA = clamp((1 - f) * tMidA + f * 0.00, 0, 1);
+      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1)))`;
+      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1)))`;
 
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);
@@ -239,7 +272,8 @@
       root.style.setProperty('--sf-tip-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
       root.style.setProperty('--sf-tip-text-glow', `0 0 9px hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.70)`);
-      root.style.setProperty('--sf-tip-backdrop', 'blur(3px) saturate(1.2)');
+      // Backdrop blur derives from milkiness
+      root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px hsl(${hue} ${sat}% ${light}% / 0.35))`);
       root.style.setProperty('--sf-tip-line-color', border);
       root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlpha})`);
