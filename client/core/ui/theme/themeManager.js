@@ -147,6 +147,9 @@
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-bright', bright);
+      // Strong glow used by interactive hover/focus (two-layer glow for pop)
+      const strongGlow = `0 0 36px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.60, glowAlpha + 0.20)}), 0 0 10px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.88, glowAlpha + 0.40)})`;
+      root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
       root.style.setProperty('--ui-surface-bg-bottom', surfBot);
 

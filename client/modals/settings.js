@@ -481,7 +481,7 @@ function makeVolumeKnobsGrid() {
     const cap = document.createElement('div');
     cap.textContent = g.label;
     cap.style.marginTop = '6px';
-    cap.style.color = '#cfe6ff';
+    cap.style.color = 'var(--ui-bright, #cfe6ff)';
     cap.style.opacity = '0.9';
     cap.style.fontSize = '12px';
 
@@ -633,7 +633,10 @@ function presentSettingsOverlay() {
 
     // Darker backdrop to emphasize modal
     try {
-      overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, rgba(12,24,48,0.65) 0%, rgba(4,8,18,0.78) 60%, rgba(2,4,10,0.88) 100%)';
+      overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, '
+        + 'var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, '
+        + 'var(--ui-surface-bg-bottom, rgba(4,8,18,0.78)) 60%, '
+        + 'var(--ui-surface-bg-bottom, rgba(2,4,10,0.88)) 100%)';
       // Follow OverlayManager defaults so background passes clicks through
       // and only the modal content captures input. Keep zIndex modest.
       overlay.style.zIndex = '20000';
