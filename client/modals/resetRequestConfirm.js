@@ -39,7 +39,7 @@ export function presentResetPasswordRequestModal(emailValue) {
 
   const card = document.createElement('div');
   card.style.width = 'min(420px, calc(100vw - 32px))';
-  card.style.color = '#dff1ff';
+  card.style.color = 'var(--ui-fg, #eee)';
   card.style.borderRadius = '14px';
   card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
   card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
@@ -65,7 +65,7 @@ export function presentResetPasswordRequestModal(emailValue) {
   ];
   const subtitle = document.createElement('div');
   subtitle.textContent = taglines[Math.floor(Math.random() * taglines.length)];
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = '#cfe6ff'; subtitle.style.userSelect = 'none'; } catch (_) {}
+  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
 
   const message = document.createElement('div');
   message.style.userSelect = 'none';

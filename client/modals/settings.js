@@ -207,7 +207,58 @@ function renderSettingsContent(panel) {
       content.appendChild(makeRow('Display Name', makeInput('text', LS.getItem('name', '') || '')));
     }
   } else if (tab === 'Display') {
-    content.appendChild(makeSection('Display', 'Theme and rendering.'));
+    const sec = makeSection('Display', 'Theme and rendering.');
+    // Insert Reset button into the Display section header (right side)
+    try {
+      const hdr = sec.firstChild; // title div
+      if (hdr) {
+        hdr.style.display = 'flex';
+        hdr.style.alignItems = 'center';
+        hdr.style.justifyContent = 'space-between';
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset';
+        resetBtn.style.background = 'transparent';
+        resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+        resetBtn.style.borderRadius = '10px';
+        resetBtn.style.color = 'var(--ui-fg, #eee)';
+        resetBtn.style.padding = '4px 10px';
+        resetBtn.style.cursor = 'pointer';
+        // Hover/focus glow
+        const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+        const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+        resetBtn.addEventListener('mouseenter', onHover);
+        resetBtn.addEventListener('mouseleave', onLeave);
+        resetBtn.addEventListener('focus', onHover);
+        resetBtn.addEventListener('blur', onLeave);
+        resetBtn.onclick = () => {
+          const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
+          // Reset theme
+          try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+          // Reset dynamic theme knobs
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+          try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
+          try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
+          try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
+          try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+          try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+          try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
+          // Reset opacity
+          const p = Math.round((defMult / MMAX) * 100);
+          try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
+          try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
+          try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
+          try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
+          if (OPDBG) {
+            try {
+              const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+              console.debug(`[opacity] reset(panel) css=${css} p=${p} mult=${defMult}`);
+            } catch (_) {}
+          }
+        };
+        hdr.appendChild(resetBtn);
+      }
+    } catch (_) {}
+    content.appendChild(sec);
     const themeRow = document.createElement('div');
     themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
     const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
@@ -243,6 +294,7 @@ function renderSettingsContent(panel) {
       if (String(p) !== fsRng.value) fsRng.value = String(p);
       const scale = p / 100;
       fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+      try { console.debug(`[display] fontScale(panel) p=${p} scale=${scale}`); } catch (_) {}
       try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
       try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
     };
@@ -266,6 +318,7 @@ function renderSettingsContent(panel) {
       const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
       if (String(p) !== hueRng.value) hueRng.value = String(p);
       hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+      try { console.debug(`[display] hue(panel) p=${p}`); } catch (_) {}
       try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
       try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
     };
@@ -289,6 +342,7 @@ function renderSettingsContent(panel) {
       const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
       if (String(p) !== inRng.value) inRng.value = String(p);
       inVal.textContent = `${p}`; inRng.title = `${p}`;
+      try { console.debug(`[display] intensity(panel) p=${p}`); } catch (_) {}
       try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
       try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
     };
@@ -353,39 +407,7 @@ function renderSettingsContent(panel) {
     opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
     content.appendChild(opRow);
 
-    // Add Reset button to the right side of the theme row
-    try {
-      const spacer = document.createElement('div'); spacer.style.flex = '1';
-      const resetBtn = document.createElement('button');
-      resetBtn.textContent = 'Reset';
-      resetBtn.style.marginLeft = 'auto'; resetBtn.style.padding = '4px 8px'; resetBtn.style.cursor = 'pointer';
-      resetBtn.onclick = () => {
-        const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
-        // Reset theme
-        try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-        // Reset dynamic theme knobs
-        try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
-        try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
-        try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
-        try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
-        try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-        try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
-        try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
-        // Reset opacity
-        const p = Math.round((defMult / MMAX) * 100);
-        try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
-        try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-        try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-        try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
-        if (OPDBG) {
-          try {
-            const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-            console.debug(`[opacity] reset(panel) css=${css} p=${p} mult=${defMult}`);
-          } catch (_) {}
-        }
-      };
-      themeRow.appendChild(spacer); themeRow.appendChild(resetBtn);
-    } catch (_) {}
+    // Reset button moved to section header (see above)
   } else if (tab === 'Sound') {
     content.appendChild(makeSection('Sound'));
     // Space between section title and knobs (increase spacing to 1rem)
@@ -404,7 +426,7 @@ function renderSettingsContent(panel) {
           desc.style.fontSize = '13px';
           desc.style.opacity = '0.9';
           desc.style.margin = '0 0 10px 0';
-          desc.style.color = '#cfe6ff';
+          desc.style.color = 'var(--ui-fg, #eee)';
           desc.style.userSelect = 'none';
         }
       } catch (_) {}
@@ -481,7 +503,7 @@ function makeVolumeKnobsGrid() {
     const cap = document.createElement('div');
     cap.textContent = g.label;
     cap.style.marginTop = '6px';
-    cap.style.color = 'var(--ui-bright, #cfe6ff)';
+    cap.style.color = 'var(--ui-fg, #eee)';
     cap.style.opacity = '0.9';
     cap.style.fontSize = '12px';
 
@@ -727,7 +749,7 @@ function presentSettingsOverlay() {
       tagline.style.fontSize = '13px';
       tagline.style.opacity = '0.9';
       tagline.style.margin = '0 0 10px 0';
-      tagline.style.color = '#cfe6ff';
+      tagline.style.color = 'var(--ui-fg, #eee)';
       tagline.style.userSelect = 'none';
     } catch (_) {}
     try { tagline.id = 'settings-modal-desc'; card.setAttribute('aria-describedby', 'settings-modal-desc'); } catch (_) {}
@@ -980,7 +1002,54 @@ function presentSettingsOverlay() {
           contentWrap.appendChild(actions);
         }
       } else if (tab === 'Display') {
-        contentWrap.appendChild(makeSection('Display', 'Theme and rendering.'));
+        const sec = makeSection('Display', 'Theme and rendering.');
+        // Insert Reset button into the Display section header (overlay)
+        try {
+          const hdr = sec.firstChild;
+          if (hdr) {
+            hdr.style.display = 'flex';
+            hdr.style.alignItems = 'center';
+            hdr.style.justifyContent = 'space-between';
+            const resetBtn = document.createElement('button');
+            resetBtn.textContent = 'Reset';
+            resetBtn.style.background = 'transparent';
+            resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+            resetBtn.style.borderRadius = '10px';
+            resetBtn.style.color = 'var(--ui-fg, #eee)';
+            resetBtn.style.padding = '4px 10px';
+            resetBtn.style.cursor = 'pointer';
+            const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+            const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+            resetBtn.addEventListener('mouseenter', onHover);
+            resetBtn.addEventListener('mouseleave', onLeave);
+            resetBtn.addEventListener('focus', onHover);
+            resetBtn.addEventListener('blur', onLeave);
+            resetBtn.onclick = () => {
+              const OPDBG = true; const MMAX = 2.5; const defMult = 2.125;
+              try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
+              try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
+              try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
+              try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
+              try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
+              try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+              try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
+              const p = Math.round((defMult / MMAX) * 100);
+              try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
+              try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
+              try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
+              try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
+              if (OPDBG) {
+                try {
+                  const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+                  console.debug(`[opacity] reset(overlay) css=${css} p=${p} mult=${defMult}`);
+                } catch (_) {}
+              }
+            };
+            hdr.appendChild(resetBtn);
+          }
+        } catch (_) {}
+        contentWrap.appendChild(sec);
         const themeRow = document.createElement('div');
         themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
         const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
@@ -1016,6 +1085,7 @@ function presentSettingsOverlay() {
           if (String(p) !== fsRng.value) fsRng.value = String(p);
           const scale = p / 100;
           fsVal.textContent = `${p}%`; fsRng.title = `${p}%`;
+          try { console.debug(`[display] fontScale(overlay) p=${p} scale=${scale}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
           try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
         };
@@ -1039,6 +1109,7 @@ function presentSettingsOverlay() {
           const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
           if (String(p) !== hueRng.value) hueRng.value = String(p);
           hueVal.textContent = `${p}`; hueRng.title = `${p}`;
+          try { console.debug(`[display] hue(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
           try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
         };
@@ -1062,6 +1133,7 @@ function presentSettingsOverlay() {
           const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
           if (String(p) !== inRng.value) inRng.value = String(p);
           inVal.textContent = `${p}`; inRng.title = `${p}`;
+          try { console.debug(`[display] intensity(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
           try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
         };
@@ -1121,39 +1193,7 @@ function presentSettingsOverlay() {
         opRow.appendChild(opLbl); opRow.appendChild(opRng); opRow.appendChild(opVal);
         contentWrap.appendChild(opRow);
 
-        // Add Reset button to the right side of the theme row (overlay)
-        try {
-          const spacer = document.createElement('div'); spacer.style.flex = '1';
-          const resetBtn = document.createElement('button');
-          resetBtn.textContent = 'Reset';
-          resetBtn.style.marginLeft = 'auto'; resetBtn.style.padding = '4px 8px'; resetBtn.style.cursor = 'pointer';
-          resetBtn.onclick = () => {
-            const OPDBG = true; const MMAX = 2.5; const defMult = 2.125; // 85% of MMAX
-            // Reset theme
-            try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
-            // Reset dynamic theme knobs
-            try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60 }); } catch (_) {}
-            try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
-            try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
-            try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
-            try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-            try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
-            try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
-            // Reset opacity
-            const p = Math.round((defMult / MMAX) * 100);
-            try { document.documentElement.style.setProperty('--ui-opacity-mult', String(defMult)); } catch (_) {}
-            try { LS.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-            try { localStorage.setItem('ui_opacity_mult', String(defMult)); } catch (_) {}
-            try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
-            if (OPDBG) {
-              try {
-                const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-                console.debug(`[opacity] reset(overlay) css=${css} p=${p} mult=${defMult}`);
-              } catch (_) {}
-            }
-          };
-          themeRow.appendChild(spacer); themeRow.appendChild(resetBtn);
-        } catch (_) {}
+        // Reset button moved to section header (see above)
       } else if (tab === 'Sound')  {
         contentWrap.appendChild(makeSection('Sound Mixer', ''));
         // Space between section title and knobs (increase spacing to 1rem)
@@ -1176,7 +1216,7 @@ function presentSettingsOverlay() {
               desc.style.fontSize = '13px';
               desc.style.opacity = '0.9';
               desc.style.margin = '0 0 10px 0';
-              desc.style.color = '#cfe6ff';
+              desc.style.color = 'var(--ui-bright, #dff1ff)';
               desc.style.userSelect = 'none';
             }
           } catch (_) {}
