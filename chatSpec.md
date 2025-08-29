@@ -1,4 +1,133 @@
-# MMO Chat System Specification (Supabase/Postgres-first)
+# MMO Chat System — Simplified 4-table Design
+ 
+ This section simplifies the chat schema while preserving the original semantics. It reduces the schema to four core tables and models DMs as deterministic rooms.
+ 
+ - __Tables__: `rooms`, `messages`, `room_sessions`, `blocks`
+ - __DMs__: encoded as rooms with id `dm:<sorted_uidA>_<sorted_uidB>` and `type='dm'`
+ - __Blocks__: remain a table to support time-window semantics (pre-block visible, post-block hidden)
+ - __Bans (optional)__: add `profiles.chat_banned_until timestamptz` for global chat bans
+ 
+ ---
+ 
+ ## 1. Tables
+ 
+ ```sql
+ -- rooms: public, game, news, status, gm, dm
+ create table if not exists rooms (
+   id         text primary key,                -- e.g. 'wc:lobby','game:<uuid>','dm:<uidA>_<uidB>'
+   type       text not null check (type in ('lobby','game','news','status','gm','dm')),
+   title      text not null,
+   is_private boolean not null default false,
+   owner_id   uuid null references auth.users(id) on delete set null,
+   created_at timestamptz not null default now(),
+   closed_at  timestamptz null
+ );
+ 
+ -- messages: all chat goes here (public, game, dm, news, status)
+ create table if not exists messages (
+   id          uuid primary key default gen_random_uuid(),
+   room_id     text not null references rooms(id) on delete cascade,
+   from_user   uuid null references auth.users(id) on delete set null, -- NULL = system
+   text        text not null check (length(text) <= 4000),
+   ts          timestamptz not null default now(),
+   login_gated boolean not null default true,  -- ignored for dm; used for lobby/status
+   deleted_at  timestamptz null
+ );
+ create index if not exists idx_messages_room_ts on messages (room_id, ts);
+ 
+ -- room_sessions: visit windows (replaces session_logins + room_visits + membership)
+ create table if not exists room_sessions (
+   user_id    uuid not null references auth.users(id) on delete cascade,
+   room_id    text not null references rooms(id) on delete cascade,
+   entered_at timestamptz not null default now(),
+   left_at    timestamptz null,
+   primary key (user_id, room_id, entered_at)
+ );
+ create index if not exists idx_room_sessions_user_room_entered on room_sessions (user_id, room_id, entered_at desc);
+ 
+ -- blocks: time-window based blocks (keep as a table to preserve MMO semantics)
+ create table if not exists blocks (
+   blocker    uuid not null references auth.users(id) on delete cascade,
+   blocked    uuid not null references auth.users(id) on delete cascade,
+   created_at timestamptz not null default now(),
+   revoked_at timestamptz null,
+   primary key (blocker, blocked, created_at)
+ );
+ create index if not exists idx_blocks_all on blocks (blocker, blocked, created_at, revoked_at);
+ ```
+ 
+ ---
+ 
+ ## 2. RLS (enable + policy summary)
+ 
+ ```sql
+ alter table rooms          enable row level security;
+ alter table messages       enable row level security;
+ alter table room_sessions  enable row level security;
+ alter table blocks         enable row level security;
+ ```
+ 
+ - __rooms__:
+   - select: allow all (or auth-only); inserts/updates restricted to service role or privileged role
+ - __room_sessions__:
+   - select/insert/update/delete only where `user_id = auth.uid()`
+ - __blocks__:
+   - select/insert/update/delete only where `blocker = auth.uid()`
+ - __messages__ select allowed when:
+   - `deleted_at is null`
+   - block windows: no active block between viewer and `from_user` at `ts` (unless `from_user is null`)
+   - by room type:
+     - `lobby`: if `login_gated=true` then `ts >= latest open room_sessions.entered_at` for (viewer, room); if `login_gated=false` → always visible
+     - `game` (private): must have a session window that covers `ts` (membership + visit window)
+     - `dm`: viewer is one of the two participants encoded in `room_id`; full history (ignore login_gated)
+     - `news/status/gm`: visible to all auth users; `login_gated=false` for global, `true` to require current presence if desired
+ - __messages__ insert allowed when:
+   - `from_user = auth.uid()`
+   - for `game`: require an open room_session for (auth.uid(), room_id)
+   - for `lobby/news/status/gm`: authenticated (optionally role-gate for status/gm)
+   - for `dm`: auth.uid() is one of the two encoded participants
+   - optional: deny if `now() < profiles.chat_banned_until` (global bans)
+ 
+ ---
+ 
+ ## 3. RPC helpers (concise)
+ 
+ - `upsert_session(p_room text)` → closes any open session for this user+room and inserts a new `(entered_at=now())`
+ - `close_session(p_room text)` → sets `left_at=now()` on the open session if any
+ - `block_user(p_blocked uuid)` / `unblock_user(p_blocked uuid)`
+ - `get_or_create_dm(p_other uuid)` (optional): ensures a `rooms` row with `id='dm:<sorted_uidA>_<sorted_uidB>'`, returns `room_id`
+ 
+ ---
+ 
+ ## 4. Client contract (unchanged UX, simpler API)
+ 
+ - Public lobby: `rpc('upsert_session',{p_room:'wc:lobby'})`, fetch last N from `messages` where `room_id='wc:lobby'`, subscribe to changes
+ - Game room: `rpc('upsert_session',{p_room:'game:<uuid>'})` on join; `rpc('close_session',...)` on leave; same fetch/subscribe
+ - DMs: derive `room_id='dm:<sorted_uidA>_<sorted_uidB>'` (or call `get_or_create_dm`), fetch/subscribe/send via `messages`
+ - Send: insert into `messages` with `room_id` and `text` (RLS enforces everything else)
+ - Blocks: call block/unblock RPCs; system posts (`from_user is null`) bypass blocks
+ 
+ ---
+ 
+ ## 5. Semantics mapping
+ 
+ - __Public since-join__: via latest open `room_sessions`
+ - __Private visit windows__: visibility and posting only during active sessions
+ - __DMs full history__: participants always see all messages (blocks apply prospectively)
+ - __Blocks__: pre-block visible, post-block hidden both ways; system bypass
+ - __Bans (optional)__: global by `profiles.chat_banned_until`
+ 
+ ---
+ 
+ ## 6. Seeding
+ 
+ Insert `rooms` rows for: `wc:lobby`, `wc:news`, `wc:status`, `wc:gm` (and `wc:games` if desired).
+ 
+ ---
+ 
+ ## Appendix A — Original Detailed Spec
+ 
+ # MMO Chat System Specification (Supabase/Postgres-first)
 
 This spec defines a chat backend for an MMO using Supabase/Postgres as the sole enforcement layer.  
 It covers:

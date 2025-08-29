@@ -3,7 +3,7 @@
 const { Room } = require('colyseus');
 const { Schema, type, ArraySchema, MapSchema, defineTypes } = require('@colyseus/schema');
 const { onRoomsChanged, getRooms } = require('./RoomsHub');
-const { verifySupabaseAccessToken, fetchSupabaseUser } = require('../auth/verify');
+const { verifySupabaseAccessToken, fetchSupabaseUser, fetchProfileDisplayName } = require('../auth/verify');
 const { listRecentGames } = require('../persistence/supabase');
 const Presence = require('../presence/PresenceHub');
 
@@ -183,8 +183,14 @@ class LobbyRoom extends Room {
         const v = await verifySupabaseAccessToken(access_token);
         userId = v?.userId || userId;
         const user = await fetchSupabaseUser(access_token).catch(() => null);
+        // Prefer profile display_name; fall back to email local-part
+        let profName = null;
+        if (userId) {
+          try { profName = await fetchProfileDisplayName(userId); } catch (_) {}
+        }
         const email = user?.email || v?.email;
-        if (email) name = String(email).split('@')[0];
+        if (profName && String(profName).trim()) name = String(profName).trim();
+        else if (email) name = String(email).split('@')[0];
       } catch (_) {}
     }
     return { userId, name };

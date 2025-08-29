@@ -6,6 +6,7 @@ import {
   initSupabase,
   signInWithProvider,
   signInWithPassword,
+  getAccessToken,
   ensureProfileForCurrentUser,
   getUser,
 } from '../core/auth/supabaseAuth.js';
@@ -428,6 +429,28 @@ export function presentLoginModal() {
 }
 
 async function afterAuthSuccess(modalId) {
+  // DEBUG: Log auth token and whether server verifies it
+  try {
+    const token = await getAccessToken();
+    const proto = (location && location.protocol === 'https:') ? 'https' : 'http';
+    const host = (location && location.hostname) ? location.hostname : 'localhost';
+    const verifyUrl = `${proto}://${host}:2567/auth/verify`;
+    let valid = false;
+    let resp = null;
+    if (token) {
+      try {
+        const r = await fetch(verifyUrl, { headers: { Authorization: `Bearer ${token}` } });
+        valid = r.ok;
+        try { resp = await r.json(); } catch (_) {}
+      } catch (_) {}
+    }
+    // Print truncated token for safety; includes 'DEBUG' keyword for easy removal
+    const showTok = token ? (String(token).slice(0, 24) + '…') : null;
+    console.debug('[DEBUG][auth] token', showTok, 'valid', !!valid, resp || null);
+  } catch (e) {
+    try { console.debug('[DEBUG][auth] token check failed', e?.message || e); } catch (_) {}
+  }
+
   try {
     const profile = await ensureProfileForCurrentUser();
     let display = null;
