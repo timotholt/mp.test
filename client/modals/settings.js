@@ -308,13 +308,17 @@ function renderSettingsContent(panel) {
   } else if (tab === 'Theme') {
     // Theme tab (Panel): rename header to "Overall Color" with a fun random tagline
     const colorQuipsPanel = [
-      'Your color is your personality.',
+      "They say color defines your personality. What's yours?",
       'Death knows no color, but we do.',
+      'Paint the town red. Or any other color you want.',
       'Hue today, gone tomorrow.',
       'Saturate your soul.',
       'Pick a vibe, survive the dungeon.',
-      "Change all you want, it won't help you",
-      "It's not the color, it's how you use it",
+      'Red increases your damage rolls. Source? Trust me bro.',
+      'Those color knobs took forever to code. Use them wisely.',
+      'If your colors suck, I might change them back.',
+      "Reminder: colors can’t fix a lack of skill.",
+      "Pick a color. Regret is free.",
     ];
     const sec = makeSection(getQuip('settings.panel.themeTag', colorQuipsPanel), '');
     // Insert Reset button into the Theme section header (right side)
@@ -997,7 +1001,10 @@ function presentSettingsOverlay() {
       'Fine‑tune the fear factor.',
       'Dial-in the doom.',
       'Refine the ritual.',
-      'Customize the chaos.'
+      'Customize the chaos.',
+      "Even the programmer who made this doesn't know what half these things do.",
+      "You can change your settings … but should you?",
+      "Change your settings, cause you can't change your life."
     ];
     const tagline = document.createElement('div');
     try {
@@ -1275,12 +1282,17 @@ function presentSettingsOverlay() {
       } else if (tab === 'Theme') {
         // Theme tab (Overlay): rename header to "Overall Color" with a fun random tagline
         const colorQuips = [
-          'Your color is your personality.',
+          "They say color defines your personality. What's yours?",
           'Death knows no color, but we do.',
-          'Paint the town any color you want.',
+          'Paint the town red. Or any other color you want.',
           'Hue today, gone tomorrow.',
           'Saturate your soul.',
-          'Pick a vibe, survive the dungeon.'
+          'Pick a vibe, survive the dungeon.',
+          'Red increases your damage rolls. Source? Trust me bro.',
+          'Those color knobs took forever to code. Use them wisely.',
+          'If your colors suck, I might change them back.',
+          "Reminder: colors can’t fix a lack of skill.",
+          "Pick a color. Regret is free.",
         ];
         if (_quipThemeColor == null) { _quipThemeColor = getQuip('settings.overlay.themeTag', colorQuips); }
         const sec = makeSection(_quipThemeColor, '');
@@ -1447,7 +1459,14 @@ function presentSettingsOverlay() {
             'Sharpen the edges, sharpen your blade',
             'Outline the chaos',
             'Borders define the void',
-            'Edge control, edge comfort'
+            'Edge control, edge comfort',
+            "Edges don’t protect. They just decorate.",
+            "If you're edgy, move a knob to prove it.",
+            "Move the glow knob. It's your last chance in life to glow.",
+            'A small glow alters the whole room.',
+            "The faintest line divides worlds.",
+            "You'll never glow up, but the glow knob will.",
+            "Glow up? No. Glow knob? Absolutely."
           ];
           if (_quipBorder == null) { _quipBorder = getQuip('settings.overlay.borderTag', borderQuips); }
           contentWrap.appendChild(makeSection(_quipBorder, ''));
@@ -1759,8 +1778,13 @@ function presentSettingsOverlay() {
             'Hear what hurts. Ignore the rest.',
             'Signals in the noise.',
             'Ping when the plot thickens.',
-            'Stay alert, stay alive.'
-          ];
+            'Stay alert, stay alive.',
+            "Not every ping is friendly.",
+            "The loudest warnings come too late.",
+            "Disable at your own peril.",
+            "Notifications ignored = fate accepted.",
+            "If you mute these, don’t cry later."
+          ];  
           if (_quipNotif == null) { _quipNotif = getQuip('settings.overlay.notificationsTag', notifQuips); }
           const sec = makeSection('Notifications', _quipNotif);
           try {
