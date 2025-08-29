@@ -375,7 +375,11 @@ function ensureStyle() {
   .knob .k-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; transform-origin: 50% 50%; }
   .knob .k-dot::after { content: ''; position: absolute; left: 50%; top: calc(6% + 5px);
     width: var(--kn-dot-size, 6px); height: var(--kn-dot-size, 6px); margin-left: calc(-0.5 * var(--kn-dot-size, 6px));
-    border-radius: 50%; background: var(--kn-dot-color, var(--ui-bright, #cfe8ff)); box-shadow: var(--kn-dot-glow, var(--ui-glow-strong, 0 0 8px rgba(130,180,255,0.8))); }
+    border-radius: 50%;
+    /* Default: dim gray independent of theme; allow override via --kn-dot-color or --kn-dot-color-idle */
+    background: var(--kn-dot-color, var(--kn-dot-color-idle, #a0a0a0));
+    /* Idle glow off by default; can be overridden */
+    box-shadow: var(--kn-dot-glow, none); }
 
   .knob .k-ring { position: absolute; inset: 0; pointer-events: none; transform: translateY(var(--kn-ring-global-y, 2px)); }
   .knob .k-seg { position: absolute; left: 50%; top: 50%; width: var(--kn-seg-w, 2px); height: var(--kn-seg-h, 10px);
@@ -385,5 +389,10 @@ function ensureStyle() {
   }
   .knob .k-seg.on { background: var(--kn-seg-on, var(--ui-accent, #9fd0ff)); opacity: 1; box-shadow: var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9))); }
   .knob:hover .k-seg.on, .knob:focus .k-seg.on { background: var(--kn-seg-on-bright, var(--ui-bright, #dff1ff)); box-shadow: var(--kn-seg-glow-strong, var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95))); }
+  /* Dot hover/focus: brighten to white with a subtle glow, overridable via vars */
+  .knob:hover .k-dot::after, .knob:focus .k-dot::after {
+    background: var(--kn-dot-color-hover, var(--kn-dot-color-bright, #ffffff));
+    box-shadow: var(--kn-dot-glow-hover, 0 0 10px rgba(255,255,255,0.85));
+  }
   `;
 }

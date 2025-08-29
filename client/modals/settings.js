@@ -1333,7 +1333,8 @@ function presentSettingsOverlay() {
               cap.textContent = caption;
               cap.style.fontSize = '12px';
               cap.style.opacity = '0.8';
-              cap.style.marginTop = '4px';
+              // Extra top margin to prevent label/ring overlap and keep labels aligned visually
+              cap.style.marginTop = '10px';
               wrap.appendChild(cap);
               return wrap;
             };
