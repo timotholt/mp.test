@@ -23,6 +23,8 @@ import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEvents
 import { createSessionHandlers } from './core/net/session.js';
 import { startHeartbeat } from './core/net/heartbeat.js';
 
+import './core/ui/colorKnobs.js';
+
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 const log = (line) => { logEl.textContent += line + '\n'; };

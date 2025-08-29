@@ -1,0 +1,197 @@
+// Color Knobs (Hue / Saturation / Brightness)
+// Plain JS helpers built on top of the generic knob in './knob.js'
+// - Hue knob: continuous spectrum ring (segments=-1)
+// - Saturation knob: spectrum ring from monochrome -> fully saturated (at constant lightness)
+// - Brightness knob: spectrum ring from black -> full brightness (at constant chroma)
+//
+// Uses OKLCH when supported to better preserve perceived lightness; falls back to HSL.
+// Minimal, human-readable code with comments per user guidelines.
+
+import { createKnob } from './knob.js';
+
+// ---- Color utilities (OKLCH with HSL fallback) ----
+function supportsOKLCH() {
+  try {
+    // Spec requires percent on L; C is unitless; hue is degrees
+    return CSS && CSS.supports && CSS.supports('color', 'oklch(62.8% 0.26 264)');
+  } catch (_) { return false; }
+}
+
+const HAS_OKLCH = supportsOKLCH();
+
+// Convert (h, s, l) to CSS color string. If HAS_OKLCH, we prefer OKLCH for better perceptual uniformity.
+// For OKLCH mapping we treat s (0..100) as chroma scaled into a conservative [0..0.33] range to avoid out-of-gamut.
+// For hue knob and saturation knob we keep L constant (default 65%) to preserve perceived brightness.
+function colorFromHSLC({ h, s = 70, l = 65, alpha = 1, fixedChroma = null, fixedLight = null }) {
+  h = Number(h || 0);
+  s = Math.max(0, Math.min(100, Number(s)));
+  l = Math.max(0, Math.min(100, Number(l)));
+  alpha = Math.max(0, Math.min(1, Number(alpha)));
+
+  if (HAS_OKLCH) {
+    // Use constant-lightness OKLCH when possible
+    const L = (fixedLight != null) ? Number(fixedLight) : l; // percent
+    // C maps from HSL saturation approximately into 0..0.33 range; optionally override with fixed chroma
+    const C = fixedChroma != null ? Math.max(0, Number(fixedChroma)) : (s / 100) * 0.33;
+    const A = alpha;
+    // Alpha must be inside the oklch(...) function
+    return `oklch(${L}% ${C.toFixed(4)} ${h.toFixed(2)} / ${A})`;
+  }
+
+  // Fallback: HSL
+  const base = `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`;
+  if (alpha >= 1) return base;
+  return `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}% / ${alpha})`;
+}
+
+// Helpers to read current theme hue/intensity for ring previews
+function getRoot() { return document.documentElement; }
+function readCssNumber(name, fallback) {
+  try {
+    const v = parseFloat(getComputedStyle(getRoot()).getPropertyValue(name));
+    return Number.isFinite(v) ? v : fallback;
+  } catch (_) { return fallback; }
+}
+
+function currentHue() { return readCssNumber('--ui-hue', 210); }
+function currentIntensity() { return readCssNumber('--ui-intensity', 60); }
+
+// Mirror themeManager.js mapping so saturation previews align with current intensity
+function satFromIntensity(intensity) { return Math.max(0, Math.min(85, intensity * 0.8)); }
+
+// ---- Title formatters ----
+const tfHue = (v) => `Hue: ${Math.round(v)}°`;
+const tfPct = (label) => (v, { min, max }) => {
+  const range = Math.max(0.000001, max - min);
+  const pct = Math.round(((v - min) / range) * 100);
+  return `${label}: ${pct}%`;
+};
+
+// ---- Knobs ----
+export function createHueKnob(opts = {}) {
+  const initial = Number.isFinite(opts.value) ? opts.value : currentHue();
+
+  const kn = createKnob({
+    min: 0,
+    max: 360,
+    value: initial,
+    step: 1,
+    size: opts.size || 64,
+    label: opts.label || 'Hue',
+    segments: -1, // continuous spectrum ring
+    angleMin: -135,
+    angleMax: 135,
+    ringColorForAngle: (_angDeg, t) => {
+      const h = t * 360; // full wheel along the 270° arc
+      // Keep constant lightness and moderate chroma for pleasing preview
+      return colorFromHSLC({ h, s: 85, l: 65, alpha: 1 });
+    },
+    titleFormatter: tfHue,
+    onInput: (v) => {
+      try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
+    },
+    onChange: (v) => {
+      try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
+    },
+    theme: opts.theme,
+    className: opts.className,
+    ringOffset: opts.ringOffset,
+    segThickness: 2,
+    segLength: 10,
+    dotSize: 6,
+  });
+
+  return kn;
+}
+
+export function createSaturationKnob(opts = {}) {
+  // 0..100 logical saturation; preview uses constant lightness with increasing chroma
+  const min = 0, max = 100;
+  const initial = Number.isFinite(opts.value) ? opts.value : satFromIntensity(currentIntensity());
+
+  const kn = createKnob({
+    min,
+    max,
+    value: initial,
+    step: 1,
+    size: opts.size || 64,
+    label: opts.label || 'Saturation',
+    segments: -1,
+    angleMin: -135,
+    angleMax: 135,
+    ringColorForAngle: (_angDeg, t) => {
+      const h = currentHue();
+      const s = Math.round(t * 100);
+      // Constant lightness for perceptual consistency
+      return colorFromHSLC({ h, s, l: 65, alpha: 1 });
+    },
+    titleFormatter: tfPct('Saturation'),
+    onInput: (v) => {
+      // Persist for future theme integration; theme currently derives sat from intensity
+      try { getRoot().style.setProperty('--ui-saturation', String(Math.round(v))); } catch (_) {}
+      if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
+    },
+    onChange: (v) => {
+      // No direct applyDynamicTheme param yet; store as CSS var for later integration
+      try { getRoot().style.setProperty('--ui-saturation', String(Math.round(v))); } catch (_) {}
+      if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
+    },
+    theme: opts.theme,
+    className: opts.className,
+    ringOffset: opts.ringOffset,
+    segThickness: 2,
+    segLength: 10,
+    dotSize: 6,
+  });
+
+  return kn;
+}
+
+export function createBrightnessKnob(opts = {}) {
+  // 0..100 logical brightness; preview dark->bright at constant chroma (based on current saturation/intensity mapping)
+  const min = 0, max = 100;
+  const initial = Number.isFinite(opts.value) ? opts.value : 60; // default pleasant brightness
+
+  const kn = createKnob({
+    min,
+    max,
+    value: initial,
+    step: 1,
+    size: opts.size || 64,
+    label: opts.label || 'Brightness',
+    segments: -1,
+    angleMin: -135,
+    angleMax: 135,
+    ringColorForAngle: (_angDeg, t) => {
+      const h = currentHue();
+      const intensity = currentIntensity();
+      const sNow = (typeof opts.getSaturation === 'function') ? Number(opts.getSaturation()) : satFromIntensity(intensity);
+      // Keep chroma tied to current saturation, vary lightness from black->bright
+      const l = Math.round(5 + t * 90); // 5%..95%
+      return colorFromHSLC({ h, s: sNow, l, alpha: 1 });
+    },
+    titleFormatter: tfPct('Brightness'),
+    onInput: (v) => {
+      // Expose as CSS var for now; theme can adopt later (or caller can map to intensity)
+      try { getRoot().style.setProperty('--ui-brightness', String(Math.round(v))); } catch (_) {}
+      if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
+    },
+    onChange: (v) => {
+      try { getRoot().style.setProperty('--ui-brightness', String(Math.round(v))); } catch (_) {}
+      if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
+    },
+    theme: opts.theme,
+    className: opts.className,
+    ringOffset: opts.ringOffset,
+    segThickness: 2,
+    segLength: 10,
+    dotSize: 6,
+  });
+
+  return kn;
+}
+
+// Optional quick testing exposure (non-invasive)
+try { window.ColorKnobs = { createHueKnob, createSaturationKnob, createBrightnessKnob }; } catch (_) {}

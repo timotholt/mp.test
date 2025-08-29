@@ -1305,6 +1305,44 @@ function presentSettingsOverlay() {
             hdr.style.justifyContent = 'flex-start';
           }
         } catch (_) {}
+        // Experimental: inline color knobs (Hue / Saturation / Brightness) for testing
+        try {
+          const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
+          if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createBrightnessKnob) {
+            const knobRow = document.createElement('div');
+            knobRow.style.display = 'flex';
+            knobRow.style.gap = '14px';
+            knobRow.style.alignItems = 'center';
+            knobRow.style.justifyContent = 'flex-start';
+            knobRow.style.margin = '6px 0 10px';
+
+            const makeCol = (el, caption) => {
+              const wrap = document.createElement('div');
+              wrap.style.display = 'flex';
+              wrap.style.flexDirection = 'column';
+              wrap.style.alignItems = 'center';
+              wrap.style.minWidth = '72px';
+              wrap.appendChild(el);
+              const cap = document.createElement('div');
+              cap.textContent = caption;
+              cap.style.fontSize = '12px';
+              cap.style.opacity = '0.8';
+              cap.style.marginTop = '4px';
+              wrap.appendChild(cap);
+              return wrap;
+            };
+
+            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue' });
+            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation' });
+            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness' });
+
+            knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
+            knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
+            knobRow.appendChild(makeCol(briKn.el, 'Brightness'));
+
+            contentWrap.appendChild(knobRow);
+          }
+        } catch (_) {}
         // Theme selector row (above the color tagline), with Reset on the same line
         const themeTopRow = document.createElement('div');
         themeTopRow.style.display = 'flex';

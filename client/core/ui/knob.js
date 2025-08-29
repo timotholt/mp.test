@@ -34,7 +34,13 @@ export function createKnob(opts = {}) {
   const minSize = allowSmall ? 8 : 40;
   const size = (sizeNum != null) ? Math.max(minSize, sizeNum) : 64;
 
-  const segments = Math.max(6, Math.floor(toNum(opts.segments, 24)));
+  // segments semantics:
+  //  >0  = classic LED segments (existing behavior)
+  //   0  = draw no outer ring
+  //  -1  = draw a "continuous" spectrum ring (internally many thin segments)
+  const segRaw = Math.floor(toNum(opts.segments, 24));
+  const segMode = (segRaw === -1) ? 'spectrum' : (segRaw === 0 ? 'none' : 'classic');
+  const segments = segMode === 'classic' ? Math.max(6, segRaw) : 0;
   const angleMin = toNum(opts.angleMin, -135);
   const angleMax = toNum(opts.angleMax, 135);
 
@@ -75,21 +81,42 @@ export function createKnob(opts = {}) {
   dot.className = 'k-dot';
   el.appendChild(dot);
 
-  // Segmented ring
+  // Segmented ring (classic) or spectrum ring (micro-segments)
   const ring = document.createElement('div');
   ring.className = 'k-ring';
   el.appendChild(ring);
 
   const segEls = [];
-  for (let i = 0; i < segments; i++) {
-    const seg = document.createElement('div');
-    seg.className = 'k-seg';
-    const t = segments === 1 ? 0 : i / (segments - 1);
-    const ang = lerp(angleMin, angleMax, t);
-    seg.style.setProperty('--ang', ang + 'deg');
-    ring.appendChild(seg);
-    segEls.push(seg);
-  }
+  const ringColorForAngle = (typeof opts.ringColorForAngle === 'function') ? opts.ringColorForAngle : null;
+  if (segMode === 'classic') {
+    for (let i = 0; i < segments; i++) {
+      const seg = document.createElement('div');
+      seg.className = 'k-seg';
+      const t = segments === 1 ? 0 : i / (segments - 1);
+      const ang = lerp(angleMin, angleMax, t);
+      seg.style.setProperty('--ang', ang + 'deg');
+      ring.appendChild(seg);
+      segEls.push(seg);
+    }
+  } else if (segMode === 'spectrum') {
+    // Internally approximate continuous by many thin segments (size-aware, clamped)
+    const sweep = Math.abs(angleMax - angleMin);
+    const microCount = Math.max(72, Math.min(720, Math.round(sweep * 2))); // ~540 for 270° sweep
+    for (let i = 0; i < microCount; i++) {
+      const seg = document.createElement('div');
+      seg.className = 'k-seg';
+      const t = microCount === 1 ? 0 : i / (microCount - 1);
+      const ang = lerp(angleMin, angleMax, t);
+      seg.style.setProperty('--ang', ang + 'deg');
+      // In spectrum mode, each micro-segment is fully opaque and colored by a callback (if provided)
+      try { seg.style.opacity = '1'; } catch (_) {}
+      if (ringColorForAngle) {
+        try { seg.style.background = String(ringColorForAngle(ang, t)); } catch (_) {}
+      }
+      ring.appendChild(seg);
+      segEls.push(seg);
+    }
+  } // segMode 'none' draws no outer ring
 
   // internal state
   let value = clamp(min, max, (opts.value != null) ? Number(opts.value) : min);
@@ -100,9 +127,11 @@ export function createKnob(opts = {}) {
     const ang = lerp(angleMin, angleMax, n);
     dot.style.transform = `rotate(${ang}deg)`;
 
-    // Light segments
-    const lit = Math.round(n * segments);
-    for (let i = 0; i < segments; i++) segEls[i].classList.toggle('on', i < lit);
+    // Light segments only in classic mode; spectrum/none don't use on/off
+    if (segMode === 'classic') {
+      const lit = Math.round(n * segments);
+      for (let i = 0; i < segments; i++) segEls[i].classList.toggle('on', i < lit);
+    }
 
     // Tooltip (Sci-Fi) + ARIA
     const title = titleFormatter(v, { min, max, label });
