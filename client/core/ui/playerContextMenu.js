@@ -25,7 +25,8 @@ function toggleInSet(setKey, key, on) {
 export function showPlayerContextMenu({ x = 0, y = 0, name = '', id = '', selfName = '', onWhisper, onViewProfile, onFriendsChanged, onBlockedChanged, blockGameplayInput = true } = {}) {
   const targetName = String(name || '').trim();
   const targetId = String(id || '').trim();
-  if ((selfName && targetName && targetName === String(selfName)) || (!targetName && !targetId)) return;
+  // Only block when both id and name are empty (invalid target). Self is filtered by caller using id.
+  if (!targetName && !targetId) return;
 
   // Determine current state
   const isFriend = hasInSet('friends:set', targetId) || (targetName && hasInSet('friends:set', targetName));

@@ -2,7 +2,7 @@
 // Registers the LOBBY screen UI in an overlay, list of rooms, create room flow, and chat tabs.
 
 import OverlayManager, { PRIORITY } from '../core/overlayManager.js';
-import { getAccessToken } from '../core/auth/supabaseAuth.js';
+import { getAccessToken, getUser } from '../core/auth/supabaseAuth.js';
 import { createChatTabs } from '../core/chatTabs.js';
 import { presentRoomPromptPassword } from '../modals/roomPromptPassword.js';
 import * as LS from '../core/localStorage.js';
@@ -14,6 +14,8 @@ import { showPlayerContextMenu } from '../core/ui/playerContextMenu.js';
 let lobbyPollId = null;
 let lobbyChat = null;
 let lobbyRoom = null;
+// Resolve and cache our own user id (Supabase user id if logged-in; otherwise Colyseus sessionId)
+let selfId = null;
 // Track forced-disconnect reasons coming from server modals to avoid duplicate prompts on close
 let _lastForcedModalId = null; // 'SESSION_KICK' | 'SESSION_EXPIRE' | null
 let _lastForcedAt = 0;
@@ -165,6 +167,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
     list.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
     list.style.padding = '6px';
     try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
+    // Enable alternating row backgrounds via theme CSS
+    try { list.classList.add('ui-list'); } catch (_) {}
 
     root.appendChild(header);
     root.appendChild(list);
@@ -231,6 +235,13 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
       // Join or create a singleton lobby room; allow guests too
       lobbyRoom = await client.joinOrCreate('lobby', { access_token });
       try { window.lobbyRoom = lobbyRoom; } catch (_) {}
+      // Determine our own id once (prefer Supabase user id; fallback to Colyseus session id)
+      try {
+        const u = await getUser().catch(() => null);
+        selfId = (u && u.id) || (lobbyRoom && lobbyRoom.sessionId) || null;
+        // Re-render players to reflect '(You)' label and disable self context menu
+        try { if (playersPanel) playersPanel.setData(playersCache); } catch (_) {}
+      } catch (_) {}
       // Stop polling once realtime feed is active
       stopLobbyPolling();
       // New: consume LobbyRoom Schema state
@@ -623,6 +634,38 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               }
               return true;
             });
+            // Unfiltered counts for Games tabs (ignore search term)
+            try {
+              const base = Array.isArray(data) ? data : [];
+              const allCount = base.length;
+              const yoursCount = base.filter(r => {
+                const meta = (r && r.metadata) || {};
+                return String(meta.hostName || '').toLowerCase() === you;
+              }).length;
+              const friendsCount = base.filter(r => {
+                const meta = (r && r.metadata) || {};
+                return friends.has(String(meta.hostName || '').trim());
+              }).length;
+              const updateTabCounts = () => {
+                try {
+                  const rootEl = gamesPanel && gamesPanel.el;
+                  if (!rootEl) return;
+                  // Only update the dedicated [data-tab-count] span, preserving the label span
+                  const setBtnCount = (key, count) => {
+                    const b = rootEl.querySelector(`[data-tab-key="${key}"]`);
+                    if (!b) return;
+                    const cnt = b.querySelector('[data-tab-count]');
+                    if (cnt) cnt.textContent = ` (${count})`;
+                  };
+                  setBtnCount('all', allCount);
+                  setBtnCount('yours', yoursCount);
+                  setBtnCount('friends', friendsCount);
+                  // Do not modify 'create'
+                } catch (_) {}
+              };
+              // Defer to occur after tabs have (potentially) re-rendered to avoid count label flicker
+              setTimeout(updateTabCounts, 0);
+            } catch (_) {}
             if (!filtered.length) {
               const empty = document.createElement('div');
               empty.style.opacity = '0.7';
@@ -670,7 +713,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
             { key: 'blocked', label: 'Blocked' },
           ],
           onRender: ({ listEl, tab, data, filterText }) => {
-            listEl.innerHTML = '';
+            // Build off-DOM to minimize flicker on tab switches
+            const frag = document.createDocumentFragment();
             const friends = getFriendsSet();
             const blocked = getBlockedSet();
             const recent = getRecentMap();
@@ -706,18 +750,20 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                 try {
                   const rootEl = playersPanel && playersPanel.el;
                   if (!rootEl) return;
-                  const setBtn = (key, label, count) => {
+                  // Only update the dedicated [data-tab-count] span, preserving the label span
+                  const setBtnCount = (key, count) => {
                     const b = rootEl.querySelector(`[data-tab-key="${key}"]`);
-                    if (b) b.textContent = `${label} (${count})`;
+                    if (!b) return;
+                    const cnt = b.querySelector('[data-tab-count]');
+                    if (cnt) cnt.textContent = ` (${count})`;
                   };
-                  setBtn('all', 'All', allCount);
-                  setBtn('friends', 'Friends', friendsCount);
-                  setBtn('recent', 'Recent', recentCount);
+                  setBtnCount('all', allCount);
+                  setBtnCount('friends', friendsCount);
+                  setBtnCount('recent', recentCount);
                   // Do not modify 'Blocked'
                 } catch (_) {}
               };
-              updateTabCounts();
-              // If tab switch triggers a re-render of tab buttons after onRender, ensure counts persist
+              // Defer to occur after tabs have (potentially) re-rendered to avoid count label flicker
               setTimeout(updateTabCounts, 0);
             } catch (_) {}
 
@@ -728,7 +774,7 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               hdr.style.opacity = '0.8';
               hdr.style.fontSize = '0.75em';
               hdr.style.margin = '2px 0 6px 0';
-              listEl.appendChild(hdr);
+              frag.appendChild(hdr);
             }
             if (!filtered.length) {
               const empty = document.createElement('div');
@@ -737,7 +783,8 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
                 ? "Search doesn't match any players"
                 : ({ all: 'No players online.', friends: 'No friends online yet.', recent: 'No recent players yet.', blocked: 'No blocked players.' }[tab] || 'Nothing here.');
               empty.textContent = msg;
-              listEl.appendChild(empty);
+              frag.appendChild(empty);
+              try { listEl.replaceChildren(frag); } catch (_) {}
               return;
             }
             // Render each row as a 4-column grid: [dot | name | location | ping]
@@ -772,7 +819,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
               // 2) Player name (left)
               const nameSpan = document.createElement('span');
-              nameSpan.textContent = p.name || 'Guest';
+              const isSelf = !!selfId && String(p.id) === String(selfId);
+              const baseName = p.name || 'Guest';
+              nameSpan.textContent = isSelf ? `${baseName} (You)` : baseName;
               nameSpan.style.textAlign = 'left';
 
               // 3) Location (right) — placeholder until real location is wired
@@ -810,11 +859,11 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
 
               // Right-click context menu on player name (skip self)
               try {
-                nameSpan.style.cursor = 'context-menu';
+                nameSpan.style.cursor = (!!selfId && String(p.id) === String(selfId)) ? 'default' : 'context-menu';
                 nameSpan.addEventListener('contextmenu', (ev) => {
                   ev.preventDefault(); ev.stopPropagation();
                   const targetName = String(p.name || '').trim();
-                  if (targetName && targetName === selfName) return; // don't show for yourself
+                  if (!!selfId && String(p.id) === String(selfId)) return; // don't show for yourself (by id only)
                   showPlayerContextMenu({
                     x: ev.clientX,
                     y: ev.clientY,
@@ -833,8 +882,9 @@ export function registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin }
               row.appendChild(nameSpan);
               row.appendChild(locSpan);
               row.appendChild(pingSpan);
-              listEl.appendChild(row);
+              frag.appendChild(row);
             });
+            try { listEl.replaceChildren(frag); } catch (_) {}
           }
         });
 

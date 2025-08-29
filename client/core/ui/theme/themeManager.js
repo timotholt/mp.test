@@ -47,7 +47,10 @@
       '--ui-scrollbar-width': '10px',
       '--ui-scrollbar-radius': '8px',
       '--ui-scrollbar-thumb': 'rgba(120,170,255,0.45)',
-      '--ui-scrollbar-thumb-hover': 'rgba(120,170,255,0.65)'
+      '--ui-scrollbar-thumb-hover': 'rgba(120,170,255,0.65)',
+      // Alternating list row backgrounds (subtle by default)
+      '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
+      '--ui-list-row-even': 'rgba(255,255,255,0.02)'
     }
   };
 
@@ -97,6 +100,24 @@
           const raw = localStorage.getItem('ui_opacity_mult');
           console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
         } catch (_) {}
+
+  // Inject alternating row styles for list containers used by lobby panels
+  try {
+    const STYLE_ID3 = 'ui-list-style';
+    if (!document.getElementById(STYLE_ID3)) {
+      const css3 = `
+        /* Alternating rows for list containers (Games/Players panels) */
+        .ui-list > div { transition: background-color 0.12s ease; }
+        .ui-list > div:nth-child(odd) { background-color: var(--ui-list-row-odd, rgba(255,255,255,0.04)); }
+        .ui-list > div:nth-child(even) { background-color: var(--ui-list-row-even, rgba(255,255,255,0.02)); }
+      `;
+      const style3 = document.createElement('style');
+      style3.id = STYLE_ID3;
+      style3.type = 'text/css';
+      style3.textContent = css3;
+      document.head.appendChild(style3);
+    }
+  } catch (_) {}
       }
     } else {
       // No stored value: set and persist default (85% of 2.5 => 2.125) to avoid later jumps

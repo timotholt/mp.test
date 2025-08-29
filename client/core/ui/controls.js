@@ -126,7 +126,15 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       const key = getKey ? getKey(t) : t;
       const label = getLabel ? getLabel(t) : String(t);
       const b = document.createElement('button');
-      b.textContent = label;
+      // Stable label/count spans allow flicker-free count updates by callers
+      const lab = document.createElement('span');
+      lab.textContent = label;
+      try { lab.setAttribute('data-tab-label', '1'); } catch (_) {}
+      const cnt = document.createElement('span');
+      try { cnt.setAttribute('data-tab-count', '1'); } catch (_) {}
+      cnt.style.marginLeft = '6px';
+      b.appendChild(lab);
+      b.appendChild(cnt);
       // Expose the tab key for callers that want to update labels (e.g., counts)
       try { b.setAttribute('data-tab-key', String(key)); } catch (_) {}
       try { b.setAttribute('role', 'tab'); } catch (_) {}
