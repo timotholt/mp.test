@@ -510,12 +510,12 @@ function renderSettingsContent(panel) {
     const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid'; opLbl.style.textAlign = 'left'; // Added text-align: left
     const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
     const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.style.paddingRight = '6px'; opVal.id = 'settings-ui-opacity-val';
-    // Initialize from storage, default 15% transparency. Read both namespaced and raw keys for compatibility
+    // Initialize from storage, default 85% transparency. Read both namespaced and raw keys for compatibility
     try {
       const OPDBG = true; const MMAX = 2.5; // ceiling for opacity multiplier
       let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
       let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
-      let mult = null; let p = 15; // default transparency percent
+      let mult = null; let p = 85; // default transparency percent
       if (raw != null || ns != null) {
         mult = parseFloat(ns != null ? ns : raw);
         if (!Number.isFinite(mult) || mult < 0) mult = 0.375; // fallback to previous default if corrupted
@@ -548,6 +548,8 @@ function renderSettingsContent(panel) {
       const pct = String(p) + '%';
       opVal.textContent = pct; opRng.title = pct;
       try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
+      // Persist to namespaced LS as well, since init prefers LS over raw localStorage for this key
+      try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
       // Gradient tooltip visible only when panels aren’t fully clear
       try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
       if (OPDBG) {
@@ -1578,6 +1580,8 @@ function presentSettingsOverlay() {
           const pct = String(p) + '%';
           opVal.textContent = pct; opRng.title = pct;
           try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
+          // Persist to namespaced LS as well, since init prefers LS over raw localStorage for this key
+          try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
           // Gradient tooltip visible when not fully clear
           try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
           if (OPDBG) {
