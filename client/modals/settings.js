@@ -1315,6 +1315,9 @@ function presentSettingsOverlay() {
             knobRow.style.alignItems = 'center';
             knobRow.style.justifyContent = 'flex-start';
             knobRow.style.margin = '6px 0 10px';
+            // Extra breathing room so full 360° Hue ring isn't clipped
+            knobRow.style.padding = '6px 4px';
+            knobRow.style.overflow = 'visible';
 
             const makeCol = (el, caption) => {
               const wrap = document.createElement('div');
@@ -1322,6 +1325,9 @@ function presentSettingsOverlay() {
               wrap.style.flexDirection = 'column';
               wrap.style.alignItems = 'center';
               wrap.style.minWidth = '72px';
+              // Ensure ring segments can render beyond exact bounds without clipping
+              wrap.style.padding = '4px 2px';
+              wrap.style.overflow = 'visible';
               wrap.appendChild(el);
               const cap = document.createElement('div');
               cap.textContent = caption;

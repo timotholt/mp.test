@@ -79,8 +79,9 @@ export function createHueKnob(opts = {}) {
     size: opts.size || 64,
     label: opts.label || 'Hue',
     segments: -1, // continuous spectrum ring
-    angleMin: -135,
-    angleMax: 135,
+    // Full 360° sweep for Hue
+    angleMin: -180,
+    angleMax: 180,
     ringColorForAngle: (_angDeg, t) => {
       const h = t * 360; // full wheel along the 270° arc
       // Keep constant lightness and moderate chroma for pleasing preview
@@ -89,10 +90,13 @@ export function createHueKnob(opts = {}) {
     titleFormatter: tfHue,
     onInput: (v) => {
       try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      // Notify other knobs so they can recolor their spectrum rings
+      try { window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } })); } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
       try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } })); } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
@@ -102,6 +106,9 @@ export function createHueKnob(opts = {}) {
     segLength: 10,
     dotSize: 6,
   });
+
+  // Recolor the spectrum ring when Hue changes elsewhere
+  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
 
   return kn;
 }
@@ -146,6 +153,9 @@ export function createSaturationKnob(opts = {}) {
     dotSize: 6,
   });
 
+  // Recolor the spectrum ring when Hue changes elsewhere
+  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
+
   return kn;
 }
 
@@ -189,6 +199,9 @@ export function createBrightnessKnob(opts = {}) {
     segLength: 10,
     dotSize: 6,
   });
+
+  // Recolor the spectrum ring when Hue changes elsewhere
+  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
 
   return kn;
 }

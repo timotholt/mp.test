@@ -41,8 +41,15 @@ export function createKnob(opts = {}) {
   const segRaw = Math.floor(toNum(opts.segments, 24));
   const segMode = (segRaw === -1) ? 'spectrum' : (segRaw === 0 ? 'none' : 'classic');
   const segments = segMode === 'classic' ? Math.max(6, segRaw) : 0;
-  const angleMin = toNum(opts.angleMin, -135);
-  const angleMax = toNum(opts.angleMax, 135);
+  let angleMin = toNum(opts.angleMin, -135);
+  let angleMax = toNum(opts.angleMax, 135);
+  // If using spectrum ring and caller didn't set explicit angle bounds, default to full 360°
+  if (segMode === 'spectrum' && opts.angleMin == null && opts.angleMax == null) {
+    angleMin = -180;
+    angleMax = 180;
+  }
+  // Special-case: allow wrap-around when using a continuous spectrum ring over a full 360° sweep
+  const fullSweep = (segMode === 'spectrum') && (Math.abs(angleMax - angleMin) >= 359.5);
 
   const ringOffset = (opts.ringOffset != null)
     ? Math.max(0, Math.round(Number(opts.ringOffset)))
@@ -122,6 +129,19 @@ export function createKnob(opts = {}) {
   let value = clamp(min, max, (opts.value != null) ? Number(opts.value) : min);
   let adjusting = false;
 
+  // Allow callers to refresh spectrum ring colors (e.g., when theme hue changes)
+  const refreshRingColors = () => {
+    if (segMode !== 'spectrum' || !ringColorForAngle) return;
+    try {
+      const count = segEls.length;
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? 0 : i / (count - 1);
+        const ang = lerp(angleMin, angleMax, t);
+        try { segEls[i].style.background = String(ringColorForAngle(ang, t)); segEls[i].style.opacity = '1'; } catch (_) {}
+      }
+    } catch (_) {}
+  };
+
   const updateUI = (v) => {
     const n = clamp01((v - min) / range);
     const ang = lerp(angleMin, angleMax, n);
@@ -141,7 +161,16 @@ export function createKnob(opts = {}) {
   };
 
   const setValue = (v, opts2 = {}) => {
-    const next = clamp(min, max, Number(v));
+    let next = Number(v);
+    if (fullSweep) {
+      const width = range;
+      const base = min;
+      let rel = (next - base) % width;
+      if (rel < 0) rel += width;
+      next = base + rel;
+    } else {
+      next = clamp(min, max, next);
+    }
     if (next === value) return;
     value = next;
     updateUI(value);
@@ -167,7 +196,16 @@ export function createKnob(opts = {}) {
   const increment = (dir) => { // dir: +1 or -1
     if (readOnly) return;
     const delta = dir * step;
-    const next = clamp(min, max, value + delta);
+    let next = value + delta;
+    if (fullSweep) {
+      const width = range;
+      const base = min;
+      let rel = (next - base) % width;
+      if (rel < 0) rel += width;
+      next = base + rel;
+    } else {
+      next = clamp(min, max, next);
+    }
     if (next !== value) {
       value = next;
       updateUI(value);
@@ -204,7 +242,16 @@ export function createKnob(opts = {}) {
       const y = getPointerY(e);
       const dy = drag.startY - y; // up = positive = clockwise
       const frac = dy / DRAG_PIXELS_FOR_FULL; // fraction of full range
-      const next = clamp(min, max, drag.startVal + frac * range);
+      let next = drag.startVal + frac * range;
+      if (fullSweep) {
+        const width = range;
+        const base = min;
+        let rel = (next - base) % width;
+        if (rel < 0) rel += width;
+        next = base + rel;
+      } else {
+        next = clamp(min, max, next);
+      }
       if (next !== value) {
         value = next;
         updateUI(value);
@@ -259,7 +306,7 @@ export function createKnob(opts = {}) {
   // Apply theme if provided
   if (opts.theme && typeof opts.theme === 'object') applyKnobTheme(el, opts.theme);
 
-  return { el, getValue, setValue, unbind };
+  return { el, getValue, setValue, unbind, refreshRingColors };
 }
 
 export function applyKnobTheme(el, vars = {}) {
