@@ -900,20 +900,9 @@ function presentSettingsOverlay() {
     mount.style.pointerEvents = 'auto';
     try { content.appendChild(mount); } catch (_) {}
 
-    // Darker backdrop to emphasize modal (use shared overlay darkness variable)
-    try {
-      // Important: use the same CSS var as OverlayManager so the slider affects this backdrop.
-      overlay.style.background = 'rgba(0,0,0, var(--ui-overlay-darkness, 0.5))';
-      // Follow OverlayManager defaults so background passes clicks through
-      // and only the modal content captures input. Keep zIndex modest.
-      overlay.style.zIndex = '20000';
-      overlay.style.pointerEvents = 'none';
-      if (content && content.style) {
-        content.style.zIndex = '20001';
-        content.style.pointerEvents = 'auto';
-        content.style.position = 'relative';
-      }
-    } catch (_) {}
+    // Keep settings isolated: do NOT mutate the shared #overlay styles here.
+    // OverlayManager already manages its own backdrop/shade using theme vars.
+    // Our mount captures input via pointer-events: auto; no global overrides.
     const prevFocus = document.activeElement;
 
     // Centered container
