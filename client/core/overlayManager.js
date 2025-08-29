@@ -22,10 +22,11 @@ function ensureOverlay() {
     overlayEl.style.display = 'none';
     // Allow dragging/clicks to pass through dim background
     overlayEl.style.pointerEvents = 'none';
+    // Background: use themed overlay tint if available, else fallback to black with darkness alpha.
     // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Default 0.5
-    overlayEl.style.background = 'rgba(0,0,0, var(--ui-overlay-darkness, 0.5))';
+    overlayEl.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.5)))';
     overlayEl.style.color = '#fff';
-    overlayEl.style.padding = '16px';
+    overlayEl.style.padding = '0px';
     overlayEl.style.zIndex = '20000';
     const inner = document.createElement('div');
     inner.id = 'overlay-content';
@@ -57,8 +58,9 @@ function ensureScreenShade() {
     shade.id = 'screen-shade';
     shade.style.position = 'fixed';
     shade.style.inset = '0';
+    // Background: use themed overlay tint if available, else fallback to black with darkness alpha.
     // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Default 0.5
-    shade.style.background = 'rgba(0,0,0, var(--ui-overlay-darkness, 0.5))';
+    shade.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.5)))';
     shade.style.zIndex = '2000';
     shade.style.display = 'none';
     shade.style.pointerEvents = 'none';

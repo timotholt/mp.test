@@ -335,6 +335,14 @@
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-bright', bright);
+      // Flat themed overlay tint (no gradient): keeps color while preserving contrast.
+      // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
+      try {
+        const ovlSat = clamp(Math.min(90, sat + 10), 0, 100);
+        const ovlLight = clamp(Math.max(6, light - 40), 0, 100);
+        const ovl = `hsl(${hue} ${ovlSat}% ${ovlLight}% / var(--ui-overlay-darkness, 0.5))`;
+        root.style.setProperty('--ui-overlay-bg', ovl);
+      } catch (_) {}
       // Scrollbar colors follow current hue
       try {
         root.style.setProperty('--ui-scrollbar-thumb', `hsl(${hue} ${sat}% ${light}% / 0.45)`);

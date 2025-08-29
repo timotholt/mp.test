@@ -899,6 +899,21 @@ function presentSettingsOverlay() {
     // Allow this layer to capture pointer events (modal blocks background)
     mount.style.pointerEvents = 'auto';
     try { content.appendChild(mount); } catch (_) {}
+    // Local scrim to subtly dim background behind the settings card
+    try {
+      const scrim = document.createElement('div');
+      scrim.style.position = 'absolute';
+      scrim.style.inset = '0';
+      // Use theme-driven overlay tint and blur so sliders affect this scrim
+      // Darkness comes from --ui-overlay-darkness via --ui-overlay-bg (set in UITheme)
+      scrim.style.background = 'var(--ui-overlay-bg, rgba(0,0,0,0.50))';
+      // Blur comes from --ui-backdrop-blur (e.g., 3px), updated by applyDynamicTheme({ milkiness })
+      scrim.style.backdropFilter = 'blur(var(--ui-backdrop-blur, 3px))';
+      scrim.style.webkitBackdropFilter = 'blur(var(--ui-backdrop-blur, 3px))';
+      scrim.style.zIndex = '0';
+      scrim.style.pointerEvents = 'auto';
+      mount.appendChild(scrim);
+    } catch (_) {}
 
     // Keep settings isolated: do NOT mutate the shared #overlay styles here.
     // OverlayManager already manages its own backdrop/shade using theme vars.
@@ -907,6 +922,8 @@ function presentSettingsOverlay() {
 
     // Centered container
     const center = document.createElement('div');
+    center.style.position = 'relative';
+    center.style.zIndex = '1';
     center.style.minHeight = '100vh';
     center.style.display = 'flex';
     center.style.alignItems = 'center';
