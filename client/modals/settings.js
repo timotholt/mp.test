@@ -371,7 +371,7 @@ function renderSettingsContent(panel) {
           // Reset new sliders
           try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
           try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
-          try { gsRng.value = '60'; /* value display updated below */ gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); try { const px = Math.round(18 * (0.8 + 60 / 60)); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
+          try { gsRng.value = '60'; /* value display updated below */ gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); try { const px = Math.round((60 / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
           // Reset opacity
           const p = 15; // transparency percent
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
@@ -598,8 +598,8 @@ function renderSettingsContent(panel) {
     const gsLbl = document.createElement('label'); gsLbl.textContent = 'Glow Strength:'; gsLbl.style.minWidth = '140px'; gsLbl.title = 'Strength of panel glow and highlights';
     const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength';
     const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.style.paddingRight = '6px'; gsVal.id = 'settings-ui-glow-strength-val';
-    try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
-    gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
+    try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round((p / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
+    gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round((p / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} };
     gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); content.appendChild(gsRow);
 
   } else if (tab === 'Display') {
@@ -1597,8 +1597,8 @@ function presentSettingsOverlay() {
         const gsLbl = document.createElement('label'); gsLbl.textContent = 'Border Glow:'; gsLbl.style.minWidth = '140px'; gsLbl.style.fontSize = '14px'; gsLbl.style.textAlign = 'left'; gsLbl.title = 'Strength of panel glow and highlights';
         const gsRng = document.createElement('input'); gsRng.type = 'range'; gsRng.min = '0'; gsRng.max = '100'; gsRng.step = '1'; gsRng.style.flex = '1'; gsRng.id = 'settings-ui-glow-strength-ovl';
         const gsVal = document.createElement('span'); gsVal.style.width = '46px'; gsVal.style.textAlign = 'right'; gsVal.style.color = '#ccc'; gsVal.id = 'settings-ui-glow-strength-ovl-val';
-        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
-        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round(18 * (0.8 + p / 60)); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }; attachWheel(gsRng); attachHover(gsRng, gsLbl);
+        try { let v = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(v)) v = 60; const p = Math.max(0, Math.min(100, Math.round(v))); gsRng.value = String(p); try { const px = Math.round((p / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; } catch (_) {}
+        gsRng.oninput = () => { const p = Math.max(0, Math.min(100, Math.round(parseFloat(gsRng.value) || 0))); if (String(p) !== gsRng.value) gsRng.value = String(p); try { const px = Math.round((p / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) { gsVal.textContent = `${p}%`; } gsRng.title = `${p}%`; try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { localStorage.setItem('ui_glow_strength', String(p)); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }; attachWheel(gsRng); attachHover(gsRng, gsLbl);
         gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); contentWrap.appendChild(gsRow);
         // Space before Transparency tagline
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
@@ -1770,7 +1770,7 @@ function presentSettingsOverlay() {
             try { hueRng.value = String(p.hue); hueVal.textContent = String(p.hue); hueRng.title = String(p.hue); } catch (_) {}
             try { const i = Math.max(0, Math.min(100, Math.round(p.saturation))); inRng.value = String(i); inVal.textContent = `${i}%`; inRng.title = `${i}%`; } catch (_) {}
             try { const b = Math.max(0, Math.min(100, Math.round(p.border))); biRng.value = String(b); biVal.textContent = `${b}%`; biRng.title = `${b}%`; } catch (_) {}
-            try { const g = Math.max(0, Math.min(100, Math.round(p.glow))); gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round(18 * (0.8 + g / 60)); gsVal.textContent = `${px}px`; } catch (_) {}
+            try { const g = Math.max(0, Math.min(100, Math.round(p.glow))); gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round((g / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {}
             try { const gr = Math.max(0, Math.min(100, Math.round(p.gradient))); grRng.value = String(gr); grVal.textContent = `${gr}%`; grRng.title = `${gr}%`; } catch (_) {}
             try { let m = Number(p.blur); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkRng.value = String(m); mkVal.textContent = `${m.toFixed(1)}px`; mkRng.title = `${m.toFixed(1)}px`; } catch (_) {}
             try { const od = Math.max(0, Math.min(100, Math.round(p.overlayDarkness))); odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`; } catch (_) {}

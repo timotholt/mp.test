@@ -216,7 +216,14 @@
       const style2 = document.createElement('style');
       style2.id = STYLE_ID2;
       style2.type = 'text/css';
-      style2.textContent = css2;
+      style2.textContent = css2 + `
+        /* Bright white + glow on label hover across app */
+        label { transition: color 0.12s ease, text-shadow 0.12s ease; }
+        label:hover {
+          color: var(--ui-bright, rgba(190,230,255,0.98));
+          text-shadow: 0 0 9px var(--ui-bright, #fff), 0 0 18px var(--ui-accent, #6cf);
+        }
+      `;
       document.head.appendChild(style2);
     }
   } catch (_) {}
@@ -388,8 +395,8 @@
       const borderLightBase = Math.max(30, light - 5);
       const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.30, 20, 90);
       const border = colorFromHSLC({ h: hue, s: sat, l: borderLight, alpha: borderAlphaEff });
-      // Scale outer/inset glow radius with strength for more dramatic effect at 100%
-      const glowR = Math.round(18 * (0.8 + glowStrength / 60));
+      // Scale outer/inset glow radius strictly 0..44px from 0..100% strength
+      const glowR = Math.round((glowStrength / 100) * 44);
       const cGlow1 = colorFromHSLC({ h: hue, s: sat, l: Math.max(35, light), alpha: glowAlphaEff });
       const cGlow2 = colorFromHSLC({ h: hue, s: sat, l: Math.min(95, light + 30), alpha: Math.min(1, glowAlphaEff + 0.25) });
       const glowOuter = `0 0 ${glowR}px ${cGlow1}, 0 0 ${Math.round(glowR / 2)}px ${cGlow2}`;
