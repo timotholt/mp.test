@@ -1434,9 +1434,35 @@ function presentSettingsOverlay() {
               return wrap;
             };
 
-            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue', ringOffset: 18  });
-            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation', ringOffset: 18 });
-            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness', ringOffset: 18 });
+            const hueKn = CK.createHueKnob({
+              size: 56,
+              label: 'Hue',
+              ringOffset: 18,
+              onInput: (v) => {
+                // Any knob change implies a custom theme selection
+                try { selectCustomPreset(); } catch (_) {}
+                // Keep the Hue slider UI in sync without re-triggering handlers
+                try {
+                  const p = Math.max(0, Math.min(360, Math.round(v)));
+                  const hr = document.getElementById('settings-ui-hue-ovl');
+                  const hv = document.getElementById('settings-ui-hue-ovl-val');
+                  if (hr) { hr.value = String(p); hr.title = String(p); }
+                  if (hv) { hv.textContent = String(p); }
+                } catch (_) {}
+              }
+            });
+            const satKn = CK.createSaturationKnob({
+              size: 56,
+              label: 'Saturation',
+              ringOffset: 18,
+              onInput: () => { try { selectCustomPreset(); } catch (_) {} }
+            });
+            const briKn = CK.createBrightnessKnob({
+              size: 56,
+              label: 'Brightness',
+              ringOffset: 18,
+              onInput: () => { try { selectCustomPreset(); } catch (_) {} }
+            });
 
             // For this size, nudge the outer ring down a bit for better visual centering
             try { hueKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
@@ -1471,6 +1497,8 @@ function presentSettingsOverlay() {
           try { console.debug(`[display] hue(overlay) p=${p}`); } catch (_) {}
           try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
           try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
+          // Keep Hue knob position in sync without firing knob listeners
+          try { if (typeof hueKn !== 'undefined' && hueKn && hueKn.setValue) hueKn.setValue(p, { silent: true }); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
         }; attachWheel(hueRng); attachHover(hueRng, hueLbl);
         hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
@@ -1507,7 +1535,7 @@ function presentSettingsOverlay() {
         try {
           const borderQuips = [
             'Life is brighter living on the edge',
-            'Sharpen the edges, sharpen your blade',
+            'The sharper the edge, the sharper your blade.',
             'Outline the chaos',
             'Borders define the void',
             'Edge control, edge comfort',
@@ -1714,6 +1742,18 @@ function presentSettingsOverlay() {
             try { const od = Math.max(0, Math.min(100, Math.round(p.overlayDarkness))); odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`; } catch (_) {}
             try { opRng.value = String(t); opVal.textContent = `${t}%`; opRng.title = `${t}%`; } catch (_) {}
 
+            // Silently sync knobs to the preset without re-applying handlers
+            try { if (typeof hueKn !== 'undefined' && hueKn && hueKn.setValue) hueKn.setValue(p.hue, { silent: true }); } catch (_) {}
+            try {
+              // Saturation knob shows effective saturation derived from intensity mapping used by themeManager
+              const satEff = Math.max(0, Math.min(85, Math.round(p.saturation * 0.8)));
+              if (typeof satKn !== 'undefined' && satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
+            } catch (_) {}
+            try {
+              // Brightness is not specified by presets; return to neutral default
+              if (typeof briKn !== 'undefined' && briKn && briKn.setValue) briKn.setValue(60, { silent: true });
+            } catch (_) {}
+
             // Persist values so preset selection survives reloads and Reset applies correctly
             try {
               localStorage.setItem('ui_hue', String(p.hue));
@@ -1728,6 +1768,9 @@ function presentSettingsOverlay() {
               // store opacity multiplier in both LS wrappers for compatibility
               try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
               localStorage.setItem('ui_opacity_mult', String(mult));
+              // Clear any prior explicit overrides so preset uses intensity-based mapping cleanly
+              try { localStorage.removeItem('ui_saturation'); } catch (_) {}
+              try { localStorage.removeItem('ui_brightness'); } catch (_) {}
             } catch (_) {}
 
             try { LS.setItem('ui_preset', name); } catch (_) {}
