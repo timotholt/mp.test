@@ -1297,7 +1297,7 @@ function presentSettingsOverlay() {
           "Pick a color. Regret is free.",
         ];
         if (_quipThemeColor == null) { _quipThemeColor = getQuip('settings.overlay.themeTag', colorQuips); }
-        const sec = makeSection(_quipThemeColor, '');
+        const sec = makeSection('UI Color', _quipThemeColor);
         // Insert Reset button into the Theme section header (overlay)
         try {
           const hdr = sec.firstChild; // title div
@@ -1413,7 +1413,7 @@ function presentSettingsOverlay() {
             knobRow.style.display = 'flex';
             knobRow.style.gap = '18px';
             knobRow.style.alignItems = 'center';
-            knobRow.style.justifyContent = 'flex-start';
+            knobRow.style.justifyContent = 'center';
             knobRow.style.margin = '6px 0 10px';
             // Extra breathing room so full 360° Hue ring isn't clipped
             knobRow.style.padding = '6px 4px';
@@ -1513,7 +1513,7 @@ function presentSettingsOverlay() {
         hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
         const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '14px'; hueLbl.style.textAlign = 'left'; hueLbl.title = 'Overall accent color hue (0–360)';
         const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue-ovl';
-        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.style.paddingRight = '6px'; hueVal.id = 'settings-ui-hue-ovl-val';
+        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-ovl-val';
         try {
           let hue = parseFloat(localStorage.getItem('ui_hue'));
           if (!Number.isFinite(hue)) hue = 210;
@@ -1580,7 +1580,7 @@ function presentSettingsOverlay() {
             "Glow up? No. Glow knob? Absolutely."
           ];
           if (_quipBorder == null) { _quipBorder = getQuip('settings.overlay.borderTag', borderQuips); }
-          contentWrap.appendChild(makeSection(_quipBorder, ''));
+          contentWrap.appendChild(makeSection('Border', _quipBorder));
         } catch (_) {}
 
         // New: Border Intensity (0-100)
@@ -1612,7 +1612,7 @@ function presentSettingsOverlay() {
             'It whispers, not shouts.'
           ];
           if (_quipTransparency == null) { _quipTransparency = getQuip('settings.overlay.transparencyTag', subtleQuips); }
-          const trSec = makeSection(_quipTransparency, '');
+          const trSec = makeSection('Transparency', _quipTransparency);
           contentWrap.appendChild(trSec);
         } catch (_) {}
 
