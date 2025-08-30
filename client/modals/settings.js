@@ -1,5 +1,3 @@
-import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../core/audio/volumeGroupManager.js';
-import { createVolumeKnob } from '../core/audio/volumeKnob.js';
 import * as LS from '../core/localStorage.js';
 import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
@@ -7,6 +5,7 @@ import { getQuip } from '../core/ui/quip.js';
 import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './settings/tabs/accountTab.js';
 import { renderProfileTab } from './settings/tabs/profileTab.js';
 import { renderDisplayTab } from './settings/tabs/displayTab.js';
+import { renderSoundTab } from './settings/tabs/soundTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -554,36 +553,12 @@ function renderSettingsContent(panel) {
       variant: 'panel'
     });
   } else if (tab === 'Sound') {
-    content.appendChild(makeSection('Sound'));
-    // Space between section title and knobs (increase spacing to 1rem)
-    { const spacer = document.createElement('div'); spacer.style.height = '1rem'; content.appendChild(spacer); }
-    // Volume knobs (smaller)
-    content.appendChild(makeVolumeKnobsGrid());
-
-    // Spacer above Notifications
-    { const spacer = document.createElement('div'); spacer.style.height = '12px'; content.appendChild(spacer); }
-    // Notifications (style description to match top modal tagline)
-    {
-      const sec = makeSection('Notifications', 'Choose which alerts to receive.');
-      try {
-        const desc = sec.children && sec.children[1];
-        if (desc) {
-          desc.style.fontSize = '13px';
-          desc.style.opacity = '0.9';
-          desc.style.margin = '0 0 10px 0';
-          desc.style.color = 'var(--ui-fg, #eee)';
-          desc.style.userSelect = 'none';
-        }
-      } catch (_) {}
-      content.appendChild(sec);
-    }
-    content.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
-    content.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
-    content.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
-    content.appendChild(makeCheckboxRow('Friend game created', 'notif_friendGameCreated', 'ui:notif:friendGameCreated'));
-    content.appendChild(makeCheckboxRow('New lobby chat message', 'notif_lobbyChat', 'ui:notif:lobbyChat'));
-    content.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
-    content.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
+    renderSoundTab({
+      container: content,
+      makeSection,
+      makeNote,
+      variant: 'panel'
+    });
   } else if (tab === 'Controls') {
     content.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
     content.appendChild(makeNote('Keybinding editor will appear here.'));
@@ -631,144 +606,6 @@ function makeInput(type, value) {
 function makeNote(text) {
   const d = document.createElement('div'); d.textContent = text; d.style.color = '#bbb'; d.style.fontSize = '12px'; d.style.marginBottom = '8px';
   return d;
-}
-
-// Knobs grid for Sound tab (MASTER, GAME, MUSIC, VOICE)
-function makeVolumeKnobsGrid() {
-  const wrap = document.createElement('div');
-  wrap.style.display = 'flex';
-  wrap.style.flexWrap = 'wrap';
-  wrap.style.gap = '14px';
-  wrap.style.alignItems = 'center';
-  wrap.style.justifyContent = 'flex-start';
-
-  const groups = [
-    { id: 'MASTER', label: 'Master' },
-    { id: 'GAME', label: 'Game' },
-    { id: 'MUSIC', label: 'Music' },
-    { id: 'VOICE', label: 'Voice' },
-  ];
-
-  groups.forEach(g => {
-    const cell = document.createElement('div');
-    cell.style.display = 'flex';
-    cell.style.flexDirection = 'column';
-    cell.style.alignItems = 'center';
-    cell.style.width = '110px';
-
-    const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: 64, segments: 20 });
-    const cap = document.createElement('div');
-    cap.textContent = g.label;
-    cap.style.marginTop = '6px';
-    cap.style.color = 'var(--ui-fg, #eee)';
-    cap.style.opacity = '0.9';
-    cap.style.fontSize = '12px';
-
-    cell.appendChild(el);
-    cell.appendChild(cap);
-    wrap.appendChild(cell);
-  });
-
-  return wrap;
-}
-
-// Helpers for Sound tab
-function makeVolumeRow(labelText, storageKey, windowVarName, eventName) {
-  const row = document.createElement('div');
-  row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '8px';
-  const lbl = document.createElement('label'); lbl.textContent = labelText + ':'; lbl.style.minWidth = '140px';
-  const rng = document.createElement('input'); rng.type = 'range'; rng.min = '0'; rng.max = '1'; rng.step = String(DEFAULT_WHEEL_STEP); rng.style.flex = '1';
-  const val = document.createElement('span'); val.style.width = '46px'; val.style.textAlign = 'right'; val.style.color = '#ccc';
-  // Give IDs to master volume row for external syncing
-  if (storageKey === 'volume') { rng.id = 'settings-master-volume'; val.id = 'settings-master-volume-val'; }
-  // Assign IDs for other volume rows to enable external syncing
-  if (storageKey === 'volume_game') { rng.id = 'settings-game-volume'; val.id = 'settings-game-volume-val'; }
-  if (storageKey === 'volume_music') { rng.id = 'settings-music-volume'; val.id = 'settings-music-volume-val'; }
-  if (storageKey === 'volume_voice') { rng.id = 'settings-voice-volume'; val.id = 'settings-voice-volume-val'; }
-  // Group mapping for new volumes API
-  const groupId = (storageKey === 'volume') ? 'MASTER'
-    : (storageKey === 'volume_game') ? 'GAME'
-    : (storageKey === 'volume_music') ? 'MUSIC'
-    : (storageKey === 'volume_voice') ? 'VOICE'
-    : 'MASTER';
-
-  // Initialize UI from group value
-  try {
-    const init = getValue(groupId);
-    rng.value = String(init);
-    setValue(groupId, init, { silent: true });
-    const pct = String(Math.round(init * 100)) + '%';
-    val.textContent = pct; rng.title = pct;
-  } catch (_) {}
-
-  // Bind via unified group-based utility (handles input, wheel, external sync)
-  bindRange(rng, groupId, {
-    withWheel: true,
-    emitOnInit: false,
-    onRender: (v) => {
-      try {
-        const pct = String(Math.round(v * 100)) + '%';
-        val.textContent = pct; rng.title = pct;
-      } catch (_) {}
-    }
-  });
-
-  // While adjusting from the Settings panel, broadcast an adjusting flag for MASTER only
-  if (groupId === 'MASTER') {
-    try {
-      const sendAdjusting = (adjusting) => {
-        try { window.dispatchEvent(new CustomEvent('ui:volume:adjusting', { detail: { adjusting: !!adjusting, source: 'settings' } })); } catch (_) {}
-      };
-      const end = () => sendAdjusting(false);
-      rng.addEventListener('mousedown', () => sendAdjusting(true));
-      rng.addEventListener('touchstart', () => sendAdjusting(true));
-      rng.addEventListener('mouseenter', () => sendAdjusting(true));
-      rng.addEventListener('mouseup', end);
-      rng.addEventListener('touchend', end);
-      rng.addEventListener('mouseleave', end);
-      rng.addEventListener('blur', end);
-      let __wheelAdjustTimer;
-      rng.addEventListener('wheel', () => {
-        sendAdjusting(true);
-        try { if (__wheelAdjustTimer) clearTimeout(__wheelAdjustTimer); } catch (_) {}
-        __wheelAdjustTimer = setTimeout(() => { try { sendAdjusting(false); } catch (_) {} }, 600);
-      }, { passive: true });
-    } catch (_) {}
-  }
-  row.appendChild(lbl); row.appendChild(rng); row.appendChild(val);
-  return row;
-}
-
-function makeCheckboxRow(labelText, storageKey, eventName) {
-  const row = document.createElement('div');
-  row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '6px';
-  const cb = document.createElement('input'); cb.type = 'checkbox';
-  try { cb.checked = LS.getItem(storageKey, '0') === '1'; } catch (_) { cb.checked = false; }
-  // Themed checkbox: use accentColor + subtle border/glow on hover/focus
-  try {
-    // Primary check color follows theme, fallback to blue-ish
-    cb.style.accentColor = 'var(--ui-bright, rgba(120,170,255,0.90))';
-    // No persistent outline; set during hover/focus only
-    cb.style.outline = 'none';
-    cb.style.outlineOffset = '2px';
-    cb.style.cursor = 'pointer';
-    // Hover/Focus glow using theme outer glow. Inline events to avoid CSS pseudo-classes.
-    const onHover = () => { try { cb.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; cb.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-    const onLeave = () => { try { cb.style.boxShadow = 'none'; cb.style.outline = 'none'; } catch (_) {} };
-    cb.addEventListener('mouseenter', onHover);
-    cb.addEventListener('mouseleave', onLeave);
-    cb.addEventListener('focus', onHover);
-    cb.addEventListener('blur', onLeave);
-  } catch (_) {}
-  const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '12px'; lbl.style.lineHeight = '1.2';
-  // Link label to checkbox for accessibility
-  try { const id = `settings-${String(storageKey)}`; cb.id = id; lbl.htmlFor = id; } catch (_) {}
-  cb.onchange = () => {
-    try { LS.setItem(storageKey, cb.checked ? '1' : '0'); } catch (_) {}
-    try { window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled: cb.checked } })); } catch (_) {}
-  };
-  row.appendChild(cb); row.appendChild(lbl);
-  return row;
 }
 
 // Overlay-based Settings Modal (preferred). Returns true if shown, false to fall back.
@@ -1025,6 +862,14 @@ function presentSettingsOverlay() {
 
     function onSelectTab(name) {
       // Tabs switch immediately; settings auto-save, no discard prompts
+      // If we are leaving the Sound tab, run its cleanup (remove listeners)
+      try {
+        if (activeTab === 'Sound' && name !== 'Sound' && volAdjustHandler) {
+          if (typeof volAdjustHandler === 'function') volAdjustHandler();
+          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+          volAdjustHandler = null;
+        }
+      } catch (_) {}
       activeTab = String(name || 'Profile');
       __settingsState.activeTab = activeTab;
       render();
@@ -1566,76 +1411,21 @@ function presentSettingsOverlay() {
           variant: 'overlay'
         });
       } else if (tab === 'Sound')  {
-        // Sound Mixer with random tagline
+        // Clean up any previous overlay listener before re-attaching via tab module
         try {
-          const mixerQuips = [
-            "Softness is weakness. Turn it up.",
-            'Turn it up until your neighbors complain, then turn it up more.',
-            'Silence is deadly. Volume is deadlier.',
-            "Those pretty knobs are just begging to be touched.",
-            "Hurry up. Those pretty knobs aren't going to touch themselves.",
-            'Temper the noise, amplify the legend.',
-            'Turn it up. Your speakers will thank you.'
-          ];
-          if (_quipSoundMixer == null) { _quipSoundMixer = getQuip('settings.overlay.soundMixerTag', mixerQuips); }
-          contentWrap.appendChild(makeSection('Sound Mixer', _quipSoundMixer));
-        } catch (_) {
-          contentWrap.appendChild(makeSection('Sound Mixer', ''));
-        }
-        // Space between section title and knobs (increase spacing to 1rem)
-        { const spacer = document.createElement('div'); spacer.style.height = '1rem'; contentWrap.appendChild(spacer); }
-        // Volume knobs (smaller)
-        contentWrap.appendChild(makeVolumeKnobsGrid());
-        // Mark dirty when user adjusts any knob
-        try {
-          if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
-          volAdjustHandler = (e) => { if (e && e.detail && e.detail.adjusting) setDirty(true); };
-          window.addEventListener('ui:volume:adjusting', volAdjustHandler);
+          if (volAdjustHandler) {
+            if (typeof volAdjustHandler === 'function') volAdjustHandler();
+            else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+          }
         } catch (_) {}
-        const spacer = document.createElement('div'); spacer.style.height = '12px'; contentWrap.appendChild(spacer);
-        // Notifications (random tagline; style description to match top modal tagline)
-        {
-          const notifQuips = [
-            'Only the alerts that matter.',
-            'Hear what hurts. Ignore the rest.',
-            'Signals in the noise.',
-            'Ping when the plot thickens.',
-            'Stay alert, stay alive.',
-            "Not every ping is friendly.",
-            "The loudest warnings come too late.",
-            "Disable at your own peril.",
-            "Notifications ignored = fate accepted.",
-            "If you mute these, don’t cry later."
-          ];  
-          if (_quipNotif == null) { _quipNotif = getQuip('settings.overlay.notificationsTag', notifQuips); }
-          const sec = makeSection('Notifications', _quipNotif);
-          try {
-            const desc = sec.children && sec.children[1];
-            if (desc) {
-              desc.style.fontSize = '13px';
-              desc.style.opacity = '0.9';
-              desc.style.margin = '0 0 10px 0';
-              desc.style.color = 'var(--ui-bright, #dff1ff)';
-              desc.style.userSelect = 'none';
-            }
-          } catch (_) {}
-          contentWrap.appendChild(sec);
-        }
-        // Two-column layout for notification toggles
-        const notifGrid = document.createElement('div');
-        notifGrid.style.display = 'grid';
-        notifGrid.style.gridTemplateColumns = '1fr 1fr';
-        notifGrid.style.columnGap = '12px';
-        notifGrid.style.rowGap = '6px';
-        contentWrap.appendChild(notifGrid);
-
-        notifGrid.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
-        notifGrid.appendChild(makeCheckboxRow('Friend joins/leaves server/lobby/room', 'notif_friendJoinLeave', 'ui:notif:friendJoinLeave'));
-        notifGrid.appendChild(makeCheckboxRow('Public game created', 'notif_publicGameCreated', 'ui:notif:publicGameCreated'));
-        notifGrid.appendChild(makeCheckboxRow('Friend game created', 'notif_friendGameCreated', 'ui:notif:friendGameCreated'));
-        notifGrid.appendChild(makeCheckboxRow('New lobby chat message', 'notif_lobbyChat', 'ui:notif:lobbyChat'));
-        notifGrid.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
-        notifGrid.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
+        // Render Sound tab via module; capture cleanup function
+        volAdjustHandler = renderSoundTab({
+          container: contentWrap,
+          makeSection,
+          makeNote,
+          variant: 'overlay',
+          setDirty
+        });
       } else if (tab === 'Controls') {
         contentWrap.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
         contentWrap.appendChild(makeNote('Keybinding editor will appear here.'));
@@ -1680,7 +1470,12 @@ function presentSettingsOverlay() {
 
     // Close without unsaved-change prompts (auto-save behavior)
     closeBtn.onclick = () => {
-      try { if (volAdjustHandler) window.removeEventListener('ui:volume:adjusting', volAdjustHandler); } catch (_) {}
+      try {
+        if (volAdjustHandler) {
+          if (typeof volAdjustHandler === 'function') volAdjustHandler();
+          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+        }
+      } catch (_) {}
       // Clean up our mount layer
       try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
