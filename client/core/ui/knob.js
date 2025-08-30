@@ -381,7 +381,7 @@ function ensureStyle() {
     /* Idle glow off by default; can be overridden */
     box-shadow: var(--kn-dot-glow, none); }
 
-  .knob .k-ring { position: absolute; inset: 0; pointer-events: none; transform: translateY(var(--kn-ring-global-y, 2px)); }
+  .knob .k-ring { position: absolute; inset: 0; pointer-events: none; transform: translateY(var(--kn-ring-global-y, 0px)); }
   .knob .k-seg { position: absolute; left: 50%; top: 50%; width: var(--kn-seg-w, 2px); height: var(--kn-seg-h, 10px);
     background: var(--kn-seg-off, #2a2f36); border-radius: 1px; opacity: 0.45;
     transform-origin: 0 0;

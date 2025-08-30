@@ -1311,7 +1311,7 @@ function presentSettingsOverlay() {
           if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createBrightnessKnob) {
             const knobRow = document.createElement('div');
             knobRow.style.display = 'flex';
-            knobRow.style.gap = '14px';
+            knobRow.style.gap = '18px';
             knobRow.style.alignItems = 'center';
             knobRow.style.justifyContent = 'flex-start';
             knobRow.style.margin = '6px 0 10px';
@@ -1324,7 +1324,7 @@ function presentSettingsOverlay() {
               wrap.style.display = 'flex';
               wrap.style.flexDirection = 'column';
               wrap.style.alignItems = 'center';
-              wrap.style.minWidth = '72px';
+              wrap.style.minWidth = '80px';
               // Ensure ring segments can render beyond exact bounds without clipping
               wrap.style.padding = '4px 2px';
               wrap.style.overflow = 'visible';
