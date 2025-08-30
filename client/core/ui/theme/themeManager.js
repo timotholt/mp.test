@@ -215,6 +215,10 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
+      // Low-end saturation easing for accent tokens: fade in over first ~10 intensity points
+      const nearZero = Math.min(1, intensity / 10);
+      const satAcc = (intensity <= 0) ? 0 : Math.round(sat * nearZero);
+      const satAccPlus10 = (intensity <= 0) ? 0 : Math.round(Math.min(90, sat + 10) * nearZero);
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
       let borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
       // Much stronger glow: scale towards 1.0 quickly as glowStrength increases
@@ -247,7 +251,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       } catch (_) {}
 
       // Derive common tokens from hue/intensity (OKLCH when available, else HSL)
-      const accent = colorFromHSLC({ h: hue, s: sat, l: light, alpha: 1 });
+      const accent = colorFromHSLC({ h: hue, s: satAcc, l: light, alpha: 1 });
       // Boost border contrast at high strength by nudging lightness a bit
       const borderLightBase = Math.max(30, light - 5);
       const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.30, 20, 90);
@@ -290,7 +294,11 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Flat themed overlay tint (no gradient): keeps color while preserving contrast.
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {
-        const ovlSat = clamp(Math.min(90, sat + 10), 0, 100);
+        // At zero intensity we want a neutral (non-hued) blackout overlay; avoid tint by forcing sat=0
+        // Additionally, fade in overlay hue over the first ~10 intensity points to prevent green-ish cast at low I.
+        const nearZero = Math.min(1, intensity / 10);
+        const ovlSatBase = clamp(Math.min(90, sat + 10), 0, 100);
+        const ovlSat = (intensity <= 0) ? 0 : Math.round(ovlSatBase * nearZero);
         // Ease in overlay floor with intensity to avoid jump at 1
         const ovlLight = (intensity <= 0) ? 0 : clamp(Math.max(light - 40, intensity * 0.1), 0, 100);
         const ovl = colorFromHSLCAlphaCss({ h: hue, s: ovlSat, l: ovlLight, alphaCss: 'var(--ui-overlay-darkness, 0.5)' });
@@ -298,8 +306,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       } catch (_) {}
       // Scrollbar colors follow current hue
       try {
-        root.style.setProperty('--ui-scrollbar-thumb', colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.45 }));
-        root.style.setProperty('--ui-scrollbar-thumb-hover', colorFromHSLC({ h: hue, s: Math.min(90, sat + 10), l: Math.min(95, light + 12), alpha: 0.65 }));
+        root.style.setProperty('--ui-scrollbar-thumb', colorFromHSLC({ h: hue, s: satAcc, l: light, alpha: 0.45 }));
+        root.style.setProperty('--ui-scrollbar-thumb-hover', colorFromHSLC({ h: hue, s: satAccPlus10, l: Math.min(95, light + 12), alpha: 0.65 }));
       } catch (_) {}
       // Strong glow used by interactive hover/focus (two-layer glow for pop)
       // Strong glow: larger and brighter at high strength (still clamped visually)
