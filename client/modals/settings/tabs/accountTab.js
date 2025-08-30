@@ -36,3 +36,21 @@ export function renderAccountTab(opts = {}) {
     try { container.appendChild(makeNote(loggedInMsg)); } catch (_) {}
   }
 }
+
+// Determine if account-related UI should be enabled.
+// Reads a global hint window.__settingsAccountEnabled when present,
+// otherwise falls back to a heuristic (joined to a room).
+export function computeAccountEnabled() {
+  try {
+    if (typeof window.__settingsAccountEnabled === 'boolean') return !!window.__settingsAccountEnabled;
+  } catch (_) {}
+  try { if (window.room) return true; } catch (_) {}
+  return false;
+}
+
+// Update the global hint used by computeAccountEnabled().
+// Keep this function UI-agnostic to avoid circular dependencies.
+// Callers should re-render their UI after invoking this.
+export function setSettingsAuth({ accountEnabled }) {
+  try { window.__settingsAccountEnabled = !!accountEnabled; } catch (_) {}
+}

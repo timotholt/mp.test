@@ -4,7 +4,7 @@ import * as LS from '../core/localStorage.js';
 import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
 import { getQuip } from '../core/ui/quip.js';
-import { renderAccountTab } from './settings/tabs/accountTab.js';
+import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './settings/tabs/accountTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -15,15 +15,6 @@ let __settingsState = {
   activeTab: 'Profile',
   accountEnabled: false,
 };
-
-function computeAccountEnabled() {
-  try {
-    if (typeof window.__settingsAccountEnabled === 'boolean') return !!window.__settingsAccountEnabled;
-  } catch (_) {}
-  // Heuristic: enabled when joined to a room (until proper auth is wired)
-  try { if (window.room) return true; } catch (_) {}
-  return false;
-}
 
 // Shared helpers across panel and overlay
 function attachHover(rng, labelEl) {
@@ -120,13 +111,6 @@ export function presentSettingsPanel() {
 export function closeSettingsPanel() {
   const panel = document.getElementById('settings-panel');
   if (panel) panel.style.display = 'none';
-}
-
-export function setSettingsAuth({ accountEnabled }) {
-  __settingsState.accountEnabled = !!accountEnabled;
-  try { window.__settingsAccountEnabled = !!accountEnabled; } catch (_) {}
-  const panel = document.getElementById('settings-panel');
-  if (panel && panel.style.display !== 'none') renderSettingsContent(panel);
 }
 
 function createSettingsPanel() {
@@ -245,7 +229,10 @@ function createSettingsPanel() {
   window.addEventListener('ui:auth', (e) => {
     try {
       const v = !!(e && e.detail && e.detail.accountEnabled);
-      setSettingsAuth({ accountEnabled: v });
+      setSettingsAuth({ accountEnabled: v }); // updates global hint
+      __settingsState.accountEnabled = computeAccountEnabled();
+      const panel = document.getElementById('settings-panel');
+      if (panel && panel.style.display !== 'none') renderSettingsContent(panel);
     } catch (_) {}
   });
 
