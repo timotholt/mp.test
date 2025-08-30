@@ -1,8 +1,8 @@
-// Color Knobs (Hue / Saturation / Brightness)
+// Color Knobs (Hue / Saturation / Intensity)
 // Plain JS helpers built on top of the generic knob in './knob.js'
 // - Hue knob: continuous spectrum ring (segments=-1)
 // - Saturation knob: spectrum ring from monochrome -> fully saturated (at constant lightness)
-// - Brightness knob: spectrum ring from black -> full brightness (at constant chroma)
+// - Intensity knob: maps 0..100 intensity into saturation/lightness using the same logic as themeManager
 //
 // Uses OKLCH when supported to better preserve perceived lightness; falls back to HSL.
 // Minimal, human-readable code with comments per user guidelines.
@@ -26,7 +26,7 @@ const HAS_OKLCH = supportsOKLCH();
 
 // Convert (h, s, l) to CSS color string. If HAS_OKLCH, we prefer OKLCH for better perceptual uniformity.
 // For OKLCH mapping we treat s (0..100) as chroma scaled into a conservative [0..0.33] range to avoid out-of-gamut.
-// For hue knob and saturation knob we keep L constant (default 65%) to preserve perceived brightness.
+// For hue knob and saturation knob we keep L constant (default 65%) to preserve perceived intensity.
 function colorFromHSLC({ h, s = 70, l = 65, alpha = 1, fixedChroma = null, fixedLight = null }) {
   h = Number(h || 0);
   s = Math.max(0, Math.min(100, Number(s)));
@@ -202,10 +202,10 @@ export function createSaturationKnob(opts = {}) {
   return kn;
 }
 
-export function createBrightnessKnob(opts = {}) {
-  // 0..100 logical brightness; preview dark->bright at constant chroma (based on current saturation/intensity mapping)
+export function createIntensityKnob(opts = {}) {
+  // 0..100 intensity; preview ring uses theme mapping to show resulting sat/light
   const min = 0, max = 100;
-  const initial = Number.isFinite(opts.value) ? opts.value : 60; // default pleasant brightness
+  const initial = Number.isFinite(opts.value) ? opts.value : currentIntensity();
 
   const kn = createKnob({
     min,
@@ -216,30 +216,29 @@ export function createBrightnessKnob(opts = {}) {
     // Fine wheel increment: 1% for subtle wheel moves
     wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
-    label: opts.label || 'Brightness',
+    label: opts.label || 'Intensity',
     segments: -1,
     angleMin: -135,
     angleMax: 135,
     ringColorForAngle: (_angDeg, t) => {
       const h = currentHue();
-      const intensity = currentIntensity();
-      const sNow = (typeof opts.getSaturation === 'function') ? Number(opts.getSaturation()) : satFromIntensity(intensity);
-      // Keep chroma tied to current saturation, vary lightness from black->bright
-      const l = Math.round(5 + t * 90); // 5%..95%
-      return colorFromHSLC({ h, s: sNow, l, alpha: 1 });
+      const I = Math.round(t * 100);
+      const s = satFromIntensity(I);
+      // Lightness mapping mirrors themeManager: l = clamp(45 + (60 - I) * 0.15, 30, 70)
+      const l = Math.max(30, Math.min(70, Math.round(45 + (60 - I) * 0.15)));
+      return colorFromHSLC({ h, s, l, alpha: 1 });
     },
-    titleFormatter: tfPct('Brightness'),
+    titleFormatter: tfPct('Intensity'),
     onInput: (v) => {
-      // CSS var for potential readers; apply as explicit brightness (lightness) override for primary UI colors
       const vv = Math.round(v);
-      try { getRoot().style.setProperty('--ui-brightness', String(vv)); } catch (_) {}
-      try { window.UITheme?.applyDynamicTheme?.({ brightness: vv }); } catch (_) {}
+      try { getRoot().style.setProperty('--ui-intensity', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
       const vv = Math.round(v);
-      try { getRoot().style.setProperty('--ui-brightness', String(vv)); } catch (_) {}
-      try { window.UITheme?.applyDynamicTheme?.({ brightness: vv }); } catch (_) {}
+      try { getRoot().style.setProperty('--ui-intensity', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
@@ -257,5 +256,4 @@ export function createBrightnessKnob(opts = {}) {
   return kn;
 }
 
-// Optional quick testing exposure (non-invasive)
-try { window.ColorKnobs = { createHueKnob, createSaturationKnob, createBrightnessKnob }; } catch (_) {}
+try { window.ColorKnobs = { createHueKnob, createSaturationKnob, createIntensityKnob }; } catch (_) {}

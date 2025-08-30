@@ -15,7 +15,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
   try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
 
-  // Preset definitions (hue, saturation, brightness, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
+  // Preset definitions (hue, saturation, intensity, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
   // Centralized here so Settings UI can consume via UITheme API
   const themePresets = Object.freeze({
     // Ordered by Hue around the color wheel
@@ -81,7 +81,6 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
         applyDynamicTheme({
           hue: preset.hue,
           saturation: preset.saturation,
-          brightness: preset.brightness,
           // Use preset-provided intensity when available; fall back to a sane default
           intensity: (preset.intensity != null ? preset.intensity : 60),
           borderStrength: preset.border,
@@ -180,11 +179,10 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
       try { root.style.setProperty('--ui-backdrop-blur', `${toFixed(milkiness, 2)}px`); } catch (_) {}
 
-      // Determine saturation/brightness with sticky overrides
-      // Prefer explicit params; otherwise, use persisted overrides; otherwise, fall back to intensity mapping.
-      let satLS = NaN, briLS = NaN;
+      // Determine saturation with sticky override; lightness derives from intensity mapping.
+      // Prefer explicit params; otherwise, use persisted saturation override; otherwise, fall back to intensity mapping.
+      let satLS = NaN;
       try { satLS = parseFloat(localStorage.getItem('ui_saturation')); } catch (_) {}
-      try { briLS = parseFloat(localStorage.getItem('ui_brightness')); } catch (_) {}
 
       // Base mappings (human-readable, conservative)
       // Saturation rises slightly with intensity; lightness adjusts inversely to keep readable contrast.
@@ -199,17 +197,11 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
         sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
       }
 
-      if (params.brightness != null) {
-        light = clamp(Number(params.brightness), 0, 100);
-      } else if (Number.isFinite(briLS)) {
-        light = clamp(briLS, 0, 100);
-      } else {
-        light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
-      }
+      // Lightness: derive purely from intensity for consistent theming
+      light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
 
       // Persist explicit overrides when provided (after values are computed)
       if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
-      if (params.brightness != null) { try { localStorage.setItem('ui_brightness', String(light)); } catch (_) {} }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
@@ -269,7 +261,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       root.style.setProperty('--ui-surface-border', border);
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
-      root.style.setProperty('--ui-bright', bright);
+      root.style.setProperty('--ui-highlight', bright);
       // Flat themed overlay tint (no gradient): keeps color while preserving contrast.
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {
@@ -337,19 +329,17 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
     const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
     const gradient = parseFloat(localStorage.getItem('ui_gradient')); // 0..100
     const satOverride = parseFloat(localStorage.getItem('ui_saturation')); // optional 0..100
-    const briOverride = parseFloat(localStorage.getItem('ui_brightness')); // optional 0..100
     const params = {};
     if (Number.isFinite(hue)) params.hue = hue;
     if (Number.isFinite(intensity)) params.intensity = intensity;
     if (Number.isFinite(fontScale)) params.fontScale = fontScale;
     if (Number.isFinite(gradient)) params.gradient = gradient;
     if (Number.isFinite(satOverride)) params.saturation = satOverride;
-    if (Number.isFinite(briOverride)) params.brightness = briOverride;
 
     // First-run detection
     const hasPersisted =
       Number.isFinite(hue) || Number.isFinite(intensity) || Number.isFinite(fontScale) ||
-      Number.isFinite(gradient) || Number.isFinite(satOverride) || Number.isFinite(briOverride);
+      Number.isFinite(gradient) || Number.isFinite(satOverride);
 
     // Helper: resolve preset name from stored slug (case/space-insensitive)
     const presetNames = Object.keys(themePresets);

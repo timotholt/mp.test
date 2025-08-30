@@ -974,8 +974,8 @@ function presentSettingsOverlay() {
               if (tm.presets) return tm.presets;
             }
           } catch (_) {}
-          // Minimal fallback so dropdown and brightness init still function if UITheme isn't ready
-          return { 'Steel Blue': { hue: 207, saturation: 44, brightness: 49, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 } };
+          // Minimal fallback if UITheme isn't ready
+          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 15, gradient: 20, overlayDarkness: 60, blur: 3 } };
         })();
 
         const themeGroup = document.createElement('div');
@@ -1038,10 +1038,10 @@ function presentSettingsOverlay() {
         // Hoisted knob references so other handlers (e.g., applyPreset) can access them
         let hueKn = null, satKn = null, briKn = null;
 
-        // Experimental: inline color knobs (Hue / Saturation / Brightness) for testing
+        // Experimental: inline color knobs (Hue / Saturation / Intensity) for testing
         try {
           const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
-          if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createBrightnessKnob) {
+          if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createIntensityKnob) {
             const knobRow = document.createElement('div');
             knobRow.style.display = 'flex';
             knobRow.style.gap = '18px';
@@ -1087,9 +1087,9 @@ function presentSettingsOverlay() {
               ringOffset: 18,
               onInput: () => { try { selectCustomPreset(); } catch (_) {} }
             });
-            briKn = CK.createBrightnessKnob({
+            briKn =CK.createIntensityKnob({
               size: 56,
-              label: 'Brightness',
+              label: 'Intensity',
               ringOffset: 18,
               onInput: () => { try { selectCustomPreset(); } catch (_) {} }
             });
@@ -1101,7 +1101,7 @@ function presentSettingsOverlay() {
 
             knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
             knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
-            knobRow.appendChild(makeCol(briKn.el, 'Brightness'));
+            knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
 
             contentWrap.appendChild(knobRow);
 
@@ -1119,13 +1119,13 @@ function presentSettingsOverlay() {
               const satEffInit = Math.max(0, Math.min(85, Math.round(intensityInit * 0.8)));
               try { if (satKn && satKn.setValue) satKn.setValue(satEffInit, { silent: true }); } catch (_) {}
 
-              // Brightness: prefer explicit override; else fall back to current preset's brightness
-              let briInit = parseFloat(localStorage.getItem('ui_brightness'));
+              // Intensity: prefer explicit override; else fall back to current preset's intensity
+              let briInit = parseFloat(localStorage.getItem('ui_intensity'));
               if (!Number.isFinite(briInit)) {
                 let presetName = null; try { presetName = LS.getItem('ui_preset', null); } catch (_) {}
                 const defName = 'Steel Blue';
                 const pp = (presetName && themePresets[presetName]) ? themePresets[presetName] : themePresets[defName];
-                briInit = pp && Number.isFinite(pp.brightness) ? pp.brightness : 60;
+                briInit = pp && Number.isFinite(pp.intensity) ? pp.intensity : 60;
               }
               briInit = Math.max(0, Math.min(100, Math.round(briInit)));
               try { if (briKn && briKn.setValue) briKn.setValue(briInit, { silent: true }); } catch (_) {}
@@ -1330,8 +1330,7 @@ function presentSettingsOverlay() {
             try {
               window.UITheme && window.UITheme.applyDynamicTheme({
                 hue: p.hue,
-                intensity: p.saturation,
-                brightness: p.brightness,
+                intensity: p.intensity,
                 borderStrength: p.border,
                 glowStrength: p.glow,
                 opacityMult: mult,
@@ -1344,7 +1343,7 @@ function presentSettingsOverlay() {
 
             // Update UI controls to reflect preset values
             try { hueRng.value = String(p.hue); hueVal.textContent = String(p.hue); hueRng.title = String(p.hue); } catch (_) {}
-            try { const i = Math.max(0, Math.min(100, Math.round(p.saturation))); inRng.value = String(i); inVal.textContent = `${i}%`; inRng.title = `${i}%`; } catch (_) {}
+            try { const i = Math.max(0, Math.min(100, Math.round(p.intensity))); inRng.value = String(i); inVal.textContent = `${i}%`; inRng.title = `${i}%`; } catch (_) {}
             try { const b = Math.max(0, Math.min(100, Math.round(p.border))); biRng.value = String(b); biVal.textContent = `${b}%`; biRng.title = `${b}%`; } catch (_) {}
             try { const g = Math.max(0, Math.min(100, Math.round(p.glow))); gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round((g / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {}
             try { const gr = Math.max(0, Math.min(100, Math.round(p.gradient))); grRng.value = String(gr); grVal.textContent = `${gr}%`; grRng.title = `${gr}%`; } catch (_) {}
@@ -1356,19 +1355,19 @@ function presentSettingsOverlay() {
             try { if (typeof hueKn !== 'undefined' && hueKn && hueKn.setValue) hueKn.setValue(p.hue, { silent: true }); } catch (_) {}
             try {
               // Saturation knob shows effective saturation derived from intensity mapping used by themeManager
-              const satEff = Math.max(0, Math.min(85, Math.round(p.saturation * 0.8)));
+              const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8)));
               if (typeof satKn !== 'undefined' && satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
             } catch (_) {}
             try {
-              // Brightness is not specified by presets; return to neutral default
-              const br = Math.max(0, Math.min(100, Math.round(p.brightness)));
+              // Intensity knob: set from preset intensity
+              const br = Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)));
               if (typeof briKn !== 'undefined' && briKn && briKn.setValue) briKn.setValue(br, { silent: true });
             } catch (_) {}
 
             // Persist values so preset selection survives reloads and Reset applies correctly
             try {
               localStorage.setItem('ui_hue', String(p.hue));
-              localStorage.setItem('ui_intensity', String(Math.max(0, Math.min(100, Math.round(p.saturation)))));
+              localStorage.setItem('ui_intensity', String(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)))));
               localStorage.setItem('ui_border_intensity', String(Math.max(0, Math.min(100, Math.round(p.border)))));
               localStorage.setItem('ui_glow_strength', String(Math.max(0, Math.min(100, Math.round(p.glow)))));
               localStorage.setItem('ui_gradient', String(Math.max(0, Math.min(100, Math.round(p.gradient)))));
@@ -1376,7 +1375,6 @@ function presentSettingsOverlay() {
               const mLS = Math.max(0, Math.min(10, Number(p.blur)));
               localStorage.setItem('ui_milkiness', String(mLS));
               localStorage.setItem('ui_overlay_darkness', String(Math.max(0, Math.min(100, Math.round(p.overlayDarkness)))));
-              localStorage.setItem('ui_brightness', String(Math.max(0, Math.min(100, Math.round(p.brightness)))));
               // store opacity multiplier in both LS wrappers for compatibility
               try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
               localStorage.setItem('ui_opacity_mult', String(mult));
