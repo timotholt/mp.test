@@ -87,3 +87,8 @@ Last updated: 2025-08-22
 - [ ] Gameplay input blocked when paused or a blocking modal is shown
 
 Footnote: If a modal interrupts your flow, it’s working as designed. Priority is the spice of WAAAGH.
+
+
+
+Tim ToDo
+-- Add background behind dungeon canvas we can color based upon theme
