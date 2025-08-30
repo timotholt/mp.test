@@ -3,6 +3,8 @@
 // at import time and exposes a lightweight window.UITheme API. '--ui-fg' is fixed globally
 // and not theme-overridable to ensure consistent UI foreground color.
 
+import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle } from './themeHelpers.js';
+
 // --- UITheme (moved from core/ui/theme.js) ---
 (function initUITheme() {
   const root = document.documentElement;
@@ -29,7 +31,7 @@
     'Teal Tide':      { hue: 160, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
     'Sea Glass':      { hue: 175, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
     'Cyan Frost':     { hue: 180, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Steel Blue':     { hue: 207, saturation: 44, brightness: 49, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Steel Blue':     { hue: 207, saturation: 35, brightness: 49, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
     'Azure Storm':    { hue: 210, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
     'Cobalt Drift':   { hue: 225, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
     'Cerulean Surge': { hue: 240, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
@@ -101,7 +103,9 @@
   // First ensure locked variable defaults are applied
   applyThemeVars(LockedThemeDefaults, true);
   // Initialize dynamic theme tokens right away (will be refined by boot-time persisted pass below)
-  applyDynamicTheme();
+  // Do NOT pre-seed dynamic theme values here; it would persist fallback 210/48/49
+  // and prevent the boot block from applying the intended preset on true first-run.
+  // The boot-time persisted block below will now handle initial application.
 
   // --- Dynamic Theme: font scale, hue, intensity ---
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
@@ -351,127 +355,7 @@
     } catch (_) {}
   }
 
-  // --- UI helper appliers (grouped) ---
-  // Apply alternating row styles for list containers (Games/Players panels)
-  function applyListRowStyle(options = {}) {
-    const { styleId = 'ui-list-style', containerSelector = '.ui-list' } = options || {};
-    try {
-      const existing = document.getElementById(styleId);
-      const css = `
-        /* Alternating rows for list containers (Games/Players panels) */
-        ${containerSelector} > div { transition: background-color 0.12s ease; }
-        ${containerSelector} > div:nth-child(odd) { background-color: var(--ui-list-row-odd); }
-        ${containerSelector} > div:nth-child(even) { background-color: var(--ui-list-row-even); }
-      `;
-      if (existing) {
-        existing.textContent = css;
-      } else {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.type = 'text/css';
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
-    } catch (_) {}
-  }
-
-  // Cross-browser, theme-driven scrollbar styling helper
-  // Uses CSS variables populated by applyDynamicTheme(). No hardcoded color fallbacks.
-  function applyScrollbarStyle(options = {}) {
-    const {
-      className = 'ui-glass-scrollbar',
-      styleId = 'ui-glass-scrollbar-style',
-      width,
-      radius
-    } = options || {};
-
-    try {
-      if (width) root.style.setProperty('--ui-scrollbar-width', String(width));
-      if (radius) root.style.setProperty('--ui-scrollbar-radius', String(radius));
-    } catch (_) {}
-
-    try {
-      const existing = document.getElementById(styleId);
-      const css = `
-        .${className} { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb) transparent; box-shadow: var(--ui-surface-glow-outer); }
-        .${className}::-webkit-scrollbar { width: var(--ui-scrollbar-width); height: var(--ui-scrollbar-width); }
-        .${className}::-webkit-scrollbar-track {
-          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)) !important;
-          border-radius: var(--ui-scrollbar-radius);
-          box-shadow: var(--ui-surface-glow-inset);
-        }
-        .${className}::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb) !important;
-          border: 1px solid var(--ui-surface-border);
-          border-radius: var(--ui-scrollbar-radius);
-          box-shadow: var(--ui-surface-glow-outer);
-        }
-        .${className}:hover::-webkit-scrollbar-thumb { background-color: var(--ui-scrollbar-thumb-hover) !important; }
-        .${className}::-webkit-scrollbar-corner { background: transparent !important; }
-      `;
-      if (existing) {
-        existing.textContent = css;
-      } else {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.type = 'text/css';
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
-    } catch (_) {}
-  }
-
-  // Generic controls theming (dropdowns/selects, range inputs, labels)
-  function applyControlsStyle(options = {}) {
-    const { styleId = 'ui-controls-style' } = options || {};
-    try {
-      const existing = document.getElementById(styleId);
-      const css = `
-        select, .ui-select {
-          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom));
-          color: var(--ui-fg);
-          border: 1px solid var(--ui-surface-border);
-          border-radius: 8px;
-        }
-        select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); }
-        select option { background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)); color: var(--ui-fg); }
-        select option:checked, select option:hover { background: var(--ui-accent); color: var(--ui-fg); }
-        /* Make form sliders reflect the current theme hue */
-        input[type="range"] { accent-color: var(--ui-accent); }
-        /* Accent-colored track for range controls (thumb/progress matches theme) */
-        input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
-        input[type="range"]::-moz-range-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
-        input[type="range"]:disabled::-webkit-slider-runnable-track { background: var(--ui-accent) !important; opacity: 0.6; }
-        input[type="range"]:disabled::-moz-range-track { background: var(--ui-accent) !important; opacity: 0.6; }
-        /* Firefox: color the filled progress portion with the accent */
-        input[type="range"]::-moz-range-progress { height: 6px; background: var(--ui-accent); border-radius: 999px; }
-        /* Center the thumb across browsers */
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -4px;
-          background: var(--ui-accent);
-          border: 1px solid var(--ui-surface-border);
-          border-radius: 50%; box-shadow: none;
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 14px; height: 14px; background: var(--ui-accent);
-          border: 1px solid var(--ui-surface-border);
-          border-radius: 50%; box-shadow: none;
-        }
-        /* Bright white + glow on label hover across app */
-        label { transition: color 0.12s ease, text-shadow 0.12s ease; }
-        label:hover { color: var(--ui-bright); text-shadow: 0 0 9px var(--ui-bright), 0 0 18px var(--ui-accent); }
-      `;
-      if (existing) {
-        existing.textContent = css;
-      } else {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.type = 'text/css';
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
-    } catch (_) {}
-  }
+  // UI helper appliers are provided by themeHelpers.js and imported at top.
 
   // Apply default UI helpers on boot
   try { applyListRowStyle(); } catch (_) {}
@@ -480,6 +364,12 @@
 
   // Apply persisted dynamic theme knobs at boot
   try {
+    // Read selected theme (namespaced). Values like 'steelBlue', 'custom', etc.
+    let themeName = null;
+    try { themeName = (localStorage.getItem('grimDark.theme') || '').trim(); } catch (_) {}
+    const themeNameLc = (themeName || '').toLowerCase();
+
+    // Gather any persisted params (used only for 'custom' or legacy fallback)
     const hue = parseFloat(localStorage.getItem('ui_hue'));   // 0..360
     const intensity = parseFloat(localStorage.getItem('ui_intensity')); // 0..100
     const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
@@ -493,13 +383,34 @@
     if (Number.isFinite(gradient)) params.gradient = gradient;
     if (Number.isFinite(satOverride)) params.saturation = satOverride;
     if (Number.isFinite(briOverride)) params.brightness = briOverride;
-    // If nothing is persisted yet, start with the Steel Blue preset so first boot matches Reset
+
+    // First-run detection
     const hasPersisted =
       Number.isFinite(hue) || Number.isFinite(intensity) || Number.isFinite(fontScale) ||
       Number.isFinite(gradient) || Number.isFinite(satOverride) || Number.isFinite(briOverride);
-    if (!hasPersisted) {
+
+    // Helper: resolve preset name from stored slug (case/space-insensitive)
+    const presetNames = Object.keys(themePresets);
+    const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+    let resolvedPreset = null;
+    if (themeName) {
+      const target = norm(themeName);
+      for (const p of presetNames) {
+        if (norm(p) === target) { resolvedPreset = p; break; }
+      }
+    }
+
+    if (themeNameLc === 'custom') {
+      // Custom theme: honor persisted user parameters
+      applyDynamicTheme(params);
+    } else if (resolvedPreset) {
+      // Named preset: apply exactly from the table (ignore LS overrides for H/S/B)
+      applyTheme(resolvedPreset);
+    } else if (!hasPersisted) {
+      // No theme selected and nothing persisted: default to Steel Blue preset
       applyTheme('Steel Blue');
     } else {
+      // Legacy/unspecified theme with persisted values: treat as custom
       applyDynamicTheme(params);
     }
   } catch (_) {}

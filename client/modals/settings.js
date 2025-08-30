@@ -353,24 +353,23 @@ function renderSettingsContent(panel) {
         resetBtn.addEventListener('blur', onLeave);
         resetBtn.onclick = () => {
           const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 15) / 100) * MMAX; // reversed semantics: 15% clear
-          // Reset theme
+          // Reset theme selection to preset
           try { LS.setItem('theme', 'steelBlue'); } catch (_) {}
-          // Reset dynamic theme knobs
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
+          // Apply preset directly (ignores LS overrides for H/S/B and related knobs)
+          try { window.UITheme && window.UITheme.applyTheme('Steel Blue'); } catch (_) {}
+          // Reset opacity via dynamic param (presets don't carry opacity multiplier)
+          try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: defMult, fontScale: 1 }); } catch (_) {}
           try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
           try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-          try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
           try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
-          try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
-          // Reset gradient and milkiness
-          try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
+          // Reset gradient and milkiness (Steel Blue preset: gradient=20, blur=3)
+          try { grRng.value = '20'; grVal.textContent = '20%'; grRng.title = '20%'; } catch (_) {}
           try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; } catch (_) {}
-          try { localStorage.setItem('ui_gradient', '60'); } catch (_) {}
-          try { localStorage.setItem('ui_milkiness', '3'); } catch (_) {}
           // Reset new sliders
-          try { odRng.value = '50'; odVal.textContent = '50%'; odRng.title = '50%'; localStorage.setItem('ui_overlay_darkness', '50'); } catch (_) {}
-          try { biRng.value = '70'; biVal.textContent = '70%'; biRng.title = '70%'; localStorage.setItem('ui_border_intensity', '70'); } catch (_) {}
-          try { gsRng.value = '60'; /* value display updated below */ gsRng.title = '60%'; localStorage.setItem('ui_glow_strength', '60'); try { const px = Math.round((60 / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
+          // Steel Blue preset: overlayDarkness=60, border=80, glow=18
+          try { odRng.value = '60'; odVal.textContent = '60%'; odRng.title = '60%'; } catch (_) {}
+          try { biRng.value = '80'; biVal.textContent = '80%'; biRng.title = '80%'; } catch (_) {}
+          try { gsRng.value = '18'; /* value display updated below */ gsRng.title = '18%'; try { const px = Math.round((18 / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {} } catch (_) {}
           // Reset opacity
           const p = 15; // transparency percent
           try { opRng.value = String(p); opVal.textContent = `${p}%`; opRng.title = `${p}%`; } catch (_) {}
