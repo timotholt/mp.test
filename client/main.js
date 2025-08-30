@@ -8,7 +8,8 @@ import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
 import { setupAsciiRenderer } from './core/renderer.js';
 import { SUBSTATES, presentSubstate } from './core/substates.js';
-import { ensureThemeSupport } from './core/ui/theme/themeManager.js';
+// Initialize UI theme system (IIFE side-effect import)
+import './core/ui/theme/themeManager.js';
 import { ensureStatusBar } from './core/ui/statusBar.js';
 import { registerRoomRoute } from './routes/room.js';
 import { ensureZoomControls } from './core/zoom/zoomManager.js';
@@ -101,9 +102,7 @@ window.ensureScreenShade = ensureScreenShade;
 
 // Default route until server tells us otherwise (after shade is attached)
 setRoute(APP_STATES.LOGIN);
-// Theme support moved to './core/ui/theme/themeManager.js'
-// Expose for other modules
-window.ensureThemeSupport = ensureThemeSupport;
+// Theme system initializes on import in './core/ui/theme/themeManager.js'
 
 // ensureStatusBar moved to './core/ui/statusBar.js'
 // Expose for other modules

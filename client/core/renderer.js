@@ -188,7 +188,6 @@ export async function setupAsciiRenderer() {
     })();
 
     // Ensure UI chrome exists (use globals if available)
-    try { if (window.ensureThemeSupport) window.ensureThemeSupport(); } catch (_) {}
     try { if (window.ensureStatusBar) window.ensureStatusBar(); } catch (_) {}
     try { if (window.ensureZoomControls) window.ensureZoomControls(); } catch (_) {}
     // Disable center debug knob while keeping audio wiring; floating panel also off for now

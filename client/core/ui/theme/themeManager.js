@@ -1,13 +1,21 @@
 // Theme Manager
-// Provides the UITheme runtime (auto-applied default theme) and an ensureThemeSupport()
-// utility that injects base CSS variables and a simple window.setTheme().
+// Provides the UITheme runtime. initUITheme() is an IIFE that initializes all CSS variables
+// at import time and exposes a lightweight window.UITheme API. '--ui-fg' is fixed globally
+// and not theme-overridable to ensure consistent UI foreground color.
 
 // --- UITheme (moved from core/ui/theme.js) ---
 (function initUITheme() {
   const root = document.documentElement;
+  
+  // Fixed, theme-agnostic foreground color for consistent UI text
+  try { root.style.setProperty('--ui-fg', 'rgba(220,220,220,1)'); } catch (_) {}
+  // Default sans-serif font for the whole app, applied at :root
+  try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
+  try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
 
   const themes = {
     glassBlue: {
+
       // Global opacity multiplier (single source of truth for transparency strength)
       // Default to 85% of the current ceiling (2.5) => 2.125 on first run
       '--ui-opacity-mult': '2.125',
@@ -29,8 +37,7 @@
       // Global bright + strong glow for high-visibility focus/hover
       '--ui-bright': 'rgba(190,230,255,0.98)',
       '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)',
-      // Foreground and link color
-      '--ui-fg': 'rgba(220,235,255,0.96)',
+      // Link color (foreground is fixed globally and not theme-controlled)
       '--ui-link': '#6cf',
 
       // Shared surface tokens (for modals/menus/panels to adopt)
@@ -54,9 +61,51 @@
     }
   };
 
-  function applyThemeVars(vars) {
+  // Preset definitions (hue, saturation, brightness, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
+  // Centralized here so Settings UI can consume via UITheme API
+  const themePresets = Object.freeze({
+    // Ordered by Hue around the color wheel
+    'Blood Red':      { hue: 0,   saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Ember Glow':     { hue: 20,  saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Old Photos':     { hue: 40,  saturation: 30, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Amber Forge':    { hue: 50,  saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Golden Dusk':    { hue: 60,  saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Desert Mirage':  { hue: 75,  saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Lime Spark':     { hue: 90,  saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Moss Crown':     { hue: 110, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Verdant Veil':   { hue: 140, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Teal Tide':      { hue: 160, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Sea Glass':      { hue: 175, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Cyan Frost':     { hue: 180, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Steel Blue':     { hue: 207, saturation: 44, brightness: 49, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Azure Storm':    { hue: 210, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Cobalt Drift':   { hue: 225, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Cerulean Surge': { hue: 240, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Indigo Night':   { hue: 260, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Midnight Iris':  { hue: 270, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Royal Violet':   { hue: 280, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Neon Magenta':   { hue: 300, saturation: 90, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Hot Pink':       { hue: 320, saturation: 80, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Fuchsia Bloom':  { hue: 330, saturation: 85, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Rose Storm':     { hue: 340, saturation: 75, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Coral Blade':    { hue: 350, saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+    'Crimson Dawn':   { hue: 355, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }
+  });
+
+  // Locked theme defaults (single source of truth) and derived keys
+  const LockedThemeDefaults = Object.freeze({
+    '--ui-fg': 'rgba(220,220,220,1)',
+    '--ui-opacity-mult': '2.125',
+    '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'
+  });
+  const LockedThemeVars = Object.freeze(Object.keys(LockedThemeDefaults));
+  const LockedThemeVarsSet = new Set(LockedThemeVars);
+
+  function applyThemeVars(vars, allowLocked = false) {
     if (!vars) return;
     for (const [k, v] of Object.entries(vars)) {
+      // Do not allow themes to override locked variables unless explicitly allowed
+      if (!allowLocked && LockedThemeVarsSet.has(k)) continue;
       try { root.style.setProperty(k, v); } catch (_) {}
     }
   }
@@ -80,26 +129,9 @@
   const state = { active: 'glassBlue' };
 
   // Apply default theme immediately
+  // First ensure locked variable defaults are applied
+  applyThemeVars(LockedThemeDefaults, true);
   applyTheme('glassBlue');
-
-  // Apply persisted UI opacity multiplier early, if present (clamped to current ceiling)
-  try {
-    const MMAX = 2.5;
-    const v = parseFloat(localStorage.getItem('ui_opacity_mult'));
-    if (Number.isFinite(v) && v > 0) {
-      const clamped = Math.min(MMAX, Math.max(0, v));
-      root.style.setProperty('--ui-opacity-mult', String(clamped));
-      if (clamped !== v) {
-        try { localStorage.setItem('ui_opacity_mult', String(clamped)); } catch (_) {}
-      }
-      // TEMP DEBUG: toggle to false to disable
-      const OPDBG = true;
-      if (OPDBG) {
-        try {
-          const css = getComputedStyle(root).getPropertyValue('--ui-opacity-mult').trim();
-          const raw = localStorage.getItem('ui_opacity_mult');
-          console.debug(`[opacity] app-load css=${css} rawLS=${raw} clamped=${clamped}`);
-        } catch (_) {}
 
   // Inject alternating row styles for list containers used by lobby panels
   try {
@@ -116,15 +148,6 @@
       style3.type = 'text/css';
       style3.textContent = css3;
       document.head.appendChild(style3);
-    }
-  } catch (_) {}
-      }
-    } else {
-      // No stored value: set and persist default (85% of 2.5 => 2.125) to avoid later jumps
-      const def = 2.125;
-      try { root.style.setProperty('--ui-opacity-mult', String(def)); } catch (_) {}
-      try { localStorage.setItem('ui_opacity_mult', String(def)); } catch (_) {}
-      try { console.debug(`[opacity] app-load default applied def=${def}`); } catch (_) {}
     }
   } catch (_) {}
 
@@ -501,31 +524,15 @@
       registerTheme,
       applyDynamicTheme,
       themes,
+      // Expose theme presets for Settings UI consumption
+      getPresets: () => themePresets,
+      getPresetNames: () => Object.keys(themePresets),
+      presets: themePresets,
       get active() { return state.active; }
     };
   } catch (_) {}
 })();
 
-// --- ensureThemeSupport (moved from main.js) ---
-export function ensureThemeSupport() {
-  if (document.getElementById('theme-style')) return;
-  const st = document.createElement('style');
-  st.id = 'theme-style';
-  st.textContent = `:root{
-    --ui-opacity-mult: 2.125;
-    --ui-font-scale: 1;
-    --ui-hue: 210;
-    --ui-intensity: 60;
-  }
-  html { font-size: calc(16px * var(--ui-font-scale, 1)); }
-  body, button, input, select, textarea {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  }`;
-  document.head.appendChild(st);
-  
-  // Set initial theme
-  window.setTheme = function(theme) {
-    // Theme switching is now handled by the theme system
-    console.log('Theme switching is now handled by the theme system');
-  };
-}
+// --- Theme bootstrap notes ---
+// All required CSS variables are initialized by initUITheme() on module import.
+// No fallback function is used; '--ui-fg' is centralized and immutable across themes.
