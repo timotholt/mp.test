@@ -6,6 +6,7 @@ import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.
 import { getQuip } from '../core/ui/quip.js';
 import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './settings/tabs/accountTab.js';
 import { renderProfileTab } from './settings/tabs/profileTab.js';
+import { renderDisplayTab } from './settings/tabs/displayTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -545,64 +546,13 @@ function renderSettingsContent(panel) {
     gsRow.appendChild(gsLbl); gsRow.appendChild(gsRng); gsRow.appendChild(gsVal); content.appendChild(gsRow);
 
   } else if (tab === 'Display') {
-    // Display tab: font size in pixels with Reset
-    const sec = makeSection('Display', 'Legibility and scale.');
-    try {
-      const hdr = sec.firstChild; // title div
-      if (hdr) {
-        hdr.style.display = 'flex';
-        hdr.style.alignItems = 'center';
-        hdr.style.justifyContent = 'space-between';
-        const resetBtn = document.createElement('button');
-        resetBtn.textContent = 'Reset';
-        resetBtn.style.background = 'transparent';
-        resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-        resetBtn.style.borderRadius = '10px';
-        resetBtn.style.color = 'var(--ui-fg, #eee)';
-        resetBtn.style.padding = '4px 10px';
-        resetBtn.style.cursor = 'pointer';
-        const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-        const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
-        resetBtn.addEventListener('mouseenter', onHover);
-        resetBtn.addEventListener('mouseleave', onLeave);
-        resetBtn.addEventListener('focus', onHover);
-        resetBtn.addEventListener('blur', onLeave);
-        resetBtn.onclick = () => {
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1 }); } catch (_) {}
-          try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-          try { fsRng.value = '100'; fsVal.textContent = '16px'; fsRng.title = '16px'; } catch (_) {}
-        };
-        hdr.appendChild(resetBtn);
-      }
-    } catch (_) {}
-    content.appendChild(sec);
-
-    // Font Size slider (root rem scale) shown in pixels
-    const fsRow = document.createElement('div');
-    fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
-    const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
-    const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale';
-    const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-val';
-    try {
-      let scale = parseFloat(localStorage.getItem('ui_font_scale'));
-      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-      const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
-      fsRng.value = String(p);
-      const px = Math.round(16 * (p / 100));
-      fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
-    } catch (_) {}
-    fsRng.oninput = () => {
-      const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
-      if (String(p) !== fsRng.value) fsRng.value = String(p);
-      const scale = p / 100;
-      const px = Math.round(16 * scale);
-      fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
-      try { console.debug(`[display] fontScale(panel/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
-      try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
-      try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
-    };
-    fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
-    content.appendChild(fsRow);
+    renderDisplayTab({
+      container: content,
+      makeSection,
+      headerTitle: 'Display',
+      headerDesc: 'Legibility and scale.',
+      variant: 'panel'
+    });
   } else if (tab === 'Sound') {
     content.appendChild(makeSection('Sound'));
     // Space between section title and knobs (increase spacing to 1rem)
@@ -1608,64 +1558,13 @@ function presentSettingsOverlay() {
 
 
       } else if (tab === 'Display') {
-        // Display tab (Overlay): font size in pixels with Reset
-        const sec = makeSection('Display', 'Legibility and scale.');
-        try {
-          const hdr = sec.firstChild; // title div
-          if (hdr) {
-            hdr.style.display = 'flex';
-            hdr.style.alignItems = 'center';
-            hdr.style.justifyContent = 'space-between';
-            const resetBtn = document.createElement('button');
-            resetBtn.textContent = 'Reset';
-            resetBtn.style.background = 'transparent';
-            resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-            resetBtn.style.borderRadius = '10px';
-            resetBtn.style.color = 'var(--ui-fg, #eee)';
-            resetBtn.style.padding = '4px 10px';
-            resetBtn.style.cursor = 'pointer';
-            const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-            const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
-            resetBtn.addEventListener('mouseenter', onHover);
-            resetBtn.addEventListener('mouseleave', onLeave);
-            resetBtn.addEventListener('focus', onHover);
-            resetBtn.addEventListener('blur', onLeave);
-            resetBtn.onclick = () => {
-              try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1 }); } catch (_) {}
-              try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-              try { fsRng.value = '100'; fsVal.textContent = '16px'; fsRng.title = '16px'; } catch (_) {}
-            };
-            hdr.appendChild(resetBtn);
-          }
-        } catch (_) {}
-        contentWrap.appendChild(sec);
-
-        // Font Size slider (root rem scale) shown in pixels
-        const fsRow = document.createElement('div');
-        fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
-        const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
-        const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = 'settings-ui-fontscale-ovl';
-        const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = 'settings-ui-fontscale-ovl-val';
-        try {
-          let scale = parseFloat(localStorage.getItem('ui_font_scale'));
-          if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-          const p = Math.max(80, Math.min(120, Math.round(scale * 100)));
-          fsRng.value = String(p);
-          const px = Math.round(16 * (p / 100));
-          fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
-        } catch (_) {}
-        fsRng.oninput = () => {
-          const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));
-          if (String(p) !== fsRng.value) fsRng.value = String(p);
-          const scale = p / 100;
-          const px = Math.round(16 * scale);
-          fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
-          try { console.debug(`[display] fontScale(overlay/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
-          try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
-        };
-        fsRow.appendChild(fsLbl); fsRow.appendChild(fsRng); fsRow.appendChild(fsVal);
-        contentWrap.appendChild(fsRow);
+        renderDisplayTab({
+          container: contentWrap,
+          makeSection,
+          headerTitle: 'Display',
+          headerDesc: 'Legibility and scale.',
+          variant: 'overlay'
+        });
       } else if (tab === 'Sound')  {
         // Sound Mixer with random tagline
         try {
