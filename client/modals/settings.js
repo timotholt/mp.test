@@ -4,6 +4,7 @@ import * as LS from '../core/localStorage.js';
 import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
 import { getQuip } from '../core/ui/quip.js';
+import { renderAccountTab } from './settings/tabs/accountTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -292,12 +293,16 @@ function renderSettingsContent(panel) {
   content.innerHTML = '';
   const tab = __settingsState.activeTab;
   if (tab === 'Account') {
-    content.appendChild(makeSection('Account', 'Manage your account, authentication and linked providers.'));
-    if (!__settingsState.accountEnabled) {
-      content.appendChild(makeNote('Please login to a game server first to change your account settings.'));
-    } else {
-      content.appendChild(makeNote('You are logged in.'));
-    }
+    renderAccountTab({
+      container: content,
+      makeSection,
+      makeNote,
+      headerTitle: 'Account',
+      headerDesc: 'Manage your account, authentication and linked providers.',
+      loggedIn: !!__settingsState.accountEnabled,
+      loginMsg: 'Please login to a game server first to change your account settings.',
+      loggedInMsg: 'You are logged in.'
+    });
   } else if (tab === 'Profile') {
     content.appendChild(makeSection('Profile'));
     if (!__settingsState.accountEnabled) {
@@ -1102,12 +1107,16 @@ function presentSettingsOverlay() {
       contentWrap.innerHTML = '';
       const tab = activeTab;
       if (tab === 'Account') {
-        contentWrap.appendChild(makeSection('Account', 'Manage your account, authentication and linked providers.'));
-        if (!loggedIn) {
-          contentWrap.appendChild(makeNote('Login required. Sign in to manage your account.'));
-        } else {
-          contentWrap.appendChild(makeNote('You are logged in.')); // Placeholder until account UI is added
-        }
+        renderAccountTab({
+          container: contentWrap,
+          makeSection,
+          makeNote,
+          headerTitle: 'Account',
+          headerDesc: 'Manage your account, authentication and linked providers.',
+          loggedIn: !!loggedIn,
+          loginMsg: 'Login required. Sign in to manage your account.',
+          loggedInMsg: 'You are logged in.'
+        });
       } else if (tab === 'Profile') {
         contentWrap.appendChild(makeSection('Profile'));
         if (!loggedIn) {
