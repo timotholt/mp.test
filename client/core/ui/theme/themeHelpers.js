@@ -1,5 +1,46 @@
 // Theme helper utilities extracted from themeManager.js
 // These helpers are pure DOM/CSS utilities and do not depend on the UITheme closure.
+// Prefer OKLCH for perceptual uniformity when supported; fall back to HSL.
+function supportsOKLCH() {
+  try { return CSS && CSS.supports && CSS.supports('color', 'oklch(62.8% 0.26 264)'); } catch (_) { return false; }
+}
+const HAS_OKLCH = supportsOKLCH();
+
+// Map (h, s, l, alpha) to a CSS color string. For OKLCH we use l as L% and map s(0..100) to a conservative
+// chroma range (0..0.33) to avoid out-of-gamut spikes. Alpha is numeric (0..1).
+export function colorFromHSLC({ h, s, l, alpha = 1 }) {
+  try {
+    const H = Number(h || 0);
+    const S = Math.max(0, Math.min(100, Number(s)));
+    const L = Math.max(0, Math.min(100, Number(l)));
+    const A = Math.max(0, Math.min(1, Number(alpha)));
+    if (HAS_OKLCH) {
+      const C = (S / 100) * 0.33; // safe chroma mapping
+      return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${A})`;
+    }
+    const hslBase = `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}%)`;
+    if (A >= 1) return hslBase;
+    return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${A})`;
+  } catch (_) {
+    return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}%)`;
+  }
+}
+
+// Variant that allows a CSS alpha expression (e.g., calc(...) or var(...)).
+export function colorFromHSLCAlphaCss({ h, s, l, alphaCss }) {
+  try {
+    const H = Number(h || 0);
+    const S = Math.max(0, Math.min(100, Number(s)));
+    const L = Math.max(0, Math.min(100, Number(l)));
+    if (HAS_OKLCH) {
+      const C = (S / 100) * 0.33;
+      return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${alphaCss})`;
+    }
+    return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${alphaCss})`;
+  } catch (_) {
+    return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}% / ${alphaCss || 1})`;
+  }
+}
 
 // Apply alternating row styles for list containers (Games/Players panels)
 export function applyListRowStyle(options = {}) {

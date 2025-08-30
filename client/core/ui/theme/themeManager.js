@@ -3,7 +3,7 @@
 // at import time and exposes a lightweight window.UITheme API. '--ui-fg' is fixed globally
 // and not theme-overridable to ensure consistent UI foreground color.
 
-import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle } from './themeHelpers.js';
+import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHSLC, colorFromHSLCAlphaCss } from './themeHelpers.js';
 
 // --- UITheme (moved from core/ui/theme.js) ---
 (function initUITheme() {
@@ -111,47 +111,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle } from './th
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
   function toFixed(n, d = 3) { try { return String(Number(n).toFixed(d)); } catch (_) { return String(n); } }
 
-  // Prefer OKLCH for perceptual uniformity when supported; fall back to HSL.
-  function supportsOKLCH() {
-    try { return CSS && CSS.supports && CSS.supports('color', 'oklch(62.8% 0.26 264)'); } catch (_) { return false; }
-  }
-  const HAS_OKLCH = supportsOKLCH();
-
-  // Map (h, s, l, alpha) to a CSS color string. For OKLCH we use l as L% and map s(0..100) to a conservative
-  // chroma range (0..0.33) to avoid out-of-gamut spikes. Alpha is numeric (0..1).
-  function colorFromHSLC({ h, s, l, alpha = 1 }) {
-    try {
-      const H = Number(h || 0);
-      const S = Math.max(0, Math.min(100, Number(s)));
-      const L = Math.max(0, Math.min(100, Number(l)));
-      const A = Math.max(0, Math.min(1, Number(alpha)));
-      if (HAS_OKLCH) {
-        const C = (S / 100) * 0.33; // safe chroma mapping
-        return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${A})`;
-      }
-      const hslBase = `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}%)`;
-      if (A >= 1) return hslBase;
-      return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${A})`;
-    } catch (_) {
-      return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}%)`;
-    }
-  }
-
-  // Variant that allows a CSS alpha expression (e.g., calc(...) or var(...)).
-  function colorFromHSLCAlphaCss({ h, s, l, alphaCss }) {
-    try {
-      const H = Number(h || 0);
-      const S = Math.max(0, Math.min(100, Number(s)));
-      const L = Math.max(0, Math.min(100, Number(l)));
-      if (HAS_OKLCH) {
-        const C = (S / 100) * 0.33;
-        return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${alphaCss})`;
-      }
-      return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${alphaCss})`;
-    } catch (_) {
-      return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}% / ${alphaCss || 1})`;
-    }
-  }
+  // color helpers are imported from themeHelpers.js
 
   function applyDynamicTheme(params = {}) {
     try {
