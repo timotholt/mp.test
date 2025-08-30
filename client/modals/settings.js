@@ -355,6 +355,8 @@ function renderSettingsContent(panel) {
           const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 15) / 100) * MMAX; // reversed semantics: 15% clear
           // Reset theme selection to preset
           try { LS.setItem('theme', 'steelBlue'); } catch (_) {}
+          // Ensure any explicit saturation override is cleared so preset-derived saturation applies immediately
+          try { localStorage.removeItem('ui_saturation'); } catch (_) {}
           // Apply preset directly (ignores LS overrides for H/S/B and related knobs)
           try { window.UITheme && window.UITheme.applyTheme('Steel Blue'); } catch (_) {}
           // Reset opacity via dynamic param (presets don't carry opacity multiplier)
@@ -1329,6 +1331,8 @@ function presentSettingsOverlay() {
 
             // Apply and persist via UITheme
             try {
+              // Clear any explicit saturation override BEFORE applying the preset so derived saturation takes effect on first reset
+              try { localStorage.removeItem('ui_saturation'); } catch (_) {}
               window.UITheme && window.UITheme.applyDynamicTheme({
                 hue: p.hue,
                 intensity: p.intensity,
@@ -1379,8 +1383,6 @@ function presentSettingsOverlay() {
               // store opacity multiplier in both LS wrappers for compatibility
               try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
               localStorage.setItem('ui_opacity_mult', String(mult));
-              // Clear any prior explicit overrides so preset uses intensity-based mapping cleanly
-              try { localStorage.removeItem('ui_saturation'); } catch (_) {}
             } catch (_) {}
 
             try { LS.setItem('ui_preset', name); } catch (_) {}
