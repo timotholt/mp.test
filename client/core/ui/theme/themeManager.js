@@ -198,18 +198,24 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       }
 
       // Lightness: derive purely from intensity for consistent theming
-      // Widened range and slope for more noticeable effect (still non-inverted)
-      light = clamp(45 + (intensity - 60) * 0.38, 25, 80); // ~27%..76%
+      // Widened range and slope; at zero intensity force true black
+      if (intensity <= 0) {
+        light = 0;
+      } else {
+        light = clamp(45 + (intensity - 60) * 0.38, 0, 80);
+      }
 
       // Persist explicit overrides when provided (after values are computed)
       if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
-      const borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
+      let borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
       // Much stronger glow: scale towards 1.0 quickly as glowStrength increases
       // 0% -> ~0.6x base, 100% -> ~3.0x (clamped to 1)
-      const glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4), 0, 1);
+      let glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4), 0, 1);
+      // At zero intensity, suppress border and glow to allow true-black surfaces
+      if (intensity <= 0) { borderAlphaEff = 0; glowAlphaEff = 0; }
 
       // Tooltip surface uses slightly different (more transparent) mapping
       const tipTopA0 = clamp(0.32 + intensity * 0.001, 0.30, 0.45);
@@ -245,8 +251,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.98 });
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
-      const lt0 = Math.max(18, light - 30);
-      const lb0 = Math.max(14, light - 34);
+      const lt0 = (intensity <= 0) ? 0 : Math.max(18, light - 30);
+      const lb0 = (intensity <= 0) ? 0 : Math.max(14, light - 34);
       const lmid = (lt0 + lb0) / 2;
       const f = gradient / 100; // 0..1
       const lt = (1 - f) * lmid + f * lt0;
@@ -261,8 +267,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       const tMidA = (tipTopA0 + tipBotA0) / 2;
       const tTopA = clamp((1 - f) * tMidA + f * 0.50, 0, 1);
       const tBotA = clamp((1 - f) * tMidA + f * 0.00, 0, 1);
-      const tipTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: Math.max(18, light - 30), alphaCss: `calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1))` });
-      const tipBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: Math.max(14, light - 34), alphaCss: `calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1))` });
+      const tipTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: (intensity <= 0 ? 0 : Math.max(18, light - 30)), alphaCss: `calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1))` });
+      const tipBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: (intensity <= 0 ? 0 : Math.max(14, light - 34)), alphaCss: `calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1))` });
 
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);
@@ -274,7 +280,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {
         const ovlSat = clamp(Math.min(90, sat + 10), 0, 100);
-        const ovlLight = clamp(Math.max(6, light - 40), 0, 100);
+        const ovlLight = (intensity <= 0) ? 0 : clamp(Math.max(6, light - 40), 0, 100);
         const ovl = colorFromHSLCAlphaCss({ h: hue, s: ovlSat, l: ovlLight, alphaCss: 'var(--ui-overlay-darkness, 0.5)' });
         root.style.setProperty('--ui-overlay-bg', ovl);
       } catch (_) {}
