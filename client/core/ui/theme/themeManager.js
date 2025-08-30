@@ -82,6 +82,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
           hue: preset.hue,
           saturation: preset.saturation,
           brightness: preset.brightness,
+          // Ensure presets apply with a known intensity to avoid drift from stale persisted values
+          intensity: 60,
           borderStrength: preset.border,
           glowStrength: preset.glow,
           gradient: preset.gradient,
