@@ -5,6 +5,7 @@ import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInput
 import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
 import { getQuip } from '../core/ui/quip.js';
 import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './settings/tabs/accountTab.js';
+import { renderProfileTab } from './settings/tabs/profileTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -291,12 +292,19 @@ function renderSettingsContent(panel) {
       loggedInMsg: 'You are logged in.'
     });
   } else if (tab === 'Profile') {
-    content.appendChild(makeSection('Profile'));
-    if (!__settingsState.accountEnabled) {
-      content.appendChild(makeNote('Please login to a game server first to change your profile settings.'));
-    } else {
-      content.appendChild(makeRow('Display Name', makeInput('text', LS.getItem('name', '') || '')));
-    }
+    renderProfileTab({
+      container: content,
+      makeSection,
+      makeNote,
+      makeRow,
+      makeInput,
+      LS,
+      headerTitle: 'Profile',
+      headerDesc: '',
+      loggedIn: !!__settingsState.accountEnabled,
+      variant: 'panel',
+      panelLoginMsg: 'Please login to a game server first to change your profile settings.'
+    });
   } else if (tab === 'Theme') {
     // Theme tab (Panel): rename header to "Overall Color" with a fun random tagline
     const colorQuipsPanel = [
@@ -1105,120 +1113,25 @@ function presentSettingsOverlay() {
           loggedInMsg: 'You are logged in.'
         });
       } else if (tab === 'Profile') {
-        contentWrap.appendChild(makeSection('Profile'));
-        if (!loggedIn) {
-          contentWrap.appendChild(makeNote('Login required. Sign in to edit your profile.'));
-        } else {
-          // Nickname row with right-side dice button inside the input (like login password eye)
-          const nickRow = createInputRow({ dataName: 'nickname' });
-          const nickLabel = document.createElement('label'); nickLabel.textContent = 'Nickname:'; nickLabel.style.minWidth = '100px';
-          const diceSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/></svg>';
-
-          const nickWrap = document.createElement('div');
-          nickWrap.style.position = 'relative';
-          nickWrap.style.display = 'flex';
-          nickWrap.style.alignItems = 'center';
-          nickWrap.style.flex = '1';
-
-          const nameInput = document.createElement('input');
-          nameInput.type = 'text';
-          nameInput.placeholder = 'Pick a unique nickname';
-          nameInput.value = nicknameVal || '';
-          nameInput.style.display = 'inline-block';
-          nameInput.style.height = '40px';
-          nameInput.style.lineHeight = '40px';
-          nameInput.style.background = 'transparent';
-          nameInput.style.outline = 'none';
-          nameInput.style.color = 'var(--sf-tip-fg, #fff)';
-          nameInput.style.border = '0';
-          nameInput.style.borderRadius = '8px';
-          nameInput.style.padding = `0 calc(${UI.iconSize}px + ${UI.leftGap}) 0 10px`;
-          nameInput.style.boxShadow = UI.insetShadow;
-          nameInput.style.flex = '1';
-          nameInput.style.width = '100%';
-          nameInput.oninput = () => { nicknameVal = String(nameInput.value || ''); setDirty(true); };
-          try { nameInput.id = 'settings-nickname'; nickLabel.htmlFor = 'settings-nickname'; } catch (_) {}
-
-          const diceBtn = document.createElement('button');
-          diceBtn.type = 'button';
-          diceBtn.title = 'Roll a random nickname';
-          diceBtn.style.position = 'absolute';
-          diceBtn.style.right = '0';
-          diceBtn.style.top = '50%';
-          diceBtn.style.transform = 'translateY(-50%)';
-          diceBtn.style.width = `${UI.iconSize}px`;
-          diceBtn.style.height = `${UI.iconSize}px`;
-          diceBtn.style.display = 'inline-flex';
-          diceBtn.style.alignItems = 'center';
-          diceBtn.style.justifyContent = 'center';
-          diceBtn.style.background = 'transparent';
-          diceBtn.style.border = UI.border;
-          diceBtn.style.borderRadius = '8px';
-          diceBtn.style.boxSizing = 'border-box';
-          diceBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
-          diceBtn.style.cursor = 'pointer';
-          diceBtn.innerHTML = diceSvg;
-          diceBtn.onclick = async () => {
-            try {
-              const base = ['Vox', 'Hex', 'Gloom', 'Iron', 'Vermilion', 'Ash', 'Rune', 'Blight', 'Grim', 'Cipher'];
-              const suf = ['fang', 'shade', 'mark', 'wrath', 'spire', 'veil', 'shard', 'brand', 'wraith', 'mourn'];
-              const nick = base[Math.floor(Math.random()*base.length)] + suf[Math.floor(Math.random()*suf.length)] + Math.floor(Math.random()*90+10);
-              nameInput.value = nick; nicknameVal = nick; setDirty(true);
-            } catch (_) {}
-          };
-
-          nickWrap.appendChild(nameInput);
-          nickWrap.appendChild(diceBtn);
-          nickRow.appendChild(nickLabel);
-          nickRow.appendChild(nickWrap);
-          contentWrap.appendChild(nickRow);
-          try { wireFocusHighlight(nameInput, nickRow); } catch (_) {}
-
-          // Bio (multiline, fixed container height so the card size doesn’t jump)
-          const bioRow = document.createElement('div');
-          bioRow.style.display = 'flex'; bioRow.style.flexDirection = 'column'; bioRow.style.gap = '6px'; bioRow.style.marginBottom = '8px';
-          const bioLbl = document.createElement('label'); bioLbl.textContent = 'Bio:';
-          const bioWrap = document.createElement('div');
-          bioWrap.style.position = 'relative';
-          bioWrap.style.display = 'flex';
-          bioWrap.style.flex = '1';
-          try { bioWrap.style.border = UI.border; bioWrap.style.borderRadius = '8px'; bioWrap.style.boxShadow = UI.insetShadow; } catch (_) {}
-          const bio = document.createElement('textarea');
-          bio.placeholder = 'Whisper your legend into the static...';
-          bio.value = bioVal || '';
-          bio.rows = 5; // fixed visual height
-          bio.style.resize = 'vertical';
-          bio.style.minHeight = '120px'; bio.style.maxHeight = '200px';
-          bio.style.border = '0'; bio.style.outline = 'none';
-          bio.style.padding = '8px 10px'; bio.style.color = '#eaf6ff';
-          bio.style.background = 'transparent'; bio.style.width = '100%';
-          bio.oninput = () => { bioVal = String(bio.value || ''); setDirty(true); };
-          try { bio.id = 'settings-bio'; bioLbl.htmlFor = 'settings-bio'; } catch (_) {}
-          bioWrap.appendChild(bio);
-          bioRow.appendChild(bioLbl); bioRow.appendChild(bioWrap);
-          contentWrap.appendChild(bioRow);
-          try { wireFocusHighlight(bio, bioWrap); } catch (_) {}
-
-          // Save/Cancel actions
-          const actions = document.createElement('div');
-          actions.style.display = 'flex'; actions.style.gap = '10px'; actions.style.justifyContent = 'flex-end';
-          const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save';
-          const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel';
-          [saveBtn, cancelBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '8px 12px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))'; b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)'; });
-          saveBtn.onclick = async () => {
-            // TODO: wire to server profile update once nickname APIs exist
-            // For now, store locally to avoid data loss between tab switches
-            try { LS.setItem('draft:nickname', nicknameVal || ''); LS.setItem('draft:bio', bioVal || ''); } catch (_) {}
-            setDirty(false);
-          };
-          cancelBtn.onclick = () => {
-            // Revert fields from last saved draft
-            try { nicknameVal = LS.getItem('draft:nickname', '') || ''; bioVal = LS.getItem('draft:bio', '') || ''; } catch (_) {}
-            render(); setDirty(false);
-          };
-          actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
-          contentWrap.appendChild(actions);
-        }
+        renderProfileTab({
+          container: contentWrap,
+          makeSection,
+          makeNote,
+          createInputRow,
+          wireFocusHighlight,
+          UI,
+          LS,
+          headerTitle: 'Profile',
+          headerDesc: '',
+          loggedIn: !!loggedIn,
+          variant: 'overlay',
+          getNickname: () => nicknameVal,
+          setNickname: (v) => { nicknameVal = String(v || ''); },
+          getBio: () => bioVal,
+          setBio: (v) => { bioVal = String(v || ''); },
+          setDirty: (v) => setDirty(!!v),
+          reRender: () => render()
+        });
       } else if (tab === 'Theme') {
         // Theme tab (Overlay): rename header to "Overall Color" with a fun random tagline
         const colorQuips = [
