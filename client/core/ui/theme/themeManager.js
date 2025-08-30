@@ -493,7 +493,15 @@
     if (Number.isFinite(gradient)) params.gradient = gradient;
     if (Number.isFinite(satOverride)) params.saturation = satOverride;
     if (Number.isFinite(briOverride)) params.brightness = briOverride;
-    applyDynamicTheme(params);
+    // If nothing is persisted yet, start with the Steel Blue preset so first boot matches Reset
+    const hasPersisted =
+      Number.isFinite(hue) || Number.isFinite(intensity) || Number.isFinite(fontScale) ||
+      Number.isFinite(gradient) || Number.isFinite(satOverride) || Number.isFinite(briOverride);
+    if (!hasPersisted) {
+      applyTheme('Steel Blue');
+    } else {
+      applyDynamicTheme(params);
+    }
   } catch (_) {}
 
   // Expose lightweight API for future theme switching
