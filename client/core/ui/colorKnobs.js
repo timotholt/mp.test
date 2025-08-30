@@ -161,13 +161,16 @@ export function createSaturationKnob(opts = {}) {
     },
     titleFormatter: tfPct('Saturation'),
     onInput: (v) => {
-      // Persist for future theme integration; theme currently derives sat from intensity
-      try { getRoot().style.setProperty('--ui-saturation', String(Math.round(v))); } catch (_) {}
+      // Reflect on CSS var and apply to theme as explicit saturation override (0..100)
+      const vv = Math.round(v);
+      try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
-      // No direct applyDynamicTheme param yet; store as CSS var for later integration
-      try { getRoot().style.setProperty('--ui-saturation', String(Math.round(v))); } catch (_) {}
+      const vv = Math.round(v);
+      try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
@@ -227,12 +230,16 @@ export function createBrightnessKnob(opts = {}) {
     },
     titleFormatter: tfPct('Brightness'),
     onInput: (v) => {
-      // Expose as CSS var for now; theme can adopt later (or caller can map to intensity)
-      try { getRoot().style.setProperty('--ui-brightness', String(Math.round(v))); } catch (_) {}
+      // CSS var for potential readers; apply as explicit brightness (lightness) override for primary UI colors
+      const vv = Math.round(v);
+      try { getRoot().style.setProperty('--ui-brightness', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ brightness: vv }); } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
-      try { getRoot().style.setProperty('--ui-brightness', String(Math.round(v))); } catch (_) {}
+      const vv = Math.round(v);
+      try { getRoot().style.setProperty('--ui-brightness', String(vv)); } catch (_) {}
+      try { window.UITheme?.applyDynamicTheme?.({ brightness: vv }); } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,

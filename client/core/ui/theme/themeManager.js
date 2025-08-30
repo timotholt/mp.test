@@ -225,6 +225,48 @@
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
   function toFixed(n, d = 3) { try { return String(Number(n).toFixed(d)); } catch (_) { return String(n); } }
 
+  // Prefer OKLCH for perceptual uniformity when supported; fall back to HSL.
+  function supportsOKLCH() {
+    try { return CSS && CSS.supports && CSS.supports('color', 'oklch(62.8% 0.26 264)'); } catch (_) { return false; }
+  }
+  const HAS_OKLCH = supportsOKLCH();
+
+  // Map (h, s, l, alpha) to a CSS color string. For OKLCH we use l as L% and map s(0..100) to a conservative
+  // chroma range (0..0.33) to avoid out-of-gamut spikes. Alpha is numeric (0..1).
+  function colorFromHSLC({ h, s, l, alpha = 1 }) {
+    try {
+      const H = Number(h || 0);
+      const S = Math.max(0, Math.min(100, Number(s)));
+      const L = Math.max(0, Math.min(100, Number(l)));
+      const A = Math.max(0, Math.min(1, Number(alpha)));
+      if (HAS_OKLCH) {
+        const C = (S / 100) * 0.33; // safe chroma mapping
+        return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${A})`;
+      }
+      const hslBase = `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}%)`;
+      if (A >= 1) return hslBase;
+      return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${A})`;
+    } catch (_) {
+      return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}%)`;
+    }
+  }
+
+  // Variant that allows a CSS alpha expression (e.g., calc(...) or var(...)).
+  function colorFromHSLCAlphaCss({ h, s, l, alphaCss }) {
+    try {
+      const H = Number(h || 0);
+      const S = Math.max(0, Math.min(100, Number(s)));
+      const L = Math.max(0, Math.min(100, Number(l)));
+      if (HAS_OKLCH) {
+        const C = (S / 100) * 0.33;
+        return `oklch(${L}% ${C.toFixed(4)} ${H.toFixed(2)} / ${alphaCss})`;
+      }
+      return `hsl(${Math.round(H)} ${Math.round(S)}% ${Math.round(L)}% / ${alphaCss})`;
+    } catch (_) {
+      return `hsl(${Math.round(h || 0)} ${Math.round(s || 0)}% ${Math.round(l || 0)}% / ${alphaCss || 1})`;
+    }
+  }
+
   function applyDynamicTheme(params = {}) {
     try {
       // Read existing or provided values
@@ -286,6 +328,9 @@
       try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
       try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
       try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
+      // Persist explicit overrides when provided
+      if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
+      if (params.brightness != null) { try { localStorage.setItem('ui_brightness', String(light)); } catch (_) {} }
 
       // Reflect new controls as CSS variables for other components to read if needed
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
@@ -296,8 +341,15 @@
       // Experiment: allow grayscale at the far-left (intensity = 0)
       // Previous mapping had a 35% baseline and a 20% lower clamp, preventing grayscale.
       // New mapping is linear with no baseline so intensity=0 -> sat=0.
-      const sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
-      const light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
+      let sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
+      let light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
+      // Optional explicit overrides: decouple saturation and brightness from intensity
+      if (params.saturation != null) {
+        sat = clamp(Number(params.saturation), 0, 100);
+      }
+      if (params.brightness != null) {
+        light = clamp(Number(params.brightness), 0, 100);
+      }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
@@ -318,17 +370,19 @@
       // Drive root font-size from fontScale (rem-based typography enabler)
       try { root.style.fontSize = `calc(16px * var(--ui-font-scale, 1))`; } catch (_) {}
 
-      // Derive common tokens from hue/intensity (HSL)
-      const accent = `hsl(${hue} ${sat}% ${light}%)`;
+      // Derive common tokens from hue/intensity (OKLCH when available, else HSL)
+      const accent = colorFromHSLC({ h: hue, s: sat, l: light, alpha: 1 });
       // Boost border contrast at high strength by nudging lightness a bit
       const borderLightBase = Math.max(30, light - 5);
       const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.30, 20, 90);
-      const border = `hsl(${hue} ${sat}% ${borderLight}% / ${borderAlphaEff})`;
+      const border = colorFromHSLC({ h: hue, s: sat, l: borderLight, alpha: borderAlphaEff });
       // Scale outer/inset glow radius with strength for more dramatic effect at 100%
       const glowR = Math.round(18 * (0.8 + glowStrength / 60));
-      const glowOuter = `0 0 ${glowR}px hsl(${hue} ${sat}% ${Math.max(35, light)}% / ${glowAlphaEff}), 0 0 ${Math.round(glowR / 2)}px hsl(${hue} ${sat}% ${Math.min(95, light + 30)}% / ${Math.min(1, glowAlphaEff + 0.25)})`;
-      const glowInset = `inset 0 0 ${glowR}px hsl(${hue} ${Math.min(90, sat + 20)}% ${Math.max(25, light - 10)}% / ${Math.min(0.30, glowAlphaEff + 0.06)})`;
-      const bright = `hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.98)`;
+      const cGlow1 = colorFromHSLC({ h: hue, s: sat, l: Math.max(35, light), alpha: glowAlphaEff });
+      const cGlow2 = colorFromHSLC({ h: hue, s: sat, l: Math.min(95, light + 30), alpha: Math.min(1, glowAlphaEff + 0.25) });
+      const glowOuter = `0 0 ${glowR}px ${cGlow1}, 0 0 ${Math.round(glowR / 2)}px ${cGlow2}`;
+      const glowInset = `inset 0 0 ${glowR}px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 20), l: Math.max(25, light - 10), alpha: Math.min(0.30, glowAlphaEff + 0.06) })}`;
+      const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.98 });
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
       const lt0 = Math.max(18, light - 30);
@@ -340,15 +394,15 @@
       const sAvgA = (0.41 + 0.40) / 2; // ~0.405
       const sTopA = clamp((1 - f) * sAvgA + f * 0.60, 0, 1);
       const sBotA = clamp((1 - f) * sAvgA + f * 0.00, 0, 1);
-      const surfTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${lt}% / calc(${toFixed(sTopA, 3)} * var(--ui-opacity-mult, 1)))`;
-      const surfBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${lb}% / calc(${toFixed(sBotA, 3)} * var(--ui-opacity-mult, 1)))`;
+      const surfTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: lt, alphaCss: `calc(${toFixed(sTopA, 3)} * var(--ui-opacity-mult, 1))` });
+      const surfBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: lb, alphaCss: `calc(${toFixed(sBotA, 3)} * var(--ui-opacity-mult, 1))` });
 
       // Tooltips (alpha also scaled by --ui-opacity-mult); tie gradient strength to tooltip as well
       const tMidA = (tipTopA0 + tipBotA0) / 2;
       const tTopA = clamp((1 - f) * tMidA + f * 0.50, 0, 1);
       const tBotA = clamp((1 - f) * tMidA + f * 0.00, 0, 1);
-      const tipTop = `hsl(${hue} ${Math.min(90, sat + 5)}% ${Math.max(18, light - 30)}% / calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1)))`;
-      const tipBot = `hsl(${hue} ${Math.min(90, sat + 0)}% ${Math.max(14, light - 34)}% / calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1)))`;
+      const tipTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: Math.max(18, light - 30), alphaCss: `calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1))` });
+      const tipBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: Math.max(14, light - 34), alphaCss: `calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1))` });
 
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);
@@ -361,18 +415,20 @@
       try {
         const ovlSat = clamp(Math.min(90, sat + 10), 0, 100);
         const ovlLight = clamp(Math.max(6, light - 40), 0, 100);
-        const ovl = `hsl(${hue} ${ovlSat}% ${ovlLight}% / var(--ui-overlay-darkness, 0.5))`;
+        const ovl = colorFromHSLCAlphaCss({ h: hue, s: ovlSat, l: ovlLight, alphaCss: 'var(--ui-overlay-darkness, 0.5)' });
         root.style.setProperty('--ui-overlay-bg', ovl);
       } catch (_) {}
       // Scrollbar colors follow current hue
       try {
-        root.style.setProperty('--ui-scrollbar-thumb', `hsl(${hue} ${sat}% ${light}% / 0.45)`);
-        root.style.setProperty('--ui-scrollbar-thumb-hover', `hsl(${hue} ${Math.min(90, sat + 10)}% ${Math.min(95, light + 12)}% / 0.65)`);
+        root.style.setProperty('--ui-scrollbar-thumb', colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.45 }));
+        root.style.setProperty('--ui-scrollbar-thumb-hover', colorFromHSLC({ h: hue, s: Math.min(90, sat + 10), l: Math.min(95, light + 12), alpha: 0.65 }));
       } catch (_) {}
       // Strong glow used by interactive hover/focus (two-layer glow for pop)
       // Strong glow: larger and brighter at high strength (still clamped visually)
       const glowSizeFactor = clamp(0.8 + glowStrength / 40, 0.8, 3.0);
-      const strongGlow = `0 0 ${Math.round(36 * glowSizeFactor)}px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.72, glowAlphaEff + 0.35)}), 0 0 ${Math.round(10 * glowSizeFactor)}px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.98, glowAlphaEff + 0.55)})`;
+      const strongGlowColor1 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.72, glowAlphaEff + 0.35) });
+      const strongGlowColor2 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.98, glowAlphaEff + 0.55) });
+      const strongGlow = `0 0 ${Math.round(36 * glowSizeFactor)}px ${strongGlowColor1}, 0 0 ${Math.round(10 * glowSizeFactor)}px ${strongGlowColor2}`;
       root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
       root.style.setProperty('--ui-surface-bg-bottom', surfBot);
@@ -381,15 +437,15 @@
       root.style.setProperty('--sf-tip-bg-top', tipTop);
       root.style.setProperty('--sf-tip-bg-bottom', tipBot);
       root.style.setProperty('--sf-tip-border', border);
-      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlphaEff})`);
+      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
-      root.style.setProperty('--sf-tip-text-glow', `0 0 9px hsl(${hue} ${Math.min(90, sat + 30)}% ${Math.min(95, light + 35)}% / 0.70)`);
+      root.style.setProperty('--sf-tip-text-glow', `0 0 9px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.70 })}`);
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
-      root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px hsl(${hue} ${sat}% ${light}% / 0.35))`);
+      root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.35 })})`);
       root.style.setProperty('--sf-tip-line-color', border);
-      root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px hsl(${hue} ${sat}% ${light}% / ${glowAlphaEff})`);
-      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px hsl(${hue} ${sat}% ${light}% / ${Math.min(0.85, borderAlphaEff + 0.15)})`);
+      root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
+      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.85, borderAlphaEff + 0.15) })}`);
       // Debug: exit point (verify full execution)
       try {
         const cssHue = getComputedStyle(root).getPropertyValue('--ui-hue').trim();
@@ -407,11 +463,15 @@
     const intensity = parseFloat(localStorage.getItem('ui_intensity')); // 0..100
     const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
     const gradient = parseFloat(localStorage.getItem('ui_gradient')); // 0..100
+    const satOverride = parseFloat(localStorage.getItem('ui_saturation')); // optional 0..100
+    const briOverride = parseFloat(localStorage.getItem('ui_brightness')); // optional 0..100
     const params = {};
     if (Number.isFinite(hue)) params.hue = hue;
     if (Number.isFinite(intensity)) params.intensity = intensity;
     if (Number.isFinite(fontScale)) params.fontScale = fontScale;
     if (Number.isFinite(gradient)) params.gradient = gradient;
+    if (Number.isFinite(satOverride)) params.saturation = satOverride;
+    if (Number.isFinite(briOverride)) params.brightness = briOverride;
     applyDynamicTheme(params);
   } catch (_) {}
 

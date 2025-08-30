@@ -173,3 +173,9 @@ Reload retains values.
 Visual:
 Defaults match previous look.
 Edge values (Saturation 0 and 100; Brightness 0 and 100) remain readable.
+
+new theme colors:
+
+Hue 22, saturation 40% looks like milk chocolate
+Hue 180, saturation 0% looks like stainless steel
+
