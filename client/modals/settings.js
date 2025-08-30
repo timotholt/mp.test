@@ -1313,34 +1313,34 @@ function presentSettingsOverlay() {
         themeTopRow.style.gap = '8px';
         themeTopRow.style.marginBottom = '8px';
 
-        // Preset definitions (hue, saturation, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
+        // Preset definitions (hue, saturation, brightness, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
         const themePresets = {
           // Ordered by Hue around the color wheel
-          'Blood Red':      { hue: 0,   saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Ember Glow':     { hue: 20,  saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Old Photos':     { hue: 40,  saturation: 30, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Amber Forge':    { hue: 50,  saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Golden Dusk':    { hue: 60,  saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Desert Mirage':  { hue: 75,  saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Lime Spark':     { hue: 90,  saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Moss Crown':     { hue: 110, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Verdant Veil':   { hue: 140, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }, // formerly "Emerald"
-          'Teal Tide':      { hue: 160, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Sea Glass':      { hue: 175, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Cyan Frost':     { hue: 180, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Steel Blue':     { hue: 199, saturation: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Azure Storm':    { hue: 210, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Cobalt Drift':   { hue: 225, saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Cerulean Surge': { hue: 240, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Indigo Night':   { hue: 260, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Midnight Iris':  { hue: 270, saturation: 55, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Royal Violet':   { hue: 280, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Neon Magenta':   { hue: 300, saturation: 90, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Hot Pink':       { hue: 320, saturation: 80, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Fuchsia Bloom':  { hue: 330, saturation: 85, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Rose Storm':     { hue: 340, saturation: 75, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Coral Blade':    { hue: 350, saturation: 70, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Crimson Dawn':   { hue: 355, saturation: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }
+          'Blood Red':      { hue: 0,   saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Ember Glow':     { hue: 20,  saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Old Photos':     { hue: 40,  saturation: 30, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Amber Forge':    { hue: 50,  saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Golden Dusk':    { hue: 60,  saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Desert Mirage':  { hue: 75,  saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Lime Spark':     { hue: 90,  saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Moss Crown':     { hue: 110, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Verdant Veil':   { hue: 140, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }, // formerly "Emerald"
+          'Teal Tide':      { hue: 160, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Sea Glass':      { hue: 175, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cyan Frost':     { hue: 180, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Steel Blue':     { hue: 199, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Azure Storm':    { hue: 210, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cobalt Drift':   { hue: 225, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Cerulean Surge': { hue: 240, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Indigo Night':   { hue: 260, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Midnight Iris':  { hue: 270, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Royal Violet':   { hue: 280, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Neon Magenta':   { hue: 300, saturation: 90, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Hot Pink':       { hue: 320, saturation: 80, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Fuchsia Bloom':  { hue: 330, saturation: 85, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Rose Storm':     { hue: 340, saturation: 75, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Coral Blade':    { hue: 350, saturation: 70, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Crimson Dawn':   { hue: 355, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }
         };
 
         const themeGroup = document.createElement('div');
@@ -1723,6 +1723,7 @@ function presentSettingsOverlay() {
               window.UITheme && window.UITheme.applyDynamicTheme({
                 hue: p.hue,
                 intensity: p.saturation,
+                brightness: p.brightness,
                 borderStrength: p.border,
                 glowStrength: p.glow,
                 opacityMult: mult,
@@ -1751,7 +1752,8 @@ function presentSettingsOverlay() {
             } catch (_) {}
             try {
               // Brightness is not specified by presets; return to neutral default
-              if (typeof briKn !== 'undefined' && briKn && briKn.setValue) briKn.setValue(60, { silent: true });
+              const br = Math.max(0, Math.min(100, Math.round(p.brightness)));
+              if (typeof briKn !== 'undefined' && briKn && briKn.setValue) briKn.setValue(br, { silent: true });
             } catch (_) {}
 
             // Persist values so preset selection survives reloads and Reset applies correctly
@@ -1765,12 +1767,12 @@ function presentSettingsOverlay() {
               const mLS = Math.max(0, Math.min(10, Number(p.blur)));
               localStorage.setItem('ui_milkiness', String(mLS));
               localStorage.setItem('ui_overlay_darkness', String(Math.max(0, Math.min(100, Math.round(p.overlayDarkness)))));
+              localStorage.setItem('ui_brightness', String(Math.max(0, Math.min(100, Math.round(p.brightness)))));
               // store opacity multiplier in both LS wrappers for compatibility
               try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
               localStorage.setItem('ui_opacity_mult', String(mult));
               // Clear any prior explicit overrides so preset uses intensity-based mapping cleanly
               try { localStorage.removeItem('ui_saturation'); } catch (_) {}
-              try { localStorage.removeItem('ui_brightness'); } catch (_) {}
             } catch (_) {}
 
             try { LS.setItem('ui_preset', name); } catch (_) {}

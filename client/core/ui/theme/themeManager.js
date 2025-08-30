@@ -328,28 +328,40 @@
       try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
       try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
       try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
-      // Persist explicit overrides when provided
-      if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
-      if (params.brightness != null) { try { localStorage.setItem('ui_brightness', String(light)); } catch (_) {} }
-
       // Reflect new controls as CSS variables for other components to read if needed
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
       try { root.style.setProperty('--ui-backdrop-blur', `${toFixed(milkiness, 2)}px`); } catch (_) {}
 
+      // Determine saturation/brightness with sticky overrides
+      // Prefer explicit params; otherwise, use persisted overrides; otherwise, fall back to intensity mapping.
+      let satLS = NaN, briLS = NaN;
+      try { satLS = parseFloat(localStorage.getItem('ui_saturation')); } catch (_) {}
+      try { briLS = parseFloat(localStorage.getItem('ui_brightness')); } catch (_) {}
+
       // Base mappings (human-readable, conservative)
       // Saturation rises slightly with intensity; lightness adjusts inversely to keep readable contrast.
-      // Experiment: allow grayscale at the far-left (intensity = 0)
-      // Previous mapping had a 35% baseline and a 20% lower clamp, preventing grayscale.
-      // New mapping is linear with no baseline so intensity=0 -> sat=0.
-      let sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
-      let light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
-      // Optional explicit overrides: decouple saturation and brightness from intensity
+      // Allow grayscale at the far-left (intensity = 0)
+      let sat;
+      let light;
       if (params.saturation != null) {
         sat = clamp(Number(params.saturation), 0, 100);
+      } else if (Number.isFinite(satLS)) {
+        sat = clamp(satLS, 0, 100);
+      } else {
+        sat = clamp(intensity * 0.8, 0, 85);     // 0%..80%
       }
+
       if (params.brightness != null) {
         light = clamp(Number(params.brightness), 0, 100);
+      } else if (Number.isFinite(briLS)) {
+        light = clamp(briLS, 0, 100);
+      } else {
+        light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
       }
+
+      // Persist explicit overrides when provided (after values are computed)
+      if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
+      if (params.brightness != null) { try { localStorage.setItem('ui_brightness', String(light)); } catch (_) {} }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
