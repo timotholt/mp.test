@@ -17,45 +17,47 @@ import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
 
+// Nuclear-green fallback for any missing CSS variable in this file.
+// If you see this color, a theme token is missing or failed to apply.
+const FALLBACK_FG_COLOR = '#39ff14';
+
 function ensureLoginStyles() {
   if (document.getElementById('login-modal-style')) return;
   const st = document.createElement('style');
   st.id = 'login-modal-style';
   st.textContent = `
   /* Page backdrop tint (deep blue) applied to #overlay by presentLoginModal */
-  .login-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; transform: translateY(-2vh); }
+  .login-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--ui-page-padding, 24px); transform: translateY(-2vh); }
   .login-card {
     width: min(720px, calc(100vw - 32px));
-    color: #dff1ff;
-    border-radius: 14px;
+    color: var(--ui-fg, ${FALLBACK_FG_COLOR});
+    border-radius: var(--ui-card-radius, 0.875rem);
     background: linear-gradient(180deg,
       var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%,
       var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%
     );
     /* Fallback first, then variable override for broad browser support */
-    border: 1px solid rgba(120,170,255,0.70);
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
     box-shadow: 0 0 22px rgba(80,140,255,0.33);
     box-shadow: var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33));
     backdrop-filter: var(--sf-tip-backdrop, blur(3px) saturate(1.2));
-    padding: 1rem; /* Ensure inner padding so nothing touches edges */
+    padding: var(--ui-modal-padding, 1rem); /* Ensure inner padding so nothing touches edges */
   }
-  .login-title { font-size: 22px; font-weight: 700; margin: 0 0 0 0; user-select: none; }
-  .login-sub { font-size: 13px; opacity: 0.9; margin: 0 0 20px 0; user-select: none; }
+  .login-title { font-size: var(--ui-title-size, 3rem); font-weight: 700; margin: 0 0 0 0; user-select: none; }
+  .login-sub { font-size: var(--ui-subtitle-size, 3rem); margin: 0 0 20px 0; user-select: none; }
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
   .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
   .btn:disabled { opacity: 0.6; cursor: default; }
   .btn-outline-glass {
     background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
-    color: #dff1ff;
-    border: 1px solid rgba(120,170,255,0.70);
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    color: var(--ui-fg, ${FALLBACK_FG_COLOR});
+    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
     box-shadow: inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22));
   }
   .btn-outline-glass:hover {
     border-color: #dff1ff;
-    border-color: var(--ui-bright, #dff1ff);
+    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
     box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
   }
@@ -73,9 +75,8 @@ function ensureLoginStyles() {
   .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
   .login-form label { opacity: 0.95; text-align: right; user-select: none; }
   .input-glass { 
-    width: 100%; color: #eaf6ff; background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
-    border: 1px solid rgba(120,170,255,0.70); border-radius: 10px; padding: 0 10px; height: 46px;
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    width: 100%; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
+    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-radius: 10px; padding: 0 10px; height: 46px;
     outline: none; box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10)), var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.18));
     backdrop-filter: blur(6px) saturate(1.2);
@@ -86,32 +87,31 @@ function ensureLoginStyles() {
   .input-glass:-webkit-autofill:focus,
   #overlay input:-webkit-autofill,
   #overlay input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #eaf6ff !important;
-    caret-color: #eaf6ff;
+    -webkit-text-fill-color: var(--ui-fg, ${FALLBACK_FG_COLOR}) !important;
+    caret-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
     transition: background-color 9999s ease-in-out 0s; /* suppress yellow */
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    border: 1px solid rgba(120,170,255,0.70);
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
     background-clip: content-box;
   }
   /* Allow hover color to win over autofill styles */
   .input-glass:-webkit-autofill:hover,
   #overlay input:-webkit-autofill:hover {
-    border-color: var(--ui-bright, #dff1ff);
+    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
   }
   /* Firefox */
   .input-glass:-moz-autofill,
   #overlay input:-moz-autofill {
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    -moz-text-fill-color: #eaf6ff;
-    caret-color: #eaf6ff;
+    -moz-text-fill-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
+    caret-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
   }
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-bright, #dff1ff); }
+  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-bright, ${FALLBACK_FG_COLOR}); }
   .input-glass:focus {
     border-color: #dff1ff;
-    border-color: var(--ui-bright, #dff1ff);
+    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
     box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
   }
@@ -119,20 +119,20 @@ function ensureLoginStyles() {
   .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
   .input-wrap.has-left .input-glass { padding-left: 34px; }
   .input-wrap.has-right .input-glass { padding-right: 34px; }
-  .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: #dff1ff; opacity: 0.9; cursor: pointer; }
+  .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); opacity: 0.9; cursor: pointer; }
   .input-icon-btn.left { left: 8px; }
   .input-icon-btn.right { right: 8px; }
-  .input-icon-btn:hover { color: #ffffff; opacity: 1; }
+  .input-icon-btn:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
   /* Icon sizes inside input buttons rely on .icon-wrap */
   .login-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
   .login-footer { display: flex; justify-content: flex-start; margin-top: 6px; }
   .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
-  .login-link { color: #dff1ff; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
-  .login-link:hover { color: #ffffff; opacity: 1; }
-  .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, #eee); user-select: none; }
+  .login-link { color: var(--ui-fg, ${FALLBACK_FG_COLOR}); text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
+  .login-link:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
+  .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, ${FALLBACK_FG_COLOR}); user-select: none; }
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
-  .login-art { border-radius: 10px; border: 1px dashed rgba(120,170,255,0.45); border: 1px dashed var(--ui-surface-border, rgba(120,170,255,0.45)); min-height: 240px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
+  .login-art { border-radius: 10px; border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-style: dashed; min-height: 240px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
   .login-main { display: flex; flex-direction: column; min-width: 0; }
   @media (max-width: 700px) { .login-grid { grid-template-columns: 1fr; } }
   `;
@@ -215,7 +215,7 @@ export function presentLoginModal() {
   hint.className = 'login-sub';
   hint.textContent = 'Sign in with a provider or email.';
   // Match separator size; left-align and pull closer to buttons
-  try { hint.style.textAlign = 'left'; hint.style.fontSize = '14px'; hint.style.marginBottom = '6px'; } catch (_) {}
+  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-subtitle-size, 3rem)'; hint.style.marginBottom = '6px'; } catch (_) {}
 
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';

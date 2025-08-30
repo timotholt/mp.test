@@ -9,11 +9,42 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
 (function initUITheme() {
   const root = document.documentElement;
   
+  /*
+   CSS Variable Glossary (partial, key tokens)
+   --ui-fg: Base foreground/text color used across UI.
+   --ui-font-family: Default app font stack.
+   --ui-title-size: Title font-size (rem-based); used in modals/screens.
+   --ui-subtitle-size: Subtitle font-size (rem-based); used under titles.
+   --ui-card-radius: Default corner radius for cards/modals.
+   --ui-page-padding: Outer page padding (e.g., login page centering).
+   --ui-modal-padding: Inner padding for modal/card bodies.
+   --ui-border-size: Standard border thickness (rem); combine with color.
+   --ui-surface-border-css: Full border shorthand built from size + color.
+   --ui-bright: Alias to highlight/accent color (maps to --ui-highlight).
+   --ui-surface-bg-top/bottom: Glass gradient stops for surfaces.
+   --ui-surface-border: Border color for surfaces/inputs/buttons.
+   --ui-surface-glow-inset/outer: Glow effects applied to surfaces.
+   Notes: Many surface tokens are derived from preset hue/saturation/intensity
+   and dynamic params (border, glow, gradient, blur, overlay darkness).
+  */
   // Fixed, theme-agnostic foreground color for consistent UI text
   try { root.style.setProperty('--ui-fg', 'rgba(220,220,220,1)'); } catch (_) {}
   // Default sans-serif font for the whole app, applied at :root
   try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
+  // Title sizes (rem-based so they inherit global --ui-font-scale applied to :root font-size)
+  // These are theme-exposed so modals/screens can standardize header typography.
+  try { root.style.setProperty('--ui-title-size', '1.5rem'); } catch (_) {}
+  try { root.style.setProperty('--ui-subtitle-size', '1rem'); } catch (_) {}
+  // Common layout tokens for surfaces/screens
+  // Use rems so they scale predictably with global font-size/--ui-font-scale
+  try { root.style.setProperty('--ui-card-radius', '0.875rem'); } catch (_) {} // 14px
+  try { root.style.setProperty('--ui-page-padding', '24px'); } catch (_) {}
+  try { root.style.setProperty('--ui-modal-padding', '1rem'); } catch (_) {}
+  // Border system
+  try { root.style.setProperty('--ui-border-size', '0.0625rem'); } catch (_) {} // 1px
+  // Compose a shorthand so components can do: border: var(--ui-surface-border-css)
+  try { root.style.setProperty('--ui-surface-border-css', 'var(--ui-border-size) solid var(--ui-surface-border)'); } catch (_) {}
 
   // Preset definitions (hue, saturation, intensity, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
   // Centralized here so Settings UI can consume via UITheme API
@@ -291,6 +322,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-highlight', bright);
+      // Back-compat alias used in some components
+      root.style.setProperty('--ui-bright', bright);
       // Flat themed overlay tint (no gradient): keeps color while preserving contrast.
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {
