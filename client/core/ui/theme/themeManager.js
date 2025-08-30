@@ -516,29 +516,16 @@ export function ensureThemeSupport() {
     --ui-font-scale: 1;
     --ui-hue: 210;
     --ui-intensity: 60;
-    --ui-bg: rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)));
-    --ui-fg: #fff;
-    --ui-muted: #ccc;
-    --ui-accent: #4caf50;
-    --bar-bg: rgba(20,20,20, calc(0.9 * var(--ui-opacity-mult, 1)));
-    --banner-bg: rgba(32,32,32, calc(0.95 * var(--ui-opacity-mult, 1)));
-    --control-bg: rgba(0,0,0, calc(0.6 * var(--ui-opacity-mult, 1)));
-    --control-border: #444;
   }
   html { font-size: calc(16px * var(--ui-font-scale, 1)); }
   body, button, input, select, textarea {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }`;
   document.head.appendChild(st);
+  
+  // Set initial theme
   window.setTheme = function(theme) {
-    // Simple placeholder for future themes
-    const dark = theme !== 'light';
-    document.documentElement.style.setProperty('--ui-bg', dark ? 'rgba(0,0,0, calc(0.8 * var(--ui-opacity-mult, 1)))' : 'rgba(255,255,255, calc(0.9 * var(--ui-opacity-mult, 1)))');
-    document.documentElement.style.setProperty('--ui-fg', dark ? '#fff' : '#111');
-    document.documentElement.style.setProperty('--ui-muted', dark ? '#ccc' : '#333');
-    document.documentElement.style.setProperty('--bar-bg', dark ? 'rgba(20,20,20, calc(0.9 * var(--ui-opacity-mult, 1)))' : 'rgba(240,240,240, calc(0.9 * var(--ui-opacity-mult, 1)))');
-    document.documentElement.style.setProperty('--banner-bg', dark ? 'rgba(32,32,32, calc(0.95 * var(--ui-opacity-mult, 1)))' : 'rgba(250,250,250, calc(0.95 * var(--ui-opacity-mult, 1)))');
-    document.documentElement.style.setProperty('--control-bg', dark ? 'rgba(0,0,0, calc(0.6 * var(--ui-opacity-mult, 1)))' : 'rgba(255,255,255, calc(0.7 * var(--ui-opacity-mult, 1)))');
-    document.documentElement.style.setProperty('--control-border', dark ? '#444' : '#bbb');
+    // Theme switching is now handled by the theme system
+    console.log('Theme switching is now handled by the theme system');
   };
 }
