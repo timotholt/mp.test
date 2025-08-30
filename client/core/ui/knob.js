@@ -76,6 +76,14 @@ export function createKnob(opts = {}) {
   if (segThickness != null) el.style.setProperty('--kn-seg-w', segThickness + 'px');
   if (segLength != null) el.style.setProperty('--kn-seg-h', segLength + 'px');
   if (dotSize != null) el.style.setProperty('--kn-dot-size', dotSize + 'px');
+  // Size-aware vertical micro-adjust for the outer ring: combats subpixel rounding from segment geometry.
+  // Small knobs look best at 0px; medium benefit from ~1px; large regain the prior ~2px compensation.
+  try {
+    let ringAutoY = 0;
+    if (size >= 64) ringAutoY = 2;
+    else if (size >= 52) ringAutoY = 1;
+    el.style.setProperty('--kn-ring-global-y', ringAutoY + 'px');
+  } catch (_) {}
 
   el.setAttribute('role', 'slider');
   el.setAttribute('aria-label', label);

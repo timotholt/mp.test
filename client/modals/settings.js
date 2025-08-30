@@ -1333,8 +1333,8 @@ function presentSettingsOverlay() {
               cap.textContent = caption;
               cap.style.fontSize = '12px';
               cap.style.opacity = '0.8';
-              // Extra top margin to prevent label/ring overlap and keep labels aligned visually
-              cap.style.marginTop = '10px';
+              // Extra top margin to prevent label/ring overlap (Hue has a full 360° ring)
+              cap.style.marginTop = '14px';
               wrap.appendChild(cap);
               return wrap;
             };
@@ -1342,6 +1342,11 @@ function presentSettingsOverlay() {
             const hueKn = CK.createHueKnob({ size: 56, label: 'Hue', ringOffset: 18  });
             const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation', ringOffset: 18 });
             const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness', ringOffset: 18 });
+
+            // For this size, nudge the outer ring down a bit for better visual centering
+            try { hueKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+            try { satKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+            try { briKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
 
             knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
             knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
