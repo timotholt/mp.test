@@ -6,6 +6,7 @@ import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './sett
 import { renderProfileTab } from './settings/tabs/profileTab.js';
 import { renderDisplayTab } from './settings/tabs/displayTab.js';
 import { renderSoundTab } from './settings/tabs/soundTab.js';
+import { renderControlTab } from './settings/tabs/controlTab.js';
 
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
@@ -560,8 +561,12 @@ function renderSettingsContent(panel) {
       variant: 'panel'
     });
   } else if (tab === 'Controls') {
-    content.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
-    content.appendChild(makeNote('Keybinding editor will appear here.'));
+    renderControlTab({
+      container: content,
+      makeSection,
+      makeNote,
+      variant: 'panel'
+    });
   }
 }
 
@@ -1427,8 +1432,12 @@ function presentSettingsOverlay() {
           setDirty
         });
       } else if (tab === 'Controls') {
-        contentWrap.appendChild(makeSection('Controls', 'Keybinds (coming soon).'));
-        contentWrap.appendChild(makeNote('Keybinding editor will appear here.'));
+        renderControlTab({
+          container: contentWrap,
+          makeSection,
+          makeNote,
+          variant: 'overlay'
+        });
       }
     }
 
