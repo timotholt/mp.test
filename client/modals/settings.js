@@ -361,6 +361,7 @@ function renderSettingsContent(panel) {
           try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
           try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
           try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
           try { localStorage.setItem('ui_intensity', '60'); } catch (_) {}
           // Reset gradient and milkiness
           try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; } catch (_) {}
@@ -426,6 +427,7 @@ function renderSettingsContent(panel) {
       try { console.debug(`[display] hue(panel) p=${p}`); } catch (_) {}
       try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
       try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
     };
     attachWheel(hueRng); attachHover(hueRng, hueLbl);
     hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
@@ -1328,7 +1330,7 @@ function presentSettingsOverlay() {
           'Teal Tide':      { hue: 160, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
           'Sea Glass':      { hue: 175, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
           'Cyan Frost':     { hue: 180, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-          'Steel Blue':     { hue: 199, saturation: 50, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+          'Steel Blue':     { hue: 207, saturation: 44, brightness: 49, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
           'Azure Storm':    { hue: 210, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
           'Cobalt Drift':   { hue: 225, saturation: 55, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
           'Cerulean Surge': { hue: 240, saturation: 60, brightness: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
@@ -1400,6 +1402,9 @@ function presentSettingsOverlay() {
 
         // Font Size moved to Display tab (overlay)
 
+        // Hoisted knob references so other handlers (e.g., applyPreset) can access them
+        let hueKn = null, satKn = null, briKn = null;
+
         // Experimental: inline color knobs (Hue / Saturation / Brightness) for testing
         try {
           const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
@@ -1434,7 +1439,7 @@ function presentSettingsOverlay() {
               return wrap;
             };
 
-            const hueKn = CK.createHueKnob({
+            hueKn = CK.createHueKnob({
               size: 56,
               label: 'Hue',
               ringOffset: 18,
@@ -1451,13 +1456,13 @@ function presentSettingsOverlay() {
                 } catch (_) {}
               }
             });
-            const satKn = CK.createSaturationKnob({
+            satKn = CK.createSaturationKnob({
               size: 56,
               label: 'Saturation',
               ringOffset: 18,
               onInput: () => { try { selectCustomPreset(); } catch (_) {} }
             });
-            const briKn = CK.createBrightnessKnob({
+            briKn = CK.createBrightnessKnob({
               size: 56,
               label: 'Brightness',
               ringOffset: 18,
@@ -1474,6 +1479,32 @@ function presentSettingsOverlay() {
             knobRow.appendChild(makeCol(briKn.el, 'Brightness'));
 
             contentWrap.appendChild(knobRow);
+
+            // Initialize knobs to current persisted values/preset so they reflect state on open (silent to avoid loops)
+            try {
+              // Hue
+              let hueInit = parseFloat(localStorage.getItem('ui_hue'));
+              if (!Number.isFinite(hueInit)) hueInit = 210;
+              hueInit = Math.max(0, Math.min(360, Math.round(hueInit)));
+              try { if (hueKn && hueKn.setValue) hueKn.setValue(hueInit, { silent: true }); } catch (_) {}
+
+              // Saturation knob shows effective saturation derived from intensity mapping (scaled by 0.8)
+              let intensityInit = parseFloat(localStorage.getItem('ui_intensity'));
+              if (!Number.isFinite(intensityInit)) intensityInit = 60;
+              const satEffInit = Math.max(0, Math.min(85, Math.round(intensityInit * 0.8)));
+              try { if (satKn && satKn.setValue) satKn.setValue(satEffInit, { silent: true }); } catch (_) {}
+
+              // Brightness: prefer explicit override; else fall back to current preset's brightness
+              let briInit = parseFloat(localStorage.getItem('ui_brightness'));
+              if (!Number.isFinite(briInit)) {
+                let presetName = null; try { presetName = LS.getItem('ui_preset', null); } catch (_) {}
+                const defName = 'Steel Blue';
+                const pp = (presetName && themePresets[presetName]) ? themePresets[presetName] : themePresets[defName];
+                briInit = pp && Number.isFinite(pp.brightness) ? pp.brightness : 60;
+              }
+              briInit = Math.max(0, Math.min(100, Math.round(briInit)));
+              try { if (briKn && briKn.setValue) briKn.setValue(briInit, { silent: true }); } catch (_) {}
+            } catch (_) {}
           }
         } catch (_) {}
 
@@ -1499,6 +1530,7 @@ function presentSettingsOverlay() {
           try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
           // Keep Hue knob position in sync without firing knob listeners
           try { if (typeof hueKn !== 'undefined' && hueKn && hueKn.setValue) hueKn.setValue(p, { silent: true }); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
           try { selectCustomPreset(); } catch (_) {}
         }; attachWheel(hueRng); attachHover(hueRng, hueLbl);
         hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
@@ -1732,6 +1764,7 @@ function presentSettingsOverlay() {
                 overlayDarkness: p.overlayDarkness
               });
             } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
 
             // Update UI controls to reflect preset values
             try { hueRng.value = String(p.hue); hueVal.textContent = String(p.hue); hueRng.title = String(p.hue); } catch (_) {}
