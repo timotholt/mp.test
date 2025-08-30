@@ -13,8 +13,6 @@
   try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
 
-  // Named themes registry removed; dynamic theme + presets drive styling
-
   // Preset definitions (hue, saturation, brightness, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
   // Centralized here so Settings UI can consume via UITheme API
   const themePresets = Object.freeze({
@@ -104,151 +102,6 @@
   applyThemeVars(LockedThemeDefaults, true);
   // Initialize dynamic theme tokens right away (will be refined by boot-time persisted pass below)
   applyDynamicTheme();
-
-  // Alternating row styles for list containers (Games/Players panels)
-  function applyListRowStyle(options = {}) {
-    const { styleId = 'ui-list-style', containerSelector = '.ui-list' } = options || {};
-    try {
-      const existing = document.getElementById(styleId);
-      const css3 = `
-        /* Alternating rows for list containers (Games/Players panels) */
-        ${containerSelector} > div { transition: background-color 0.12s ease; }
-        ${containerSelector} > div:nth-child(odd) { background-color: var(--ui-list-row-odd); }
-        ${containerSelector} > div:nth-child(even) { background-color: var(--ui-list-row-even); }
-      `;
-      if (existing) {
-        existing.textContent = css3;
-      } else {
-        const style3 = document.createElement('style');
-        style3.id = styleId;
-        style3.type = 'text/css';
-        style3.textContent = css3;
-        document.head.appendChild(style3);
-      }
-    } catch (_) {}
-  }
-  try { applyListRowStyle(); } catch (_) {}
-
-  // Cross-browser, theme-driven scrollbar styling helper
-  // Uses CSS variables populated by applyDynamicTheme(). No hardcoded color fallbacks.
-  function applyScrollbarStyle(options = {}) {
-    const {
-      className = 'ui-glass-scrollbar',
-      styleId = 'ui-glass-scrollbar-style',
-      width,
-      radius
-    } = options || {};
-
-    try {
-      if (width) root.style.setProperty('--ui-scrollbar-width', String(width));
-      if (radius) root.style.setProperty('--ui-scrollbar-radius', String(radius));
-    } catch (_) {}
-
-    try {
-      const STYLE_ID = styleId;
-      const existing = document.getElementById(STYLE_ID);
-      const css = `
-        .${className} { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb) transparent; box-shadow: var(--ui-surface-glow-outer); }
-        .${className}::-webkit-scrollbar { width: var(--ui-scrollbar-width); height: var(--ui-scrollbar-width); }
-        .${className}::-webkit-scrollbar-track {
-          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)) !important;
-          border-radius: var(--ui-scrollbar-radius);
-          box-shadow: var(--ui-surface-glow-inset);
-        }
-        .${className}::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb) !important;
-          border: 1px solid var(--ui-surface-border);
-          border-radius: var(--ui-scrollbar-radius);
-          box-shadow: var(--ui-surface-glow-outer);
-        }
-        .${className}:hover::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb-hover) !important;
-        }
-        .${className}::-webkit-scrollbar-corner { background: transparent !important; }
-      `;
-      if (existing) {
-        existing.textContent = css;
-      } else {
-        const style = document.createElement('style');
-        style.id = STYLE_ID;
-        style.type = 'text/css';
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
-    } catch (_) {}
-  }
-
-  // Apply scrollbar style (scoped to .ui-glass-scrollbar)
-  try { applyScrollbarStyle(); } catch (_) {}
-
-  // Inject minimal select/option theming so dropdowns aren't white-on-blue
-  try {
-    const STYLE_ID2 = 'ui-controls-style';
-    if (!document.getElementById(STYLE_ID2)) {
-      const css2 = `
-        select, .ui-select {
-          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
-          color: var(--ui-fg, #eee);
-          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-          border-radius: 8px;
-        }
-        select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
-        select option { background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))); color: var(--ui-fg, #eee); }
-        select option:checked, select option:hover { background-color: rgba(120,170,255,0.20); color: var(--ui-fg, #eee); }
-        /* Make form sliders reflect the current theme hue */
-        input[type="range"] { accent-color: var(--ui-accent, #6cf); }
-        /* Accent-colored track for range controls (thumb/progress matches theme) */
-        input[type="range"]::-webkit-slider-runnable-track {
-          height: 6px;
-          background: var(--ui-accent, #6cf) !important;
-          border-radius: 999px;
-        }
-        input[type="range"]::-moz-range-track {
-          height: 6px;
-          background: var(--ui-accent, #6cf) !important;
-          border-radius: 999px;
-        }
-        input[type="range"]:disabled::-webkit-slider-runnable-track { background: var(--ui-accent, #6cf) !important; opacity: 0.6; }
-        input[type="range"]:disabled::-moz-range-track { background: var(--ui-accent, #6cf) !important; opacity: 0.6; }
-        /* Firefox: color the filled progress portion with the accent */
-        input[type="range"]::-moz-range-progress {
-          height: 6px;
-          background: var(--ui-accent, #6cf);
-          border-radius: 999px;
-        }
-        /* Center the thumb across browsers */
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 14px; height: 14px;
-          margin-top: -4px; /* (thumbHeight - trackHeight) / 2 */
-          background: var(--ui-accent, #6cf);
-          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-          border-radius: 50%;
-          box-shadow: none; /* no glow on the thumb */
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 14px; height: 14px;
-          background: var(--ui-accent, #6cf);
-          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-          border-radius: 50%;
-          box-shadow: none; /* no glow on the thumb */
-        }
-      `;
-      const style2 = document.createElement('style');
-      style2.id = STYLE_ID2;
-      style2.type = 'text/css';
-      style2.textContent = css2 + `
-        /* Bright white + glow on label hover across app */
-        label { transition: color 0.12s ease, text-shadow 0.12s ease; }
-        label:hover {
-          color: var(--ui-bright, rgba(190,230,255,0.98));
-          text-shadow: 0 0 9px var(--ui-bright, #fff), 0 0 18px var(--ui-accent, #6cf);
-        }
-      `;
-      document.head.appendChild(style2);
-    }
-  } catch (_) {}
 
   // --- Dynamic Theme: font scale, hue, intensity ---
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
@@ -497,6 +350,133 @@
       } catch (_) {}
     } catch (_) {}
   }
+
+  // --- UI helper appliers (grouped) ---
+  // Apply alternating row styles for list containers (Games/Players panels)
+  function applyListRowStyle(options = {}) {
+    const { styleId = 'ui-list-style', containerSelector = '.ui-list' } = options || {};
+    try {
+      const existing = document.getElementById(styleId);
+      const css = `
+        /* Alternating rows for list containers (Games/Players panels) */
+        ${containerSelector} > div { transition: background-color 0.12s ease; }
+        ${containerSelector} > div:nth-child(odd) { background-color: var(--ui-list-row-odd); }
+        ${containerSelector} > div:nth-child(even) { background-color: var(--ui-list-row-even); }
+      `;
+      if (existing) {
+        existing.textContent = css;
+      } else {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.type = 'text/css';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    } catch (_) {}
+  }
+
+  // Cross-browser, theme-driven scrollbar styling helper
+  // Uses CSS variables populated by applyDynamicTheme(). No hardcoded color fallbacks.
+  function applyScrollbarStyle(options = {}) {
+    const {
+      className = 'ui-glass-scrollbar',
+      styleId = 'ui-glass-scrollbar-style',
+      width,
+      radius
+    } = options || {};
+
+    try {
+      if (width) root.style.setProperty('--ui-scrollbar-width', String(width));
+      if (radius) root.style.setProperty('--ui-scrollbar-radius', String(radius));
+    } catch (_) {}
+
+    try {
+      const existing = document.getElementById(styleId);
+      const css = `
+        .${className} { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb) transparent; box-shadow: var(--ui-surface-glow-outer); }
+        .${className}::-webkit-scrollbar { width: var(--ui-scrollbar-width); height: var(--ui-scrollbar-width); }
+        .${className}::-webkit-scrollbar-track {
+          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)) !important;
+          border-radius: var(--ui-scrollbar-radius);
+          box-shadow: var(--ui-surface-glow-inset);
+        }
+        .${className}::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb) !important;
+          border: 1px solid var(--ui-surface-border);
+          border-radius: var(--ui-scrollbar-radius);
+          box-shadow: var(--ui-surface-glow-outer);
+        }
+        .${className}:hover::-webkit-scrollbar-thumb { background-color: var(--ui-scrollbar-thumb-hover) !important; }
+        .${className}::-webkit-scrollbar-corner { background: transparent !important; }
+      `;
+      if (existing) {
+        existing.textContent = css;
+      } else {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.type = 'text/css';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    } catch (_) {}
+  }
+
+  // Generic controls theming (dropdowns/selects, range inputs, labels)
+  function applyControlsStyle(options = {}) {
+    const { styleId = 'ui-controls-style' } = options || {};
+    try {
+      const existing = document.getElementById(styleId);
+      const css = `
+        select, .ui-select {
+          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom));
+          color: var(--ui-fg);
+          border: 1px solid var(--ui-surface-border);
+          border-radius: 8px;
+        }
+        select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); }
+        select option { background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)); color: var(--ui-fg); }
+        select option:checked, select option:hover { background: var(--ui-accent); color: var(--ui-fg); }
+        /* Make form sliders reflect the current theme hue */
+        input[type="range"] { accent-color: var(--ui-accent); }
+        /* Accent-colored track for range controls (thumb/progress matches theme) */
+        input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
+        input[type="range"]::-moz-range-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
+        input[type="range"]:disabled::-webkit-slider-runnable-track { background: var(--ui-accent) !important; opacity: 0.6; }
+        input[type="range"]:disabled::-moz-range-track { background: var(--ui-accent) !important; opacity: 0.6; }
+        /* Firefox: color the filled progress portion with the accent */
+        input[type="range"]::-moz-range-progress { height: 6px; background: var(--ui-accent); border-radius: 999px; }
+        /* Center the thumb across browsers */
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -4px;
+          background: var(--ui-accent);
+          border: 1px solid var(--ui-surface-border);
+          border-radius: 50%; box-shadow: none;
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 14px; height: 14px; background: var(--ui-accent);
+          border: 1px solid var(--ui-surface-border);
+          border-radius: 50%; box-shadow: none;
+        }
+        /* Bright white + glow on label hover across app */
+        label { transition: color 0.12s ease, text-shadow 0.12s ease; }
+        label:hover { color: var(--ui-bright); text-shadow: 0 0 9px var(--ui-bright), 0 0 18px var(--ui-accent); }
+      `;
+      if (existing) {
+        existing.textContent = css;
+      } else {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.type = 'text/css';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    } catch (_) {}
+  }
+
+  // Apply default UI helpers on boot
+  try { applyListRowStyle(); } catch (_) {}
+  try { applyScrollbarStyle(); } catch (_) {}
+  try { applyControlsStyle(); } catch (_) {}
 
   // Apply persisted dynamic theme knobs at boot
   try {
