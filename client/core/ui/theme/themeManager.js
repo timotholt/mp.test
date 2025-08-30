@@ -223,6 +223,13 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Drive root font-size from fontScale (rem-based typography enabler)
       try { root.style.fontSize = `calc(16px * var(--ui-font-scale, 1))`; } catch (_) {}
 
+      // Broadcast changes so UI controls (e.g., knobs) can stay in sync with derived state
+      try { window.dispatchEvent(new CustomEvent('ui:intensity-changed', { detail: { intensity } })); } catch (_) {}
+      try {
+        const source = (params.saturation != null || Number.isFinite(satLS)) ? 'override' : 'derived';
+        window.dispatchEvent(new CustomEvent('ui:saturation-changed', { detail: { saturation: sat, source } }));
+      } catch (_) {}
+
       // Derive common tokens from hue/intensity (OKLCH when available, else HSL)
       const accent = colorFromHSLC({ h: hue, s: sat, l: light, alpha: 1 });
       // Boost border contrast at high strength by nudging lightness a bit

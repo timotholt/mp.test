@@ -156,21 +156,28 @@ export function createSaturationKnob(opts = {}) {
     ringColorForAngle: (_angDeg, t) => {
       const h = currentHue();
       const s = Math.round(t * 100);
-      // Constant lightness for perceptual consistency
-      return colorFromHSLC({ h, s, l: 65, alpha: 1 });
+      // Make ring respond to current intensity by matching theme lightness mapping (widened)
+      const I = currentIntensity();
+      const l = Math.max(25, Math.min(80, Math.round(45 + (I - 60) * 0.38)));
+      return colorFromHSLC({ h, s, l, alpha: 1 });
     },
     titleFormatter: tfPct('Saturation'),
     onInput: (v) => {
       // Reflect on CSS var and apply to theme as explicit saturation override (0..100)
       const vv = Math.round(v);
       try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
+      // Guard to avoid reacting to our own broadcast below
+      kn.__userAdjusting = true;
       try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
+      kn.__userAdjusting = false;
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
       const vv = Math.round(v);
       try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
+      kn.__userAdjusting = true;
       try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
+      kn.__userAdjusting = false;
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
@@ -197,6 +204,12 @@ export function createSaturationKnob(opts = {}) {
       } catch (_) {}
     };
     window.addEventListener('ui:hue-changed', onHue);
+  } catch (_) {}
+
+  // Respond to intensity/theme changes by refreshing the outer ring only (value remains user-controlled)
+  try {
+    window.addEventListener('ui:intensity-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} });
+    window.addEventListener('ui:saturation-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} });
   } catch (_) {}
 
   return kn;
