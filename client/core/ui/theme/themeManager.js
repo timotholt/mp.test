@@ -198,11 +198,17 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       }
 
       // Lightness: derive purely from intensity for consistent theming
-      // Widened range and slope; at zero intensity force true black
+      // Widened range and slope; at zero intensity force true black.
+      // Additionally, compress the low-end (0..10) so 0→1 doesn't jump visually.
       if (intensity <= 0) {
         light = 0;
       } else {
-        light = clamp(45 + (intensity - 60) * 0.38, 0, 80);
+        // Base mapping as before
+        const baseLight = clamp(45 + (intensity - 60) * 0.38, 0, 80);
+        // Smoothly ease in over the first ~10 points of intensity
+        const tEase = Math.min(1, intensity / 10);
+        const smooth = tEase * tEase * (3 - 2 * tEase); // smoothstep(0..1)
+        light = clamp(baseLight * smooth, 0, 80);
       }
 
       // Persist explicit overrides when provided (after values are computed)
@@ -214,7 +220,11 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Much stronger glow: scale towards 1.0 quickly as glowStrength increases
       // 0% -> ~0.6x base, 100% -> ~3.0x (clamped to 1)
       let glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4), 0, 1);
-      // At zero intensity, suppress border and glow to allow true-black surfaces
+      // Fade in border/glow over first ~20 intensity points to avoid a big 0→1 step
+      const nearZeroFade = Math.min(1, intensity / 20);
+      borderAlphaEff *= nearZeroFade;
+      glowAlphaEff *= nearZeroFade;
+      // At zero intensity, suppress border and glow to allow true-black surfaces (explicit)
       if (intensity <= 0) { borderAlphaEff = 0; glowAlphaEff = 0; }
 
       // Tooltip surface uses slightly different (more transparent) mapping
@@ -251,8 +261,9 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.98 });
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
-      const lt0 = (intensity <= 0) ? 0 : Math.max(18, light - 30);
-      const lb0 = (intensity <= 0) ? 0 : Math.max(14, light - 34);
+      // Ease in floors near zero intensity to prevent a jump from 0→1
+      const lt0 = (intensity <= 0) ? 0 : Math.max(light - 30, intensity * 0.2);
+      const lb0 = (intensity <= 0) ? 0 : Math.max(light - 34, intensity * 0.15);
       const lmid = (lt0 + lb0) / 2;
       const f = gradient / 100; // 0..1
       const lt = (1 - f) * lmid + f * lt0;
@@ -267,8 +278,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       const tMidA = (tipTopA0 + tipBotA0) / 2;
       const tTopA = clamp((1 - f) * tMidA + f * 0.50, 0, 1);
       const tBotA = clamp((1 - f) * tMidA + f * 0.00, 0, 1);
-      const tipTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: (intensity <= 0 ? 0 : Math.max(18, light - 30)), alphaCss: `calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1))` });
-      const tipBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: (intensity <= 0 ? 0 : Math.max(14, light - 34)), alphaCss: `calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1))` });
+      const tipTop = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 5), l: (intensity <= 0 ? 0 : Math.max(light - 30, intensity * 0.2)), alphaCss: `calc(${toFixed(tTopA, 3)} * var(--ui-opacity-mult, 1))` });
+      const tipBot = colorFromHSLCAlphaCss({ h: hue, s: Math.min(90, sat + 0), l: (intensity <= 0 ? 0 : Math.max(light - 34, intensity * 0.15)), alphaCss: `calc(${toFixed(tBotA, 3)} * var(--ui-opacity-mult, 1))` });
 
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);
@@ -280,7 +291,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {
         const ovlSat = clamp(Math.min(90, sat + 10), 0, 100);
-        const ovlLight = (intensity <= 0) ? 0 : clamp(Math.max(6, light - 40), 0, 100);
+        // Ease in overlay floor with intensity to avoid jump at 1
+        const ovlLight = (intensity <= 0) ? 0 : clamp(Math.max(light - 40, intensity * 0.1), 0, 100);
         const ovl = colorFromHSLCAlphaCss({ h: hue, s: ovlSat, l: ovlLight, alphaCss: 'var(--ui-overlay-darkness, 0.5)' });
         root.style.setProperty('--ui-overlay-bg', ovl);
       } catch (_) {}
@@ -292,8 +304,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       // Strong glow used by interactive hover/focus (two-layer glow for pop)
       // Strong glow: larger and brighter at high strength (still clamped visually)
       const glowSizeFactor = clamp(0.8 + glowStrength / 40, 0.8, 3.0);
-      const strongGlowColor1 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.72, glowAlphaEff + 0.35) });
-      const strongGlowColor2 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.98, glowAlphaEff + 0.55) });
+      const strongGlowColor1 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.72, (glowAlphaEff + 0.35) * Math.min(1, intensity / 20)) });
+      const strongGlowColor2 = colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.98, (glowAlphaEff + 0.55) * Math.min(1, intensity / 20)) });
       const strongGlow = `0 0 ${Math.round(36 * glowSizeFactor)}px ${strongGlowColor1}, 0 0 ${Math.round(10 * glowSizeFactor)}px ${strongGlowColor2}`;
       root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
@@ -305,13 +317,13 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       root.style.setProperty('--sf-tip-border', border);
       root.style.setProperty('--sf-tip-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
-      root.style.setProperty('--sf-tip-text-glow', `0 0 9px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.70 })}`);
+      root.style.setProperty('--sf-tip-text-glow', `0 0 9px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.70 * Math.min(1, intensity / 20) })}`);
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.35 })})`);
       root.style.setProperty('--sf-tip-line-color', border);
       root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
-      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.85, borderAlphaEff + 0.15) })}`);
+      root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.85, (borderAlphaEff + 0.15) * Math.min(1, intensity / 20)) })}`);
       // Debug: exit point (verify full execution)
       try {
         const cssHue = getComputedStyle(root).getPropertyValue('--ui-hue').trim();

@@ -156,9 +156,13 @@ export function createSaturationKnob(opts = {}) {
     ringColorForAngle: (_angDeg, t) => {
       const h = currentHue();
       const s = Math.round(t * 100);
-      // Make ring respond to current intensity by matching theme lightness mapping (widened)
+      // Match theme lightness mapping with low-end compression (smoothstep over 0..10)
       const I = currentIntensity();
-      const l = (I <= 0) ? 0 : Math.max(0, Math.min(80, Math.round(45 + (I - 60) * 0.38)));
+      if (I <= 0) return colorFromHSLC({ h, s, l: 0, alpha: 1 });
+      const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
+      const tEase = Math.min(1, I / 10);
+      const smooth = tEase * tEase * (3 - 2 * tEase);
+      const l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
       return colorFromHSLC({ h, s, l, alpha: 1 });
     },
     titleFormatter: tfPct('Saturation'),
@@ -237,8 +241,12 @@ export function createIntensityKnob(opts = {}) {
       const h = currentHue();
       const I = Math.round(t * 100);
       const s = satFromIntensity(I);
-      // Lightness mapping mirrors themeManager (widened): if I<=0 -> 0; else clamp 0..80
-      const l = (I <= 0) ? 0 : Math.max(0, Math.min(80, Math.round(45 + (I - 60) * 0.38)));
+      // Lightness mapping mirrors themeManager with low-end compression
+      if (I <= 0) return colorFromHSLC({ h, s, l: 0, alpha: 1 });
+      const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
+      const tEase = Math.min(1, I / 10);
+      const smooth = tEase * tEase * (3 - 2 * tEase);
+      const l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
       return colorFromHSLC({ h, s, l, alpha: 1 });
     },
     titleFormatter: tfPct('Intensity'),
