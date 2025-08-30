@@ -1339,9 +1339,9 @@ function presentSettingsOverlay() {
               return wrap;
             };
 
-            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue' });
-            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation' });
-            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness' });
+            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue', ringOffset: 18  });
+            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation', ringOffset: 18 });
+            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness', ringOffset: 18 });
 
             knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
             knobRow.appendChild(makeCol(satKn.el, 'Saturation'));

@@ -101,7 +101,8 @@ export function createHueKnob(opts = {}) {
     },
     theme: opts.theme,
     className: opts.className,
-    ringOffset: opts.ringOffset,
+    // Default ring offset creates a small gap between knob face and color ring
+    ringOffset: (opts.ringOffset ?? 18),
     segThickness: 2,
     segLength: 10,
     dotSize: 6,
@@ -147,7 +148,8 @@ export function createSaturationKnob(opts = {}) {
     },
     theme: opts.theme,
     className: opts.className,
-    ringOffset: opts.ringOffset,
+    // Default ring offset creates a small gap between knob face and color ring
+    ringOffset: (opts.ringOffset ?? 22),
     segThickness: 2,
     segLength: 10,
     dotSize: 6,
@@ -194,7 +196,8 @@ export function createBrightnessKnob(opts = {}) {
     },
     theme: opts.theme,
     className: opts.className,
-    ringOffset: opts.ringOffset,
+    // Default ring offset creates a small gap between knob face and color ring
+    ringOffset: (opts.ringOffset ?? 12),
     segThickness: 2,
     segLength: 10,
     dotSize: 6,
