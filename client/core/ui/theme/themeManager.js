@@ -198,7 +198,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       }
 
       // Lightness: derive purely from intensity for consistent theming
-      light = clamp(45 + (60 - intensity) * 0.15, 30, 70); // ~35%..65%
+      // Widened range and slope for more noticeable effect (still non-inverted)
+      light = clamp(45 + (intensity - 60) * 0.38, 25, 80); // ~27%..76%
 
       // Persist explicit overrides when provided (after values are computed)
       if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }

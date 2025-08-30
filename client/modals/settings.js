@@ -1099,9 +1099,10 @@ function presentSettingsOverlay() {
             try { satKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
             try { briKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
 
+            // Order knobs for better UX: Hue → Intensity → Saturation
             knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
-            knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
             knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
+            knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
 
             contentWrap.appendChild(knobRow);
 

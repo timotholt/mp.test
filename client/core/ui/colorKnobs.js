@@ -224,8 +224,8 @@ export function createIntensityKnob(opts = {}) {
       const h = currentHue();
       const I = Math.round(t * 100);
       const s = satFromIntensity(I);
-      // Lightness mapping mirrors themeManager: l = clamp(45 + (60 - I) * 0.15, 30, 70)
-      const l = Math.max(30, Math.min(70, Math.round(45 + (60 - I) * 0.15)));
+      // Lightness mapping mirrors themeManager (widened): l = clamp(45 + (I - 60) * 0.38, 25, 80)
+      const l = Math.max(25, Math.min(80, Math.round(45 + (I - 60) * 0.38)));
       return colorFromHSLC({ h, s, l, alpha: 1 });
     },
     titleFormatter: tfPct('Intensity'),
