@@ -1305,56 +1305,6 @@ function presentSettingsOverlay() {
             hdr.style.justifyContent = 'flex-start';
           }
         } catch (_) {}
-        // Experimental: inline color knobs (Hue / Saturation / Brightness) for testing
-        try {
-          const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
-          if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createBrightnessKnob) {
-            const knobRow = document.createElement('div');
-            knobRow.style.display = 'flex';
-            knobRow.style.gap = '18px';
-            knobRow.style.alignItems = 'center';
-            knobRow.style.justifyContent = 'flex-start';
-            knobRow.style.margin = '6px 0 10px';
-            // Extra breathing room so full 360° Hue ring isn't clipped
-            knobRow.style.padding = '6px 4px';
-            knobRow.style.overflow = 'visible';
-
-            const makeCol = (el, caption) => {
-              const wrap = document.createElement('div');
-              wrap.style.display = 'flex';
-              wrap.style.flexDirection = 'column';
-              wrap.style.alignItems = 'center';
-              wrap.style.minWidth = '80px';
-              // Ensure ring segments can render beyond exact bounds without clipping
-              wrap.style.padding = '4px 2px';
-              wrap.style.overflow = 'visible';
-              wrap.appendChild(el);
-              const cap = document.createElement('div');
-              cap.textContent = caption;
-              cap.style.fontSize = '12px';
-              cap.style.opacity = '0.8';
-              // Extra top margin to prevent label/ring overlap (Hue has a full 360° ring)
-              cap.style.marginTop = '14px';
-              wrap.appendChild(cap);
-              return wrap;
-            };
-
-            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue', ringOffset: 18  });
-            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation', ringOffset: 18 });
-            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness', ringOffset: 18 });
-
-            // For this size, nudge the outer ring down a bit for better visual centering
-            try { hueKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
-            try { satKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
-            try { briKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
-
-            knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
-            knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
-            knobRow.appendChild(makeCol(briKn.el, 'Brightness'));
-
-            contentWrap.appendChild(knobRow);
-          }
-        } catch (_) {}
         // Theme selector row (above the color tagline), with Reset on the same line
         const themeTopRow = document.createElement('div');
         themeTopRow.style.display = 'flex';
@@ -1397,7 +1347,7 @@ function presentSettingsOverlay() {
         themeGroup.style.display = 'flex';
         themeGroup.style.alignItems = 'center';
         themeGroup.style.gap = '8px';
-        const lbl = document.createElement('label'); lbl.textContent = 'Preset:'; lbl.style.fontSize = 'calc(16px * var(--ui-font-scale, 1))'; lbl.style.fontWeight = '600';
+        const lbl = document.createElement('label'); lbl.textContent = 'Theme Preset:'; lbl.style.fontSize = 'calc(16px * var(--ui-font-scale, 1))'; lbl.style.fontWeight = '600';
         let dd = null;
         try {
           let savedPreset = LS.getItem('ui_preset', null);
@@ -1449,6 +1399,57 @@ function presentSettingsOverlay() {
         }
 
         // Font Size moved to Display tab (overlay)
+
+        // Experimental: inline color knobs (Hue / Saturation / Brightness) for testing
+        try {
+          const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
+          if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createBrightnessKnob) {
+            const knobRow = document.createElement('div');
+            knobRow.style.display = 'flex';
+            knobRow.style.gap = '18px';
+            knobRow.style.alignItems = 'center';
+            knobRow.style.justifyContent = 'flex-start';
+            knobRow.style.margin = '6px 0 10px';
+            // Extra breathing room so full 360° Hue ring isn't clipped
+            knobRow.style.padding = '6px 4px';
+            knobRow.style.overflow = 'visible';
+
+            const makeCol = (el, caption) => {
+              const wrap = document.createElement('div');
+              wrap.style.display = 'flex';
+              wrap.style.flexDirection = 'column';
+              wrap.style.alignItems = 'center';
+              wrap.style.minWidth = '80px';
+              // Ensure ring segments can render beyond exact bounds without clipping
+              wrap.style.padding = '4px 2px';
+              wrap.style.overflow = 'visible';
+              wrap.appendChild(el);
+              const cap = document.createElement('div');
+              cap.textContent = caption;
+              cap.style.fontSize = '12px';
+              cap.style.opacity = '0.8';
+              // Extra top margin to prevent label/ring overlap (Hue has a full 360° ring)
+              cap.style.marginTop = '14px';
+              wrap.appendChild(cap);
+              return wrap;
+            };
+
+            const hueKn = CK.createHueKnob({ size: 56, label: 'Hue', ringOffset: 18  });
+            const satKn = CK.createSaturationKnob({ size: 56, label: 'Saturation', ringOffset: 18 });
+            const briKn = CK.createBrightnessKnob({ size: 56, label: 'Brightness', ringOffset: 18 });
+
+            // For this size, nudge the outer ring down a bit for better visual centering
+            try { hueKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+            try { satKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+            try { briKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+
+            knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
+            knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
+            knobRow.appendChild(makeCol(briKn.el, 'Brightness'));
+
+            contentWrap.appendChild(knobRow);
+          }
+        } catch (_) {}
 
         // Hue slider
         const hueRow = document.createElement('div');

@@ -26,6 +26,10 @@ export function createKnob(opts = {}) {
   const max = toNum(opts.max, 1);
   const range = Math.max(0.000001, max - min);
   const step = toNum(opts.step, range / 20);
+  // Optional: allow finer wheel increments than the base step for subtle wheel motions
+  const wheelFineStep = (opts.wheelFineStep != null && Number.isFinite(Number(opts.wheelFineStep)))
+    ? Number(opts.wheelFineStep)
+    : null;
   const readOnly = !!opts.readOnly;
   const allowSmall = !!opts.allowSmall;
 
@@ -201,9 +205,10 @@ export function createKnob(opts = {}) {
     if (onChange) try { onChange(value); } catch (_) {}
   };
 
-  const increment = (dir) => { // dir: +1 or -1
+  const increment = (dir, stepOverride) => { // dir: +1 or -1
     if (readOnly) return;
-    const delta = dir * step;
+    const s = (stepOverride != null && Number.isFinite(stepOverride)) ? stepOverride : step;
+    const delta = dir * s;
     let next = value + delta;
     if (fullSweep) {
       const width = range;
@@ -221,12 +226,45 @@ export function createKnob(opts = {}) {
     }
   };
 
+  // Normalize wheel delta across browsers/devices into rough "line units"
+  const normalizeWheelDelta = (e) => {
+    try {
+      const mode = e.deltaMode; // 0=pixel, 1=line, 2=page
+      const dy = Number(e.deltaY) || 0;
+      if (mode === 1) return dy / 3;       // lines -> assume ~3 lines per notch
+      if (mode === 2) return dy * 8;       // pages -> treat as many lines
+      return dy / 100;                      // pixels -> approx lines (100px per notch common)
+    } catch (_) { return (e && e.deltaY) ? (e.deltaY / 100) : 0; }
+  };
+
   const onWheel = (e) => {
     try {
       e.preventDefault();
-      const dir = e.deltaY < 0 ? 1 : -1; // up = louder/higher
+      const norm = normalizeWheelDelta(e);
+      const dir = norm < 0 ? 1 : -1; // up = higher
+      const mag = Math.abs(norm);
+      // Small motions (<= 1 notch): use fine step if provided; larger motions: scale by rounded magnitude
+      const unitStep = (wheelFineStep != null && mag <= 1) ? wheelFineStep : step;
+      const repeats = Math.max(1, Math.min(50, Math.round(mag)));
+
       beginAdjust();
-      increment(dir);
+      // Apply in one update to avoid spamming onInput listeners
+      const totalDelta = dir * unitStep * repeats;
+      let next = value + totalDelta;
+      if (fullSweep) {
+        const width = range;
+        const base = min;
+        let rel = (next - base) % width;
+        if (rel < 0) rel += width;
+        next = base + rel;
+      } else {
+        next = clamp(min, max, next);
+      }
+      if (next !== value) {
+        value = next;
+        updateUI(value);
+        if (onInput) try { onInput(value); } catch (_) {}
+      }
       // endAdjust is not immediate; give tiny grace period for spins
       clearTimeout(onWheel._t);
       onWheel._t = setTimeout(endAdjust, 160);

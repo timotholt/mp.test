@@ -10,9 +10,9 @@
 import { createKnob } from './knob.js';
 
 // Throttle: minimum time between hue change broadcasts while dragging (ms)
-export const HUE_EVENT_MIN_INTERVAL_MS = 100;
+export const HUE_EVENT_MIN_INTERVAL_MS = 200;
 // Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
-export const RING_RECOLOR_MIN_INTERVAL_MS = 100;
+export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 
 // ---- Color utilities (OKLCH with HSL fallback) ----
 function supportsOKLCH() {
@@ -84,6 +84,8 @@ export function createHueKnob(opts = {}) {
     value: initial,
     // Wheel/key increment: match ~5% of range like volume knobs (0..360 -> 18)
     step: (opts.step != null ? opts.step : 18),
+    // Fine wheel increment: 1 degree for subtle wheel moves
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Hue',
     segments: -1, // continuous spectrum ring
@@ -144,6 +146,8 @@ export function createSaturationKnob(opts = {}) {
     value: initial,
     // Wheel/key increment: ~5% of range for easier wheel control
     step: (opts.step != null ? opts.step : 5),
+    // Fine wheel increment: 1% for subtle wheel moves
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Saturation',
     segments: -1,
@@ -206,6 +210,8 @@ export function createBrightnessKnob(opts = {}) {
     value: initial,
     // Wheel/key increment: ~5% of range for easier wheel control
     step: (opts.step != null ? opts.step : 5),
+    // Fine wheel increment: 1% for subtle wheel moves
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Brightness',
     segments: -1,
