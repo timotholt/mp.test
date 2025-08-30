@@ -386,6 +386,18 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       }
     }
 
+    // Ensure opacity multiplier is initialized at boot from persistence (or default 85% transparency)
+    try {
+      const MMAX = 2.5;
+      let op = parseFloat(localStorage.getItem('ui_opacity_mult'));
+      if (!Number.isFinite(op)) {
+        // Default to 85% transparency for new users
+        op = ((100 - 85) / 100) * MMAX;
+      }
+      root.style.setProperty('--ui-opacity-mult', String(op));
+      localStorage.setItem('ui_opacity_mult', String(op));
+    } catch (_) {}
+
     if (themeNameLc === 'custom') {
       // Custom theme: honor persisted user parameters
       applyDynamicTheme(params);
