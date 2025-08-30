@@ -13,53 +13,7 @@
   try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
 
-  const themes = {
-    glassBlue: {
-
-      // Global opacity multiplier (single source of truth for transparency strength)
-      // Default to 85% of the current ceiling (2.5) => 2.125 on first run
-      '--ui-opacity-mult': '2.125',
-      // Tooltip bubble (10% more transparent)
-      '--sf-tip-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
-      '--sf-tip-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
-      '--sf-tip-border': 'rgba(120,170,255,0.70)',
-      '--sf-tip-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
-      '--sf-tip-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
-      '--sf-tip-text-glow': '0 0 9px rgba(120,170,255,0.70)',
-      '--sf-tip-backdrop': 'blur(3px) saturate(1.2)',
-      '--sf-tip-arrow-glow': 'drop-shadow(0 0 9px rgba(120,170,255,0.35))',
-
-      // Connector line
-      '--sf-tip-line-color': 'rgba(120,170,255,0.70)',
-      '--sf-tip-line-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
-      '--sf-tip-line-glow-core': '0 0 3px rgba(120,170,255,0.70)',
-
-      // Global bright + strong glow for high-visibility focus/hover
-      '--ui-bright': 'rgba(190,230,255,0.98)',
-      '--ui-glow-strong': '0 0 36px rgba(120,170,255,0.60), 0 0 10px rgba(120,170,255,0.85)',
-      // Link color (foreground is fixed globally and not theme-controlled)
-      '--ui-link': '#6cf',
-
-      // Shared surface tokens (for modals/menus/panels to adopt)
-      '--ui-surface-bg-top': 'rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))',
-      '--ui-surface-bg-bottom': 'rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))',
-      '--ui-surface-border': 'rgba(120,170,255,0.70)',
-      '--ui-surface-glow-outer': '0 0 18px rgba(120,170,255,0.33)',
-      '--ui-surface-glow-inset': 'inset 0 0 18px rgba(40,100,200,0.18)',
-      // Defaults for new dynamic controls
-      '--ui-gradient': '60',
-      '--ui-backdrop-blur': '3px',
-      '--ui-overlay-darkness': '0.5',
-      // Scrollbar tokens (glass)
-      '--ui-scrollbar-width': '10px',
-      '--ui-scrollbar-radius': '8px',
-      '--ui-scrollbar-thumb': 'rgba(120,170,255,0.45)',
-      '--ui-scrollbar-thumb-hover': 'rgba(120,170,255,0.65)',
-      // Alternating list row backgrounds (subtle by default)
-      '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
-      '--ui-list-row-even': 'rgba(255,255,255,0.02)'
-    }
-  };
+  // Named themes registry removed; dynamic theme + presets drive styling
 
   // Preset definitions (hue, saturation, brightness, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
   // Centralized here so Settings UI can consume via UITheme API
@@ -96,8 +50,17 @@
   const LockedThemeDefaults = Object.freeze({
     '--ui-fg': 'rgba(220,220,220,1)',
     '--ui-opacity-mult': '2.125',
-    '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'
+    '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
+    
+    // Locked scrollbar geometry (themes cannot change; a notheme path may override via allowLocked)
+    '--ui-scrollbar-width': '10px',
+    '--ui-scrollbar-radius': '8px',
+
+    // Locked list row backgrounds (themes cannot change; a notheme path may override via allowLocked)
+    '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
+    '--ui-list-row-even': 'rgba(255,255,255,0.02)'
   });
+
   const LockedThemeVars = Object.freeze(Object.keys(LockedThemeDefaults));
   const LockedThemeVarsSet = new Set(LockedThemeVars);
 
@@ -110,77 +73,113 @@
     }
   }
 
-  function applyTheme(nameOrVars) {
-    if (!nameOrVars) return;
-    if (typeof nameOrVars === 'string') {
-      applyThemeVars(themes[nameOrVars]);
-      state.active = nameOrVars;
+  function applyTheme(nameOrParams) {
+    if (!nameOrParams) return;
+    if (typeof nameOrParams === 'string') {
+      const preset = themePresets[nameOrParams];
+      if (preset) {
+        applyDynamicTheme({
+          hue: preset.hue,
+          saturation: preset.saturation,
+          brightness: preset.brightness,
+          borderStrength: preset.border,
+          glowStrength: preset.glow,
+          gradient: preset.gradient,
+          milkiness: preset.blur,
+          overlayDarkness: preset.overlayDarkness
+        });
+        state.active = nameOrParams;
+      }
       return;
     }
-    applyThemeVars(nameOrVars);
+    // Treat object input as dynamic theme params
+    applyDynamicTheme(nameOrParams);
     state.active = '(custom)';
   }
 
-  function registerTheme(name, vars) {
-    if (!name || typeof vars !== 'object') return;
-    themes[name] = { ...vars };
-  }
-
-  const state = { active: 'glassBlue' };
+  const state = { active: 'dynamic' };
 
   // Apply default theme immediately
   // First ensure locked variable defaults are applied
   applyThemeVars(LockedThemeDefaults, true);
-  applyTheme('glassBlue');
+  // Initialize dynamic theme tokens right away (will be refined by boot-time persisted pass below)
+  applyDynamicTheme();
 
-  // Inject alternating row styles for list containers used by lobby panels
-  try {
-    const STYLE_ID3 = 'ui-list-style';
-    if (!document.getElementById(STYLE_ID3)) {
+  // Alternating row styles for list containers (Games/Players panels)
+  function applyListRowStyle(options = {}) {
+    const { styleId = 'ui-list-style', containerSelector = '.ui-list' } = options || {};
+    try {
+      const existing = document.getElementById(styleId);
       const css3 = `
         /* Alternating rows for list containers (Games/Players panels) */
-        .ui-list > div { transition: background-color 0.12s ease; }
-        .ui-list > div:nth-child(odd) { background-color: var(--ui-list-row-odd, rgba(255,255,255,0.04)); }
-        .ui-list > div:nth-child(even) { background-color: var(--ui-list-row-even, rgba(255,255,255,0.02)); }
+        ${containerSelector} > div { transition: background-color 0.12s ease; }
+        ${containerSelector} > div:nth-child(odd) { background-color: var(--ui-list-row-odd); }
+        ${containerSelector} > div:nth-child(even) { background-color: var(--ui-list-row-even); }
       `;
-      const style3 = document.createElement('style');
-      style3.id = STYLE_ID3;
-      style3.type = 'text/css';
-      style3.textContent = css3;
-      document.head.appendChild(style3);
-    }
-  } catch (_) {}
+      if (existing) {
+        existing.textContent = css3;
+      } else {
+        const style3 = document.createElement('style');
+        style3.id = styleId;
+        style3.type = 'text/css';
+        style3.textContent = css3;
+        document.head.appendChild(style3);
+      }
+    } catch (_) {}
+  }
+  try { applyListRowStyle(); } catch (_) {}
 
-  // Inject glassmorphism scrollbar styles (scoped to .ui-glass-scrollbar)
-  try {
-    const STYLE_ID = 'ui-glass-scrollbar-style';
-    if (!document.getElementById(STYLE_ID)) {
+  // Cross-browser, theme-driven scrollbar styling helper
+  // Uses CSS variables populated by applyDynamicTheme(). No hardcoded color fallbacks.
+  function applyScrollbarStyle(options = {}) {
+    const {
+      className = 'ui-glass-scrollbar',
+      styleId = 'ui-glass-scrollbar-style',
+      width,
+      radius
+    } = options || {};
+
+    try {
+      if (width) root.style.setProperty('--ui-scrollbar-width', String(width));
+      if (radius) root.style.setProperty('--ui-scrollbar-radius', String(radius));
+    } catch (_) {}
+
+    try {
+      const STYLE_ID = styleId;
+      const existing = document.getElementById(STYLE_ID);
       const css = `
-        .ui-glass-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) transparent; box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)); }
-        .ui-glass-scrollbar::-webkit-scrollbar { width: var(--ui-scrollbar-width, 10px); height: var(--ui-scrollbar-width, 10px); }
-        .ui-glass-scrollbar::-webkit-scrollbar-track {
-          background: linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))) !important;
-          border-radius: var(--ui-scrollbar-radius, 8px);
-          box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
+        .${className} { scrollbar-width: thin; scrollbar-color: var(--ui-scrollbar-thumb) transparent; box-shadow: var(--ui-surface-glow-outer); }
+        .${className}::-webkit-scrollbar { width: var(--ui-scrollbar-width); height: var(--ui-scrollbar-width); }
+        .${className}::-webkit-scrollbar-track {
+          background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)) !important;
+          border-radius: var(--ui-scrollbar-radius);
+          box-shadow: var(--ui-surface-glow-inset);
         }
-        .ui-glass-scrollbar::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb, rgba(120,170,255,0.45)) !important;
-          border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-          border-radius: var(--ui-scrollbar-radius, 8px);
-          box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33));
+        .${className}::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb) !important;
+          border: 1px solid var(--ui-surface-border);
+          border-radius: var(--ui-scrollbar-radius);
+          box-shadow: var(--ui-surface-glow-outer);
         }
-        .ui-glass-scrollbar:hover::-webkit-scrollbar-thumb {
-          background-color: var(--ui-scrollbar-thumb-hover, rgba(120,170,255,0.65)) !important;
+        .${className}:hover::-webkit-scrollbar-thumb {
+          background-color: var(--ui-scrollbar-thumb-hover) !important;
         }
-        .ui-glass-scrollbar::-webkit-scrollbar-corner { background: transparent !important; }
+        .${className}::-webkit-scrollbar-corner { background: transparent !important; }
       `;
-      const style = document.createElement('style');
-      style.id = STYLE_ID;
-      style.type = 'text/css';
-      style.textContent = css;
-      document.head.appendChild(style);
-    }
-  } catch (_) {}
+      if (existing) {
+        existing.textContent = css;
+      } else {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.type = 'text/css';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    } catch (_) {}
+  }
+
+  // Apply scrollbar style (scoped to .ui-glass-scrollbar)
+  try { applyScrollbarStyle(); } catch (_) {}
 
   // Inject minimal select/option theming so dropdowns aren't white-on-blue
   try {
@@ -521,9 +520,7 @@
   try {
     window.UITheme = {
       applyTheme,
-      registerTheme,
       applyDynamicTheme,
-      themes,
       // Expose theme presets for Settings UI consumption
       getPresets: () => themePresets,
       getPresetNames: () => Object.keys(themePresets),
