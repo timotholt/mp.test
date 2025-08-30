@@ -353,12 +353,10 @@ function renderSettingsContent(panel) {
         resetBtn.onclick = () => {
           const OPDBG = true; const MMAX = 2.5; const defMult = ((100 - 15) / 100) * MMAX; // reversed semantics: 15% clear
           // Reset theme
-          try { sel.value = 'dark'; LS.setItem('theme', 'dark'); window.setTheme && window.setTheme('dark'); } catch (_) {}
+          try { LS.setItem('theme', 'steelBlue'); } catch (_) {}
           // Reset dynamic theme knobs
           try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: 1, hue: 210, intensity: 60, opacityMult: defMult, gradient: 60, milkiness: 3, overlayDarkness: 50, borderStrength: 70, glowStrength: 60 }); } catch (_) {}
           try { fsRng.value = '100'; fsVal.textContent = '100%'; fsRng.title = '100%'; } catch (_) {}
-          try { hueRng.value = '210'; hueVal.textContent = '210'; hueRng.title = '210'; } catch (_) {}
-          try { inRng.value = '60'; inVal.textContent = '60'; inRng.title = '60'; } catch (_) {}
           try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
           try { localStorage.setItem('ui_hue', '210'); } catch (_) {}
           try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
@@ -390,73 +388,17 @@ function renderSettingsContent(panel) {
     const themeRow = document.createElement('div');
     themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
     const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
-    const sel = document.createElement('select');
-    ['dark','light'].forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.appendChild(o); });
-    // Load and apply persisted theme
-    try {
-      const saved = LS.getItem('theme', null);
-      if (saved) sel.value = saved;
-      if (window.setTheme) window.setTheme(sel.value || saved || 'dark');
-    } catch (_) {}
-    sel.onchange = () => {
-      try { LS.setItem('theme', sel.value); } catch (_) {}
-      try { window.setTheme && window.setTheme(sel.value); } catch (_) {}
-    };
-    themeRow.appendChild(lbl); themeRow.appendChild(sel);
+    const currentTheme = document.createElement('span');
+    currentTheme.textContent = 'Steel Blue';
+    currentTheme.style.opacity = '0.85';
+    currentTheme.style.fontSize = '12px';
+    // Persist a friendly name for reference (no switching)
+    try { const saved = LS.getItem('theme', null); if (!saved) LS.setItem('theme', 'steelBlue'); } catch (_) {}
+    themeRow.appendChild(lbl); themeRow.appendChild(currentTheme);
     try { const left = sec.querySelector('#theme-hdr-left-panel'); if (left) left.appendChild(themeRow); else content.appendChild(themeRow); } catch (_) { try { content.appendChild(themeRow); } catch (_) {} }
 
     // Font Size moved to Display tab
-
-    // Hue slider
-    const hueRow = document.createElement('div');
-    hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
-    const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '12px';
-    const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue';
-    const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.style.paddingRight = '6px'; hueVal.id = 'settings-ui-hue-val';
-    try {
-      let hue = parseFloat(localStorage.getItem('ui_hue'));
-      if (!Number.isFinite(hue)) hue = 210;
-      const p = Math.max(0, Math.min(360, Math.round(hue)));
-      hueRng.value = String(p);
-      hueVal.textContent = `${p}`; hueRng.title = `${p}`;
-    } catch (_) {}
-    hueRng.oninput = () => {
-      const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
-      if (String(p) !== hueRng.value) hueRng.value = String(p);
-      hueVal.textContent = `${p}`; hueRng.title = `${p}`;
-      try { console.debug(`[display] hue(panel) p=${p}`); } catch (_) {}
-      try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
-      try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
-      try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
-    };
-    attachWheel(hueRng); attachHover(hueRng, hueLbl);
-    hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
-    content.appendChild(hueRow);
-
-    // Saturation slider
-    const inRow = document.createElement('div');
-    inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-    const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '12px'; inLbl.style.textAlign = 'left'; // Added text-align: left
-    const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity';
-    const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-val';
-    try {
-      let intensity = parseFloat(localStorage.getItem('ui_intensity'));
-      if (!Number.isFinite(intensity)) intensity = 60;
-      const p = Math.max(0, Math.min(100, Math.round(intensity)));
-      inRng.value = String(p);
-      inVal.textContent = `${p}%`; inRng.title = `${p}%`;
-    } catch (_) {}
-    inRng.oninput = () => {
-      const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
-      if (String(p) !== inRng.value) inRng.value = String(p);
-      inVal.textContent = `${p}%`; inRng.title = `${p}%`;
-      try { console.debug(`[display] intensity(panel) p=${p}`); } catch (_) {}
-      try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
-      try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
-    };
-    attachWheel(inRng); attachHover(inRng, inLbl);
-    inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
-    content.appendChild(inRow);
+    // Hue/Saturation sliders removed; replaced by knobs in Theme tab.
 
     // Gradient strength slider (0-100)
     const grRow = document.createElement('div');
@@ -1446,14 +1388,6 @@ function presentSettingsOverlay() {
               onInput: (v) => {
                 // Any knob change implies a custom theme selection
                 try { selectCustomPreset(); } catch (_) {}
-                // Keep the Hue slider UI in sync without re-triggering handlers
-                try {
-                  const p = Math.max(0, Math.min(360, Math.round(v)));
-                  const hr = document.getElementById('settings-ui-hue-ovl');
-                  const hv = document.getElementById('settings-ui-hue-ovl-val');
-                  if (hr) { hr.value = String(p); hr.title = String(p); }
-                  if (hv) { hv.textContent = String(p); }
-                } catch (_) {}
               }
             });
             satKn = CK.createSaturationKnob({
@@ -1508,58 +1442,9 @@ function presentSettingsOverlay() {
           }
         } catch (_) {}
 
-        // Hue slider
-        const hueRow = document.createElement('div');
-        hueRow.style.display = 'flex'; hueRow.style.alignItems = 'center'; hueRow.style.gap = '8px'; hueRow.style.marginBottom = '8px';
-        const hueLbl = document.createElement('label'); hueLbl.textContent = 'Hue:'; hueLbl.style.minWidth = '140px'; hueLbl.style.fontSize = '14px'; hueLbl.style.textAlign = 'left'; hueLbl.title = 'Overall accent color hue (0–360)';
-        const hueRng = document.createElement('input'); hueRng.type = 'range'; hueRng.min = '0'; hueRng.max = '360'; hueRng.step = '1'; hueRng.style.flex = '1'; hueRng.id = 'settings-ui-hue-ovl';
-        const hueVal = document.createElement('span'); hueVal.style.width = '46px'; hueVal.style.textAlign = 'right'; hueVal.style.color = '#ccc'; hueVal.id = 'settings-ui-hue-ovl-val';
-        try {
-          let hue = parseFloat(localStorage.getItem('ui_hue'));
-          if (!Number.isFinite(hue)) hue = 210;
-          const p = Math.max(0, Math.min(360, Math.round(hue)));
-          hueRng.value = String(p);
-          hueVal.textContent = `${p}`; hueRng.title = `${p}`;
-        } catch (_) {}
-        hueRng.oninput = () => {
-          const p = Math.max(0, Math.min(360, Math.round(parseFloat(hueRng.value) || 0)));
-          if (String(p) !== hueRng.value) hueRng.value = String(p);
-          hueVal.textContent = `${p}`; hueRng.title = `${p}`;
-          try { console.debug(`[display] hue(overlay) p=${p}`); } catch (_) {}
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ hue: p }); } catch (_) {}
-          try { localStorage.setItem('ui_hue', String(p)); } catch (_) {}
-          // Keep Hue knob position in sync without firing knob listeners
-          try { if (typeof hueKn !== 'undefined' && hueKn && hueKn.setValue) hueKn.setValue(p, { silent: true }); } catch (_) {}
-          try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
-          try { selectCustomPreset(); } catch (_) {}
-        }; attachWheel(hueRng); attachHover(hueRng, hueLbl);
-        hueRow.appendChild(hueLbl); hueRow.appendChild(hueRng); hueRow.appendChild(hueVal);
-        contentWrap.appendChild(hueRow);
+        // Hue range slider removed; controlled via Hue knob above.
 
-        // Saturation slider
-        const inRow = document.createElement('div');
-        inRow.style.display = 'flex'; inRow.style.alignItems = 'center'; inRow.style.gap = '8px'; inRow.style.marginBottom = '8px';
-        const inLbl = document.createElement('label'); inLbl.textContent = 'Saturation:'; inLbl.style.minWidth = '140px'; inLbl.style.fontSize = '14px'; inLbl.style.textAlign = 'left'; inLbl.title = 'Color saturation/intensity';
-        const inRng = document.createElement('input'); inRng.type = 'range'; inRng.min = '0'; inRng.max = '100'; inRng.step = '1'; inRng.style.flex = '1'; inRng.id = 'settings-ui-intensity-ovl';
-        const inVal = document.createElement('span'); inVal.style.width = '46px'; inVal.style.textAlign = 'right'; inVal.style.color = '#ccc'; inVal.style.paddingRight = '6px'; inVal.id = 'settings-ui-intensity-ovl-val';
-        try {
-          let intensity = parseFloat(localStorage.getItem('ui_intensity'));
-          if (!Number.isFinite(intensity)) intensity = 60;
-          const p = Math.max(0, Math.min(100, Math.round(intensity)));
-          inRng.value = String(p);
-          inVal.textContent = `${p}%`; inRng.title = `${p}%`;
-        } catch (_) {}
-        inRng.oninput = () => {
-          const p = Math.max(0, Math.min(100, Math.round(parseFloat(inRng.value) || 0)));
-          if (String(p) !== inRng.value) inRng.value = String(p);
-          inVal.textContent = `${p}%`; inRng.title = `${p}%`;
-          try { console.debug(`[display] intensity(overlay) p=${p}`); } catch (_) {}
-          try { window.UITheme && window.UITheme.applyDynamicTheme({ intensity: p }); } catch (_) {}
-          try { localStorage.setItem('ui_intensity', String(p)); } catch (_) {}
-          try { selectCustomPreset(); } catch (_) {}
-        }; attachWheel(inRng); attachHover(inRng, inLbl);
-        inRow.appendChild(inLbl); inRow.appendChild(inRng); inRow.appendChild(inVal);
-        contentWrap.appendChild(inRow);
+        // Saturation range slider removed; controlled via Saturation knob above.
 
         // Space before Border controls
         { const spacer = document.createElement('div'); spacer.style.height = '8px'; contentWrap.appendChild(spacer); }
