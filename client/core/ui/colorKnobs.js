@@ -9,6 +9,11 @@
 
 import { createKnob } from './knob.js';
 
+// Throttle: minimum time between hue change broadcasts while dragging (ms)
+export const HUE_EVENT_MIN_INTERVAL_MS = 100;
+// Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
+export const RING_RECOLOR_MIN_INTERVAL_MS = 100;
+
 // ---- Color utilities (OKLCH with HSL fallback) ----
 function supportsOKLCH() {
   try {
@@ -70,12 +75,15 @@ const tfPct = (label) => (v, { min, max }) => {
 // ---- Knobs ----
 export function createHueKnob(opts = {}) {
   const initial = Number.isFinite(opts.value) ? opts.value : currentHue();
+  // Track last time we broadcasted a hue change to coalesce redraws in listeners
+  let _lastHueEventAt = 0;
 
   const kn = createKnob({
     min: 0,
     max: 360,
     value: initial,
-    step: 1,
+    // Wheel/key increment: match ~5% of range like volume knobs (0..360 -> 18)
+    step: (opts.step != null ? opts.step : 18),
     size: opts.size || 64,
     label: opts.label || 'Hue',
     segments: -1, // continuous spectrum ring
@@ -90,13 +98,23 @@ export function createHueKnob(opts = {}) {
     titleFormatter: tfHue,
     onInput: (v) => {
       try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
-      // Notify other knobs so they can recolor their spectrum rings
-      try { window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } })); } catch (_) {}
+      // Notify other knobs so they can recolor their spectrum rings (throttled)
+      try {
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now - _lastHueEventAt >= HUE_EVENT_MIN_INTERVAL_MS) {
+          window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } }));
+          _lastHueEventAt = now;
+        }
+      } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
       try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
-      try { window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } })); } catch (_) {}
+      // Always emit a final event on change (pointer up), regardless of throttle
+      try {
+        window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } }));
+        _lastHueEventAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
@@ -110,6 +128,7 @@ export function createHueKnob(opts = {}) {
 
   // Recolor the spectrum ring when Hue changes elsewhere
   try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
+  
 
   return kn;
 }
@@ -123,7 +142,8 @@ export function createSaturationKnob(opts = {}) {
     min,
     max,
     value: initial,
-    step: 1,
+    // Wheel/key increment: ~5% of range for easier wheel control
+    step: (opts.step != null ? opts.step : 5),
     size: opts.size || 64,
     label: opts.label || 'Saturation',
     segments: -1,
@@ -155,8 +175,22 @@ export function createSaturationKnob(opts = {}) {
     dotSize: 6,
   });
 
-  // Recolor the spectrum ring when Hue changes elsewhere
-  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
+  // Recolor the spectrum ring when Hue changes elsewhere (throttled)
+  try {
+    let _last = 0, _timer = null;
+    const onHue = () => {
+      try {
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const dueIn = RING_RECOLOR_MIN_INTERVAL_MS - (now - _last);
+        if (dueIn <= 0) {
+          _last = now; kn.refreshRingColors?.();
+        } else if (!_timer) {
+          _timer = setTimeout(() => { _timer = null; _last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); kn.refreshRingColors?.(); }, Math.max(0, dueIn));
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('ui:hue-changed', onHue);
+  } catch (_) {}
 
   return kn;
 }
@@ -170,7 +204,8 @@ export function createBrightnessKnob(opts = {}) {
     min,
     max,
     value: initial,
-    step: 1,
+    // Wheel/key increment: ~5% of range for easier wheel control
+    step: (opts.step != null ? opts.step : 5),
     size: opts.size || 64,
     label: opts.label || 'Brightness',
     segments: -1,
