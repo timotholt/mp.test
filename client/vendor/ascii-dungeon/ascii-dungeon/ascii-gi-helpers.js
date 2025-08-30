@@ -3,6 +3,9 @@ precision highp float;
 precision highp int;
 `;
 
+// Size of each character tile in the font atlas (width, height)
+const TILE_SIZE = [8, 8];
+
 // Vertex Shader (shared by both passes)
 const vertexShaderDefault = `${prefix}
 in vec2 position;
@@ -754,7 +757,7 @@ class DungeonRenderer extends BaseSurface {
         asciiTexture: null,
         asciiViewTexture: null,
         gridSize: [0, 0],                           // Will be calculated based on camera and viewport
-        tileSize: [8, 8],
+        tileSize: TILE_SIZE,
         atlasSize: [16, 16],
         subTileOffset: [0, 0],
         // Camera properties
@@ -868,8 +871,10 @@ class DungeonRenderer extends BaseSurface {
     if (!this.dungeonUniforms) return;
 
     // Calculate visible area based on camera zoom and position
-    const visibleCellsX = Math.ceil(this.width / (this.camera.zoomLevel * 8)); // 8 is tileSize.x
-    const visibleCellsY = Math.ceil(this.height / (this.camera.zoomLevel * 8)); // 8 is tileSize.y
+    const tileW = (this.dungeonUniforms.tileSize && this.dungeonUniforms.tileSize[0]) || TILE_SIZE[0];
+    const tileH = (this.dungeonUniforms.tileSize && this.dungeonUniforms.tileSize[1]) || TILE_SIZE[1];
+    const visibleCellsX = Math.ceil(this.width / (this.camera.zoomLevel * tileW));
+    const visibleCellsY = Math.ceil(this.height / (this.camera.zoomLevel * tileH));
 
     // Update the grid size to reflect what's currently visible in the viewport
     this.dungeonUniforms.gridSize = [visibleCellsX, visibleCellsY];
