@@ -101,7 +101,7 @@ const KEY_GROUPS = [
   // Movement (advanced)
   {
     id: 'movementAdvanced',
-    title: 'Movement (Advanced)',
+    title: 'Movement (additional)',
     quip: 'Quick-move, far-move, acrobatics & wizardry.',
     actions: [
       { id: 'quickMove', label: 'Quick Move' },
@@ -134,7 +134,6 @@ const KEY_GROUPS = [
       { id: 'open', label: 'Open' },
       { id: 'close', label: 'Close' },
       { id: 'kick', label: 'Kick' },
-      { id: 'talk', label: 'Talk/Chat' },
       { id: 'lootContainer', label: 'Loot Box/Bag' },
       { id: 'untrap', label: 'Untrap' },
       { id: 'forceLock', label: 'Force Lock' },
@@ -229,7 +228,6 @@ const KEY_GROUPS = [
       { id: 'rideMonster', label: 'Ride' },
       { id: 'twoWeapon', label: 'Two-Weapon' },
       { id: 'listChallenges', label: 'Conduct' },
-      { id: 'extendedCommandsHelp', label: 'Extended Help' },
     ],
   },
   // System & UI
@@ -246,15 +244,14 @@ const KEY_GROUPS = [
       { id: 'playerInfo', label: 'Player Info' },
       { id: 'save', label: 'Save' },
       { id: 'quit', label: 'Quit' },
-      { id: 'redo', label: 'Redo (Repeat Last Command)' },
+      { id: 'redo', label: 'Redo' },
+      { id: 'talk', label: 'Talk/Chat' },
       { id: 'repeatMessage', label: 'Repeat Message' },
       { id: 'toggleAutopickup', label: 'Toggle Auto-pickup' },
       { id: 'displayVersion', label: 'Display Version' },
       { id: 'displayHistory', label: 'Display History' },
       { id: 'exploreMode', label: 'Explore Mode' },
       { id: 'explainCommand', label: 'Explain Command' },
-      { id: 'extendedCommands', label: 'Extended Commands Menu' },
-      { id: 'extendedCommandsHelp', label: 'Extended Commands Help' },
       { id: 'redrawScreen', label: 'Redraw the Screen' },
       { id: 'suspend', label: 'Suspend' },
       { id: 'bossKey', label: 'Boss Key' },
@@ -267,7 +264,7 @@ function ensureControlsKbStyle() {
   let st = document.getElementById('sf-controls-style');
   if (!st) { st = document.createElement('style'); st.id = 'sf-controls-style'; }
   st.textContent = `
-  .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin: 6px 0; }
+  .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
   .sf-btn {
@@ -279,17 +276,23 @@ function ensureControlsKbStyle() {
   }
   .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25)); }
   /* Circular movement layout */
-  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 10px auto; }
+  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 10px 0; }
   .sf-kb-move-circle .arrow { position: absolute; transform: translate(-50%, -50%); color: var(--ui-fg, #eee); opacity: 0.9; font-size: 22px; line-height: 1; user-select: none; pointer-events: none; text-shadow: var(--ui-text-glow, 0 0 6px rgba(140,190,255,0.35)); font-family: "Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols",sans-serif; }
   .sf-kb-move-circle .sf-keycap { position: absolute; transform: translate(-50%, -50%); }
   .sf-keycap.conflict { animation: sf-kb-pulse 0.2s ease-in-out 0s 3 alternate; }
+  .sf-keycap.unbound { opacity: var(--ui-unbound-opacity, 0.4); }
   @keyframes sf-kb-pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
   /* Two-column grid for large groups */
-  .sf-kb-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+  .sf-kb-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; grid-auto-flow: row dense; }
+  .sf-kb-two-col .sf-kb-row { width: 100%; }
+  .sf-kb-row .sf-keycap { justify-self: end; }
   .sf-kb-two-col .sf-kb-row { margin: 2px 0; }
+  /* Four-cell grid (label,key | label,key) used by Movement (additional) */
+  .sf-kb-two-col-keys { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px 18px; align-items: center; }
+  .sf-kb-two-col-keys .sf-keycap { justify-self: end; }
   /* Dual movement rings container */
-  .sf-kb-move-duo { display: flex; gap: 28px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
-  .sf-kb-move-col { width: 240px; }
+  .sf-kb-move-duo { display: flex; gap: 16px; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
+  .sf-kb-move-col { width: 220px; }
   .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 12px; opacity: 0.75; margin-bottom: 4px; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
@@ -422,7 +425,13 @@ export function renderControlTab(opts) {
 
   // Render key groups
   KEY_GROUPS.forEach((g) => {
+    // Skip groups that are integrated elsewhere
+    if (g.id === 'movementSecondary' || g.id === 'travel') {
+      return;
+    }
+
     const gSec = makeSection(g.title, g.quip);
+    try { gSec.style.margin = '1rem 0'; } catch (_) {}
     container.appendChild(gSec);
 
     // Special layout for Movement: circular arrows with themed keycaps
@@ -513,6 +522,50 @@ export function renderControlTab(opts) {
       return; // done with movement group
     }
 
+    // Special layout for Movement (additional): four-column grid (label,key | label,key)
+    if (g.id === 'movementAdvanced') {
+      const wrap = document.createElement('div');
+      wrap.className = 'sf-kb-two-col-keys';
+      gSec.appendChild(wrap);
+
+      const rightIds = ['ascendStairs', 'autoTravel', 'rideMonster', 'sitDown'];
+
+      function findActById(id) {
+        for (const gg of KEY_GROUPS) { const f = (gg.actions || []).find(a => a.id === id); if (f) return f; }
+        return null;
+      }
+
+      const leftActs = (g.actions || []).filter(a => !rightIds.includes(a.id));
+      const rightActs = rightIds.map(id => findActById(id)).filter(Boolean);
+      const rows = Math.max(leftActs.length, rightActs.length);
+
+      function appendPair(act) {
+        if (!act) {
+          const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
+          const emptyCap = document.createElement('div'); emptyCap.style.minHeight = '30px';
+          wrap.appendChild(emptyLab); wrap.appendChild(emptyCap);
+          return;
+        }
+        const lab = document.createElement('div');
+        lab.className = 'sf-kb-label';
+        lab.textContent = act.label;
+        wrap.appendChild(lab);
+        const k0 = state.map[act.id] || '';
+        const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', '', { mode: 'far', placement: 'r' });
+        updateTooltip(cap.btn, `${act.label} — bound to: ${k0 ? prettyKey(k0) : 'Unbound'}. Click to rebind`);
+        cap.btn.onclick = () => startListening(cap.btn, act);
+        wrap.appendChild(cap.btn);
+        keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+      }
+
+      for (let i = 0; i < rows; i++) {
+        appendPair(leftActs[i]);
+        appendPair(rightActs[i]);
+      }
+
+      return; // done with movement additional
+    }
+
     // Special layout for Extended Commands: show [prefix] + [key]
     if (g.id === 'extended') {
       const wrap = document.createElement('div');
@@ -523,7 +576,6 @@ export function renderControlTab(opts) {
         { id: 'rideMonster', label: 'Ride', letter: 'r' },
         { id: 'twoWeapon', label: 'Two-Weapon', letter: 't' },
         { id: 'listChallenges', label: 'Conduct', letter: 'c' },
-        { id: 'extendedCommandsHelp', label: 'Extended Help', letter: '?' },
       ];
 
       g.actions.forEach((act) => {
@@ -588,8 +640,8 @@ export function renderControlTab(opts) {
 
     // Default layout: labeled rows with key on the right
     const wrap = document.createElement('div');
-    // Use two columns when there are many actions
-    const useTwoCol = (g.actions && g.actions.length >= 12);
+    // Use two columns when there are many actions, or for specific groups (magic, spiritual)
+    const useTwoCol = (g.id === 'magic' || g.id === 'spiritual') || (g.actions && g.actions.length >= 12);
     if (useTwoCol) wrap.className = 'sf-kb-two-col';
     gSec.appendChild(wrap);
     g.actions.forEach((act) => {
