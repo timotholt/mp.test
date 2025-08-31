@@ -558,8 +558,6 @@ function presentSettingsOverlay() {
     let volAdjustHandler = null;
     // Cache random quips so they don't change on re-render
     let _quipThemeColor = null;
-    let _quipBorder = null;
-    let _quipTransparency = null;
     let _quipSoundMixer = null;
     let _quipNotif = null;
 
