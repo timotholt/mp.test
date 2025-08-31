@@ -156,8 +156,12 @@ function makeVolumeKnobsGrid() {
       el.style.setProperty('--kn-ring-global-y', '4px');
       el.style.setProperty('--kn-ring-offset', '14px');
       el.style.setProperty('--kn-seg-off', '#3b4350');
-      el.style.setProperty('--kn-seg-glow', '0 0 8px rgba(140,190,255,0.85)');
-      el.style.setProperty('--kn-seg-glow-strong', '0 0 16px rgba(140,190,255,0.90)');
+      // Match LED segment colors to themed border/highlight
+      el.style.setProperty('--kn-seg-on', 'var(--ui-surface-border)');
+      el.style.setProperty('--kn-seg-on-bright', 'var(--ui-bright)');
+      // Disable idle glow; keep strong glow only on hover/focus
+      el.style.setProperty('--kn-seg-glow', 'none');
+      el.style.setProperty('--kn-seg-glow-strong', 'var(--ui-glow-strong)');
     } catch (_) {}
     const cap = document.createElement('div');
     cap.textContent = g.label;
