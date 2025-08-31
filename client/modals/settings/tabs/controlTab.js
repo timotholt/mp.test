@@ -473,11 +473,16 @@ function ensureControlsKbStyle() {
   .sf-kb-two-col-keys .sf-keycap { justify-self: end; }
   /* Smaller, tighter keycaps within controls page */
   .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { height: 1.5rem; min-width: 1.5rem; padding: 0 0.25rem; }
+  /* Preserve wider padding for .wide so Ctrl/Alt look correct */
+  .sf-kb-row .sf-keycap.wide, .sf-kb-two-col-keys .sf-keycap.wide { padding: 0 0.4rem; min-width: 2.4rem; }
   /* Fix single-char cap width so unassigned = assigned size */
   .sf-kb-row .sf-keycap:not(.wide), .sf-kb-two-col-keys .sf-keycap:not(.wide) { width: 1.5rem; }
   .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: 1.1rem; height: 1.1rem; left: calc(50% - 0.55rem); top: 2px; }
   /* Override for wide caps: make inner overlay span the cap width (Ctrl/Alt/Enter/Space) */
-  .sf-kb-row .sf-keycap.wide::before, .sf-kb-two-col-keys .sf-keycap.wide::before { width: calc(100% - 0.3rem); left: 50%; transform: translateX(-50%); }
+  .sf-kb-row .sf-keycap.wide::before, .sf-kb-two-col-keys .sf-keycap.wide::before {
+    left: 0.18rem; right: 0.18rem; width: auto; transform: none;
+    border-radius: 6px;
+  }
   /* Use sans font only for wide caps; single-char caps keep monospace for consistent width */
   .sf-kb-row .sf-keycap.wide .cap-label, .sf-kb-two-col-keys .sf-keycap.wide .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
   .sf-kb-chord { display: inline-flex; align-items: center; gap: 4px; }
