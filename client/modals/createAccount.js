@@ -17,8 +17,8 @@ function ensureCreateAccountStyles() {
   #overlay input:-webkit-autofill,
   #overlay input:-webkit-autofill:hover,
   #overlay input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #eaf6ff !important;
-    caret-color: #eaf6ff;
+    -webkit-text-fill-color: var(--ui-fg, #eee) !important;
+    caret-color: var(--ui-fg, #eee);
     transition: background-color 9999s ease-in-out 0s;
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
@@ -26,8 +26,8 @@ function ensureCreateAccountStyles() {
   }
   #overlay input:-moz-autofill {
     box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    -moz-text-fill-color: #eaf6ff;
-    caret-color: #eaf6ff;
+    -moz-text-fill-color: var(--ui-fg, #eee);
+    caret-color: var(--ui-fg, #eee);
   }
   `;
   document.head.appendChild(st);
@@ -87,11 +87,9 @@ export function presentCreateAccountModal() {
   card.style.padding = '16px';
 
   const title = document.createElement('div');
+  title.className = 'modal-title';
   title.textContent = 'Create Grimdark Account';
-  title.style.fontSize = '22px';
-  title.style.fontWeight = '700';
-  title.style.marginBottom = '2px';
-  title.style.userSelect = 'none';
+  try { title.style.marginBottom = '2px'; } catch (_) {}
 
   // Fun quips shown under the title. Easy to edit.
   const quips = [
@@ -119,7 +117,8 @@ export function presentCreateAccountModal() {
   const subtitle = document.createElement('div');
   // Centralized rotating quip for consistency
   subtitle.textContent = getQuip('auth.create.tagline', quips);
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 16px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
+  subtitle.className = 'modal-title-quip';
+  try { subtitle.style.margin = '0 0 16px 0'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
@@ -297,13 +296,13 @@ export function presentCreateAccountModal() {
       const applyBase = () => {
         if (b.disabled) {
           b.style.opacity = '0.5'; b.style.cursor = 'default';
-          // Disabled text: #9fb1c6 (rgb 159,177,198)
-          b.style.color = '#9fb1c6';
+          // Disabled text uses weak foreground
+          b.style.color = 'var(--ui-fg-weak, #aaa)';
           b.style.border = baseBorder; b.style.boxShadow = baseShadow;
         } else {
           b.style.opacity = '1'; b.style.cursor = 'pointer';
-          // Enabled text: #dff1ff (rgb 223,241,255)
-          b.style.color = '#dff1ff';
+          // Enabled text uses main foreground
+          b.style.color = 'var(--ui-fg, #eee)';
           b.style.border = baseBorder; b.style.boxShadow = baseShadow;
         }
       };
@@ -406,18 +405,13 @@ export function presentCreateAccountModal() {
       wrap.style.minWidth = '0';
 
       const resTitle = document.createElement('div');
-      resTitle.style.fontSize = '22px';
-      resTitle.style.fontWeight = '700';
-      resTitle.style.marginBottom = '2px';
-      resTitle.style.userSelect = 'none';
+      resTitle.className = 'modal-title';
+      try { resTitle.style.marginBottom = '2px'; } catch (_) {}
       resTitle.textContent = kind === 'success' ? 'Grimdark Account Created' : 'Account Already Exists';
 
       const resSub = document.createElement('div');
-      resSub.style.fontSize = '13px';
-      resSub.style.opacity = '0.9';
-      resSub.style.margin = '0 0 20px 0';
-      resSub.style.color = 'var(--ui-fg, #eee)';
-      resSub.style.userSelect = 'none';
+      resSub.className = 'modal-title-quip';
+      try { resSub.style.margin = '0 0 20px 0'; } catch (_) {}
       // Use centralized rotating quip in result view as well
       try { resSub.textContent = getQuip('auth.create.tagline.result', quips); } catch (_) { resSub.textContent = kind === 'success' ? 'Welcome, brave soul.' : 'A familiar echo in the dark.'; }
 
@@ -525,7 +519,7 @@ function makeBtn(label) {
   b.style.fontWeight = '600';
   b.style.fontSize = '14px';
   b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
-  b.style.color = '#dff1ff';
+  b.style.color = 'var(--ui-fg, #eee)';
   b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   b.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22))';
   return b;
@@ -533,7 +527,7 @@ function makeBtn(label) {
 
 function styleInput(input) {
   input.style.width = '100%';
-  input.style.color = '#eaf6ff';
+  input.style.color = 'var(--ui-fg, #eee)';
   input.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
   input.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   input.style.borderRadius = '10px';

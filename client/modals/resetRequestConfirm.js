@@ -54,11 +54,9 @@ export function presentResetPasswordRequestModal(emailValue) {
   card.style.flexDirection = 'column';
 
   const title = document.createElement('div');
+  title.className = 'modal-title';
   title.textContent = 'Reset Password Request Received';
-  title.style.fontSize = '22px';
-  title.style.fontWeight = '700';
-  title.style.marginBottom = '2px';
-  title.style.userSelect = 'none';
+  try { title.style.marginBottom = '2px'; } catch (_) {}
 
   // Subtitle with a short grimdark quips
   const quips = [
@@ -70,7 +68,8 @@ export function presentResetPasswordRequestModal(emailValue) {
   const subtitle = document.createElement('div');
   // Centralized rotating quip for consistency
   subtitle.textContent = getQuip('auth.resetConfirm.tagline', quips);
-  try { subtitle.style.fontSize = '13px'; subtitle.style.opacity = '0.9'; subtitle.style.margin = '0 0 20px 0'; subtitle.style.color = 'var(--ui-fg, #eee)'; subtitle.style.userSelect = 'none'; } catch (_) {}
+  subtitle.className = 'modal-title-quip';
+  try { subtitle.style.margin = '0 0 20px 0'; } catch (_) {}
 
   const message = document.createElement('div');
   message.style.userSelect = 'none';
@@ -126,7 +125,7 @@ function makeBtn(label) {
   b.style.fontWeight = '600';
   b.style.fontSize = '14px';
   b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
-  b.style.color = '#dff1ff';
+  b.style.color = 'var(--ui-fg, #eee)';
   b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
   return b;
@@ -138,12 +137,12 @@ function wireBtnHover(b) {
     const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
     const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
     const applyBase = () => {
-      b.style.opacity = '1'; b.style.cursor = 'pointer'; b.style.color = '#dff1ff';
+      b.style.opacity = '1'; b.style.cursor = 'pointer'; b.style.color = 'var(--ui-fg, #eee)';
       b.style.border = baseBorder; b.style.boxShadow = baseShadow;
     };
-    b.addEventListener('mouseenter', () => { b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
+    b.addEventListener('mouseenter', () => { b.style.borderColor = 'var(--ui-bright, #dff1ff)'; b.style.boxShadow = hoverShadow; });
     b.addEventListener('mouseleave', applyBase);
-    b.addEventListener('focus', () => { b.style.borderColor = '#dff1ff'; b.style.boxShadow = hoverShadow; });
+    b.addEventListener('focus', () => { b.style.borderColor = 'var(--ui-bright, #dff1ff)'; b.style.boxShadow = hoverShadow; });
     b.addEventListener('blur', applyBase);
     applyBase();
   } catch (_) {}

@@ -56,7 +56,7 @@ export function renderDisplayTab(opts) {
       fsRow.style.display = 'flex'; fsRow.style.alignItems = 'center'; fsRow.style.gap = '8px'; fsRow.style.marginBottom = '8px';
       const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
       const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = `settings-ui-fontscale${idSuffix}`;
-      const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = `settings-ui-fontscale${idSuffix}-val`;
+      const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = 'var(--ui-fg-muted, #ccc)'; fsVal.id = `settings-ui-fontscale${idSuffix}-val`;
 
       // Bind refs for Reset handler
       fsRngRef = fsRng; fsValRef = fsVal;
@@ -94,7 +94,7 @@ export function renderDisplayTab(opts) {
   const fsLbl = document.createElement('label'); fsLbl.textContent = 'Font Size:'; fsLbl.style.minWidth = '140px';
   const idSuffix = variant === 'overlay' ? '-ovl' : '';
   const fsRng = document.createElement('input'); fsRng.type = 'range'; fsRng.min = '80'; fsRng.max = '120'; fsRng.step = '1'; fsRng.style.flex = '1'; fsRng.id = `settings-ui-fontscale${idSuffix}`;
-  const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = '#ccc'; fsVal.id = `settings-ui-fontscale${idSuffix}-val`;
+  const fsVal = document.createElement('span'); fsVal.style.width = '52px'; fsVal.style.textAlign = 'right'; fsVal.style.color = 'var(--ui-fg-muted, #ccc)'; fsVal.id = `settings-ui-fontscale${idSuffix}-val`;
   try {
     let scale = parseFloat(localStorage.getItem('ui_font_scale'));
     if (!Number.isFinite(scale) || scale <= 0) scale = 1;

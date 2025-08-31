@@ -27,10 +27,10 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     .btn svg { width: 18px; height: 18px; }
 
     /* Modal typographic utility classes (unified across all modals) */
-    .modal-title { font-size: var(--ui-title-size, 1.5rem); font-weight: var(--ui-title-weight, 700); color: var(--ui-fg, ${FALLBACK_FG_COLOR}); user-select: none; }
-    .modal-title-quip { font-size: var(--ui-title-quip-size, 0.9rem); color: var(--ui-fg-quip, ${FALLBACK_FG_COLOR}); user-select: none; }
-    .modal-subtitle { font-size: var(--ui-subtitle-size, 1rem); color: var(--ui-fg, ${FALLBACK_FG_COLOR}); user-select: none; }
-    .modal-subtitle-quip { font-size: var(--ui-title-quip-size, 0.9rem); color: var(--ui-fg-quip, ${FALLBACK_FG_COLOR}); user-select: none; }
+    .modal-title { font-size: var(--ui-title-size, 1.5rem); font-weight: var(--ui-title-weight, 700); color: var(--ui-fg, ${FALLBACK_FG_COLOR}); user-select: none; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
+    .modal-title-quip { font-size: var(--ui-title-quip-size, 0.9rem); color: var(--ui-fg-quip, ${FALLBACK_FG_COLOR}); user-select: none; margin: 0 0 var(--ui-padding-after-title-block, 1rem) 0 !important; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
+    .modal-subtitle { font-size: var(--ui-subtitle-size, 1rem); font-weight: var(--ui-title-weight, 700); color: var(--ui-fg, ${FALLBACK_FG_COLOR}); user-select: none; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
+    .modal-subtitle-quip { font-size: var(--ui-title-quip-size, 0.9rem); color: var(--ui-fg-quip, ${FALLBACK_FG_COLOR}); user-select: none; margin: 0 0 var(--ui-padding-after-title-block, 1rem) 0 !important; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
 
     /* Universal icon wrapper for consistent sizing */
     .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }

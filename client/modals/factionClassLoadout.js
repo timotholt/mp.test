@@ -1,6 +1,7 @@
 // Faction / Class / Loadout selection modal (server-driven)
-// Exports: presentFCLSelectModal({ factions, classes, loadouts, selection, complete, onSelectFaction, onSelectClass, onSelectLoadout, priority })
+// Exports: presentFCLSelectModal({ factions, classes, loadouts, selection, complete, onSelectFaction, onSelectClass, onSelectLoadout, onReady, priority })
 // Relies on global OverlayManager and window.PRIORITY set by client/main.js
+import ensureGlassFormStyles from '../core/ui/formBase.js';
 
 export function presentFCLSelectModal({ factions = [], classes = [], loadouts = [], selection = {}, complete = false, onSelectFaction, onSelectClass, onSelectLoadout, onReady, priority } = {}) {
   try {
@@ -11,6 +12,8 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
     }
 
     const prio = (typeof priority === 'number') ? priority : ((window.PRIORITY && window.PRIORITY.MEDIUM) || 50);
+    // Ensure shared modal classes are available
+    try { ensureGlassFormStyles(); } catch (_) {}
     window.OverlayManager.present({ id: 'FCL_SELECT', text: '', actions: [], blockInput: false, priority: prio, external: true });
     const content = document.getElementById('overlay-content');
     if (!content) return;
@@ -18,10 +21,9 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
 
     // Title
     const title = document.createElement('div');
+    title.className = 'modal-title';
     title.textContent = 'Choose Faction, Class, and Loadout';
-    title.style.fontWeight = 'bold';
     title.style.marginBottom = '8px';
-    title.style.color = '#fff';
     content.appendChild(title);
 
     // Helper to make a grid of buttons with icons
@@ -31,7 +33,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
       lbl.textContent = label;
       lbl.style.margin = '6px 0 4px';
       lbl.style.opacity = '0.9';
-      lbl.style.color = '#fff';
+      lbl.style.color = 'var(--ui-fg, #eee)';
       section.appendChild(lbl);
 
       const row = document.createElement('div');
@@ -49,7 +51,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
         btn.style.minWidth = '90px';
         btn.style.border = (it.key === selectedKey) ? '2px solid var(--ui-accent, #6cf)' : '1px solid var(--ui-surface-border, #444)';
         btn.style.background = (it.key === selectedKey) ? 'rgba(80,120,200,0.2)' : 'rgba(0,0,0,0.2)';
-        btn.style.color = '#fff';
+        btn.style.color = 'var(--ui-fg, #eee)';
         const icon = document.createElement('div');
         icon.textContent = it.icon || '◻';
         icon.style.fontSize = '22px';
@@ -102,7 +104,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
     const loLabel = document.createElement('div');
     loLabel.textContent = 'Loadout';
     loLabel.style.margin = '10px 0 4px';
-    loLabel.style.color = '#fff';
+    loLabel.style.color = 'var(--ui-fg, #eee)';
     content.appendChild(loLabel);
 
     // Hoist ready button reference so we can enable it optimistically on loadout click
@@ -122,7 +124,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
       btn.style.minWidth = '90px';
       btn.style.border = (it.key === selLoadout) ? '2px solid var(--ui-accent, #6cf)' : '1px solid var(--ui-surface-border, #444)';
       btn.style.background = (it.key === selLoadout) ? 'rgba(80,120,200,0.2)' : 'rgba(0,0,0,0.2)';
-      btn.style.color = '#fff';
+      btn.style.color = 'var(--ui-fg, #eee)';
       btn.dataset.key = it.key;
       const icon = document.createElement('div');
       icon.textContent = it.icon || '🎒';
@@ -162,7 +164,7 @@ export function presentFCLSelectModal({ factions = [], classes = [], loadouts = 
     readyBtn.style.padding = '6px 12px';
     readyBtn.style.background = 'rgba(0,0,0,0.2)';
     readyBtn.style.border = '1px solid var(--ui-surface-border, #444)';
-    readyBtn.style.color = '#fff';
+    readyBtn.style.color = 'var(--ui-fg, #eee)';
     readyBtn.disabled = !(selFaction && selClass && selLoadout);
     readyBtn.onclick = () => {
       try { if (typeof onReady === 'function') onReady(); } catch (_) {}

@@ -3,7 +3,7 @@
 // at import time and exposes a lightweight window.UITheme API. '--ui-fg' is fixed globally
 // and not theme-overridable to ensure consistent UI foreground color.
 
-import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHSLC, colorFromHSLCAlphaCss } from './themeHelpers.js';
+import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobalTextStyle, colorFromHSLC, colorFromHSLCAlphaCss } from './themeHelpers.js';
 
 // --- UITheme (moved from core/ui/theme.js) ---
 (function initUITheme() {
@@ -65,8 +65,10 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
 
   // Locked theme defaults (single source of truth) and derived keys
   const LockedThemeDefaults = Object.freeze({
-    '--ui-fg': 'rgba(220,220,220,1)',
-    '--ui-fg-quip': 'rgba(176,176,176,1)',
+    '--ui-fg': 'rgba(220,220,220,1.0)',
+    '--ui-fg-quip': 'rgba(176,176,176,1.0)',
+    '--ui-fg-muted': 'rgba(200,200,200,1.0)',
+    '--ui-fg-weak': 'rgba(144,144,144,1.0)',
     '--ui-opacity-mult': '2.125',
     '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
     // Locked typography sizes
@@ -366,7 +368,11 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
       root.style.setProperty('--sf-tip-border', border);
       root.style.setProperty('--sf-tip-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
-      root.style.setProperty('--sf-tip-text-glow', `0 0 9px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.70 * Math.min(1, intensity / 20) })}`);
+      // Global text glow reduced by ~50% (blur radius and alpha)
+      const tipTextGlow = `0 0 6px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.5 * Math.min(1, intensity / 20) })}`;
+      root.style.setProperty('--sf-tip-text-glow', tipTextGlow);
+      // Expose same glow for general UI text usage
+      root.style.setProperty('--ui-text-glow', tipTextGlow);
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.35 })})`);
@@ -390,6 +396,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
   try { applyListRowStyle(); } catch (_) {}
   try { applyScrollbarStyle(); } catch (_) {}
   try { applyControlsStyle(); } catch (_) {}
+  try { applyGlobalTextStyle(); } catch (_) {}
 
   // Apply persisted dynamic theme knobs at boot
   try {

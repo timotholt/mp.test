@@ -65,6 +65,38 @@ export function applyListRowStyle(options = {}) {
   } catch (_) {}
 }
 
+// Global text defaults + utilities
+// Applies base foreground color and optional glow widely, and exposes helper classes
+export function applyGlobalTextStyle(options = {}) {
+  const { styleId = 'ui-global-text-style' } = options || {};
+  try {
+    const existing = document.getElementById(styleId);
+    const css = `
+      /* Global base text color + glow */
+      html, body, #app, #root, #overlay {
+        color: var(--ui-fg);
+        text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none));
+      }
+      /* Ensure common text elements inherit the base color */
+      body, p, span, div, li, dt, dd, th, td, input, button, label {
+        color: inherit;
+      }
+      /* Utility classes for tone */
+      .text-quip, .text-muted { color: var(--ui-fg-quip); }
+      .text-weak { color: var(--ui-fg-weak, var(--ui-fg-quip)); }
+    `;
+    if (existing) {
+      existing.textContent = css;
+    } else {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.type = 'text/css';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  } catch (_) {}
+}
+
 // Cross-browser, theme-driven scrollbar styling helper
 // Uses CSS variables populated by applyDynamicTheme(). No hardcoded color fallbacks.
 export function applyScrollbarStyle(options = {}) {

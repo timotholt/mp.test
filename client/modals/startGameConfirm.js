@@ -1,9 +1,12 @@
 // Start Game confirmation modal (server-driven)
 // Exports: presentStartGameConfirm({ players, canStart, isHost, starting, countdown, youAreReady, onStart, onCancel, onUnready, priority })
 // Relies on global OverlayManager and window.PRIORITY set by client/main.js
+import ensureGlassFormStyles from '../core/ui/formBase.js';
 
 export function presentStartGameConfirm({ players = [], canStart = false, isHost = false, starting = false, countdown = 0, youAreReady = false, onStart, onCancel, onUnready, priority } = {}) {
   try {
+    // Ensure shared modal typography/button/input classes are available
+    try { ensureGlassFormStyles(); } catch (_) {}
     const prio = (typeof priority === 'number') ? priority : ((window.PRIORITY && window.PRIORITY.MEDIUM) || 50);
     // Non-blocking so lobby/room UI remains interactive while we wait
     window.OverlayManager.present({ id: 'CONFIRM_START', text: '', actions: [], blockInput: false, priority: prio });
@@ -13,8 +16,8 @@ export function presentStartGameConfirm({ players = [], canStart = false, isHost
 
     // Title
     const title = document.createElement('div');
+    title.className = 'modal-title';
     title.textContent = starting ? `Starting in ${Math.max(0, countdown|0)}…` : 'Start game?';
-    title.style.fontWeight = 'bold';
     content.appendChild(title);
 
     // Player table

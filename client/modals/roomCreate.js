@@ -2,10 +2,13 @@
 // Exports a function to present a modal for creating a private room.
 // Fields: name, turnLength (s), password, maxPlayers.
 import { setRoute, APP_STATES } from '../core/router.js';
+import ensureGlassFormStyles from '../core/ui/formBase.js';
 
 export function presentRoomCreateModal({ onSubmit } = {}) {
   const id = 'CREATE_ROOM';
   try {
+    // Ensure shared modal classes are available
+    try { ensureGlassFormStyles(); } catch (_) {}
     // Open a blocking modal; we'll fully control the content area
     if (window.OverlayManager) {
       window.OverlayManager.present({ id, text: '', actions: [], blockInput: true });
@@ -16,8 +19,8 @@ export function presentRoomCreateModal({ onSubmit } = {}) {
     container.innerHTML = '';
 
     const title = document.createElement('div');
+    title.className = 'modal-title';
     title.textContent = 'Create Private Room';
-    title.style.fontWeight = 'bold';
     title.style.marginBottom = '8px';
 
     const form = document.createElement('div');

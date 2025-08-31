@@ -1,4 +1,5 @@
 // Room Password Prompt Modal
+import ensureGlassFormStyles from '../core/ui/formBase.js';
 // Shows a password input with OK/Cancel, and supports wrong-password retry.
 // Usage:
 //   presentRoomPromptPassword({ roomName, onSubmit, onCancel })
@@ -10,6 +11,8 @@
 export function presentRoomPromptPassword({ roomName = 'Private Room', onSubmit, onCancel } = {}) {
   const id = 'ROOM_PASSWORD_PROMPT';
   try {
+    // Ensure shared modal classes are available
+    try { ensureGlassFormStyles(); } catch (_) {}
     const prio = (window.PRIORITY && window.PRIORITY.MEDIUM) || 50;
     window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: prio });
   } catch (_) {}
@@ -19,9 +22,8 @@ export function presentRoomPromptPassword({ roomName = 'Private Room', onSubmit,
   content.innerHTML = '';
 
   const title = document.createElement('div');
+  title.className = 'modal-title';
   title.textContent = `Enter password for: ${roomName}`;
-  title.style.fontWeight = 'bold';
-  title.style.fontSize = '18px';
   title.style.marginBottom = '8px';
   content.appendChild(title);
 
@@ -42,7 +44,7 @@ export function presentRoomPromptPassword({ roomName = 'Private Room', onSubmit,
   content.appendChild(row);
 
   const error = document.createElement('div');
-  error.style.color = '#ff8080';
+  error.style.color = 'var(--ui-fg, #eee)';
   error.style.marginTop = '8px';
   error.style.minHeight = '1.2em';
   content.appendChild(error);

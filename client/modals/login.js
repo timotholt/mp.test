@@ -213,10 +213,10 @@ export function presentLoginModal() {
 
   // Hint line sits below the quip and above the auth buttons
   const hint = document.createElement('div');
-  hint.className = 'modal-subtitle-quip';
-  hint.textContent = 'Sign in with a provider or email.';
+  hint.className = 'modal-subtitle';
+  hint.textContent = 'Sign in with a provider';
   // Match separator size; left-align and pull closer to buttons
-  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)'; hint.style.marginBottom = '6px'; } catch (_) {}
+  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-title-quip-size)'; hint.style.marginTop = '8px'; hint.style.marginBottom = '6px'; } catch (_) {}
 
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';
@@ -265,16 +265,18 @@ export function presentLoginModal() {
   buttons.appendChild(facebookBtn);
 
   const sep = document.createElement('div');
-  sep.className = 'login-sep';
-  sep.textContent = '— or —';
+  sep.className = 'modal-subtitle';
+  sep.textContent = 'Or email and password';
+  try { sep.style.textAlign = 'left'; sep.style.marginTop = '20px'; } catch (_) {}
 
   const form = document.createElement('div');
   form.className = 'login-form';
-
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:';
+  // Labels on the left, inputs on the right
+  try { form.style.gridTemplateColumns = 'max-content 1fr'; } catch (_) {}
+  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email';
   const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'Enter email address'; emailInput.className = 'input-glass';
   try { emailInput.id = 'login-email'; } catch (_) {}
-  const passLabel = document.createElement('label'); passLabel.textContent = 'Password:';
+  const passLabel = document.createElement('label'); passLabel.textContent = 'Password';
   const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = 'Enter password'; passInput.className = 'input-glass';
   try { passInput.id = 'login-password'; } catch (_) {}
 
@@ -323,7 +325,7 @@ export function presentLoginModal() {
     }
   } catch (_) {}
 
-  // Add to form
+  // Add to form (labels left, inputs right)
   form.appendChild(emailLabel); form.appendChild(emailWrap);
   form.appendChild(passLabel); form.appendChild(passWrap);
 

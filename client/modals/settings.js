@@ -318,7 +318,7 @@ function renderSettingsContent(panel) {
       'Red increases your damage rolls. Source? Trust me bro.',
       'Those color knobs took forever to code. Use them wisely.',
       'If your colors suck, I might change them back.',
-      "Reminder: colors can’t fix a lack of skill.",
+      "Reminder: colors can’t fix your lack of skill.",
       "Pick a color. Regret is free.",
     ];
     const sec = makeSection(getQuip('settings.panel.themeTag', colorQuipsPanel), '');
@@ -610,7 +610,7 @@ function makeInput(type, value) {
 }
 
 function makeNote(text) {
-  const d = document.createElement('div'); d.textContent = text; d.style.color = '#bbb'; d.style.fontSize = '12px'; d.style.marginBottom = '8px';
+  const d = document.createElement('div'); d.textContent = text; d.style.color = 'var(--ui-fg-quip, #bbb)'; d.style.fontSize = '12px'; d.style.marginBottom = '8px';
   return d;
 }
 
@@ -678,7 +678,7 @@ function presentSettingsOverlay() {
     const card = document.createElement('div');
     card.style.width = 'min(50vw, 820px, calc(100vw - 32px))';
     card.style.maxWidth = 'min(50vw, 820px, calc(100vw - 32px))';
-    card.style.color = '#dff1ff';
+    card.style.color = 'var(--ui-fg, #eee)';
     card.style.borderRadius = '14px';
     card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
     card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
@@ -709,7 +709,7 @@ function presentSettingsOverlay() {
     closeBtn.style.background = 'transparent';
     closeBtn.style.border = '1px solid var(--ui-surface-border)';
     closeBtn.style.borderRadius = '8px';
-    closeBtn.style.color = '#dff1ff';
+    closeBtn.style.color = 'var(--ui-fg, #eee)';
     closeBtn.style.cursor = 'pointer';
     header.appendChild(title);
     header.appendChild(closeBtn);
@@ -835,7 +835,7 @@ function presentSettingsOverlay() {
           box.style.borderRadius = '10px';
           box.style.boxShadow = '0 0 20px rgba(120,170,255,0.33)';
           box.style.padding = '12px';
-          box.style.color = '#eaf6ff';
+          box.style.color = 'var(--ui-fg, #eee)';
 
           const msg = document.createElement('div');
           msg.textContent = String(message || 'Are you sure?');

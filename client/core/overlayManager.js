@@ -25,7 +25,7 @@ function ensureOverlay() {
     // Background: use themed overlay tint if available, else fallback to black with darkness alpha.
     // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Default 0.5
     overlayEl.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.5)))';
-    overlayEl.style.color = '#fff';
+    overlayEl.style.color = 'var(--ui-fg, #eee)';
     overlayEl.style.padding = '0px';
     overlayEl.style.zIndex = '20000';
     const inner = document.createElement('div');

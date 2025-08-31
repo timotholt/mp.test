@@ -238,7 +238,7 @@ function ensureStyle() {
   st.textContent = `
   .sf-tooltip {
     position: fixed; left: 0; top: 0; z-index: 2147483600; pointer-events: none;
-    color: #dff1ff; font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
+    color: var(--ui-fg, #eee); font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
     padding: 6px 8px; border-radius: 6px;
     /* Theme variables with fallbacks */
     background: linear-gradient(180deg,
