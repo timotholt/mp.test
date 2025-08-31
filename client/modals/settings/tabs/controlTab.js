@@ -533,7 +533,8 @@ function keyFromEvent(e, actId) {
   if (ctrl && alt) return '';
 
   // Ignore pure modifier presses so Shift+Key works via case/symbols
-  if (base === 'Shift' || base === 'Control' || base === 'Alt' || base === 'Meta' || base === 'OS' || base === 'CapsLock') return '';
+  // (allow CapsLock as a bindable key)
+  if (base === 'Shift' || base === 'Control' || base === 'Alt' || base === 'Meta' || base === 'OS') return '';
 
   // Movement actions do not accept chords (Ctrl/Alt)
   if (isMovementActionId(actId) && (ctrl || alt)) return '';
@@ -705,9 +706,16 @@ export function renderControlTab(opts) {
       registerKeyEl(act.id, { cell, btns: [pcap.btn, bcap.btn], labs: [pcap.lab, bcap.lab], label: act.label, isChord: true, mglyph: false, act });
       return;
     }
-    const cap = buildKeycap(act, prettyKey(k0), '', { mode: 'far', placement: 'r' });
-    updateTooltip(cap.btn, `${act.label} — bound to: ${prettyKey(k0)}. Click to rebind`);
+    const _txt = prettyKey(k0);
+    const cap = buildKeycap(act, _txt, '', { mode: 'far', placement: 'r' });
+    updateTooltip(cap.btn, `${act.label} — bound to: ${_txt}. Click to rebind`);
     cap.btn.onclick = () => startListening(cap.btn, act);
+    // Ensure special single keys render as wide immediately
+    try {
+      const wideNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
+      const isWideSingle = !!_txt && (wideNames.has(_txt) || _txt.length > 1);
+      cap.btn.classList.toggle('wide', isWideSingle);
+    } catch (_) {}
     cell.appendChild(cap.btn);
     registerKeyEl(act.id, { cell, btn: cap.btn, lab: cap.lab, label: act.label, isChord: false, mglyph: false, act });
   }
@@ -1003,7 +1011,9 @@ export function renderControlTab(opts) {
         }
         const txt = k ? prettyKey(k) : '';
         if (refs.lab) refs.lab.textContent = txt; else if (refs.btn) refs.btn.textContent = txt;
-        const isWide = (txt === 'Enter' || txt === 'Space' || (txt && (txt.includes('+') || txt.length > 1)));
+        // Wide if special single key, chord, or multi-char label
+        const _wideNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
+        const isWide = !!txt && (_wideNames.has(txt) || txt.includes('+') || txt.length > 1);
         if (refs.btn) refs.btn.classList.toggle('wide', isWide);
         if (refs.btn) refs.btn.classList.toggle('unbound', !k);
         const label = refs.label || actId;
@@ -1014,7 +1024,8 @@ export function renderControlTab(opts) {
           const ptxt = pk ? prettyKey(pk) : '';
           refs.prefixLab.textContent = ptxt;
           if (refs.prefixBtn) {
-            const isWideP = !!ptxt && (ptxt === 'Enter' || ptxt === 'Space' || ptxt.length > 1);
+            const _widePNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
+            const isWideP = !!ptxt && (_widePNames.has(ptxt) || ptxt.length > 1);
             refs.prefixBtn.classList.toggle('wide', isWideP);
             refs.prefixBtn.classList.toggle('unbound', !pk);
             updateTooltip(refs.prefixBtn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
@@ -1030,7 +1041,8 @@ export function renderControlTab(opts) {
       extMirrorEls.forEach(m => {
         if (m.lab) m.lab.textContent = ptxt;
         if (m.btn) {
-          const isWideP = !!ptxt && (ptxt === 'Enter' || ptxt === 'Space' || ptxt.length > 1);
+          const _widePNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
+          const isWideP = !!ptxt && (_widePNames.has(ptxt) || ptxt.length > 1);
           m.btn.classList.toggle('wide', isWideP);
           if (!pk) m.btn.classList.add('unbound'); else m.btn.classList.remove('unbound');
           updateTooltip(m.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
@@ -1101,14 +1113,14 @@ export function renderControlTab(opts) {
     if (!initialBlink.includes(btn)) initialBlink.push(btn);
     initialBlink.forEach(b => { try { b.classList.add('listening'); b.classList.remove('unbound'); } catch (_) {} });
     btn.classList.add('listening');
-    updateTooltip(btn, `Press a key for ${act.label} (Esc cancel, Backspace/Delete unbind)`);
+    updateTooltip(btn, `Press a key for ${act.label} (Esc cancel, Backspace unbind)`);
 
     const onKey = (e) => {
       e.preventDefault();
       e.stopPropagation();
       const k = e.key;
       if (k === 'Escape') { cleanup(); return; }
-      if (k === 'Backspace' || k === 'Delete') {
+      if (k === 'Backspace') {
         state.map[act.id] = '';
         bumpToCustom();
         saveBindings(state.preset, state.map);
