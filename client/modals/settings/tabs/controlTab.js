@@ -43,7 +43,15 @@ const PRESETS = {
     // Inventory & Items
     inventory: '', pickup: '', drop: '', dropMany: '', apply: '', eat: '', read: '', zap: '', quaff: '', wear: '', remove: '', quiverSelect: '', adjustInventory: '', nameObject: '', listWeapons: '', listArmor: '', listRings: '', listAmulets: '', listTools: '', listEquipment: '', listGold: '', listSpells: '', wearArmor: '', takeoffArmor: '', removeMulti: '', putOnRingAmulet: '', removeRingAmulet: '', listDiscoveries: '', listChallenges: '',
     // Extended (independent letter assignments)
-    extendedPrefix: '#', extRide: '', extTwoWeapon: '', extConduct: '',
+    extendedPrefix: '#',
+    extHelp: '?',
+    extJump: 'j',
+    extRide: 'r',
+    extLoot: 'l',
+    extUntrap: 'u',
+    extTwoWeapon: 't',
+    extNameObject: 'n',
+    extListChallenges: 'c',
     // System & UI
     help: '', messageHistory: '', options: '', saveQuit: '', fullscreenToggle: '', playerInfo: '', save: '', quit: '', redo: '', talk: '', repeatMessage: '', toggleAutopickup: '', displayVersion: '', displayHistory: '', exploreMode: '', explainCommand: '', redrawScreen: '', suspend: '', bossKey: '',
   },
@@ -154,9 +162,14 @@ const PRESETS = {
     listChallenges: '',
     // Extended (independent letter assignments)
     extendedPrefix: '#',
+    extHelp: '?',           // # + ? = Help
+    extJump: 'j',           // # + j = Jump
     extRide: 'r',           // # + r = Ride
+    extLoot: 'l',           // # + l = Loot
+    extUntrap: 'u',         // # + u = Untrap
     extTwoWeapon: 't',      // # + t = Two-Weapon
-    extConduct: 'c',        // # + c = Conduct
+    extNameObject: 'n',     // # + n = Name Object
+    extListChallenges: 'c', // # + c = List Challenges
     // System & UI
     help: '?',
     messageHistory: 'Ctrl+p',
@@ -208,7 +221,8 @@ const PRESETS = {
     // Inventory & Items
     inventory: 'i', pickup: ',', drop: 'd', dropMany: 'D', apply: 'a', eat: 'e', read: 'r', zap: 'z', quaff: 'q', wear: 'P', remove: 'R', quiverSelect: 'Q', adjustInventory: 'A', nameObject: 'C', listWeapons: ')', listArmor: ']', listRings: '=', listAmulets: '"', listTools: '(', listEquipment: '', listGold: '$', listSpells: '+', wearArmor: 'W', takeoffArmor: 'T', removeMulti: 'A', putOnRingAmulet: 'P', removeRingAmulet: 'R', listDiscoveries: '\\', listChallenges: '',
     // Extended (independent letter assignments)
-    extendedPrefix: '#', extRide: 'r', extTwoWeapon: 't', extConduct: 'c',
+    extendedPrefix: '#',
+    extHelp: '?', extJump: 'j', extRide: 'r', extLoot: 'l', extUntrap: 'u', extTwoWeapon: 't', extNameObject: 'n', extListChallenges: 'c',
     // System & UI
     help: '?', messageHistory: 'Ctrl+p', options: 'O', saveQuit: 'S', fullscreenToggle: '', playerInfo: '@', save: 'S', quit: 'Q', redo: '', talk: 'C', repeatMessage: 'Ctrl+p', toggleAutopickup: 'Ctrl+a', displayVersion: 'v', displayHistory: 'H', exploreMode: 'X', explainCommand: '/', redrawScreen: 'Ctrl+r', suspend: 'Ctrl+z', bossKey: '',
   },
@@ -397,9 +411,14 @@ const KEY_GROUPS = [
     quip: 'Two-keystroke commands: [prefix] + [key] (e.g., # + r = Ride).',
     actions: [
       { id: 'extendedPrefix', label: 'Extended Prefix' },
+      { id: 'extHelp', label: 'Help' },
+      { id: 'extJump', label: 'Jump' },
       { id: 'extRide', label: 'Ride' },
-      { id: 'extTwoWeapon', label: 'Two-Weapon' },
-      { id: 'extConduct', label: 'Conduct' },
+      { id: 'extLoot', label: 'Loot Box / Bag' },
+      { id: 'extUntrap', label: 'Untrap' },
+      { id: 'extTwoWeapon', label: 'Two Weapons' },
+      { id: 'extNameObject', label: 'Name Object' },
+      { id: 'extListChallenges', label: 'List Challenges' },
     ],
   },
   // System & UI
@@ -952,6 +971,8 @@ export function renderControlTab(opts) {
     if (g.id === 'extended') {
       const wrap = document.createElement('div');
       gSec.appendChild(wrap);
+      // Widen key column for two-key chord (prefix + letter)
+      try { gSec.style.setProperty('--kb-keycol', '168px'); } catch (_) {}
       g.actions.forEach((act) => {
         const row = document.createElement('div');
         row.className = 'sf-kb-row';
@@ -1001,8 +1022,9 @@ export function renderControlTab(opts) {
         cell.appendChild(lcap.btn);
         if (!extMirrorEls) extMirrorEls = [];
         extMirrorEls.push({ lab: pcap.lab, btn: pcap.btn });
-        // track the interactive letter for updates
-        registerKeyEl(act.id, { cell, btn: lcap.btn, lab: lcap.lab, label: act.label, mglyph: false, act });
+        // Track the interactive letter for updates without giving renderAll a 'cell'
+        // so it doesn't rebuild this row and wipe the prefix+letter layout.
+        registerKeyEl(act.id, { btn: lcap.btn, lab: lcap.lab, label: act.label, mglyph: false, act });
         wrap.appendChild(row);
       });
       return; // done with extended group
