@@ -321,7 +321,19 @@ function renderSettingsContent(panel) {
       "Reminder: colors can’t fix your lack of skill.",
       "Pick a color. Regret is free.",
     ];
-    const sec = makeSection(getQuip('settings.panel.themeTag', colorQuipsPanel), '');
+    const sec = makeSection('Overall Color', getQuip('settings.panel.themeTag', colorQuipsPanel));
+    // Ensure subtitle quip class exists (JS-only style injection)
+    try {
+      let st = document.getElementById('settings-panel-style');
+      if (!st) {
+        st = document.createElement('style');
+        st.id = 'settings-panel-style';
+        st.textContent = '.settings-subtitle-quip{ padding-left:6px; }';
+        document.head.appendChild(st);
+      }
+    } catch (_) {}
+    // Apply padding class to the subtitle node
+    try { const sub = sec.children[1]; if (sub) sub.classList.add('settings-subtitle-quip'); } catch (_) {}
     // Insert Reset button into the Theme section header (right side)
     try {
       const hdr = sec.firstChild; // title div

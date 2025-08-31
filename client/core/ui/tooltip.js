@@ -245,7 +245,7 @@ function ensureStyle() {
       var(--sf-tip-bg-top, rgba(10,18,26, calc(0.46 * var(--ui-opacity-mult, 1)))) 0%,
       var(--sf-tip-bg-bottom, rgba(10,16,22, calc(0.44 * var(--ui-opacity-mult, 1)))) 100%
     );
-    border: 1px solid var(--sf-tip-border, rgba(120,170,255,0.70));
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     box-shadow: var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)),
                 var(--sf-tip-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
     text-shadow: var(--sf-tip-text-glow, 0 0 9px rgba(120,170,255,0.70));
@@ -259,8 +259,8 @@ function ensureStyle() {
       var(--sf-tip-bg-top, rgba(10,18,26, calc(0.46 * var(--ui-opacity-mult, 1)))) 0%,
       var(--sf-tip-bg-bottom, rgba(10,16,22, calc(0.44 * var(--ui-opacity-mult, 1)))) 100%
     );
-    border-right: 1px solid var(--sf-tip-border, rgba(120,170,255,0.70));
-    border-bottom: 1px solid var(--sf-tip-border, rgba(120,170,255,0.70));
+    border-right: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    border-bottom: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     transform: translateY(-4px) rotate(45deg);
     filter: var(--sf-tip-arrow-glow, drop-shadow(0 0 9px rgba(120,170,255,0.35)));
   }
