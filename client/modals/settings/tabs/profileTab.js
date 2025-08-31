@@ -65,7 +65,7 @@ export function renderProfileTab(opts = {}) {
     return; // fail safe
   }
 
-  try { container.appendChild(makeSection(headerTitle, headerDesc)); } catch (_) {}
+  try { container.appendChild(makeSection(headerTitle, headerDesc, 'afterTitle')); } catch (_) {}
 
   // Logged-out states show a note only (consistent with existing behavior)
   if (!loggedIn) {

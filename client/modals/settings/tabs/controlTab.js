@@ -516,8 +516,8 @@ export function renderControlTab(opts) {
   ensureKeycapStyle();
   ensureControlsKbStyle();
 
-  // Section header (no rule for main header)
-  const sec = makeSection(headerTitle, headerDesc);
+  // Section header
+  const sec = makeSection(headerTitle, headerDesc, 'afterTitle');
   container.appendChild(sec);
 
   // Toolbar: Preset dropdown + Reset button

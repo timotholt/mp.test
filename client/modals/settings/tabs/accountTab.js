@@ -29,7 +29,7 @@ export function renderAccountTab(opts = {}) {
     return;
   }
 
-  try { container.appendChild(makeSection(headerTitle, headerDesc)); } catch (_) {}
+  try { container.appendChild(makeSection(headerTitle, headerDesc, 'afterTitle')); } catch (_) {}
   if (!loggedIn) {
     try { container.appendChild(makeNote(loginMsg)); } catch (_) {}
   } else {

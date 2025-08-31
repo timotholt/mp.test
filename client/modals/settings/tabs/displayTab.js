@@ -12,7 +12,7 @@ export function renderDisplayTab(opts) {
   } = opts || {};
 
   // Section header with Reset on the right
-  const sec = makeSection(headerTitle, headerDesc);
+  const sec = makeSection(headerTitle, headerDesc, 'afterTitle');
   try {
     const hdr = sec.firstChild; // title div
     if (hdr) {

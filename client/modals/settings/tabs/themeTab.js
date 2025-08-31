@@ -31,7 +31,7 @@ export function renderThemeTab(opts) {
   } = opts || {};
 
   // Section header with quip subtitle and a Reset button on the right.
-  const sec = makeSection(headerTitle, headerDesc);
+  const sec = makeSection(headerTitle, headerDesc, 'afterTitle');
 
   // Ensure subtitle quip class exists (JS-only style injection)
   try {
@@ -46,7 +46,8 @@ export function renderThemeTab(opts) {
 
   // Apply padding class and enforce subdued color via CSS var inline
   try {
-    const sub = sec.children[1];
+    // After adding HR after the title, the subtitle shifts to index 2
+    const sub = sec.children[2] || sec.children[1];
     if (sub) {
       sub.classList.add('settings-subtitle-quip');
       sub.style.setProperty('--settings-sec-subtitle-color', 'var(--ui-fg, #eee)');
@@ -309,7 +310,7 @@ export function renderThemeTab(opts) {
         "It's the little things that matter",
         'It whispers, not shouts.'
       ];
-      container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips)));
+      container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips), 'afterTitle'));
     } catch (_) {}
   }
 
@@ -408,7 +409,7 @@ export function renderThemeTab(opts) {
         "You'll never glow up, but the glow knob will.",
         'Glow up? No. Glow knob? Absolutely.'
       ];
-      container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips)));
+      container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips), 'afterTitle'));
     } catch (_) {}
   }
 
