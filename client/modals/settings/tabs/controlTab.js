@@ -39,6 +39,19 @@ const PRESET_ITEMS = [
   { label: 'Vim (HJKL)', value: 'vim' },
 ];
 
+// Arrow glyphs for movement ring and wait
+const MOVE_GLYPHS = {
+  moveUpLeft: '↖',
+  moveUp: '↑',
+  moveUpRight: '↗',
+  moveLeft: '←',
+  waitTurn: '•',
+  moveRight: '→',
+  moveDownLeft: '↙',
+  moveDown: '↓',
+  moveDownRight: '↘',
+};
+
 // Groups and actions description for rendering
 // Inspired by the NetHack keyboard reference PDF for familiarity.
 const KEY_GROUPS = [
@@ -139,7 +152,7 @@ function ensureKeycapStyle() {
   st.textContent = `
   .sf-keycap {
     display: inline-flex; align-items: center; justify-content: center;
-    height: 28px; padding: 0 10px; min-width: 44px;
+    height: 2rem; width: 2rem; padding: 0; overflow: hidden; text-overflow: ellipsis;
     border-radius: 8px; cursor: pointer; user-select: none;
     color: var(--sf-tip-fg, #fff);
     background: linear-gradient(180deg,
@@ -156,6 +169,13 @@ function ensureKeycapStyle() {
     box-shadow: var(--ui-surface-glow-outer, 0 0 14px rgba(120,170,255,0.38)), var(--ui-surface-glow-inset, inset 0 0 10px rgba(40,100,200,0.20));
     border-color: var(--ui-bright, rgba(190,230,255,0.95));
   }
+  /* Unassigned keycaps are dim with no glow */
+  .sf-keycap.unbound { opacity: 0.75; box-shadow: none; text-shadow: none; }
+  .sf-keycap.unbound:hover, .sf-keycap.unbound:focus-visible { box-shadow: none; border-color: var(--ui-surface-border, rgba(120,170,255,0.70)); }
+  /* Slightly larger glyphs for movement arrows */
+  .sf-keycap.mglyph { font-size: 1.1rem; line-height: 1; }
+  /* Make movement glyph caps pop a bit more */
+  .sf-keycap.mglyph { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
   .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
@@ -168,8 +188,8 @@ function ensureKeycapStyle() {
   }
   .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
   /* 8-way movement ring grid */
-  .sf-kb-ring { display: grid; grid-template-columns: repeat(3, auto); grid-auto-rows: auto; gap: 8px; justify-content: center; align-items: center; margin: 8px 0; }
-  .sf-kb-ring .slot { display: flex; justify-content: center; align-items: center; min-width: 44px; min-height: 28px; }
+  .sf-kb-ring { display: grid; grid-template-columns: repeat(3, auto); grid-auto-rows: auto; gap: 12px; justify-content: center; align-items: center; margin: 8px 0; }
+  .sf-kb-ring .slot { display: flex; justify-content: center; align-items: center; min-width: 2rem; min-height: 2rem; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
@@ -177,7 +197,7 @@ function ensureKeycapStyle() {
 // Helpers to normalize/label keys
 function normalizeKey(k) {
   if (!k) return '';
-  if (k === ' ') return 'Space';
+  if (k === ' ' || k === 'Spacebar') return 'Space';
   // Use upper-case letters for readability; keep names like ArrowUp as-is
   if (k.length === 1) return k.toUpperCase();
   return k;
@@ -280,13 +300,15 @@ export function renderControlTab(opts) {
           if (act) {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'sf-keycap';
+            btn.className = 'sf-keycap mglyph';
             btn.setAttribute('data-action', act.id);
-            btn.textContent = prettyKey(state.map[act.id]);
+            btn.textContent = MOVE_GLYPHS[act.id] || '·';
             attachTooltip(btn, { mode: 'near', placement: 't' });
-            updateTooltip(btn, act.id === 'waitTurn' ? 'Click to rebind Wait/Rest' : `Click to rebind ${act.label}`);
+            const cur = state.map[act.id] || '';
+            updateTooltip(btn, `${act.label} — bound to: ${cur ? prettyKey(cur) : 'Unbound'}. Click to rebind`);
             btn.onclick = () => startListening(btn, act);
-            keyEls.set(act.id, { btn, lab: null });
+            // Track label and mglyph so renderAll can format properly
+            keyEls.set(act.id, { btn, lab: null, label: act.label, mglyph: true });
             slot.appendChild(btn);
           }
           ring.appendChild(slot);
@@ -312,13 +334,16 @@ export function renderControlTab(opts) {
       btn.setAttribute('data-action', act.id);
       btn.textContent = prettyKey(state.map[act.id]);
       attachTooltip(btn, { mode: 'near', placement: 't' });
-      updateTooltip(btn, `Click to rebind ${act.label}`);
+      updateTooltip(btn, `${act.label} — bound to: ${state.map[act.id] ? prettyKey(state.map[act.id]) : 'Unbound'}. Click to rebind`);
       btn.onclick = () => startListening(btn, act);
       row.appendChild(btn);
-      keyEls.set(act.id, { btn, lab });
+      keyEls.set(act.id, { btn, lab, label: act.label, mglyph: false });
       wrap.appendChild(row);
     });
   });
+
+  // Apply initial binding visuals after creating all buttons
+  renderAll();
 
   function renderAll() {
     // Update preset label
@@ -326,16 +351,23 @@ export function renderControlTab(opts) {
     // Update keycaps
     for (const [actId, refs] of keyEls.entries()) {
       const k = state.map[actId] || '';
-      refs.btn.textContent = prettyKey(k);
-      updateTooltip(refs.btn, k ? `Rebind ${actId} (currently ${prettyKey(k)})` : `Rebind ${actId} (currently Unbound)`);
+      // Show movement glyphs; other keys show bound key label
+      if (refs.mglyph) {
+        refs.btn.textContent = MOVE_GLYPHS[actId] || refs.btn.textContent;
+      } else {
+        refs.btn.textContent = prettyKey(k);
+      }
+      // Dim unassigned
+      if (!k) refs.btn.classList.add('unbound'); else refs.btn.classList.remove('unbound');
+      // Tooltip reflects binding
+      const label = refs.label || actId;
+      updateTooltip(refs.btn, `${label} — bound to: ${k ? prettyKey(k) : 'Unbound'}. Click to rebind`);
     }
   }
 
   function startListening(btn, act) {
     if (!btn || !act) return;
     btn.classList.add('listening');
-    const prevText = btn.textContent;
-    btn.textContent = '…';
     updateTooltip(btn, `Press a key for ${act.label} (Esc cancel, Backspace/Delete unbind)`);
 
     const onKey = (e) => {
@@ -372,8 +404,8 @@ export function renderControlTab(opts) {
       try { window.removeEventListener('keydown', onKey, true); } catch (_) {}
       try { window.removeEventListener('blur', onBlur, true); } catch (_) {}
       btn.classList.remove('listening');
-      btn.textContent = prevText;
-      updateTooltip(btn, `Click to rebind ${act.label}`);
+      // Ensure UI reflects current state
+      renderAll();
     }
 
     window.addEventListener('keydown', onKey, true);
