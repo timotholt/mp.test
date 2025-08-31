@@ -989,8 +989,34 @@ export function renderControlTab(opts) {
           const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', 'themed', { mode: 'far', placement: 'r' });
           updateTooltip(cap.btn, `${act.label} — ${k0 ? 'bound to: ' + prettyKey(k0) : 'UNBOUND'}. Click to rebind`);
           cap.btn.onclick = () => startListening(cap.btn, act);
-          cell.appendChild(cap.btn);
-          registerKeyEl(act.id, { cell, btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false, act });
+          // Place the prefix cap in the RIGHT key column and align it exactly
+          // like other rows by appending hidden "+" and letter ghosts to the right.
+          try {
+            lab.textContent = act.label;
+            // Match layout used by other extended rows
+            cell.style.display = 'flex';
+            cell.style.alignItems = 'center';
+            // Visible prefix
+            cell.appendChild(cap.btn);
+            // Hidden plus preserves spacing
+            const plusGhost = document.createElement('span');
+            plusGhost.textContent = ' + ';
+            plusGhost.style.margin = '0 6px';
+            plusGhost.style.color = 'var(--ui-fg, #eee)';
+            plusGhost.style.visibility = 'hidden';
+            cell.appendChild(plusGhost);
+            // Hidden letter cap preserves spacing
+            const dummyAct = { id: '__dummy_ext_letter', label: '' };
+            const ghost = buildKeycap(dummyAct, 'x', '', null);
+            ghost.btn.style.visibility = 'hidden';
+            ghost.btn.style.pointerEvents = 'none';
+            ghost.btn.tabIndex = -1;
+            cell.appendChild(ghost.btn);
+          } catch (_) {
+            cell.appendChild(cap.btn);
+          }
+          // Track updates without giving renderAll a cell to rebuild
+          registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false, act });
           // also track for mirror updates
           if (!extMirrorEls) extMirrorEls = [];
           extMirrorEls.push({ lab: cap.lab, btn: cap.btn });
