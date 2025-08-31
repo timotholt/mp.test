@@ -73,7 +73,6 @@ export function renderSoundTab(opts) {
           desc.style.fontSize = '13px';
           desc.style.opacity = '0.9';
           desc.style.margin = '0 0 10px 0';
-          desc.style.color = 'var(--ui-bright, #dff1ff)';
           desc.style.userSelect = 'none';
         }
       } catch (_) {}
@@ -105,7 +104,6 @@ export function renderSoundTab(opts) {
         desc.style.fontSize = '13px';
         desc.style.opacity = '0.9';
         desc.style.margin = '0 0 10px 0';
-        desc.style.color = 'var(--ui-fg, #eee)';
         desc.style.userSelect = 'none';
       }
     } catch (_) {}
