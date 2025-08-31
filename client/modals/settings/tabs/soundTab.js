@@ -160,8 +160,12 @@ function makeVolumeKnobsGrid() {
       el.style.setProperty('--kn-seg-on', 'var(--ui-surface-border)');
       el.style.setProperty('--kn-seg-on-bright', 'var(--ui-bright)');
       // Disable idle glow; keep strong glow only on hover/focus
-      el.style.setProperty('--kn-seg-glow', 'none');
-      el.style.setProperty('--kn-seg-glow-strong', 'var(--ui-glow-strong)');
+      // Re-enable idle LED glow and tie it to theme's surface glow (driven by glow slider)
+      el.style.setProperty('--kn-seg-glow', 'var(--ui-surface-glow-outer)');
+      // Make hover/focus LED glow more pronounced; still driven by glow slider
+      el.style.setProperty('--kn-seg-glow-strong', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
+      // Match overall knob hover glow to border slider hover glow
+      el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
     } catch (_) {}
     const cap = document.createElement('div');
     cap.textContent = g.label;
