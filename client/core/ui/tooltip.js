@@ -242,12 +242,12 @@ function ensureStyle() {
     padding: 6px 8px; border-radius: 6px;
     /* Theme variables with fallbacks */
     background: linear-gradient(180deg,
-      var(--sf-tip-bg-top, rgba(10,18,26, calc(0.46 * var(--ui-opacity-mult, 1)))) 0%,
-      var(--sf-tip-bg-bottom, rgba(10,16,22, calc(0.44 * var(--ui-opacity-mult, 1)))) 100%
+      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
+      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
     );
     border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)),
-                var(--sf-tip-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
+    box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)),
+                var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
     text-shadow: var(--sf-tip-text-glow, 0 0 9px rgba(120,170,255,0.70));
     backdrop-filter: var(--sf-tip-backdrop, blur(4px) saturate(1.2));
     transform: translate(-9999px, -9999px);
@@ -256,8 +256,8 @@ function ensureStyle() {
     content: '';
     position: absolute; width: 8px; height: 8px; left: 10px; top: 100%;
     background: linear-gradient(180deg,
-      var(--sf-tip-bg-top, rgba(10,18,26, calc(0.46 * var(--ui-opacity-mult, 1)))) 0%,
-      var(--sf-tip-bg-bottom, rgba(10,16,22, calc(0.44 * var(--ui-opacity-mult, 1)))) 100%
+      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
+      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
     );
     border-right: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     border-bottom: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));

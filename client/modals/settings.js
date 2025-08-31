@@ -328,12 +328,18 @@ function renderSettingsContent(panel) {
       if (!st) {
         st = document.createElement('style');
         st.id = 'settings-panel-style';
-        st.textContent = '.settings-subtitle-quip{ padding-left:6px; }';
+        st.textContent = '.settings-subtitle-quip{ padding-left:6px; --settings-sec-subtitle-color: var(--ui-fg, #eee); }';
         document.head.appendChild(st);
       }
     } catch (_) {}
-    // Apply padding class to the subtitle node
-    try { const sub = sec.children[1]; if (sub) sub.classList.add('settings-subtitle-quip'); } catch (_) {}
+    // Apply padding class and enforce subdued color via CSS var inline
+    try {
+      const sub = sec.children[1];
+      if (sub) {
+        sub.classList.add('settings-subtitle-quip');
+        sub.style.setProperty('--settings-sec-subtitle-color', 'var(--ui-fg, #eee)');
+      }
+    } catch (_) {}
     // Insert Reset button into the Theme section header (right side)
     try {
       const hdr = sec.firstChild; // title div
