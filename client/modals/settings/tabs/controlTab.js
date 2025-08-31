@@ -42,8 +42,8 @@ const PRESETS = {
     wield: '', swapWeapon: '', throw: '', fire: '', targetNext: '', twoWeapon: '', viewSkills: '', raiseSkills: '',
     // Inventory & Items
     inventory: '', pickup: '', drop: '', dropMany: '', apply: '', eat: '', read: '', zap: '', quaff: '', wear: '', remove: '', quiverSelect: '', adjustInventory: '', nameObject: '', listWeapons: '', listArmor: '', listRings: '', listAmulets: '', listTools: '', listEquipment: '', listGold: '', listSpells: '', wearArmor: '', takeoffArmor: '', removeMulti: '', putOnRingAmulet: '', removeRingAmulet: '', listDiscoveries: '', listChallenges: '',
-    // Extended
-    extendedPrefix: '#', rideMonster: '', twoWeapon: '', listChallenges: '',
+    // Extended (independent letter assignments)
+    extendedPrefix: '#', extRide: '', extTwoWeapon: '', extConduct: '',
     // System & UI
     help: '', messageHistory: '', options: '', saveQuit: '', fullscreenToggle: '', playerInfo: '', save: '', quit: '', redo: '', talk: '', repeatMessage: '', toggleAutopickup: '', displayVersion: '', displayHistory: '', exploreMode: '', explainCommand: '', redrawScreen: '', suspend: '', bossKey: '',
   },
@@ -152,11 +152,11 @@ const PRESETS = {
     removeRingAmulet: 'R',
     listDiscoveries: '\\',
     listChallenges: '',
-    // Extended
+    // Extended (independent letter assignments)
     extendedPrefix: '#',
-    rideMonster: 'r',       // #ride r
-    twoWeapon: 't',         // #twoweapon t
-    listChallenges: 'c',    // #conduct c
+    extRide: 'r',           // # + r = Ride
+    extTwoWeapon: 't',      // # + t = Two-Weapon
+    extConduct: 'c',        // # + c = Conduct
     // System & UI
     help: '?',
     messageHistory: 'Ctrl+p',
@@ -207,8 +207,8 @@ const PRESETS = {
     wield: 'w', swapWeapon: 'x', throw: 't', fire: 'f', targetNext: ';', twoWeapon: 'X', viewSkills: 'S', raiseSkills: '',
     // Inventory & Items
     inventory: 'i', pickup: ',', drop: 'd', dropMany: 'D', apply: 'a', eat: 'e', read: 'r', zap: 'z', quaff: 'q', wear: 'P', remove: 'R', quiverSelect: 'Q', adjustInventory: 'A', nameObject: 'C', listWeapons: ')', listArmor: ']', listRings: '=', listAmulets: '"', listTools: '(', listEquipment: '', listGold: '$', listSpells: '+', wearArmor: 'W', takeoffArmor: 'T', removeMulti: 'A', putOnRingAmulet: 'P', removeRingAmulet: 'R', listDiscoveries: '\\', listChallenges: '',
-    // Extended
-    extendedPrefix: '#', rideMonster: 'r', twoWeapon: 't', listChallenges: 'c',
+    // Extended (independent letter assignments)
+    extendedPrefix: '#', extRide: 'r', extTwoWeapon: 't', extConduct: 'c',
     // System & UI
     help: '?', messageHistory: 'Ctrl+p', options: 'O', saveQuit: 'S', fullscreenToggle: '', playerInfo: '@', save: 'S', quit: 'Q', redo: '', talk: 'C', repeatMessage: 'Ctrl+p', toggleAutopickup: 'Ctrl+a', displayVersion: 'v', displayHistory: 'H', exploreMode: 'X', explainCommand: '/', redrawScreen: 'Ctrl+r', suspend: 'Ctrl+z', bossKey: '',
   },
@@ -397,9 +397,9 @@ const KEY_GROUPS = [
     quip: 'Two-keystroke commands: [prefix] + [key] (e.g., # + r = Ride).',
     actions: [
       { id: 'extendedPrefix', label: 'Extended Prefix' },
-      { id: 'rideMonster', label: 'Ride' },
-      { id: 'twoWeapon', label: 'Two-Weapon' },
-      { id: 'listChallenges', label: 'Conduct' },
+      { id: 'extRide', label: 'Ride' },
+      { id: 'extTwoWeapon', label: 'Two-Weapon' },
+      { id: 'extConduct', label: 'Conduct' },
     ],
   },
   // System & UI
@@ -474,10 +474,8 @@ function ensureControlsKbStyle() {
   /* Smaller, tighter keycaps within controls page */
   .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { height: 1.5rem; min-width: 1.5rem; padding: 0 0.25rem; }
   .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: 1.1rem; height: 1.1rem; left: calc(50% - 0.55rem); top: 2px; }
-  .sf-kb-row .sf-keycap .cap-label, .sf-kb-two-col-keys .sf-keycap .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
-  /* Make all keycaps look wide inside controls grids for consistency */
-  .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { padding: 0 0.4rem; }
-  .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: calc(100% - 0.3rem); left: 50%; transform: translateX(-50%); }
+  /* Use sans font only for wide caps; single-char caps keep monospace for consistent width */
+  .sf-kb-row .sf-keycap.wide .cap-label, .sf-kb-two-col-keys .sf-keycap.wide .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
   .sf-kb-chord { display: inline-flex; align-items: center; gap: 4px; }
   .sf-kb-chord .plus { margin: 0 4px; color: var(--ui-fg, #eee); opacity: 0.85; }
   /* Ensure the right column is fixed-width and content doesn’t push layout */
@@ -530,6 +528,8 @@ function keyFromEvent(e, actId) {
 
   // Movement actions do not accept chords (Ctrl/Alt)
   if (isMovementActionId(actId) && (ctrl || alt)) return '';
+  // Extended letter commands (ext*) must be non-chorded (plain single key)
+  if (actId && /^ext/.test(actId) && (ctrl || alt)) return '';
 
   if (ctrl) return `Ctrl+${base}`;
   if (alt) return `Alt+${base}`;
@@ -682,12 +682,15 @@ export function renderControlTab(opts) {
     if (chord) {
       const wrap = document.createElement('div');
       wrap.className = 'sf-kb-chord';
-      const pcap = buildKeycap(act, chord.prefix, 'themed wide', { mode: 'far', placement: 'l' });
+      const pcap = buildKeycap(act, chord.prefix, 'themed', { mode: 'far', placement: 'l' });
       const plus = document.createElement('span'); plus.textContent = '+'; plus.className = 'plus';
       const bcap = buildKeycap(act, prettyKey(chord.base), '', { mode: 'far', placement: 'r' });
       [pcap.btn, bcap.btn].forEach(b => { b.onclick = () => startListening(b, act); });
       updateTooltip(pcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
       updateTooltip(bcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
+      // Wide only when label length > 1 (e.g., Ctrl)
+      try { pcap.btn.classList.toggle('wide', (chord.prefix && chord.prefix.length > 1)); } catch (_) {}
+      try { const bt = prettyKey(chord.base); bcap.btn.classList.toggle('wide', (bt && bt.length > 1)); } catch (_) {}
       wrap.appendChild(pcap.btn); wrap.appendChild(plus); wrap.appendChild(bcap.btn);
       cell.appendChild(wrap);
       registerKeyEl(act.id, { cell, btns: [pcap.btn, bcap.btn], labs: [pcap.lab, bcap.lab], label: act.label, isChord: true, mglyph: false, act });
@@ -883,16 +886,10 @@ export function renderControlTab(opts) {
       return; // done with combat
     }
 
-    // Special layout for Extended Commands: right column shows [prefix] + [static letter]
+    // Special layout for Extended Commands: show [prefix] + [interactive letter]
     if (g.id === 'extended') {
       const wrap = document.createElement('div');
       gSec.appendChild(wrap);
-      // Static letters used by Extended commands (display-only)
-      const EXTENDED_ROWS = [
-        { id: 'rideMonster', label: 'Ride', letter: 'r' },
-        { id: 'twoWeapon', label: 'Two-Weapon', letter: 't' },
-        { id: 'listChallenges', label: 'Conduct', letter: 'c' },
-      ];
       g.actions.forEach((act) => {
         const row = document.createElement('div');
         row.className = 'sf-kb-row';
@@ -906,7 +903,7 @@ export function renderControlTab(opts) {
 
         if (act.id === 'extendedPrefix') {
           const k0 = state.map[act.id] || '';
-          const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', 'themed wide', { mode: 'far', placement: 'r' });
+          const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', 'themed', { mode: 'far', placement: 'r' });
           updateTooltip(cap.btn, `${act.label} — ${k0 ? 'bound to: ' + prettyKey(k0) : 'UNBOUND'}. Click to rebind`);
           cap.btn.onclick = () => startListening(cap.btn, act);
           cell.appendChild(cap.btn);
@@ -918,10 +915,10 @@ export function renderControlTab(opts) {
           return;
         }
 
-        // Build prefix mirror + static letter
+        // Build prefix mirror + interactive letter (independent from base commands)
         const prefixAct = { id: 'extendedPrefix', label: 'Extended Prefix' };
         const pk = state.map['extendedPrefix'] || '';
-        const pcap = buildKeycap(prefixAct, pk ? prettyKey(pk) : '', 'themed wide', { mode: 'far', placement: 'l' });
+        const pcap = buildKeycap(prefixAct, pk ? prettyKey(pk) : '', 'themed', { mode: 'far', placement: 'l' });
         updateTooltip(pcap.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (click to rebind)`);
         pcap.btn.onclick = () => startListening(pcap.btn, prefixAct);
 
@@ -929,20 +926,21 @@ export function renderControlTab(opts) {
         plus.textContent = ' + ';
         plus.style.margin = '0 6px';
         plus.style.color = 'var(--ui-fg, #eee)';
-
-        const def = EXTENDED_ROWS.find(r => r.id === act.id);
-        const letter = def && def.letter ? def.letter : '';
-        const lcap = buildKeycap({ id: `${act.id}_static`, label: act.label }, letter, '', { mode: 'far', placement: 'r' });
-        // static display; no click, no registration
+        // Interactive letter cap uses this action's own independent binding
+        const lk = state.map[act.id] || '';
+        const lcap = buildKeycap(act, lk ? prettyKey(lk) : '', '', { mode: 'far', placement: 'r' });
+        updateTooltip(lcap.btn, `${act.label} — ${lk ? 'bound to: ' + prettyKey(lk) : 'UNBOUND'} (click to rebind)`);
+        lcap.btn.onclick = () => startListening(lcap.btn, act);
 
         cell.style.display = 'flex';
         cell.style.alignItems = 'center';
         cell.appendChild(pcap.btn);
         cell.appendChild(plus);
         cell.appendChild(lcap.btn);
-
         if (!extMirrorEls) extMirrorEls = [];
         extMirrorEls.push({ lab: pcap.lab, btn: pcap.btn });
+        // track the interactive letter for updates
+        registerKeyEl(act.id, { cell, btn: lcap.btn, lab: lcap.lab, label: act.label, mglyph: false, act });
         wrap.appendChild(row);
       });
       return; // done with extended group
@@ -1117,10 +1115,22 @@ export function renderControlTab(opts) {
       // Build chord-aware binding (Ctrl/Alt), ignoring invalid combos and pure modifiers
       const keyNorm = keyFromEvent(e, act.id);
       if (!keyNorm) { return; }
-      // Conflict handling: unassign any other action using this key
+      // Conflict handling: scope by domain (ext vs non-ext). Extended letters (ext*)
+      // only conflict with other ext* actions. Base actions ignore ext* and extendedPrefix.
+      // extendedPrefix remains globally conflicted for safety.
       let conflicted = null;
+      const isExtAct = /^ext/.test(act.id);
       for (const [aid, val] of Object.entries(state.map)) {
-        if (aid !== act.id && val === keyNorm) { conflicted = aid; break; }
+        if (aid === act.id) continue;
+        // Filter by domain
+        if (act.id === 'extendedPrefix') {
+          // No filter; prefix should remain unique overall
+        } else if (isExtAct) {
+          if (!/^ext/.test(aid)) continue; // ext letters ignore base/prefix conflicts
+        } else {
+          if (/^ext/.test(aid) || aid === 'extendedPrefix') continue; // base ignores ext letters and prefix
+        }
+        if (val === keyNorm) { conflicted = aid; break; }
       }
       if (conflicted) {
         // transiently highlight the conflicted keycap and show tooltip note

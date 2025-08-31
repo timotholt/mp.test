@@ -45,6 +45,11 @@ export function ensureKeycapStyle() {
   /* Unassigned keycaps are dim with no glow */
   .sf-keycap.unbound { opacity: 0.85; box-shadow: none; border-style: dashed; border-color: rgba(255,255,255,0.5); }
   .sf-keycap.unbound::before { opacity: 0.95; }
+  /* But on hover/focus/active, unassigned caps should glow like assigned */
+  .sf-keycap.unbound:hover, .sf-keycap.unbound:focus-visible, .sf-keycap.unbound:active {
+    box-shadow: var(--ui-surface-glow-outer, 0 0 14px rgba(120,170,255,0.38)), var(--ui-surface-glow-inset, inset 0 0 10px rgba(40,100,200,0.20));
+    border-color: var(--ui-bright, rgba(190,230,255,0.95));
+  }
 
   .sf-keycap .cap-label {
     position: relative; z-index: 1; top: 0;
