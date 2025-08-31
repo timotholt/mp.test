@@ -594,17 +594,20 @@ function makeSection(title, desc) {
   const t = document.createElement('div');
   t.textContent = title;
   // Standardize via CSS variables with sensible fallbacks
-  t.style.fontSize = 'var(--settings-sec-title-size, calc(14px * var(--ui-font-scale, 1)))';
-  t.style.fontWeight = 'var(--settings-sec-title-weight, 700)';
-  t.style.lineHeight = 'var(--settings-sec-title-line, 1.25)';
-  t.style.margin = 'var(--settings-sec-title-margin, 8px 0 4px 0)';
+  t.style.fontSize = 'var(--settings-sec-subtitle-size, var(--ui-subtitle-size, 1.5rem))';
+  t.style.fontWeight = 'var(--settings-sec-subtitle-weight, var(--ui-subtitle-weight, 700))';
+  t.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
+  // t.style.margin = 'var(--settings-sec-title-margin, 8px 0 4px 0)';
+  // Ensure consistent foreground color (locked token)
+  t.style.color = 'var(--ui-fg, #eee)';
   wrap.appendChild(t);
   if (desc) {
     const d = document.createElement('div');
     d.textContent = desc;
-    d.style.fontSize = 'var(--settings-sec-subtitle-size, calc(13px * var(--ui-font-scale, 1)))';
+    // Use quip tone + locked quip size
+    try { d.classList.add('text-quip'); } catch (_) {}
+    d.style.fontSize = 'var(--settings-sec-subtitle-size, var(--ui-subtitle-quip-size, 0.9rem))';
     d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
-    d.style.color = 'var(--settings-sec-subtitle-color, var(--ui-bright, #dff1ff))';
     d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
     d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
     wrap.appendChild(d);
