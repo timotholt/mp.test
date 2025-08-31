@@ -516,7 +516,7 @@ export function renderControlTab(opts) {
   ensureKeycapStyle();
   ensureControlsKbStyle();
 
-  // Section header
+  // Section header (no rule for main header)
   const sec = makeSection(headerTitle, headerDesc);
   container.appendChild(sec);
 
@@ -663,18 +663,9 @@ export function renderControlTab(opts) {
       return;
     }
 
-    const gSec = makeSection(g.title, g.quip);
-    try {
-      gSec.style.margin = '1rem 0';
-      // Add a subtle 1px underline under each section header title (experiment)
-      const titleEl = gSec.firstChild;
-      if (titleEl) {
-        titleEl.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.32))';
-        titleEl.style.paddingBottom = '4px';
-        // Slightly reduced space between underline and first row below
-        titleEl.style.marginBottom = '0.35rem';
-      }
-    } catch (_) {}
+    // Match previous look: rule directly after the title (before any quip)
+    const gSec = makeSection(g.title, g.quip, 'afterTitle');
+    try { gSec.style.margin = '1rem 0'; } catch (_) {}
     container.appendChild(gSec);
 
     // Special layout for Movement: circular arrows with themed keycaps

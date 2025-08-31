@@ -29,12 +29,12 @@ export function renderSoundTab(opts) {
         'Temper the noise, amplify the legend.',
         'Turn it up. Your speakers will thank you.'
       ];
-      container.appendChild(makeSection('Sound Mixer', getQuip('settings.overlay.soundMixerTag', mixerQuips)));
+      container.appendChild(makeSection('Sound Mixer', getQuip('settings.overlay.soundMixerTag', mixerQuips), 'afterTitle'));
     } catch (_) {
-      container.appendChild(makeSection('Sound Mixer', ''));
+      container.appendChild(makeSection('Sound Mixer', '', 'afterTitle'));
     }
   } else {
-    container.appendChild(makeSection('Sound'));
+    container.appendChild(makeSection('Sound', '', 'afterTitle'));
   }
 
   { const spacer = document.createElement('div'); spacer.style.height = '1rem'; container.appendChild(spacer); }
@@ -66,7 +66,7 @@ export function renderSoundTab(opts) {
         'Notifications ignored = fate accepted.',
         'If you mute these, don’t cry later.'
       ];
-      const sec = makeSection('Notifications', getQuip('settings.overlay.notificationsTag', notifQuips));
+      const sec = makeSection('Notifications', getQuip('settings.overlay.notificationsTag', notifQuips), 'afterTitle');
       try {
         const desc = sec.children && sec.children[1];
         if (desc) {
@@ -78,7 +78,7 @@ export function renderSoundTab(opts) {
       } catch (_) {}
       container.appendChild(sec);
     } catch (_) {
-      container.appendChild(makeSection('Notifications', ''));
+      container.appendChild(makeSection('Notifications', '', 'afterTitle'));
     }
 
     const notifGrid = document.createElement('div');
@@ -97,7 +97,7 @@ export function renderSoundTab(opts) {
     notifGrid.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
   } else {
     const spacer = document.createElement('div'); spacer.style.height = '12px'; container.appendChild(spacer);
-    const sec = makeSection('Notifications', 'Choose which alerts to receive.');
+    const sec = makeSection('Notifications', 'Choose which alerts to receive.', 'afterTitle');
     try {
       const desc = sec.children && sec.children[1];
       if (desc) {

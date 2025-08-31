@@ -340,7 +340,8 @@ function renderSettingsContent(panel) {
   }
 }
 
-function makeSection(title, desc) {
+function makeSection(title, desc, hrPosition) {
+  // hrPosition: undefined | 'afterTitle' | 'afterQuip'
   const wrap = document.createElement('div');
   const t = document.createElement('div');
   t.textContent = title;
@@ -348,10 +349,25 @@ function makeSection(title, desc) {
   t.style.fontSize = 'var(--settings-sec-subtitle-size, var(--ui-subtitle-size, 1.5rem))';
   t.style.fontWeight = 'var(--settings-sec-subtitle-weight, var(--ui-subtitle-weight, 700))';
   t.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
-  // t.style.margin = 'var(--settings-sec-title-margin, 8px 0 4px 0)';
   // Ensure consistent foreground color (locked token)
   t.style.color = 'var(--ui-fg, #eee)';
   wrap.appendChild(t);
+
+  // Helper to create a themed horizontal rule
+  function makeHr() {
+    const hr = document.createElement('div');
+    hr.style.height = '1px';
+    hr.style.width = '100%';
+    hr.style.background = 'var(--ui-surface-border, rgba(120,170,255,0.32))';
+    hr.style.margin = '0.35rem 0';
+    return hr;
+  }
+
+  // If caller asked for a rule immediately after the title
+  if (hrPosition === true || hrPosition === 'afterTitle') {
+    wrap.appendChild(makeHr());
+  }
+
   if (desc) {
     const d = document.createElement('div');
     d.textContent = desc;
@@ -362,7 +378,15 @@ function makeSection(title, desc) {
     d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
     d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
     wrap.appendChild(d);
+    // Optionally place the rule after the quip instead
+    if (hrPosition === 'afterQuip') {
+      wrap.appendChild(makeHr());
+    }
+  } else if (hrPosition === 'afterQuip') {
+    // No quip provided; fall back to placing after title
+    wrap.appendChild(makeHr());
   }
+
   return wrap;
 }
 
