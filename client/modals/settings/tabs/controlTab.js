@@ -473,7 +473,11 @@ function ensureControlsKbStyle() {
   .sf-kb-two-col-keys .sf-keycap { justify-self: end; }
   /* Smaller, tighter keycaps within controls page */
   .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { height: 1.5rem; min-width: 1.5rem; padding: 0 0.25rem; }
+  /* Fix single-char cap width so unassigned = assigned size */
+  .sf-kb-row .sf-keycap:not(.wide), .sf-kb-two-col-keys .sf-keycap:not(.wide) { width: 1.5rem; }
   .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: 1.1rem; height: 1.1rem; left: calc(50% - 0.55rem); top: 2px; }
+  /* Override for wide caps: make inner overlay span the cap width (Ctrl/Alt/Enter/Space) */
+  .sf-kb-row .sf-keycap.wide::before, .sf-kb-two-col-keys .sf-keycap.wide::before { width: calc(100% - 0.3rem); left: 50%; transform: translateX(-50%); }
   /* Use sans font only for wide caps; single-char caps keep monospace for consistent width */
   .sf-kb-row .sf-keycap.wide .cap-label, .sf-kb-two-col-keys .sf-keycap.wide .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
   .sf-kb-chord { display: inline-flex; align-items: center; gap: 4px; }
@@ -688,9 +692,9 @@ export function renderControlTab(opts) {
       [pcap.btn, bcap.btn].forEach(b => { b.onclick = () => startListening(b, act); });
       updateTooltip(pcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
       updateTooltip(bcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
-      // Wide only when label length > 1 (e.g., Ctrl)
-      try { pcap.btn.classList.toggle('wide', (chord.prefix && chord.prefix.length > 1)); } catch (_) {}
-      try { const bt = prettyKey(chord.base); bcap.btn.classList.toggle('wide', (bt && bt.length > 1)); } catch (_) {}
+      // Force modifier wide, base non-wide per spec (e.g., Ctrl + x)
+      try { pcap.btn.classList.add('wide'); } catch (_) {}
+      try { bcap.btn.classList.remove('wide'); } catch (_) {}
       wrap.appendChild(pcap.btn); wrap.appendChild(plus); wrap.appendChild(bcap.btn);
       cell.appendChild(wrap);
       registerKeyEl(act.id, { cell, btns: [pcap.btn, bcap.btn], labs: [pcap.lab, bcap.lab], label: act.label, isChord: true, mglyph: false, act });
@@ -1005,7 +1009,7 @@ export function renderControlTab(opts) {
           const ptxt = pk ? prettyKey(pk) : '';
           refs.prefixLab.textContent = ptxt;
           if (refs.prefixBtn) {
-            const isWideP = (ptxt === 'Enter' || ptxt === 'Space');
+            const isWideP = !!ptxt && (ptxt === 'Enter' || ptxt === 'Space' || ptxt.length > 1);
             refs.prefixBtn.classList.toggle('wide', isWideP);
             refs.prefixBtn.classList.toggle('unbound', !pk);
             updateTooltip(refs.prefixBtn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
@@ -1021,7 +1025,7 @@ export function renderControlTab(opts) {
       extMirrorEls.forEach(m => {
         if (m.lab) m.lab.textContent = ptxt;
         if (m.btn) {
-          const isWideP = (ptxt === 'Enter' || ptxt === 'Space');
+          const isWideP = !!ptxt && (ptxt === 'Enter' || ptxt === 'Space' || ptxt.length > 1);
           m.btn.classList.toggle('wide', isWideP);
           if (!pk) m.btn.classList.add('unbound'); else m.btn.classList.remove('unbound');
           updateTooltip(m.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
