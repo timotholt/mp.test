@@ -12,23 +12,45 @@ import * as LS from '../../../core/localStorage.js';
 const STORAGE_KEY = 'keybinds.map';
 const PRESET_KEY = 'keybinds.preset';
 
-// Presets kept intentionally small for v1; expandable later
+// Presets organized to mirror KEY_GROUPS order. Unknowns intentionally left blank ('').
+// Vim preset follows NetHack-style bindings where possible.
 const PRESETS = {
+  // Arrow keys baseline (minimal)
   arrows: {
+    // Movement (primary)
     moveUp: 'ArrowUp',
     moveDown: 'ArrowDown',
     moveLeft: 'ArrowLeft',
     moveRight: 'ArrowRight',
-    extendedPrefix: '#',
+    moveUpLeft: '',
+    moveUpRight: '',
+    moveDownLeft: '',
+    moveDownRight: '',
+    waitTurn: '',
+    // Movement (secondary)
+    moveUp2: '', moveDown2: '', moveLeft2: '', moveRight2: '',
+    moveUpLeft2: '', moveUpRight2: '', moveDownLeft2: '', moveDownRight2: '', waitTurn2: '',
+    // Movement (additional)
+    quickMove: '', moveFar: '', jump: '', teleport: '',
+    // Travel & Stairs
+    ascendStairs: '', descendStairs: '', autoTravel: '', rideMonster: '', sitDown: '',
+    // Interaction
+    search: '', look: '', open: '', close: '', kick: '', lootContainer: '', untrap: '', forceLock: '', identifySymbol: '', identifyTrap: '', nameMonster: '', wipeFace: '', engrave: '', writeInscription: '', pay: '',
+    // Magic & Spiritual
+    castSpell: '', drink: '', zapWand: '', pray: '', dip: '', rub: '', offer: '', invoke: '', turnUndead: '', specialAbility: '', breakWand: '',
+    // Combat
+    wield: '', swapWeapon: '', throw: '', fire: '', targetNext: '', twoWeapon: '', viewSkills: '', raiseSkills: '',
+    // Inventory & Items
+    inventory: '', pickup: '', drop: '', dropMany: '', apply: '', eat: '', read: '', zap: '', quaff: '', wear: '', remove: '', quiverSelect: '', adjustInventory: '', nameObject: '', listWeapons: '', listArmor: '', listRings: '', listAmulets: '', listTools: '', listEquipment: '', listGold: '', listSpells: '', wearArmor: '', takeoffArmor: '', removeMulti: '', putOnRingAmulet: '', removeRingAmulet: '', listDiscoveries: '', listChallenges: '',
+    // Extended
+    extendedPrefix: '#', rideMonster: '', twoWeapon: '', listChallenges: '',
+    // System & UI
+    help: '', messageHistory: '', options: '', saveQuit: '', fullscreenToggle: '', playerInfo: '', save: '', quit: '', redo: '', talk: '', repeatMessage: '', toggleAutopickup: '', displayVersion: '', displayHistory: '', exploreMode: '', explainCommand: '', redrawScreen: '', suspend: '', bossKey: '',
   },
-  wasd: {
-    moveUp: 'w',
-    moveDown: 's',
-    moveLeft: 'a',
-    moveRight: 'd',
-    extendedPrefix: '#',
-  },
+
+  // Vim/HJKL with diagonals and common NetHack commands
   vim: {
+    // Movement (primary)
     moveUp: 'k',
     moveDown: 'j',
     moveLeft: 'h',
@@ -37,12 +59,163 @@ const PRESETS = {
     moveUpRight: 'u',
     moveDownLeft: 'b',
     moveDownRight: 'n',
-    waitTurn: 'i',
+    waitTurn: '.', // rest one turn
+    // Movement (secondary)
+    moveUp2: '',
+    moveDown2: '',
+    moveLeft2: '',
+    moveRight2: '',
+    moveUpLeft2: '',
+    moveUpRight2: '',
+    moveDownLeft2: '',
+    moveDownRight2: '',
+    waitTurn2: '',
+
+    // Movement (additional)
+    quickMove: 'g',   // go until something interesting
+    moveFar: 'G',     // travel far
+    jump: '',         // extended in NetHack; leave blank
+    teleport: '',     // extended; leave blank
+
+    // Travel & Stairs
+    ascendStairs: '<',
+    descendStairs: '>',
+    autoTravel: 'g',  // alias of quick go; can be overridden
+    rideMonster: '',  // extended: #ride
+    sitDown: '',      // extended: #sit
+
+    // Interaction
+    search: 's',
+    look: ':',
+    open: 'o',
+    close: 'c',
+    kick: 'Ctrl+d',   // classic NetHack chord
+    lootContainer: '',
+    untrap: '',
+    forceLock: '',
+    identifySymbol: '/',
+    identifyTrap: '^',
+    nameMonster: 'C', // call monster/object class
+    wipeFace: 'Ctrl+f', // approximate; often extended
+    engrave: 'E',
+    writeInscription: '',
+    pay: 'p',
+    // Magic & Spiritual
+    castSpell: 'Z',
+    drink: 'q',
+    zapWand: 'z',
+    pray: 'Ctrl+p',   // prayer via menu in some ports; placeholder chord
+    dip: 'd',         // dip object
+    rub: 'r',         // rub lamp
+    offer: 'O',       // offer/sacrifice
+    invoke: 'V',
+    turnUndead: '',
+    specialAbility: 'a', // apply as generic ability
+    breakWand: '',
+
+    // Combat
+    wield: 'w',
+    swapWeapon: 'x',
+    throw: 't',
+    fire: 'f',
+    targetNext: ';',
+    twoWeapon: 'X',
+    viewSkills: 'S',
+    raiseSkills: '',
+
+    // Inventory & Items
+    inventory: 'i',
+    pickup: ',',
+    drop: 'd',
+    dropMany: 'D',
+    apply: 'a',
+    eat: 'e',
+    read: 'r',
+    quaff: 'q',
+    wear: 'P',              // put on ring/amulet (classic P)
+    remove: 'R',            // remove ring/amulet
+    quiverSelect: 'Q',      // set quiver (ports vary)
+    adjustInventory: 'A',   // adjust inventory letters
+    nameObject: 'C',        // call
+    listWeapons: ')',
+    listArmor: ']',
+    listRings: '=',
+    listAmulets: '"',
+    listTools: '(',
+    listEquipment: '',
+    listGold: '$',
+    listSpells: '+',
+    wearArmor: 'W',
+    takeoffArmor: 'T',
+    removeMulti: 'A',
+    putOnRingAmulet: 'P',
+    removeRingAmulet: 'R',
+    listDiscoveries: '\\',
+    listChallenges: '',
+    // Extended
     extendedPrefix: '#',
+    rideMonster: 'r',       // #ride r
+    twoWeapon: 't',         // #twoweapon t
+    listChallenges: 'c',    // #conduct c
+    // System & UI
+    help: '?',
+    messageHistory: 'Ctrl+p',
+    options: 'O',
+    saveQuit: 'S',
+    fullscreenToggle: '',
+    playerInfo: '@',
+    save: 'S',
+    quit: 'Q',
+    redo: '',
+    talk: 'C',
+    repeatMessage: 'Ctrl+p',
+    toggleAutopickup: 'Ctrl+a',
+    displayVersion: 'v',
+    displayHistory: 'H',
+    exploreMode: 'X',
+    explainCommand: '/',
+    redrawScreen: 'Ctrl+r',
+    suspend: 'Ctrl+z',
+    bossKey: '',
+  },
+
+  // WASD built from vim: QWE / ASD / ZXC for movement; digits for secondary.
+  wasd: {
+    // Movement (primary, 3x3 grid)
+    moveUpLeft: 'q',
+    moveUp: 'w',
+    moveUpRight: 'e',
+    moveLeft: 'a',
+    waitTurn: 's',
+    moveRight: 'd',
+    moveDownLeft: 'z',
+    moveDown: 'x',
+    moveDownRight: 'c',
+    // Movement (secondary via numpad digits)
+    moveUpLeft2: '7', moveUp2: '8', moveUpRight2: '9',
+    moveLeft2: '4',  waitTurn2: '5', moveRight2: '6',
+    moveDownLeft2: '1', moveDown2: '2', moveDownRight2: '3',
+    // Movement (additional)
+    quickMove: 'g', moveFar: 'G', jump: '', teleport: '',
+    // Travel & Stairs
+    ascendStairs: '<', descendStairs: '>', autoTravel: 'g', rideMonster: '', sitDown: '',
+    // Interaction (inherit vim where sensible)
+    search: 's', look: ':', open: 'o', close: 'c', kick: 'Ctrl+d', lootContainer: '', untrap: '', forceLock: '', identifySymbol: '/', identifyTrap: '^', nameMonster: 'C', wipeFace: 'Ctrl+f', engrave: 'E', writeInscription: '', pay: 'p',
+    // Magic & Spiritual
+    castSpell: 'Z', drink: 'q', zapWand: 'z', pray: 'Ctrl+p', dip: 'd', rub: 'r', offer: 'O', invoke: 'V', turnUndead: '', specialAbility: 'a', breakWand: '',
+    // Combat
+    wield: 'w', swapWeapon: 'x', throw: 't', fire: 'f', targetNext: ';', twoWeapon: 'X', viewSkills: 'S', raiseSkills: '',
+    // Inventory & Items
+    inventory: 'i', pickup: ',', drop: 'd', dropMany: 'D', apply: 'a', eat: 'e', read: 'r', zap: 'z', quaff: 'q', wear: 'P', remove: 'R', quiverSelect: 'Q', adjustInventory: 'A', nameObject: 'C', listWeapons: ')', listArmor: ']', listRings: '=', listAmulets: '"', listTools: '(', listEquipment: '', listGold: '$', listSpells: '+', wearArmor: 'W', takeoffArmor: 'T', removeMulti: 'A', putOnRingAmulet: 'P', removeRingAmulet: 'R', listDiscoveries: '\\', listChallenges: '',
+    // Extended
+    extendedPrefix: '#', rideMonster: 'r', twoWeapon: 't', listChallenges: 'c',
+    // System & UI
+    help: '?', messageHistory: 'Ctrl+p', options: 'O', saveQuit: 'S', fullscreenToggle: '', playerInfo: '@', save: 'S', quit: 'Q', redo: '', talk: 'C', repeatMessage: 'Ctrl+p', toggleAutopickup: 'Ctrl+a', displayVersion: 'v', displayHistory: 'H', exploreMode: 'X', explainCommand: '/', redrawScreen: 'Ctrl+r', suspend: 'Ctrl+z', bossKey: '',
   },
 };
 
 const PRESET_ITEMS = [
+  { label: 'Custom', value: 'custom' },
   { label: 'Arrow Keys', value: 'arrows' },
   { label: 'WASD', value: 'wasd' },
   { label: 'Vim (HJKL)', value: 'vim' },
@@ -68,7 +241,7 @@ const KEY_GROUPS = [
   {
     id: 'movement',
     title: 'Movement',
-    quip: 'HJKL, WASD, arrows… pick your poison.',
+    quip: '',
     actions: [
       { id: 'moveUp', label: 'Move Up' },
       { id: 'moveDown', label: 'Move Down' },
@@ -102,7 +275,7 @@ const KEY_GROUPS = [
   {
     id: 'movementAdvanced',
     title: 'Movement (additional)',
-    quip: 'Quick-move, far-move, acrobatics & wizardry.',
+    quip: '',
     actions: [
       { id: 'quickMove', label: 'Quick Move' },
       { id: 'moveFar', label: 'Move Far' },
@@ -114,7 +287,7 @@ const KEY_GROUPS = [
   {
     id: 'travel',
     title: 'Travel & Stairs',
-    quip: 'Sometimes the fastest route is down.',
+    quip: '',
     actions: [
       { id: 'ascendStairs', label: 'Ascend Stairs' },
       { id: 'descendStairs', label: 'Descend Stairs' },
@@ -127,7 +300,7 @@ const KEY_GROUPS = [
   {
     id: 'interaction',
     title: 'Interaction',
-    quip: 'Open. Close. Search. Kick. Look. Repeat.',
+    quip: '',
     actions: [
       { id: 'search', label: 'Search' },
       { id: 'look', label: 'Look/Examine' },
@@ -150,7 +323,7 @@ const KEY_GROUPS = [
   {
     id: 'magic',
     title: 'Magic & Spiritual',
-    quip: 'Pray you bound these right.',
+    quip: '',
     actions: [
       { id: 'castSpell', label: 'Cast Spell' },
       { id: 'drink', label: 'Drink' },
@@ -169,7 +342,7 @@ const KEY_GROUPS = [
   {
     id: 'combat',
     title: 'Combat',
-    quip: 'If it bleeds, it can be bound to a key.',
+    quip: '',
     actions: [
       { id: 'wield', label: 'Wield Weapon' },
       { id: 'swapWeapon', label: 'Swap Weapon' },
@@ -185,7 +358,7 @@ const KEY_GROUPS = [
   {
     id: 'inventory',
     title: 'Inventory & Items',
-    quip: 'Pack light. Bind smarter.',
+    quip: '',
     actions: [
       { id: 'inventory', label: 'Open Inventory' },
       { id: 'pickup', label: 'Pick Up' },
@@ -194,7 +367,6 @@ const KEY_GROUPS = [
       { id: 'apply', label: 'Apply/Use' },
       { id: 'eat', label: 'Eat' },
       { id: 'read', label: 'Read' },
-      { id: 'zap', label: 'Zap' },
       { id: 'quaff', label: 'Quaff' },
       { id: 'wear', label: 'Wear/Put On' },
       { id: 'remove', label: 'Remove/Take Off' },
@@ -234,7 +406,7 @@ const KEY_GROUPS = [
   {
     id: 'system',
     title: 'System & UI',
-    quip: 'When in doubt, press Help. When doomed, press Save.',
+    quip: '',
     actions: [
       { id: 'help', label: 'Help' },
       { id: 'messageHistory', label: 'Message History' },
@@ -259,12 +431,21 @@ const KEY_GROUPS = [
   },
 ];
 
+// Find an action definition by id (shared)
+function findActById(id) {
+  for (const gg of KEY_GROUPS) {
+    const f = (gg.actions || []).find(a => a.id === id);
+    if (f) return f;
+  }
+  return null;
+}
+
 // Inject once: Controls-tab specific layout styles (movement ring, rows, buttons)
 function ensureControlsKbStyle() {
   let st = document.getElementById('sf-controls-style');
   if (!st) { st = document.createElement('style'); st.id = 'sf-controls-style'; }
   st.textContent = `
-  .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: 6px 0; }
+  .sf-kb-row { display: grid; grid-template-columns: 1fr var(--kb-keycol, 86px); align-items: center; gap: 6px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
   .sf-btn {
@@ -288,12 +469,27 @@ function ensureControlsKbStyle() {
   .sf-kb-row .sf-keycap { justify-self: end; }
   .sf-kb-two-col .sf-kb-row { margin: 2px 0; }
   /* Four-cell grid (label,key | label,key) used by Movement (additional) */
-  .sf-kb-two-col-keys { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px 18px; align-items: center; }
+  .sf-kb-two-col-keys { display: grid; grid-template-columns: 1fr var(--kb-keycol, 104px) 1fr var(--kb-keycol, 104px); gap: 8px 18px; align-items: center; }
   .sf-kb-two-col-keys .sf-keycap { justify-self: end; }
+  /* Smaller, tighter keycaps within controls page */
+  .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { height: 1.5rem; min-width: 1.5rem; padding: 0 0.25rem; }
+  .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: 1.1rem; height: 1.1rem; left: calc(50% - 0.55rem); top: 2px; }
+  .sf-kb-row .sf-keycap .cap-label, .sf-kb-two-col-keys .sf-keycap .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
+  /* Make all keycaps look wide inside controls grids for consistency */
+  .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { padding: 0 0.4rem; }
+  .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: calc(100% - 0.3rem); left: 50%; transform: translateX(-50%); }
+  .sf-kb-chord { display: inline-flex; align-items: center; gap: 4px; }
+  .sf-kb-chord .plus { margin: 0 4px; color: var(--ui-fg, #eee); opacity: 0.85; }
+  /* Ensure the right column is fixed-width and content doesn’t push layout */
+  .sf-kb-row > .sf-kb-cell, .sf-kb-two-col-keys > .sf-kb-cell { justify-self: end; width: var(--kb-keycol, 104px); display: flex; justify-content: flex-end; align-items: center; overflow: hidden; }
+  .sf-kb-cell .sf-kb-chord, .sf-kb-cell .sf-keycap { flex: 0 0 auto; }
+  /* Blink while listening */
+  @keyframes sf-kb-blink { 0%,100% { filter: brightness(1.0); } 50% { filter: brightness(1.35); } }
+  .sf-keycap.listening { animation: sf-kb-blink 0.8s ease-in-out infinite; }
   /* Dual movement rings container */
   .sf-kb-move-duo { display: flex; gap: 16px; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
   .sf-kb-move-col { width: 220px; }
-  .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 12px; opacity: 0.75; margin-bottom: 4px; }
+  .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 14px; opacity: 0.85; margin-bottom: 2px; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
@@ -390,8 +586,19 @@ export function renderControlTab(opts) {
     items: PRESET_ITEMS,
     value: null,
     onChange: (val) => {
+      if (val === 'custom') {
+        // Preserve current bindings; just mark preset as custom and remember last real preset
+        if (state.preset !== 'custom') {
+          state.lastPreset = state.preset;
+          try { LS.setItem('keybinds.lastPreset', state.lastPreset); } catch (_) {}
+        }
+        state.preset = 'custom';
+        saveBindings(state.preset, state.map);
+        renderAll();
+        return;
+      }
       state.preset = val;
-      state.map = fillAllActions({ ...PRESETS[val] });
+      state.map = fillAllActions({ ...(PRESETS[val] || {}) });
       saveBindings(state.preset, state.map);
       renderAll();
     },
@@ -405,7 +612,14 @@ export function renderControlTab(opts) {
   resetBtn.className = 'sf-btn';
   resetBtn.textContent = 'Reset All';
   resetBtn.onclick = () => {
-    state.map = fillAllActions({ ...(PRESETS[state.preset] || PRESETS.arrows) });
+    let targetPreset = state.preset;
+    if (state.preset === 'custom') {
+      // restore to lastPreset if available, else arrows
+      const last = state.lastPreset || LS.getItem('keybinds.lastPreset', 'arrows');
+      targetPreset = last || 'arrows';
+      state.preset = targetPreset;
+    }
+    state.map = fillAllActions({ ...(PRESETS[targetPreset] || PRESETS.arrows) });
     saveBindings(state.preset, state.map);
     renderAll();
   };
@@ -417,8 +631,74 @@ export function renderControlTab(opts) {
 
   // State and UI refs
   const state = loadBindings();
-  const keyEls = new Map(); // actionId -> { btn, label }
+  const keyEls = new Map(); // actionId -> [ { cell?, btn, btns?, lab, labs?, label, isChord?, mglyph? } ]
+  const arrowByAction = new Map(); // actionId -> arrow span element
   let extMirrorEls = []; // mirrors of extended prefix within extended rows
+  let listening = null; // { btn, act, timer }
+
+  function registerKeyEl(id, refs) {
+    const arr = keyEls.get(id) || [];
+    // Replace existing entry for same cell to avoid duplicate refs on rebuilds
+    if (refs.cell) {
+      const idx = arr.findIndex(r => r && r.cell === refs.cell);
+      if (idx !== -1) {
+        arr[idx] = refs;
+        keyEls.set(id, arr);
+        return;
+      }
+    }
+    // Also guard against duplicate registration of the same button(s)
+    if (refs.btn && arr.some(r => r && r.btn === refs.btn)) {
+      keyEls.set(id, arr);
+      return;
+    }
+    if (refs.btns && arr.some(r => r && r.btns && r.btns[0] === refs.btns[0])) {
+      keyEls.set(id, arr);
+      return;
+    }
+    arr.push(refs);
+    keyEls.set(id, arr);
+  }
+
+  function splitChord(k) {
+    if (!k || typeof k !== 'string') return null;
+    const m = k.match(/^(Ctrl|Alt)\+(.+)$/);
+    return m ? { prefix: m[1], base: m[2] } : null;
+  }
+
+  function attachKeyForAction(cell, act) {
+    while (cell.firstChild) cell.removeChild(cell.firstChild);
+    const k0 = state.map[act.id] || '';
+    const chord = splitChord(k0);
+    if (!k0) {
+      const cap = buildKeycap(act, '', '', { mode: 'far', placement: 'r' });
+      updateTooltip(cap.btn, `${act.label} — UNBOUND. Click to rebind`);
+      cap.btn.onclick = () => startListening(cap.btn, act);
+      cap.btn.classList.add('unbound');
+      cell.appendChild(cap.btn);
+      registerKeyEl(act.id, { cell, btn: cap.btn, lab: cap.lab, label: act.label, isChord: false, mglyph: false, act });
+      return;
+    }
+    if (chord) {
+      const wrap = document.createElement('div');
+      wrap.className = 'sf-kb-chord';
+      const pcap = buildKeycap(act, chord.prefix, 'themed wide', { mode: 'far', placement: 'l' });
+      const plus = document.createElement('span'); plus.textContent = '+'; plus.className = 'plus';
+      const bcap = buildKeycap(act, prettyKey(chord.base), '', { mode: 'far', placement: 'r' });
+      [pcap.btn, bcap.btn].forEach(b => { b.onclick = () => startListening(b, act); });
+      updateTooltip(pcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
+      updateTooltip(bcap.btn, `${act.label} — bound to: ${k0}. Click to rebind`);
+      wrap.appendChild(pcap.btn); wrap.appendChild(plus); wrap.appendChild(bcap.btn);
+      cell.appendChild(wrap);
+      registerKeyEl(act.id, { cell, btns: [pcap.btn, bcap.btn], labs: [pcap.lab, bcap.lab], label: act.label, isChord: true, mglyph: false, act });
+      return;
+    }
+    const cap = buildKeycap(act, prettyKey(k0), '', { mode: 'far', placement: 'r' });
+    updateTooltip(cap.btn, `${act.label} — bound to: ${prettyKey(k0)}. Click to rebind`);
+    cap.btn.onclick = () => startListening(cap.btn, act);
+    cell.appendChild(cap.btn);
+    registerKeyEl(act.id, { cell, btn: cap.btn, lab: cap.lab, label: act.label, isChord: false, mglyph: false, act });
+  }
 
   // Initialize preset dropdown label
   try { presetDD.setValue(state.preset, false); } catch (_) {}
@@ -431,7 +711,17 @@ export function renderControlTab(opts) {
     }
 
     const gSec = makeSection(g.title, g.quip);
-    try { gSec.style.margin = '1rem 0'; } catch (_) {}
+    try {
+      gSec.style.margin = '1rem 0';
+      // Add a subtle 1px underline under each section header title (experiment)
+      const titleEl = gSec.firstChild;
+      if (titleEl) {
+        titleEl.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.32))';
+        titleEl.style.paddingBottom = '4px';
+        // Space between underline and first row below
+        titleEl.style.marginBottom = 'var(--ui-gap, 0.5rem)';
+      }
+    } catch (_) {}
     container.appendChild(gSec);
 
     // Special layout for Movement: circular arrows with themed keycaps
@@ -469,6 +759,7 @@ export function renderControlTab(opts) {
           s.textContent = glyph;
           place(s, angleDeg, rArrow);
           circle.appendChild(s);
+          return s;
         }
 
         function addKey(actId, angleDeg, radius) {
@@ -481,19 +772,19 @@ export function renderControlTab(opts) {
           place(cap.btn, angleDeg, radius);
           updateTooltip(cap.btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
           cap.btn.onclick = () => startListening(cap.btn, act);
-          keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+          registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
           circle.appendChild(cap.btn);
         }
 
-        // Arrows
-        addArrow(-135, MOVE_GLYPHS.moveUpLeft);
-        addArrow(-90,  MOVE_GLYPHS.moveUp);
-        addArrow(-45,  MOVE_GLYPHS.moveUpRight);
-        addArrow(180,  MOVE_GLYPHS.moveLeft);
-        addArrow(0,    MOVE_GLYPHS.moveRight);
-        addArrow(135,  MOVE_GLYPHS.moveDownLeft);
-        addArrow(90,   MOVE_GLYPHS.moveDown);
-        addArrow(45,   MOVE_GLYPHS.moveDownRight);
+        // Arrows (track by action id for dimming when unbound)
+        arrowByAction.set(ids.ul, addArrow(-135, MOVE_GLYPHS.moveUpLeft));
+        arrowByAction.set(ids.u,  addArrow(-90,  MOVE_GLYPHS.moveUp));
+        arrowByAction.set(ids.ur, addArrow(-45,  MOVE_GLYPHS.moveUpRight));
+        arrowByAction.set(ids.l,  addArrow(180,  MOVE_GLYPHS.moveLeft));
+        arrowByAction.set(ids.r,  addArrow(0,    MOVE_GLYPHS.moveRight));
+        arrowByAction.set(ids.dl, addArrow(135,  MOVE_GLYPHS.moveDownLeft));
+        arrowByAction.set(ids.d,  addArrow(90,   MOVE_GLYPHS.moveDown));
+        arrowByAction.set(ids.dr, addArrow(45,   MOVE_GLYPHS.moveDownRight));
 
         // Keycaps slightly inside the arrows
         addKey(ids.ul, -135, rKey);
@@ -530,10 +821,7 @@ export function renderControlTab(opts) {
 
       const rightIds = ['ascendStairs', 'autoTravel', 'rideMonster', 'sitDown'];
 
-      function findActById(id) {
-        for (const gg of KEY_GROUPS) { const f = (gg.actions || []).find(a => a.id === id); if (f) return f; }
-        return null;
-      }
+      // uses shared findActById
 
       const leftActs = (g.actions || []).filter(a => !rightIds.includes(a.id));
       const rightActs = rightIds.map(id => findActById(id)).filter(Boolean);
@@ -542,20 +830,18 @@ export function renderControlTab(opts) {
       function appendPair(act) {
         if (!act) {
           const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
-          const emptyCap = document.createElement('div'); emptyCap.style.minHeight = '30px';
-          wrap.appendChild(emptyLab); wrap.appendChild(emptyCap);
+          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '30px';
+          wrap.appendChild(emptyLab); wrap.appendChild(emptyCell);
           return;
         }
         const lab = document.createElement('div');
         lab.className = 'sf-kb-label';
         lab.textContent = act.label;
         wrap.appendChild(lab);
-        const k0 = state.map[act.id] || '';
-        const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', '', { mode: 'far', placement: 'r' });
-        updateTooltip(cap.btn, `${act.label} — bound to: ${k0 ? prettyKey(k0) : 'Unbound'}. Click to rebind`);
-        cap.btn.onclick = () => startListening(cap.btn, act);
-        wrap.appendChild(cap.btn);
-        keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+        const cell = document.createElement('div');
+        cell.className = 'sf-kb-cell';
+        wrap.appendChild(cell);
+        attachKeyForAction(cell, act);
       }
 
       for (let i = 0; i < rows; i++) {
@@ -566,69 +852,98 @@ export function renderControlTab(opts) {
       return; // done with movement additional
     }
 
-    // Special layout for Extended Commands: show [prefix] + [key]
+    // Combat: render as four-column grid like movement additional
+    if (g.id === 'combat') {
+      const wrap = document.createElement('div');
+      wrap.className = 'sf-kb-two-col-keys';
+      gSec.appendChild(wrap);
+
+      function appendPair(act) {
+        if (!act) {
+          const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
+          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '30px';
+          wrap.appendChild(emptyLab); wrap.appendChild(emptyCell);
+          return;
+        }
+        const lab = document.createElement('div');
+        lab.className = 'sf-kb-label';
+        lab.textContent = act.label;
+        wrap.appendChild(lab);
+        const cell = document.createElement('div');
+        cell.className = 'sf-kb-cell';
+        wrap.appendChild(cell);
+        attachKeyForAction(cell, act);
+      }
+
+      const acts = (g.actions || []).slice();
+      for (let i = 0; i < acts.length; i += 2) {
+        appendPair(acts[i]);
+        appendPair(acts[i + 1]);
+      }
+      return; // done with combat
+    }
+
+    // Special layout for Extended Commands: right column shows [prefix] + [static letter]
     if (g.id === 'extended') {
       const wrap = document.createElement('div');
       gSec.appendChild(wrap);
-
-      // Static letters for common extended commands (display only)
+      // Static letters used by Extended commands (display-only)
       const EXTENDED_ROWS = [
         { id: 'rideMonster', label: 'Ride', letter: 'r' },
         { id: 'twoWeapon', label: 'Two-Weapon', letter: 't' },
         { id: 'listChallenges', label: 'Conduct', letter: 'c' },
       ];
-
       g.actions.forEach((act) => {
         const row = document.createElement('div');
         row.className = 'sf-kb-row';
-
         const lab = document.createElement('div');
         lab.className = 'sf-kb-label';
         lab.textContent = act.label;
         row.appendChild(lab);
+        const cell = document.createElement('div');
+        cell.className = 'sf-kb-cell';
+        row.appendChild(cell);
 
         if (act.id === 'extendedPrefix') {
           const k0 = state.map[act.id] || '';
-          const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', '', { mode: 'far', placement: 'r' });
+          const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', 'themed wide', { mode: 'far', placement: 'r' });
           updateTooltip(cap.btn, `${act.label} — ${k0 ? 'bound to: ' + prettyKey(k0) : 'UNBOUND'}. Click to rebind`);
           cap.btn.onclick = () => startListening(cap.btn, act);
-          row.appendChild(cap.btn);
-          keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
-          wrap.appendChild(row);
-        } else {
-          // Mirror of prefix (non-interactive) + static command letter
-          const rowDef = EXTENDED_ROWS.find(r => r.id === act.id);
-          const prefixAct = { id: 'extendedPrefix', label: 'Extended Prefix' };
-          const pk = state.map['extendedPrefix'] || '';
-          const pcap = buildKeycap(prefixAct, pk ? prettyKey(pk) : '', '', { mode: 'far', placement: 'l' });
-          pcap.btn.style.pointerEvents = 'none';
-          updateTooltip(pcap.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
-
-          const plus = document.createElement('span');
-          plus.textContent = ' + ';
-          plus.style.margin = '0 6px';
-          plus.style.color = 'var(--ui-fg, #eee)';
-
-          const letter = rowDef && rowDef.letter ? rowDef.letter : '';
-          const dummyAct = { id: `extendedLetter_${act.id}`, label: act.label };
-          const lcap = buildKeycap(dummyAct, letter ? prettyKey(letter) : '', '', { mode: 'far', placement: 'r' });
-          lcap.btn.style.pointerEvents = 'none';
-          updateTooltip(lcap.btn, `${act.label} key — ${letter ? prettyKey(letter) : 'n/a'} (fixed)`);
-
-          const right = document.createElement('div');
-          right.style.display = 'flex';
-          right.style.alignItems = 'center';
-          right.appendChild(pcap.btn);
-          right.appendChild(plus);
-          right.appendChild(lcap.btn);
-          row.appendChild(right);
-
-          // Track mirror elements so we can refresh them when prefix changes
+          cell.appendChild(cap.btn);
+          registerKeyEl(act.id, { cell, btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false, act });
+          // also track for mirror updates
           if (!extMirrorEls) extMirrorEls = [];
-          extMirrorEls.push({ lab: pcap.lab, btn: pcap.btn });
-          // Do NOT register this display-only row in keyEls, to avoid overriding actual action buttons elsewhere
+          extMirrorEls.push({ lab: cap.lab, btn: cap.btn });
           wrap.appendChild(row);
+          return;
         }
+
+        // Build prefix mirror + static letter
+        const prefixAct = { id: 'extendedPrefix', label: 'Extended Prefix' };
+        const pk = state.map['extendedPrefix'] || '';
+        const pcap = buildKeycap(prefixAct, pk ? prettyKey(pk) : '', 'themed wide', { mode: 'far', placement: 'l' });
+        updateTooltip(pcap.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (click to rebind)`);
+        pcap.btn.onclick = () => startListening(pcap.btn, prefixAct);
+
+        const plus = document.createElement('span');
+        plus.textContent = ' + ';
+        plus.style.margin = '0 6px';
+        plus.style.color = 'var(--ui-fg, #eee)';
+
+        const def = EXTENDED_ROWS.find(r => r.id === act.id);
+        const letter = def && def.letter ? def.letter : '';
+        const lcap = buildKeycap({ id: `${act.id}_static`, label: act.label }, letter, '', { mode: 'far', placement: 'r' });
+        // static display; no click, no registration
+
+        cell.style.display = 'flex';
+        cell.style.alignItems = 'center';
+        cell.appendChild(pcap.btn);
+        cell.appendChild(plus);
+        cell.appendChild(lcap.btn);
+
+        if (!extMirrorEls) extMirrorEls = [];
+        extMirrorEls.push({ lab: pcap.lab, btn: pcap.btn });
+        wrap.appendChild(row);
       });
       return; // done with extended group
     }
@@ -651,12 +966,10 @@ export function renderControlTab(opts) {
       lab.className = 'sf-kb-label';
       lab.textContent = act.label;
       row.appendChild(lab);
-      const k0 = state.map[act.id] || '';
-      const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', '', { mode: 'far', placement: 'r' });
-      updateTooltip(cap.btn, `${act.label} — bound to: ${k0 ? prettyKey(k0) : 'Unbound'}. Click to rebind`);
-      cap.btn.onclick = () => startListening(cap.btn, act);
-      row.appendChild(cap.btn);
-      keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+      const cell = document.createElement('div');
+      cell.className = 'sf-kb-cell';
+      row.appendChild(cell);
+      attachKeyForAction(cell, act);
       wrap.appendChild(row);
     });
   });
@@ -668,29 +981,37 @@ export function renderControlTab(opts) {
     // Update preset label
     try { presetDD.setValue(state.preset, false); } catch (_) {}
     // Update keycaps
-    for (const [actId, refs] of keyEls.entries()) {
+    for (const [actId, list] of keyEls.entries()) {
       const k = state.map[actId] || '';
-      const txt = k ? prettyKey(k) : '';
-      if (refs.lab) refs.lab.textContent = txt; else refs.btn.textContent = txt; // safety fallback
-      // Variable width for special keys
-      const isWide = (txt === 'Enter' || txt === 'Space' || (txt && (txt.includes('+') || txt.length > 1)));
-      if (refs.btn) refs.btn.classList.toggle('wide', isWide);
-      // Dim unassigned
-      if (!k) refs.btn.classList.add('unbound'); else refs.btn.classList.remove('unbound');
-      // Tooltip reflects binding
-      const label = refs.label || actId;
-      updateTooltip(refs.btn, `${label} — ${k ? 'bound to: ' + prettyKey(k) : 'UNBOUND'}. Click to rebind`);
-
-      // If this is an extended row, mirror the prefix keycap too
-      if (refs.prefixLab) {
-        const pk = state.map['extendedPrefix'] || '';
-        const ptxt = pk ? prettyKey(pk) : '';
-        refs.prefixLab.textContent = ptxt;
-        if (refs.prefixBtn) {
-          const isWideP = (ptxt === 'Enter' || ptxt === 'Space');
-          refs.prefixBtn.classList.toggle('wide', isWideP);
-          if (!pk) refs.prefixBtn.classList.add('unbound'); else refs.prefixBtn.classList.remove('unbound');
-          updateTooltip(refs.prefixBtn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
+      // Refresh arrows opacity regardless of UI mirrors
+      if (isMovementActionId(actId)) {
+        const arrowEl = arrowByAction.get(actId);
+        if (arrowEl) arrowEl.style.opacity = k ? '0.9' : '0.28';
+      }
+      for (const refs of list) {
+        // Cell-based entries rebuild to handle chord/non-chord transitions cleanly
+        if (refs.cell && refs.act) {
+          attachKeyForAction(refs.cell, refs.act);
+          continue;
+        }
+        const txt = k ? prettyKey(k) : '';
+        if (refs.lab) refs.lab.textContent = txt; else if (refs.btn) refs.btn.textContent = txt;
+        const isWide = (txt === 'Enter' || txt === 'Space' || (txt && (txt.includes('+') || txt.length > 1)));
+        if (refs.btn) refs.btn.classList.toggle('wide', isWide);
+        if (refs.btn) refs.btn.classList.toggle('unbound', !k);
+        const label = refs.label || actId;
+        if (refs.btn) updateTooltip(refs.btn, `${label} — ${k ? 'bound to: ' + prettyKey(k) : 'UNBOUND'}. Click to rebind`);
+        // extended prefix mirrors
+        if (refs.prefixLab) {
+          const pk = state.map['extendedPrefix'] || '';
+          const ptxt = pk ? prettyKey(pk) : '';
+          refs.prefixLab.textContent = ptxt;
+          if (refs.prefixBtn) {
+            const isWideP = (ptxt === 'Enter' || ptxt === 'Space');
+            refs.prefixBtn.classList.toggle('wide', isWideP);
+            refs.prefixBtn.classList.toggle('unbound', !pk);
+            updateTooltip(refs.prefixBtn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
+          }
         }
       }
     }
@@ -711,8 +1032,67 @@ export function renderControlTab(opts) {
     }
   }
 
+  // Helper: compare current map to a preset's base
+  function isEqualToPreset(name) {
+    const base = PRESETS[name] || {};
+    // only compare keys present in base; if any differ, it's not equal
+    for (const [k, v] of Object.entries(base)) {
+      if ((state.map[k] || '') !== (v || '')) return false;
+    }
+    // also ensure no extra overrides beyond base for known actions
+    for (const g of KEY_GROUPS) {
+      for (const a of (g.actions || [])) {
+        if (a.id in base) continue;
+        // allow extra bindings outside the preset definition without affecting equality
+      }
+    }
+    return true;
+  }
+
+  function bumpToCustom() {
+    if (state.preset !== 'custom') {
+      state.lastPreset = state.preset;
+      try { LS.setItem('keybinds.lastPreset', state.lastPreset); } catch (_) {}
+      state.preset = 'custom';
+    }
+    try { presetDD.setValue(state.preset, false); } catch (_) {}
+  }
+
   function startListening(btn, act) {
     if (!btn || !act) return;
+    // Cancel any previous listener
+    if (listening) {
+      try { listening.btn.classList.remove('listening'); } catch (_) {}
+      try {
+        if (listening.blinkBtns && listening.blinkBtns.length) {
+          listening.blinkBtns.forEach(b => { try { b.classList.remove('listening'); } catch (_) {} });
+        }
+      } catch (_) {}
+      try { window.removeEventListener('keydown', listening.onKey, true); } catch (_) {}
+      try { window.removeEventListener('blur', listening.onBlur, true); } catch (_) {}
+      if (listening.timer) clearTimeout(listening.timer);
+      listening = null;
+    }
+    // Helper: gather all buttons that mirror this action id (and extended prefix mirrors)
+    const collectBlinkBtns = (aid) => {
+      const set = new Set();
+      const pushBtn = (b) => { if (b) set.add(b); };
+      const list = keyEls.get(aid) || [];
+      list.forEach(r => {
+        if (r.btn) pushBtn(r.btn);
+        if (r.btns && r.btns.length) r.btns.forEach(pushBtn);
+      });
+      // If assigning the extended prefix, include all its mirrored prefix caps
+      if (aid === 'extendedPrefix' && extMirrorEls && extMirrorEls.length) {
+        extMirrorEls.forEach(m => pushBtn(m.btn));
+      }
+      return Array.from(set);
+    };
+
+    // Initial blink: apply to clicked btn and all mirrors
+    const initialBlink = collectBlinkBtns(act.id);
+    if (!initialBlink.includes(btn)) initialBlink.push(btn);
+    initialBlink.forEach(b => { try { b.classList.add('listening'); b.classList.remove('unbound'); } catch (_) {} });
     btn.classList.add('listening');
     updateTooltip(btn, `Press a key for ${act.label} (Esc cancel, Backspace/Delete unbind)`);
 
@@ -723,9 +1103,15 @@ export function renderControlTab(opts) {
       if (k === 'Escape') { cleanup(); return; }
       if (k === 'Backspace' || k === 'Delete') {
         state.map[act.id] = '';
+        bumpToCustom();
         saveBindings(state.preset, state.map);
         renderAll();
-        cleanup();
+        // After updating UI, briefly blink the updated keycaps, then cleanup
+        const postBlink = collectBlinkBtns(act.id);
+        postBlink.forEach(b => { try { b.classList.add('listening'); b.classList.remove('unbound'); } catch (_) {} });
+        if (listening) listening.blinkBtns = postBlink;
+        if (listening && listening.timer) clearTimeout(listening.timer);
+        listening.timer = setTimeout(() => cleanup(), 550);
         return;
       }
       // Build chord-aware binding (Ctrl/Alt), ignoring invalid combos and pure modifiers
@@ -738,22 +1124,32 @@ export function renderControlTab(opts) {
       }
       if (conflicted) {
         // transiently highlight the conflicted keycap and show tooltip note
-        const refs = keyEls.get(conflicted);
-        if (refs && refs.btn) {
-          refs.btn.classList.add('conflict');
-          updateTooltip(refs.btn, `${refs.label || conflicted} — CONFLICT: unbinding due to reassignment`);
-          setTimeout(() => {
-            refs.btn.classList.remove('conflict');
-            const cur = state.map[conflicted] || '';
-            updateTooltip(refs.btn, `${refs.label || conflicted} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
-          }, 1200);
-        }
+        const list = keyEls.get(conflicted) || [];
+        list.forEach(r => {
+          const b = r.btn || (r.btns && r.btns[0]);
+          if (b) {
+            b.classList.add('conflict');
+            updateTooltip(b, `${r.label || conflicted} — CONFLICT: unbinding due to reassignment`);
+            setTimeout(() => {
+              b.classList.remove('conflict');
+              const cur = state.map[conflicted] || '';
+              updateTooltip(b, `${r.label || conflicted} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
+            }, 1200);
+          }
+        });
         state.map[conflicted] = '';
       }
       state.map[act.id] = keyNorm;
+      bumpToCustom();
       saveBindings(state.preset, state.map);
       renderAll();
-      cleanup();
+      // After updating UI, briefly blink the updated keycaps, then cleanup
+      const postBlink = collectBlinkBtns(act.id);
+      postBlink.forEach(b => { try { b.classList.add('listening'); b.classList.remove('unbound'); } catch (_) {} });
+      if (listening) listening.blinkBtns = postBlink;
+      if (listening && listening.timer) clearTimeout(listening.timer);
+      listening.timer = setTimeout(() => cleanup(), 550);
+      return;
     };
 
     const onBlur = () => { cleanup(); };
@@ -762,12 +1158,20 @@ export function renderControlTab(opts) {
       try { window.removeEventListener('keydown', onKey, true); } catch (_) {}
       try { window.removeEventListener('blur', onBlur, true); } catch (_) {}
       btn.classList.remove('listening');
+      try {
+        if (listening && listening.blinkBtns && listening.blinkBtns.length) {
+          listening.blinkBtns.forEach(b => { try { b.classList.remove('listening'); } catch (_) {} });
+        }
+      } catch (_) {}
       // Ensure UI reflects current state
       renderAll();
+      if (listening && listening.timer) { clearTimeout(listening.timer); }
+      listening = null;
     }
 
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('blur', onBlur, true);
+    listening = { btn, act, onKey, onBlur, blinkBtns: initialBlink, timer: setTimeout(() => cleanup(), 12000) };
     try { btn.focus(); } catch (_) {}
   }
 }
