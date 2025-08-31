@@ -7,6 +7,9 @@ import { createDropdown } from '../../../core/ui/controls.js';
 import { updateTooltip } from '../../../core/ui/tooltip.js';
 import { ensureKeycapStyle, buildKeycap } from '../../../core/ui/keycap.js';
 import * as LS from '../../../core/localStorage.js';
+import { PRESETS } from '../../../core/ui/modals/settings/tabs/control/presets.js';
+import { KEY_GROUPS } from '../../../core/ui/modals/settings/tabs/control/keyGroups.js';
+import { MOVE_GLYPHS, WIDE_KEY_NAMES } from '../../../core/ui/modals/settings/tabs/control/constants.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
@@ -14,7 +17,7 @@ const PRESET_KEY = 'keybinds.preset';
 
 // Presets organized to mirror KEY_GROUPS order. Unknowns intentionally left blank ('').
 // Vim preset follows NetHack-style bindings where possible.
-const PRESETS = {
+/* const PRESETS = {
   // Arrow keys baseline (minimal)
   arrows: {
     // Movement (primary)
@@ -226,7 +229,7 @@ const PRESETS = {
     // System & UI
     help: '?', messageHistory: 'Ctrl+p', options: 'O', saveQuit: 'S', fullscreenToggle: '', playerInfo: '@', save: 'S', quit: 'Q', redo: '', talk: 'C', repeatMessage: 'Ctrl+p', toggleAutopickup: 'Ctrl+a', displayVersion: 'v', displayHistory: 'H', exploreMode: 'X', explainCommand: '/', redrawScreen: 'Ctrl+r', suspend: 'Ctrl+z', bossKey: '',
   },
-};
+}; */
 
 const PRESET_ITEMS = [
   { label: 'Custom', value: 'custom' },
@@ -236,7 +239,7 @@ const PRESET_ITEMS = [
 ];
 
 // Arrow glyphs for movement ring and wait
-const MOVE_GLYPHS = {
+/* const MOVE_GLYPHS = {
   moveUpLeft: '↖',
   moveUp: '↑',
   moveUpRight: '↗',
@@ -246,18 +249,18 @@ const MOVE_GLYPHS = {
   moveDownLeft: '↙',
   moveDown: '↓',
   moveDownRight: '↘',
-};
+}; */
 
 // Centralized list of key names that should render as wide keycaps.
 // Includes both 'Delete' and shorthand 'Del' and common nav keys.
-const WIDE_KEY_NAMES = new Set([
+/* const WIDE_KEY_NAMES = new Set([
   'Enter','Space','Tab','CapsLock','Insert','Delete','Del',
   'PageUp','PageDown','Home','End','PrintScreen'
-]);
+]); */
 
 // Groups and actions description for rendering
 // Inspired by the NetHack keyboard reference PDF for familiarity.
-const KEY_GROUPS = [
+/* const KEY_GROUPS = [
   // Movement (primary 4-way + diagonals + wait)
   {
     id: 'movement',
@@ -455,7 +458,7 @@ const KEY_GROUPS = [
       { id: 'bossKey', label: 'Boss Key' },
     ],
   },
-];
+]; */
 
 // Find an action definition by id (shared)
 function findActById(id) {
