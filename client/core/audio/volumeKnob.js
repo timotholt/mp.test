@@ -44,6 +44,7 @@ export function createVolumeKnob(opts = {}) {
     segThickness: opts.segThickness,
     segLength: opts.segLength,
     dotSize: opts.dotSize,
+    tipWhite: true,
     allowSmall: true, // keep compact knobs working
     label: opts.label || `${groupId} Volume`,
     className: 'vol-knob',
@@ -57,8 +58,9 @@ export function createVolumeKnob(opts = {}) {
     },
   });
 
-  // Ensure LED segment hover color matches the center dot hover (white)
-  try { el.style.setProperty('--kn-seg-on-bright', '#fff'); } catch (_) {}
+  // Brighten non-tip segments on hover/focus using theme bright;
+  // tip remains white via inline styling in knob.js
+  try { el.style.setProperty('--kn-seg-on-bright', 'var(--ui-bright)'); } catch (_) {}
 
   // Prefer tooltip to appear below the knob ("far" mode is set in createKnob)
   // Set placement priority and a slightly larger gap so it renders clearly under the control.

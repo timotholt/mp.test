@@ -69,6 +69,8 @@ export function createKnob(opts = {}) {
   const titleFormatter = typeof opts.titleFormatter === 'function' ? opts.titleFormatter : defaultTitle;
   const onInput = typeof opts.onInput === 'function' ? opts.onInput : null;
   const onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
+  // Optional: make the tip (last lit) segment white while other lit segments use theme highlight
+  const tipWhite = !!opts.tipWhite;
 
   const el = document.createElement('div');
   el.className = 'knob' + (className ? (' ' + className) : '');
@@ -162,7 +164,19 @@ export function createKnob(opts = {}) {
     // Light segments only in classic mode; spectrum/none don't use on/off
     if (segMode === 'classic') {
       const lit = Math.round(n * segments);
-      for (let i = 0; i < segments; i++) segEls[i].classList.toggle('on', i < lit);
+      for (let i = 0; i < segments; i++) {
+        const on = i < lit;
+        const seg = segEls[i];
+        seg.classList.toggle('on', on);
+        if (tipWhite) {
+          // Inline style wins over CSS hover/focus rules; apply only to the last lit segment
+          if (on && i === lit - 1) {
+            try { seg.style.background = '#fff'; } catch (_) {}
+          } else {
+            try { seg.style.background = ''; } catch (_) {}
+          }
+        }
+      }
     }
 
     // Tooltip (Sci-Fi) + ARIA
