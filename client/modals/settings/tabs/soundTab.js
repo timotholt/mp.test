@@ -147,6 +147,12 @@ function makeVolumeKnobsGrid() {
     cell.style.width = '110px';
 
     const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: 64, segments: 20 });
+    // Micro-adjust: push the outer ring down by +2px (total ~4px at this size) for better visual centering
+    // Also brighten the dark gray off LED segments for improved contrast.
+    try {
+      el.style.setProperty('--kn-ring-global-y', '4px');
+      el.style.setProperty('--kn-seg-off', '#3b4350');
+    } catch (_) {}
     const cap = document.createElement('div');
     cap.textContent = g.label;
     cap.style.marginTop = '6px';

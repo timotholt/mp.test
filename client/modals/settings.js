@@ -1087,7 +1087,8 @@ function presentSettingsOverlay() {
               cap.style.fontSize = '12px';
               cap.style.opacity = '0.8';
               // Extra top margin to prevent label/ring overlap (Hue has a full 360° ring)
-              cap.style.marginTop = '14px';
+              // Increased by +0.5rem for better vertical spacing under color knobs
+              cap.style.marginTop = 'calc(14px + 0.5rem)';
               wrap.appendChild(cap);
               return wrap;
             };
