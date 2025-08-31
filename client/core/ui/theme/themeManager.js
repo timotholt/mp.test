@@ -71,6 +71,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-fg-weak': 'rgba(144,144,144,1.0)',
     '--ui-opacity-mult': '2.125',
     '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
+    '--ui-font-mono': 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
     // Locked typography sizes
     '--ui-title-size': '1.5rem',
     '--ui-title-weight': '700',
@@ -326,6 +327,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
       const glowOuter = `0 0 ${glowR}px ${cGlow1}, 0 0 ${Math.round(glowR / 2)}px ${cGlow2}`;
       const glowInset = `inset 0 0 ${glowR}px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 20), l: Math.max(25, light - 10), alpha: Math.min(0.30, glowAlphaEff + 0.06) })}`;
       const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.98 });
+      // (reverted) Do not derive a custom inner keycap token; fall back to scrollbar thumb
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
       // Ease in floors near zero intensity to prevent a jump from 0→1

@@ -4,7 +4,8 @@
 // and reset. JS-only changes; no external CSS/HTML files touched.
 
 import { createDropdown } from '../../../core/ui/controls.js';
-import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
+import { updateTooltip } from '../../../core/ui/tooltip.js';
+import { ensureKeycapStyle, buildKeycap } from '../../../core/ui/keycap.js';
 import * as LS from '../../../core/localStorage.js';
 
 // Storage keys (namespaced via LS helper)
@@ -145,39 +146,11 @@ const KEY_GROUPS = [
   },
 ];
 
-// Inject once: simple themed keycap style
-function ensureKeycapStyle() {
-  let st = document.getElementById('sf-keycap-style');
-  if (!st) { st = document.createElement('style'); st.id = 'sf-keycap-style'; }
+// Inject once: Controls-tab specific layout styles (movement ring, rows, buttons)
+function ensureControlsKbStyle() {
+  let st = document.getElementById('sf-controls-style');
+  if (!st) { st = document.createElement('style'); st.id = 'sf-controls-style'; }
   st.textContent = `
-  .sf-keycap {
-    display: inline-flex; align-items: center; justify-content: center;
-    height: 2rem; width: 2rem; padding: 0; overflow: hidden; text-overflow: ellipsis;
-    border-radius: 8px; cursor: pointer; user-select: none;
-    color: var(--sf-tip-fg, #fff);
-    background: linear-gradient(180deg,
-      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
-      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
-    );
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.28));
-    text-shadow: var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.65));
-    white-space: nowrap;
-  }
-  .sf-keycap:hover, .sf-keycap:focus-visible, .sf-keycap.listening {
-    outline: none;
-    box-shadow: var(--ui-surface-glow-outer, 0 0 14px rgba(120,170,255,0.38)), var(--ui-surface-glow-inset, inset 0 0 10px rgba(40,100,200,0.20));
-    border-color: var(--ui-bright, rgba(190,230,255,0.95));
-  }
-  /* Unassigned keycaps are dim with no glow */
-  .sf-keycap.unbound { opacity: 0.35; box-shadow: none; text-shadow: none; border-style: dashed; border-color: rgba(255,255,255,0.35); }
-  .sf-keycap.unbound:hover, .sf-keycap.unbound:focus-visible { box-shadow: none; border-color: var(--ui-surface-border, rgba(120,170,255,0.70)); }
-  /* Slightly larger glyphs for movement arrows */
-  .sf-keycap.mglyph { font-size: 1.1rem; line-height: 1; }
-  /* Make movement glyph caps pop a bit more */
-  .sf-keycap.mglyph { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
-  /* Conflict state: bright white edge */
-  .sf-keycap.conflict { border-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.7); }
   .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
@@ -186,13 +159,15 @@ function ensureKeycapStyle() {
     height: 30px; padding: 0 12px; border-radius: 8px; cursor: pointer;
     background: linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
     color: var(--ui-fg, #eee); border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25));
+    box-shadow: none;
   }
-  .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
-  /* 5x5 movement ring grid with arrow indicators */
-  .sf-kb-ring5 { display: grid; grid-template-columns: repeat(5, auto); grid-auto-rows: auto; gap: 8px; justify-content: center; align-items: center; margin: 8px 0; }
-  .sf-kb-ring5 .slot { display: flex; justify-content: center; align-items: center; min-width: 2rem; min-height: 2rem; }
-  .sf-kb-ring5 .arrow { color: var(--ui-fg, #eee); opacity: 0.85; font-size: 0.95rem; user-select: none; pointer-events: none; text-shadow: var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.35)); }
+  .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25)); }
+  /* Circular movement layout */
+  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 10px auto; }
+  .sf-kb-move-circle .arrow { position: absolute; transform: translate(-50%, -50%); color: var(--ui-fg, #eee); opacity: 0.9; font-size: 22px; line-height: 1; user-select: none; pointer-events: none; text-shadow: var(--ui-text-glow, 0 0 6px rgba(140,190,255,0.35)); font-family: "Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols",sans-serif; }
+  .sf-kb-move-circle .sf-keycap { position: absolute; transform: translate(-50%, -50%); }
+  .sf-keycap.conflict { animation: sf-kb-pulse 0.2s ease-in-out 0s 3 alternate; }
+  @keyframes sf-kb-pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
@@ -210,6 +185,8 @@ function prettyKey(k) {
   if (!k) return 'Unbound';
   return map[k] || k;
 }
+
+// (buildKeycap is imported from core/ui/keycap.js)
 
 // Load/save bindings
 function loadBindings() {
@@ -235,6 +212,7 @@ export function renderControlTab(opts) {
   } = opts || {};
 
   ensureKeycapStyle();
+  ensureControlsKbStyle();
 
   // Section header
   const sec = makeSection(headerTitle, headerDesc);
@@ -286,74 +264,72 @@ export function renderControlTab(opts) {
     const gSec = makeSection(g.title, g.quip);
     container.appendChild(gSec);
 
-    // Special layout for Movement: 8-way circle (3x3 grid with center wait)
+    // Special layout for Movement: circular arrows with themed keycaps
     if (g.id === 'movement') {
-      // 5x5 grid with non-clickable arrows and clickable keycaps at nine positions
-      const grid = document.createElement('div');
-      grid.className = 'sf-kb-ring5';
+      const circle = document.createElement('div');
+      circle.className = 'sf-kb-move-circle';
 
-      const keyPos = {
-        moveUpLeft: [1,1],
-        moveUp: [1,3],
-        moveUpRight: [1,5],
-        moveLeft: [3,1],
-        waitTurn: [3,3],
-        moveRight: [3,5],
-        moveDownLeft: [5,1],
-        moveDown: [5,3],
-        moveDownRight: [5,5],
-      };
-      const arrowPos = {
-        '2,2': '↖', '2,3': '↑', '2,4': '↗',
-        '3,2': '←',              '3,4': '→',
-        '4,2': '↙', '4,3': '↓', '4,4': '↘',
-      };
+      const center = 110; // half of 220px box
+      const rArrow = 87;  // outer radius for arrow glyphs (moved inward by 8px for closer spacing)
+      const rKey = 55;    // inner radius for keycaps (moved inward for more gap)
+
       const placeMap = {
         moveUpLeft: 'tl', moveUp: 't', moveUpRight: 'tr',
         moveLeft: 'l', waitTurn: 'bc', moveRight: 'r',
         moveDownLeft: 'bl', moveDown: 'b', moveDownRight: 'br',
       };
 
-      function getActionAt(r, c) {
-        for (const [aid, rc] of Object.entries(keyPos)) {
-          if (rc[0] === r && rc[1] === c) return aid;
-        }
-        return null;
+      function place(el, angleDeg, radius) {
+        const rad = (angleDeg * Math.PI) / 180;
+        const x = center + Math.cos(rad) * radius;
+        const y = center + Math.sin(rad) * radius;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
       }
 
-      for (let r = 1; r <= 5; r++) {
-        for (let c = 1; c <= 5; c++) {
-          const slot = document.createElement('div');
-          slot.className = 'slot';
-          const akey = `${r},${c}`;
-          if (arrowPos[akey]) {
-            const s = document.createElement('span');
-            s.className = 'arrow';
-            s.textContent = arrowPos[akey];
-            slot.appendChild(s);
-          } else {
-            const actId = getActionAt(r, c);
-            if (actId) {
-              const act = g.actions.find(a => a.id === actId);
-              if (act) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'sf-keycap';
-                btn.setAttribute('data-action', act.id);
-                const cur = state.map[act.id] || '';
-                btn.textContent = prettyKey(cur);
-                attachTooltip(btn, { mode: 'far', placement: placeMap[act.id] || 't' });
-                updateTooltip(btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
-                btn.onclick = () => startListening(btn, act);
-                keyEls.set(act.id, { btn, lab: null, label: act.label, mglyph: false });
-                slot.appendChild(btn);
-              }
-            }
-          }
-          grid.appendChild(slot);
-        }
+      function addArrow(angleDeg, glyph) {
+        const s = document.createElement('span');
+        s.className = 'arrow';
+        s.textContent = glyph;
+        place(s, angleDeg, rArrow);
+        circle.appendChild(s);
       }
-      gSec.appendChild(grid);
+
+      function addKey(actId, angleDeg, radius) {
+        const act = g.actions.find(a => a.id === actId);
+        if (!act) return;
+        const cur = state.map[act.id] || '';
+        const cap = buildKeycap(act, cur ? prettyKey(cur) : '', 'themed', { mode: 'far', placement: placeMap[act.id] || 't' });
+        place(cap.btn, angleDeg, radius);
+        updateTooltip(cap.btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
+        cap.btn.onclick = () => startListening(cap.btn, act);
+        keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+        circle.appendChild(cap.btn);
+      }
+
+      // Arrows around the ring
+      addArrow(-135, MOVE_GLYPHS.moveUpLeft);
+      addArrow(-90,  MOVE_GLYPHS.moveUp);
+      addArrow(-45,  MOVE_GLYPHS.moveUpRight);
+      addArrow(180,  MOVE_GLYPHS.moveLeft);
+      addArrow(0,    MOVE_GLYPHS.moveRight);
+      addArrow(135,  MOVE_GLYPHS.moveDownLeft);
+      addArrow(90,   MOVE_GLYPHS.moveDown);
+      addArrow(45,   MOVE_GLYPHS.moveDownRight);
+      // center occupied by the waitTurn keycap
+
+      // Keycaps slightly inside the arrows
+      addKey('moveUpLeft', -135, rKey);
+      addKey('moveUp', -90, rKey);
+      addKey('moveUpRight', -45, rKey);
+      addKey('moveLeft', 180, rKey);
+      addKey('waitTurn', 0, 0); // center
+      addKey('moveRight', 0, rKey);
+      addKey('moveDownLeft', 135, rKey);
+      addKey('moveDown', 90, rKey);
+      addKey('moveDownRight', 45, rKey);
+
+      gSec.appendChild(circle);
       return; // done with movement group
     }
 
@@ -367,16 +343,12 @@ export function renderControlTab(opts) {
       lab.className = 'sf-kb-label';
       lab.textContent = act.label;
       row.appendChild(lab);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'sf-keycap';
-      btn.setAttribute('data-action', act.id);
-      btn.textContent = prettyKey(state.map[act.id]);
-      attachTooltip(btn, { mode: 'far', placement: 'r' });
-      updateTooltip(btn, `${act.label} — bound to: ${state.map[act.id] ? prettyKey(state.map[act.id]) : 'Unbound'}. Click to rebind`);
-      btn.onclick = () => startListening(btn, act);
-      row.appendChild(btn);
-      keyEls.set(act.id, { btn, lab, label: act.label, mglyph: false });
+      const k0 = state.map[act.id] || '';
+      const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', '', { mode: 'far', placement: 'r' });
+      updateTooltip(cap.btn, `${act.label} — bound to: ${k0 ? prettyKey(k0) : 'Unbound'}. Click to rebind`);
+      cap.btn.onclick = () => startListening(cap.btn, act);
+      row.appendChild(cap.btn);
+      keyEls.set(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
       wrap.appendChild(row);
     });
   });
@@ -390,12 +362,11 @@ export function renderControlTab(opts) {
     // Update keycaps
     for (const [actId, refs] of keyEls.entries()) {
       const k = state.map[actId] || '';
-      // Show movement glyphs; other keys show bound key label
-      if (refs.mglyph) {
-        refs.btn.textContent = MOVE_GLYPHS[actId] || refs.btn.textContent;
-      } else {
-        refs.btn.textContent = prettyKey(k);
-      }
+      const txt = k ? prettyKey(k) : '';
+      if (refs.lab) refs.lab.textContent = txt; else refs.btn.textContent = txt; // safety fallback
+      // Variable width for special keys
+      const isWide = (txt === 'Enter' || txt === 'Space');
+      if (refs.btn) refs.btn.classList.toggle('wide', isWide);
       // Dim unassigned
       if (!k) refs.btn.classList.add('unbound'); else refs.btn.classList.remove('unbound');
       // Tooltip reflects binding
