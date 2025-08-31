@@ -6,9 +6,12 @@ import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentResetPasswordRequestModal } from './resetRequestConfirm.js';
 import { getQuip } from '../core/ui/quip.js';
+import { ensureGlassFormStyles } from '../core/ui/formBase.js';
 
 export function presentForgotPasswordModal() {
   initSupabase();
+  // Ensure shared glass form styles (buttons/inputs/icons) are injected once
+  try { ensureGlassFormStyles(); } catch (_) {}
   const id = 'FORGOT_PASSWORD_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {

@@ -28,24 +28,10 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
    and dynamic params (border, glow, gradient, blur, overlay darkness).
   */
   // Fixed, theme-agnostic foreground color for consistent UI text
-  try { root.style.setProperty('--ui-fg', 'rgba(220,220,220,1)'); } catch (_) {}
   // Default sans-serif font for the whole app, applied at :root
-  try { root.style.setProperty('--ui-font-family', 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif'); } catch (_) {}
+  // Moved var definition to LockedThemeDefaults; keep root font binding here
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
-  // Title sizes (rem-based so they inherit global --ui-font-scale applied to :root font-size)
-  // These are theme-exposed so modals/screens can standardize header typography.
-  try { root.style.setProperty('--ui-title-size', '1.5rem'); } catch (_) {}
-  try { root.style.setProperty('--ui-subtitle-size', '1rem'); } catch (_) {}
-  // Common layout tokens for surfaces/screens
-  // Use rems so they scale predictably with global font-size/--ui-font-scale
-  try { root.style.setProperty('--ui-card-radius', '0.875rem'); } catch (_) {} // 14px
-  try { root.style.setProperty('--ui-page-padding', '24px'); } catch (_) {}
-  try { root.style.setProperty('--ui-modal-padding', '1rem'); } catch (_) {}
-  // Border system
-  try { root.style.setProperty('--ui-border-size', '0.0625rem'); } catch (_) {} // 1px
-  // Compose a shorthand so components can do: border: var(--ui-surface-border-css)
-  try { root.style.setProperty('--ui-surface-border-css', 'var(--ui-border-size) solid var(--ui-surface-border)'); } catch (_) {}
-
+ 
   // Preset definitions (hue, saturation, intensity, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
   // Centralized here so Settings UI can consume via UITheme API
   const themePresets = Object.freeze({
@@ -80,16 +66,38 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, colorFromHS
   // Locked theme defaults (single source of truth) and derived keys
   const LockedThemeDefaults = Object.freeze({
     '--ui-fg': 'rgba(220,220,220,1)',
+    '--ui-fg-quip': 'rgba(176,176,176,1)',
     '--ui-opacity-mult': '2.125',
     '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
-    
+    // Locked typography sizes
+    '--ui-title-size': '1.5rem',
+    '--ui-title-weight': '700',
+
+    '--ui-subtitle-size': '1rem',
+    '--ui-title-quip-size': '0.9rem',
+    // Locked layout tokens
+    '--ui-card-radius': '0.875rem',
+    '--ui-page-padding': '24px',
+    '--ui-modal-padding': '1rem',
+    // Locked border system
+    '--ui-border-size': '0.0625rem',
+    '--ui-surface-border-css': 'var(--ui-border-size) solid var(--ui-surface-border)',
+
     // Locked scrollbar geometry (themes cannot change; a notheme path may override via allowLocked)
     '--ui-scrollbar-width': '10px',
     '--ui-scrollbar-radius': '8px',
 
     // Locked list row backgrounds (themes cannot change; a notheme path may override via allowLocked)
     '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
-    '--ui-list-row-even': 'rgba(255,255,255,0.02)'
+    '--ui-list-row-even': 'rgba(255,255,255,0.02)',
+
+    // Button colors
+    '--ui-button-fg': 'var(--ui-fg)',
+    '--ui-button-hover-fg': 'var(--ui-fg)',
+    '--ui-button-active-fg': 'var(--ui-fg)',
+    '--ui-button-disabled-fg': 'var(--ui-fg)', // how do i add 0.6 opacity?
+    '--ui-opacity-enabled-button': '1.0',
+    '--ui-opacity-disabled-button': '0.6',        
   });
 
   const LockedThemeVars = Object.freeze(Object.keys(LockedThemeDefaults));

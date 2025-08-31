@@ -6,6 +6,7 @@ import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { getQuip } from '../core/ui/quip.js';
+import { ensureGlassFormStyles } from '../core/ui/formBase.js';
 
 function ensureCreateAccountStyles() {
   if (document.getElementById('create-account-autofill-style')) return;
@@ -34,6 +35,8 @@ function ensureCreateAccountStyles() {
 
 export function presentCreateAccountModal() {
   initSupabase();
+  // Ensure shared glass form styles (buttons/inputs/icons) are injected once
+  try { ensureGlassFormStyles(); } catch (_) {}
   ensureCreateAccountStyles();
   const id = 'CREATE_ACCOUNT_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });

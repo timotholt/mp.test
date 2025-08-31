@@ -3,8 +3,11 @@
 
 import { presentLoginModal } from './login.js';
 import { getQuip } from '../core/ui/quip.js';
+import { ensureGlassFormStyles } from '../core/ui/formBase.js';
 
 export function presentResetPasswordRequestModal(emailValue) {
+  // Ensure shared glass form styles (buttons/inputs/icons) are injected once
+  try { ensureGlassFormStyles(); } catch (_) {}
   const id = 'RESET_PASSWORD_REQUEST_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {

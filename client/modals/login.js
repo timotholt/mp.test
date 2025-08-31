@@ -16,6 +16,7 @@ import { getQuip } from '../core/ui/quip.js';
 import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
+import { ensureGlassFormStyles } from '../core/ui/formBase.js';
 
 // Nuclear-green fallback for any missing CSS variable in this file.
 // If you see this color, a theme token is missing or failed to apply.
@@ -43,11 +44,9 @@ function ensureLoginStyles() {
     backdrop-filter: var(--sf-tip-backdrop, blur(3px) saturate(1.2));
     padding: var(--ui-modal-padding, 1rem); /* Ensure inner padding so nothing touches edges */
   }
-  .login-title { font-size: var(--ui-title-size, 3rem); font-weight: 700; margin: 0 0 0 0; user-select: none; }
-  .login-sub { font-size: var(--ui-subtitle-size, 3rem); margin: 0 0 20px 0; user-select: none; }
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
   .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
-  .btn:disabled { opacity: 0.6; cursor: default; }
+  .btn:disabled { opacity: var(--ui-opacity-disabled-button, 0.6); cursor: default; }
   .btn-outline-glass {
     background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
     color: var(--ui-fg, ${FALLBACK_FG_COLOR});
@@ -185,6 +184,8 @@ export function presentLoginModal() {
     content.style.maxWidth = 'unset';
     content.style.margin = '0';
   } catch (_) {}
+  // Ensure shared glass form styles are present (buttons/inputs/icons)
+  try { ensureGlassFormStyles(); } catch (_) {}
   ensureLoginStyles();
 
   // Only auto-continue when the page load was a reload/back-forward to avoid
@@ -202,20 +203,20 @@ export function presentLoginModal() {
   card.className = 'login-card';
 
   const title = document.createElement('div');
-  title.className = 'login-title';
+  title.className = 'modal-title';
   title.textContent = "Welcome to Grimdark";
 
   // Quip line directly under the title
   const quip = document.createElement('div');
-  quip.className = 'login-sub';
+  quip.className = 'modal-title-quip';
   quip.textContent = getQuip('auth.login.tagline', LOGIN_PHRASES);
 
   // Hint line sits below the quip and above the auth buttons
   const hint = document.createElement('div');
-  hint.className = 'login-sub';
+  hint.className = 'modal-subtitle-quip';
   hint.textContent = 'Sign in with a provider or email.';
   // Match separator size; left-align and pull closer to buttons
-  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-subtitle-size, 3rem)'; hint.style.marginBottom = '6px'; } catch (_) {}
+  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)'; hint.style.marginBottom = '6px'; } catch (_) {}
 
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';
