@@ -1071,6 +1071,8 @@ function presentSettingsOverlay() {
             // Extra breathing room so full 360° Hue ring isn't clipped
             knobRow.style.padding = '6px 4px';
             knobRow.style.overflow = 'visible';
+            // Standardize spacing above knobs via UI variable (fallback to 1rem)
+            knobRow.style.marginTop = 'var(--ui-gap, 1rem)';
 
             const makeCol = (el, caption) => {
               const wrap = document.createElement('div');

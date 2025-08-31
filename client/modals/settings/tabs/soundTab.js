@@ -159,7 +159,8 @@ function makeVolumeKnobsGrid() {
       el.style.setProperty('--kn-seg-off', '#3b4350');
       // Match LED segment colors to themed border/highlight
       el.style.setProperty('--kn-seg-on', 'var(--ui-surface-border)');
-      el.style.setProperty('--kn-seg-on-bright', 'var(--ui-bright)');
+      // Hover/focus LED segment color should match center dot hover (pure white)
+      el.style.setProperty('--kn-seg-on-bright', '#fff');
       // Disable idle glow; keep strong glow only on hover/focus
       // Re-enable idle LED glow and tie it to theme's surface glow (driven by glow slider)
       el.style.setProperty('--kn-seg-glow', 'var(--ui-surface-glow-outer)');

@@ -128,6 +128,14 @@ export function createHueKnob(opts = {}) {
     dotSize: 6,
   });
 
+  // Tooltips: show below knob with connector line (far mode, bottom-center placement)
+  try {
+    if (kn && kn.el) {
+      kn.el.__sfTipMode = 'far';
+      kn.el.__sfTipPlacementPriority = 'bc,b';
+    }
+  } catch (_) {}
+
   // Recolor the spectrum ring when Hue changes elsewhere
   try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
   
@@ -192,6 +200,14 @@ export function createSaturationKnob(opts = {}) {
     segLength: 10,
     dotSize: 6,
   });
+
+  // Tooltips: show below knob with connector line (far mode, bottom-center placement)
+  try {
+    if (kn && kn.el) {
+      kn.el.__sfTipMode = 'far';
+      kn.el.__sfTipPlacementPriority = 'bc,b';
+    }
+  } catch (_) {}
 
   // Recolor the spectrum ring when Hue changes elsewhere (throttled)
   try {
@@ -270,6 +286,14 @@ export function createIntensityKnob(opts = {}) {
     segLength: 10,
     dotSize: 6,
   });
+
+  // Tooltips: show below knob with connector line (far mode, bottom-center placement)
+  try {
+    if (kn && kn.el) {
+      kn.el.__sfTipMode = 'far';
+      kn.el.__sfTipPlacementPriority = 'bc,b';
+    }
+  } catch (_) {}
 
   // Recolor the spectrum ring when Hue changes elsewhere
   try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}

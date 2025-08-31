@@ -57,6 +57,9 @@ export function createVolumeKnob(opts = {}) {
     },
   });
 
+  // Ensure LED segment hover color matches the center dot hover (white)
+  try { el.style.setProperty('--kn-seg-on-bright', '#fff'); } catch (_) {}
+
   // Prefer tooltip to appear below the knob ("far" mode is set in createKnob)
   // Set placement priority and a slightly larger gap so it renders clearly under the control.
   try {
