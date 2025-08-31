@@ -293,10 +293,13 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
 
       // Derive common tokens from hue/intensity (OKLCH when available, else HSL)
       const accent = colorFromHSLC({ h: hue, s: satAcc, l: light, alpha: 1 });
-      // Boost border contrast at high strength by nudging lightness a bit
+      // Boost border contrast at high strength by nudging lightness and a touch of saturation
       const borderLightBase = Math.max(30, light - 5);
-      const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.30, 20, 90);
-      const border = colorFromHSLC({ h: hue, s: sat, l: borderLight, alpha: borderAlphaEff });
+      // Stronger slope so 100% feels noticeably brighter (was 0.30)
+      const borderLight = clamp(borderLightBase + (borderStrength - 70) * 0.60, 20, 90);
+      // Small saturation lift at high strength for perceived brightness without neon
+      const borderSat = clamp(sat + (borderStrength - 70) * 0.5, 0, 100);
+      const border = colorFromHSLC({ h: hue, s: borderSat, l: borderLight, alpha: borderAlphaEff });
       // Scale outer/inset glow radius strictly 0..44px from 0..100% strength
       const glowR = Math.round((glowStrength / 100) * 44);
       const cGlow1 = colorFromHSLC({ h: hue, s: sat, l: Math.max(35, light), alpha: glowAlphaEff });
