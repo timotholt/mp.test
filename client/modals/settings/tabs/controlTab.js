@@ -248,6 +248,13 @@ const MOVE_GLYPHS = {
   moveDownRight: '↘',
 };
 
+// Centralized list of key names that should render as wide keycaps.
+// Includes both 'Delete' and shorthand 'Del' and common nav keys.
+const WIDE_KEY_NAMES = new Set([
+  'Enter','Space','Tab','CapsLock','Insert','Delete','Del',
+  'PageUp','PageDown','Home','End','PrintScreen'
+]);
+
 // Groups and actions description for rendering
 // Inspired by the NetHack keyboard reference PDF for familiarity.
 const KEY_GROUPS = [
@@ -288,23 +295,15 @@ const KEY_GROUPS = [
   // Movement (advanced)
   {
     id: 'movementAdvanced',
-    title: 'Movement (additional)',
-    quip: '',
-    actions: [
-      { id: 'quickMove', label: 'Quick Move' },
-      { id: 'moveFar', label: 'Move Far' },
-      { id: 'jump', label: 'Jump' },
-      { id: 'teleport', label: 'Teleport' },
-    ],
-  },
-  // Travel / stairs
-  {
-    id: 'travel',
-    title: 'Travel & Stairs',
+    title: 'Movement (Additional)',
     quip: '',
     actions: [
       { id: 'ascendStairs', label: 'Ascend Stairs' },
       { id: 'descendStairs', label: 'Descend Stairs' },
+      { id: 'quickMove', label: 'Quick Move' },
+      { id: 'moveFar', label: 'Move Far' },
+      { id: 'jump', label: 'Jump' },
+      { id: 'teleport', label: 'Teleport' },
       { id: 'autoTravel', label: 'Auto-Travel/Run' },
       { id: 'rideMonster', label: 'Ride Monster' },
       { id: 'sitDown', label: 'Sit Down' },
@@ -387,6 +386,19 @@ const KEY_GROUPS = [
       { id: 'quiverSelect', label: 'Select Quiver' },
       { id: 'adjustInventory', label: 'Adjust Inventory' },
       { id: 'nameObject', label: 'Name Object' },
+      { id: 'wearArmor', label: 'Wear Armor' },
+      { id: 'takeoffArmor', label: 'Take Off Armor' },
+      { id: 'removeMulti', label: 'Remove Multiple Items' },
+      { id: 'putOnRingAmulet', label: 'Put On Ring/Amulet' },
+      { id: 'removeRingAmulet', label: 'Remove Ring/Amulet' },
+    ],
+  },
+  // Lists (moved out of Inventory & Items)
+  {
+    id: 'lists',
+    title: 'Lists',
+    quip: '',
+    actions: [
       { id: 'listWeapons', label: 'List Weapons' },
       { id: 'listArmor', label: 'List Armor' },
       { id: 'listRings', label: 'List Rings' },
@@ -395,11 +407,6 @@ const KEY_GROUPS = [
       { id: 'listEquipment', label: 'List Equipment' },
       { id: 'listGold', label: 'List Gold' },
       { id: 'listSpells', label: 'List Spells' },
-      { id: 'wearArmor', label: 'Wear Armor' },
-      { id: 'takeoffArmor', label: 'Take Off Armor' },
-      { id: 'removeMulti', label: 'Remove Multiple Items' },
-      { id: 'putOnRingAmulet', label: 'Put On Ring/Amulet' },
-      { id: 'removeRingAmulet', label: 'Remove Ring/Amulet' },
       { id: 'listDiscoveries', label: 'List Discovered Objects' },
       { id: 'listChallenges', label: 'List Challenges' },
     ],
@@ -464,7 +471,7 @@ function ensureControlsKbStyle() {
   let st = document.getElementById('sf-controls-style');
   if (!st) { st = document.createElement('style'); st.id = 'sf-controls-style'; }
   st.textContent = `
-  .sf-kb-row { display: grid; grid-template-columns: 1fr var(--kb-keycol, 86px); align-items: center; gap: 6px; margin: 6px 0; }
+  .sf-kb-row { display: grid; grid-template-columns: 1fr var(--kb-keycol, 104px); align-items: center; gap: 6px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
   .sf-btn {
@@ -476,7 +483,7 @@ function ensureControlsKbStyle() {
   }
   .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25)); }
   /* Circular movement layout */
-  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 10px 0; }
+  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 0 0 8px 0; }
   .sf-kb-move-circle .arrow { position: absolute; transform: translate(-50%, -50%); color: var(--ui-fg, #eee); opacity: 0.9; font-size: 22px; line-height: 1; user-select: none; pointer-events: none; text-shadow: var(--ui-text-glow, 0 0 6px rgba(140,190,255,0.35)); font-family: "Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols",sans-serif; }
   .sf-kb-move-circle .sf-keycap { position: absolute; transform: translate(-50%, -50%); }
   .sf-keycap.conflict { animation: sf-kb-pulse 0.2s ease-in-out 0s 3 alternate; }
@@ -513,9 +520,9 @@ function ensureControlsKbStyle() {
   @keyframes sf-kb-blink { 0%,100% { filter: brightness(1.0); } 50% { filter: brightness(1.35); } }
   .sf-keycap.listening { animation: sf-kb-blink 0.8s ease-in-out infinite; }
   /* Dual movement rings container */
-  .sf-kb-move-duo { display: flex; gap: 16px; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
+  .sf-kb-move-duo { display: flex; gap: 16px; justify-content: center; align-items: flex-start; flex-wrap: nowrap; margin-top: 4px; }
   .sf-kb-move-col { width: 220px; }
-  .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 14px; opacity: 0.85; margin-bottom: 2px; }
+  .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 14px; opacity: 0.85; margin-bottom: 0; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
@@ -761,9 +768,8 @@ export function renderControlTab(opts) {
       try { pcap.btn.classList.add('wide'); } catch (_) {}
       // Special-case: wide base for long-labeled keys like Enter/Insert/etc.
       try {
-        const wideBaseNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','Del','PageUp','PageDown','Home','End','PrintScreen']);
         const isNum = !!basePretty && basePretty.startsWith('Num');
-        bcap.btn.classList.toggle('wide', isNum || wideBaseNames.has(basePretty));
+        bcap.btn.classList.toggle('wide', isNum || WIDE_KEY_NAMES.has(basePretty));
       } catch (_) {}
       wrap.appendChild(pcap.btn); wrap.appendChild(plus); wrap.appendChild(bcap.btn);
       cell.appendChild(wrap);
@@ -776,8 +782,7 @@ export function renderControlTab(opts) {
     cap.btn.onclick = () => startListening(cap.btn, act);
     // Ensure special single keys render as wide immediately
     try {
-      const wideNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','Del','PageUp','PageDown','Home','End','PrintScreen']);
-      const isWideSingle = !!_txt && (wideNames.has(_txt) || _txt.length > 1);
+      const isWideSingle = !!_txt && (WIDE_KEY_NAMES.has(_txt) || _txt.length > 1);
       cap.btn.classList.toggle('wide', isWideSingle);
     } catch (_) {}
     cell.appendChild(cap.btn);
@@ -790,7 +795,7 @@ export function renderControlTab(opts) {
   // Render key groups
   KEY_GROUPS.forEach((g) => {
     // Skip groups that are integrated elsewhere
-    if (g.id === 'movementSecondary' || g.id === 'travel') {
+    if (g.id === 'movementSecondary') {
       return;
     }
 
@@ -802,8 +807,8 @@ export function renderControlTab(opts) {
       if (titleEl) {
         titleEl.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.32))';
         titleEl.style.paddingBottom = '4px';
-        // Space between underline and first row below
-        titleEl.style.marginBottom = 'var(--ui-gap, 0.5rem)';
+        // Slightly reduced space between underline and first row below
+        titleEl.style.marginBottom = '0.35rem';
       }
     } catch (_) {}
     container.appendChild(gSec);
@@ -897,44 +902,7 @@ export function renderControlTab(opts) {
       return; // done with movement group
     }
 
-    // Special layout for Movement (additional): four-column grid (label,key | label,key)
-    if (g.id === 'movementAdvanced') {
-      const wrap = document.createElement('div');
-      wrap.className = 'sf-kb-two-col-keys';
-      gSec.appendChild(wrap);
-
-      const rightIds = ['ascendStairs', 'autoTravel', 'rideMonster', 'sitDown'];
-
-      // uses shared findActById
-
-      const leftActs = (g.actions || []).filter(a => !rightIds.includes(a.id));
-      const rightActs = rightIds.map(id => findActById(id)).filter(Boolean);
-      const rows = Math.max(leftActs.length, rightActs.length);
-
-      function appendPair(act) {
-        if (!act) {
-          const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
-          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '30px';
-          wrap.appendChild(emptyLab); wrap.appendChild(emptyCell);
-          return;
-        }
-        const lab = document.createElement('div');
-        lab.className = 'sf-kb-label';
-        lab.textContent = act.label;
-        wrap.appendChild(lab);
-        const cell = document.createElement('div');
-        cell.className = 'sf-kb-cell';
-        wrap.appendChild(cell);
-        attachKeyForAction(cell, act);
-      }
-
-      for (let i = 0; i < rows; i++) {
-        appendPair(leftActs[i]);
-        appendPair(rightActs[i]);
-      }
-
-      return; // done with movement additional
-    }
+    // (Movement Additional) now uses default two-column layout; no special-casing
 
     // Combat: render as four-column grid like movement additional
     if (g.id === 'combat') {
@@ -1056,15 +1024,14 @@ export function renderControlTab(opts) {
       return; // done with extended group
     }
 
-    // Skip rendering movementSecondary as a plain list; it's displayed via the second movement ring
-    if (g.id === 'movementSecondary') {
-      return;
-    }
+    // movementSecondary is already skipped above; no need to guard again
 
     // Default layout: labeled rows with key on the right
     const wrap = document.createElement('div');
-    // Use two columns when there are many actions, or for specific groups (magic, spiritual)
-    const useTwoCol = (g.id === 'magic' || g.id === 'spiritual') || (g.actions && g.actions.length >= 12);
+    // Use two columns when there are many actions, or for specific groups
+    const useTwoCol = (
+      g.id === 'magic' || g.id === 'spiritual' || g.id === 'lists' || g.id === 'movementAdvanced'
+    ) || (g.actions && g.actions.length >= 12);
     if (useTwoCol) wrap.className = 'sf-kb-two-col';
     gSec.appendChild(wrap);
     g.actions.forEach((act) => {
@@ -1105,8 +1072,7 @@ export function renderControlTab(opts) {
         const txt = k ? prettyKey(k) : '';
         if (refs.lab) refs.lab.textContent = txt; else if (refs.btn) refs.btn.textContent = txt;
         // Wide if special single key, chord, or multi-char label
-        const _wideNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
-        const isWide = !!txt && (_wideNames.has(txt) || txt.includes('+') || txt.length > 1);
+        const isWide = !!txt && (WIDE_KEY_NAMES.has(txt) || txt.includes('+') || txt.length > 1);
         if (refs.btn) refs.btn.classList.toggle('wide', isWide);
         if (refs.btn) refs.btn.classList.toggle('unbound', !k);
         const label = refs.label || actId;
@@ -1117,8 +1083,7 @@ export function renderControlTab(opts) {
           const ptxt = pk ? prettyKey(pk) : '';
           refs.prefixLab.textContent = ptxt;
           if (refs.prefixBtn) {
-            const _widePNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
-            const isWideP = !!ptxt && (_widePNames.has(ptxt) || ptxt.length > 1);
+            const isWideP = !!ptxt && (WIDE_KEY_NAMES.has(ptxt) || ptxt.length > 1);
             refs.prefixBtn.classList.toggle('wide', isWideP);
             refs.prefixBtn.classList.toggle('unbound', !pk);
             updateTooltip(refs.prefixBtn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
@@ -1134,8 +1099,7 @@ export function renderControlTab(opts) {
       extMirrorEls.forEach(m => {
         if (m.lab) m.lab.textContent = ptxt;
         if (m.btn) {
-          const _widePNames = new Set(['Enter','Space','Tab','CapsLock','Insert','Delete','PageUp','PageDown','Home','End','PrintScreen']);
-          const isWideP = !!ptxt && (_widePNames.has(ptxt) || ptxt.length > 1);
+          const isWideP = !!ptxt && (WIDE_KEY_NAMES.has(ptxt) || ptxt.length > 1);
           m.btn.classList.toggle('wide', isWideP);
           if (!pk) m.btn.classList.add('unbound'); else m.btn.classList.remove('unbound');
           updateTooltip(m.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (mirrored)`);
