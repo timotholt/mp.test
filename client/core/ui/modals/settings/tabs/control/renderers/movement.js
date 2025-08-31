@@ -1,0 +1,104 @@
+// Movement Rings renderer
+// Renders the dual circular movement layout (Primary/Secondary rings)
+// Dependencies are passed in to avoid cross-module coupling.
+
+export function renderMovementGroup({
+  g,
+  gSec,
+  state,
+  registerKeyEl,
+  prettyKey,
+  buildKeycap,
+  updateTooltip,
+  startListening,
+  arrowByAction,
+  KEY_GROUPS,
+  MOVE_GLYPHS,
+}) {
+  if (!g || !gSec) return;
+
+  // Dual movement rings: left Primary uses 'movement' actions, right Secondary uses 'movementSecondary'
+  const duo = document.createElement('div');
+  duo.className = 'sf-kb-move-duo';
+
+  function ringFor(groupId, title, ids) {
+    const col = document.createElement('div');
+    col.className = 'sf-kb-move-col';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'sf-kb-move-title';
+    titleEl.textContent = title;
+    col.appendChild(titleEl);
+    const circle = document.createElement('div');
+    circle.className = 'sf-kb-move-circle';
+    col.appendChild(circle);
+
+    const center = 110; // half of 220px box
+    const rArrow = 87;  // outer radius for arrow glyphs
+    const rKey = 55;    // inner radius for keycaps
+
+    function place(el, angleDeg, radius) {
+      const rad = (angleDeg * Math.PI) / 180;
+      const x = center + Math.cos(rad) * radius;
+      const y = center + Math.sin(rad) * radius;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+    }
+
+    function addArrow(angleDeg, glyph) {
+      const s = document.createElement('span');
+      s.className = 'arrow';
+      s.textContent = glyph;
+      place(s, angleDeg, rArrow);
+      circle.appendChild(s);
+      return s;
+    }
+
+    function addKey(actId, angleDeg, radius) {
+      // Find action definition across KEY_GROUPS by id
+      let act = null;
+      for (const gg of KEY_GROUPS) { const f = (gg.actions || []).find(a => a.id === actId); if (f) { act = f; break; } }
+      if (!act) return;
+      const cur = state.map[act.id] || '';
+      const cap = buildKeycap(act, cur ? prettyKey(cur) : '', 'themed', { mode: 'far', placement: 't' });
+      place(cap.btn, angleDeg, radius);
+      updateTooltip(cap.btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
+      cap.btn.onclick = () => startListening(cap.btn, act);
+      registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
+      circle.appendChild(cap.btn);
+    }
+
+    // Arrows (track by action id for dimming when unbound)
+    arrowByAction.set(ids.ul, addArrow(-135, MOVE_GLYPHS.moveUpLeft));
+    arrowByAction.set(ids.u,  addArrow(-90,  MOVE_GLYPHS.moveUp));
+    arrowByAction.set(ids.ur, addArrow(-45,  MOVE_GLYPHS.moveUpRight));
+    arrowByAction.set(ids.l,  addArrow(180,  MOVE_GLYPHS.moveLeft));
+    arrowByAction.set(ids.r,  addArrow(0,    MOVE_GLYPHS.moveRight));
+    arrowByAction.set(ids.dl, addArrow(135,  MOVE_GLYPHS.moveDownLeft));
+    arrowByAction.set(ids.d,  addArrow(90,   MOVE_GLYPHS.moveDown));
+    arrowByAction.set(ids.dr, addArrow(45,   MOVE_GLYPHS.moveDownRight));
+
+    // Keycaps slightly inside the arrows
+    addKey(ids.ul, -135, rKey);
+    addKey(ids.u,  -90,  rKey);
+    addKey(ids.ur, -45,  rKey);
+    addKey(ids.l,  180,  rKey);
+    addKey(ids.c,  0,    0);   // center wait
+    addKey(ids.r,  0,    rKey);
+    addKey(ids.dl, 135,  rKey);
+    addKey(ids.d,  90,   rKey);
+    addKey(ids.dr, 45,   rKey);
+
+    return col;
+  }
+
+  const primary = ringFor('movement', 'Primary', {
+    ul: 'moveUpLeft', u: 'moveUp', ur: 'moveUpRight', l: 'moveLeft', c: 'waitTurn', r: 'moveRight', dl: 'moveDownLeft', d: 'moveDown', dr: 'moveDownRight'
+  });
+  const secondary = ringFor('movementSecondary', 'Secondary', {
+    ul: 'moveUpLeft2', u: 'moveUp2', ur: 'moveUpRight2', l: 'moveLeft2', c: 'waitTurn2', r: 'moveRight2', dl: 'moveDownLeft2', d: 'moveDown2', dr: 'moveDownRight2'
+  });
+
+  duo.appendChild(primary);
+  duo.appendChild(secondary);
+  gSec.appendChild(duo);
+}

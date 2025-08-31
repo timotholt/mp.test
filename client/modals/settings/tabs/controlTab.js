@@ -10,13 +10,17 @@ import * as LS from '../../../core/localStorage.js';
 import { PRESETS } from '../../../core/ui/modals/settings/tabs/control/presets.js';
 import { KEY_GROUPS } from '../../../core/ui/modals/settings/tabs/control/keyGroups.js';
 import { MOVE_GLYPHS, WIDE_KEY_NAMES } from '../../../core/ui/modals/settings/tabs/control/constants.js';
+import { renderExtendedGroup } from '../../../core/ui/modals/settings/tabs/control/renderers/extended.js';
+import { renderMovementGroup } from '../../../core/ui/modals/settings/tabs/control/renderers/movement.js';
+import { renderDefaultTwoColGroup } from '../../../core/ui/modals/settings/tabs/control/renderers/defaultTwoCol.js';
+import { ensureControlsKbStyle } from '../../../core/ui/modals/settings/tabs/control/styles.js';
+import { normalizeKey, prettyKey, isMovementActionId, keyFromEvent, splitChord } from '../../../core/ui/modals/settings/tabs/control/ui.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
 const PRESET_KEY = 'keybinds.preset';
 
 // Presets organized to mirror KEY_GROUPS order. Unknowns intentionally left blank ('').
-// Vim preset follows NetHack-style bindings where possible.
 /* const PRESETS = {
   // Arrow keys baseline (minimal)
   arrows: {
@@ -469,150 +473,11 @@ function findActById(id) {
   return null;
 }
 
-// Inject once: Controls-tab specific layout styles (movement ring, rows, buttons)
-function ensureControlsKbStyle() {
-  let st = document.getElementById('sf-controls-style');
-  if (!st) { st = document.createElement('style'); st.id = 'sf-controls-style'; }
-  st.textContent = `
-  .sf-kb-row { display: grid; grid-template-columns: 1fr var(--kb-keycol, 104px); align-items: center; gap: 6px; margin: 6px 0; }
-  .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
-  .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
-  .sf-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    height: 30px; padding: 0 12px; border-radius: 8px; cursor: pointer;
-    background: linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)));
-    color: var(--ui-fg, #eee); border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: none;
-  }
-  .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25)); }
-  /* Circular movement layout */
-  .sf-kb-move-circle { position: relative; width: 220px; height: 220px; margin: 0 0 8px 0; }
-  .sf-kb-move-circle .arrow { position: absolute; transform: translate(-50%, -50%); color: var(--ui-fg, #eee); opacity: 0.9; font-size: 22px; line-height: 1; user-select: none; pointer-events: none; text-shadow: var(--ui-text-glow, 0 0 6px rgba(140,190,255,0.35)); font-family: "Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols",sans-serif; }
-  .sf-kb-move-circle .sf-keycap { position: absolute; transform: translate(-50%, -50%); }
-  .sf-keycap.conflict { animation: sf-kb-pulse 0.2s ease-in-out 0s 3 alternate; }
-  .sf-keycap.unbound { opacity: var(--ui-unbound-opacity, 0.4); }
-  @keyframes sf-kb-pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
-  /* Two-column grid for large groups */
-  .sf-kb-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; grid-auto-flow: row dense; }
-  .sf-kb-two-col .sf-kb-row { width: 100%; }
-  .sf-kb-row .sf-keycap { justify-self: end; }
-  .sf-kb-two-col .sf-kb-row { margin: 2px 0; }
-  /* Four-cell grid (label,key | label,key) used by Movement (additional) */
-  .sf-kb-two-col-keys { display: grid; grid-template-columns: 1fr var(--kb-keycol, 104px) 1fr var(--kb-keycol, 104px); gap: 8px 18px; align-items: center; }
-  .sf-kb-two-col-keys .sf-keycap { justify-self: end; }
-  /* Smaller, tighter keycaps within controls page */
-  .sf-kb-row .sf-keycap, .sf-kb-two-col-keys .sf-keycap { height: 1.5rem; min-width: 1.5rem; padding: 0 0.25rem; }
-  /* Preserve wider padding for .wide so Ctrl/Alt look correct */
-  .sf-kb-row .sf-keycap.wide, .sf-kb-two-col-keys .sf-keycap.wide { padding: 0 0.4rem; min-width: 2.4rem; }
-  /* Fix single-char cap width so unassigned = assigned size */
-  .sf-kb-row .sf-keycap:not(.wide), .sf-kb-two-col-keys .sf-keycap:not(.wide) { width: 1.5rem; }
-  .sf-kb-row .sf-keycap::before, .sf-kb-two-col-keys .sf-keycap::before { width: 1.1rem; height: 1.1rem; left: calc(50% - 0.55rem); top: 2px; }
-  /* Override for wide caps: make inner overlay span the cap width (Ctrl/Alt/Enter/Space) */
-  .sf-kb-row .sf-keycap.wide::before, .sf-kb-two-col-keys .sf-keycap.wide::before {
-    left: 0.18rem; right: 0.18rem; width: auto; transform: none;
-    border-radius: 6px;
-  }
-  /* Use sans font only for wide caps; single-char caps keep monospace for consistent width */
-  .sf-kb-row .sf-keycap.wide .cap-label, .sf-kb-two-col-keys .sf-keycap.wide .cap-label { font-size: 0.9rem; font-weight: 600; font-family: var(--ui-font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif); }
-  .sf-kb-chord { display: inline-flex; align-items: center; gap: 4px; }
-  .sf-kb-chord .plus { margin: 0 4px; color: var(--ui-fg, #eee); opacity: 0.85; }
-  /* Ensure the right column is fixed-width and content doesn’t push layout */
-  .sf-kb-row > .sf-kb-cell, .sf-kb-two-col-keys > .sf-kb-cell { justify-self: end; width: var(--kb-keycol, 104px); display: flex; justify-content: flex-end; align-items: center; overflow: hidden; }
-  .sf-kb-cell .sf-kb-chord, .sf-kb-cell .sf-keycap { flex: 0 0 auto; }
-  /* Blink while listening */
-  @keyframes sf-kb-blink { 0%,100% { filter: brightness(1.0); } 50% { filter: brightness(1.35); } }
-  .sf-keycap.listening { animation: sf-kb-blink 0.8s ease-in-out infinite; }
-  /* Dual movement rings container */
-  .sf-kb-move-duo { display: flex; gap: 16px; justify-content: center; align-items: flex-start; flex-wrap: nowrap; margin-top: 4px; }
-  .sf-kb-move-col { width: 220px; }
-  .sf-kb-move-title { text-align: center; color: var(--ui-fg, #eee); font-size: 14px; opacity: 0.85; margin-bottom: 0; }
-  `;
-  try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
-}
 
-// Helpers to normalize/label keys
-function normalizeKey(k) {
-  if (!k) return '';
-  if (k === ' ' || k === 'Spacebar') return 'Space';
-  // Preserve case for shifted bindings (e.g., 'a' vs 'A', '<', '>')
-  if (k.length === 1) return k;
-  return k;
-}
-function prettyKey(k) {
-  const map = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', ' ': 'Space', Delete: 'Del' };
-  if (!k) return 'Unbound';
-  if (map[k]) return map[k];
-  // Humanize Numpad tokens
-  if (k && typeof k === 'string' && k.startsWith('Num')) {
-    if (/^Num[0-9]$/.test(k)) return k; // Num0..Num9
-    if (k === 'NumEnter') return 'Num Enter';
-    if (k === 'Num+') return 'Num +';
-    if (k === 'Num-') return 'Num -';
-    if (k === 'Num*') return 'Num *';
-    if (k === 'Num/') return 'Num /';
-    return k;
-  }
-  return k;
-}
+
 
 // (buildKeycap is imported from core/ui/keycap.js)
 
-// Helpers for movement/chord recognition
-function isMovementActionId(id) {
-  return id === 'waitTurn' || id === 'waitTurn2' || /^move(Up|Down|Left|Right)/.test(id);
-}
-
-// Build a normalized label from a KeyboardEvent, including Ctrl/Alt chords.
-// Returns '' to indicate "ignore and keep listening" (e.g., invalid chord for movement).
-function keyFromEvent(e, actId) {
-  const code = e.code || '';
-  let base = normalizeKey(e.key);
-  const ctrl = !!e.ctrlKey; // treat Meta as unsupported for now
-  const alt = !!e.altKey;
-  const shift = !!e.shiftKey;
-
-  // Distinguish Numpad keys from their main-row counterparts
-  if (code && code.startsWith('Numpad')) {
-    const opMap = { NumpadAdd: 'Num+', NumpadSubtract: 'Num-', NumpadMultiply: 'Num*', NumpadDivide: 'Num/', NumpadEnter: 'NumEnter' };
-    if (opMap[code]) base = opMap[code];
-    else if (/^Numpad[0-9]$/.test(code)) base = 'Num' + code.slice(6); // Numpad0..9 -> Num0..9
-    // otherwise leave base as-is for other numpad codes
-  }
-
-  // Disallow multiple cording (Ctrl+Alt)
-  if (ctrl && alt) return '';
-
-  // Ignore pure modifier presses so Shift+Key works via case/symbols
-  // (allow CapsLock as a bindable key); disallow NumLock entirely
-  if (base === 'Shift' || base === 'Control' || base === 'Alt' || base === 'Meta' || base === 'OS' || base === 'NumLock') return '';
-
-  // Movement actions do not accept chords (Ctrl/Alt)
-  if (isMovementActionId(actId) && (ctrl || alt)) return '';
-  // Extended letter commands (ext*) must be non-chorded (plain single key)
-  if (actId && /^ext/.test(actId) && (ctrl || alt)) return '';
-
-  // Special-case restrictions
-  // Space: only plain Space allowed (no Ctrl/Alt/Shift)
-  if (base === 'Space') {
-    if (ctrl || alt || shift) return '';
-    return base;
-  }
-  // Tab: Shift+Tab binds distinctly; Ctrl/Alt+Tab disallowed
-  if (base === 'Tab') {
-    if (ctrl || alt) return '';
-    if (shift) return 'Shift+Tab';
-    return base;
-  }
-  // Enter: allow Shift+Enter distinct; Ctrl/Alt handled below
-  if (base === 'Enter') {
-    if (shift && !ctrl && !alt) return 'Shift+Enter';
-  }
-  // Insert/Delete/PageUp/PageDown/Home/End and Numpad keys: allowed with modifiers by default
-
-  if (ctrl) return `Ctrl+${base}`;
-  if (alt) return `Alt+${base}`;
-  return base;
-}
 
 // Ensure any preset map contains an entry for every declared action id; default to unbound
 function fillAllActions(map) {
@@ -738,11 +603,7 @@ export function renderControlTab(opts) {
     keyEls.set(id, arr);
   }
 
-  function splitChord(k) {
-    if (!k || typeof k !== 'string') return null;
-    const m = k.match(/^(Ctrl|Alt|Shift)\+(.+)$/);
-    return m ? { prefix: m[1], base: m[2] } : null;
-  }
+  // splitChord, keyFromEvent, prettyKey, etc. are imported from ui.js
 
   function attachKeyForAction(cell, act) {
     while (cell.firstChild) cell.removeChild(cell.firstChild);
@@ -818,90 +679,19 @@ export function renderControlTab(opts) {
 
     // Special layout for Movement: circular arrows with themed keycaps
     if (g.id === 'movement') {
-      // Dual movement rings: left Primary uses 'movement' actions, right Secondary uses 'movementSecondary'
-      const duo = document.createElement('div');
-      duo.className = 'sf-kb-move-duo';
-
-      function ringFor(groupId, title, ids) {
-        const col = document.createElement('div');
-        col.className = 'sf-kb-move-col';
-        const titleEl = document.createElement('div');
-        titleEl.className = 'sf-kb-move-title';
-        titleEl.textContent = title;
-        col.appendChild(titleEl);
-        const circle = document.createElement('div');
-        circle.className = 'sf-kb-move-circle';
-        col.appendChild(circle);
-
-        const center = 110; // half of 220px box
-        const rArrow = 87;  // outer radius for arrow glyphs
-        const rKey = 55;    // inner radius for keycaps
-
-        function place(el, angleDeg, radius) {
-          const rad = (angleDeg * Math.PI) / 180;
-          const x = center + Math.cos(rad) * radius;
-          const y = center + Math.sin(rad) * radius;
-          el.style.left = x + 'px';
-          el.style.top = y + 'px';
-        }
-
-        function addArrow(angleDeg, glyph) {
-          const s = document.createElement('span');
-          s.className = 'arrow';
-          s.textContent = glyph;
-          place(s, angleDeg, rArrow);
-          circle.appendChild(s);
-          return s;
-        }
-
-        function addKey(actId, angleDeg, radius) {
-          // Find action definition across KEY_GROUPS by id
-          let act = null;
-          for (const gg of KEY_GROUPS) { const f = (gg.actions || []).find(a => a.id === actId); if (f) { act = f; break; } }
-          if (!act) return;
-          const cur = state.map[act.id] || '';
-          const cap = buildKeycap(act, cur ? prettyKey(cur) : '', 'themed', { mode: 'far', placement: 't' });
-          place(cap.btn, angleDeg, radius);
-          updateTooltip(cap.btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
-          cap.btn.onclick = () => startListening(cap.btn, act);
-          registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
-          circle.appendChild(cap.btn);
-        }
-
-        // Arrows (track by action id for dimming when unbound)
-        arrowByAction.set(ids.ul, addArrow(-135, MOVE_GLYPHS.moveUpLeft));
-        arrowByAction.set(ids.u,  addArrow(-90,  MOVE_GLYPHS.moveUp));
-        arrowByAction.set(ids.ur, addArrow(-45,  MOVE_GLYPHS.moveUpRight));
-        arrowByAction.set(ids.l,  addArrow(180,  MOVE_GLYPHS.moveLeft));
-        arrowByAction.set(ids.r,  addArrow(0,    MOVE_GLYPHS.moveRight));
-        arrowByAction.set(ids.dl, addArrow(135,  MOVE_GLYPHS.moveDownLeft));
-        arrowByAction.set(ids.d,  addArrow(90,   MOVE_GLYPHS.moveDown));
-        arrowByAction.set(ids.dr, addArrow(45,   MOVE_GLYPHS.moveDownRight));
-
-        // Keycaps slightly inside the arrows
-        addKey(ids.ul, -135, rKey);
-        addKey(ids.u,  -90,  rKey);
-        addKey(ids.ur, -45,  rKey);
-        addKey(ids.l,  180,  rKey);
-        addKey(ids.c,  0,    0);   // center wait
-        addKey(ids.r,  0,    rKey);
-        addKey(ids.dl, 135,  rKey);
-        addKey(ids.d,  90,   rKey);
-        addKey(ids.dr, 45,   rKey);
-
-        return col;
-      }
-
-      const primary = ringFor('movement', 'Primary', {
-        ul: 'moveUpLeft', u: 'moveUp', ur: 'moveUpRight', l: 'moveLeft', c: 'waitTurn', r: 'moveRight', dl: 'moveDownLeft', d: 'moveDown', dr: 'moveDownRight'
+      renderMovementGroup({
+        g,
+        gSec,
+        state,
+        registerKeyEl,
+        prettyKey,
+        buildKeycap,
+        updateTooltip,
+        startListening,
+        arrowByAction,
+        KEY_GROUPS,
+        MOVE_GLYPHS,
       });
-      const secondary = ringFor('movementSecondary', 'Secondary', {
-        ul: 'moveUpLeft2', u: 'moveUp2', ur: 'moveUpRight2', l: 'moveLeft2', c: 'waitTurn2', r: 'moveRight2', dl: 'moveDownLeft2', d: 'moveDown2', dr: 'moveDownRight2'
-      });
-
-      duo.appendChild(primary);
-      duo.appendChild(secondary);
-      gSec.appendChild(duo);
       return; // done with movement group
     }
 
@@ -940,116 +730,24 @@ export function renderControlTab(opts) {
 
     // Special layout for Extended Commands: show [prefix] + [interactive letter]
     if (g.id === 'extended') {
-      const wrap = document.createElement('div');
-      gSec.appendChild(wrap);
-      // Widen key column for two-key chord (prefix + letter)
-      try { gSec.style.setProperty('--kb-keycol', '168px'); } catch (_) {}
-      g.actions.forEach((act) => {
-        const row = document.createElement('div');
-        row.className = 'sf-kb-row';
-        const lab = document.createElement('div');
-        lab.className = 'sf-kb-label';
-        lab.textContent = act.label;
-        row.appendChild(lab);
-        const cell = document.createElement('div');
-        cell.className = 'sf-kb-cell';
-        row.appendChild(cell);
-
-        if (act.id === 'extendedPrefix') {
-          const k0 = state.map[act.id] || '';
-          const cap = buildKeycap(act, k0 ? prettyKey(k0) : '', 'themed', { mode: 'far', placement: 'r' });
-          updateTooltip(cap.btn, `${act.label} — ${k0 ? 'bound to: ' + prettyKey(k0) : 'UNBOUND'}. Click to rebind`);
-          cap.btn.onclick = () => startListening(cap.btn, act);
-          // Place the prefix cap in the RIGHT key column and align it exactly
-          // like other rows by appending hidden "+" and letter ghosts to the right.
-          try {
-            lab.textContent = act.label;
-            // Match layout used by other extended rows
-            cell.style.display = 'flex';
-            cell.style.alignItems = 'center';
-            // Visible prefix
-            cell.appendChild(cap.btn);
-            // Hidden plus preserves spacing
-            const plusGhost = document.createElement('span');
-            plusGhost.textContent = ' + ';
-            plusGhost.style.margin = '0 6px';
-            plusGhost.style.color = 'var(--ui-fg, #eee)';
-            plusGhost.style.visibility = 'hidden';
-            cell.appendChild(plusGhost);
-            // Hidden letter cap preserves spacing
-            const dummyAct = { id: '__dummy_ext_letter', label: '' };
-            const ghost = buildKeycap(dummyAct, 'x', '', null);
-            ghost.btn.style.visibility = 'hidden';
-            ghost.btn.style.pointerEvents = 'none';
-            ghost.btn.tabIndex = -1;
-            cell.appendChild(ghost.btn);
-          } catch (_) {
-            cell.appendChild(cap.btn);
-          }
-          // Track updates without giving renderAll a cell to rebuild
-          registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false, act });
-          // also track for mirror updates
-          if (!extMirrorEls) extMirrorEls = [];
-          extMirrorEls.push({ lab: cap.lab, btn: cap.btn });
-          wrap.appendChild(row);
-          return;
-        }
-
-        // Build prefix mirror + interactive letter (independent from base commands)
-        const prefixAct = { id: 'extendedPrefix', label: 'Extended Prefix' };
-        const pk = state.map['extendedPrefix'] || '';
-        const pcap = buildKeycap(prefixAct, pk ? prettyKey(pk) : '', 'themed', { mode: 'far', placement: 'l' });
-        updateTooltip(pcap.btn, `Prefix — ${pk ? 'bound to: ' + prettyKey(pk) : 'UNBOUND'} (click to rebind)`);
-        pcap.btn.onclick = () => startListening(pcap.btn, prefixAct);
-
-        const plus = document.createElement('span');
-        plus.textContent = ' + ';
-        plus.style.margin = '0 6px';
-        plus.style.color = 'var(--ui-fg, #eee)';
-        // Interactive letter cap uses this action's own independent binding
-        const lk = state.map[act.id] || '';
-        const lcap = buildKeycap(act, lk ? prettyKey(lk) : '', '', { mode: 'far', placement: 'r' });
-        updateTooltip(lcap.btn, `${act.label} — ${lk ? 'bound to: ' + prettyKey(lk) : 'UNBOUND'} (click to rebind)`);
-        lcap.btn.onclick = () => startListening(lcap.btn, act);
-
-        cell.style.display = 'flex';
-        cell.style.alignItems = 'center';
-        cell.appendChild(pcap.btn);
-        cell.appendChild(plus);
-        cell.appendChild(lcap.btn);
-        if (!extMirrorEls) extMirrorEls = [];
-        extMirrorEls.push({ lab: pcap.lab, btn: pcap.btn });
-        // Track the interactive letter for updates without giving renderAll a 'cell'
-        // so it doesn't rebuild this row and wipe the prefix+letter layout.
-        registerKeyEl(act.id, { btn: lcap.btn, lab: lcap.lab, label: act.label, mglyph: false, act });
-        wrap.appendChild(row);
+      renderExtendedGroup({
+        g,
+        gSec,
+        state,
+        registerKeyEl,
+        prettyKey,
+        buildKeycap,
+        updateTooltip,
+        startListening,
+        extMirrorEls,
       });
       return; // done with extended group
     }
 
     // movementSecondary is already skipped above; no need to guard again
 
-    // Default layout: labeled rows with key on the right
-    const wrap = document.createElement('div');
-    // Use two columns when there are many actions, or for specific groups
-    const useTwoCol = (
-      g.id === 'magic' || g.id === 'spiritual' || g.id === 'lists' || g.id === 'movementAdvanced'
-    ) || (g.actions && g.actions.length >= 12);
-    if (useTwoCol) wrap.className = 'sf-kb-two-col';
-    gSec.appendChild(wrap);
-    g.actions.forEach((act) => {
-      const row = document.createElement('div');
-      row.className = 'sf-kb-row';
-      const lab = document.createElement('div');
-      lab.className = 'sf-kb-label';
-      lab.textContent = act.label;
-      row.appendChild(lab);
-      const cell = document.createElement('div');
-      cell.className = 'sf-kb-cell';
-      row.appendChild(cell);
-      attachKeyForAction(cell, act);
-      wrap.appendChild(row);
-    });
+    // Default layout: labeled rows with key on the right (two-column when applicable)
+    renderDefaultTwoColGroup({ g, gSec, attachKeyForAction });
   });
 
   // Apply initial binding visuals after creating all buttons
