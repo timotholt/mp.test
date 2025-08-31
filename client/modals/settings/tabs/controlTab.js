@@ -20,16 +20,16 @@ const PRESETS = {
     moveRight: 'ArrowRight',
   },
   wasd: {
-    moveUp: 'W',
-    moveDown: 'S',
-    moveLeft: 'A',
-    moveRight: 'D',
+    moveUp: 'w',
+    moveDown: 's',
+    moveLeft: 'a',
+    moveRight: 'd',
   },
   vim: {
-    moveUp: 'K',
-    moveDown: 'J',
-    moveLeft: 'H',
-    moveRight: 'L',
+    moveUp: 'k',
+    moveDown: 'j',
+    moveLeft: 'h',
+    moveRight: 'l',
   },
 };
 
@@ -170,12 +170,14 @@ function ensureKeycapStyle() {
     border-color: var(--ui-bright, rgba(190,230,255,0.95));
   }
   /* Unassigned keycaps are dim with no glow */
-  .sf-keycap.unbound { opacity: 0.75; box-shadow: none; text-shadow: none; }
+  .sf-keycap.unbound { opacity: 0.35; box-shadow: none; text-shadow: none; border-style: dashed; border-color: rgba(255,255,255,0.35); }
   .sf-keycap.unbound:hover, .sf-keycap.unbound:focus-visible { box-shadow: none; border-color: var(--ui-surface-border, rgba(120,170,255,0.70)); }
   /* Slightly larger glyphs for movement arrows */
   .sf-keycap.mglyph { font-size: 1.1rem; line-height: 1; }
   /* Make movement glyph caps pop a bit more */
   .sf-keycap.mglyph { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
+  /* Conflict state: bright white edge */
+  .sf-keycap.conflict { border-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.7); }
   .sf-kb-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin: 6px 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 13px; opacity: 0.95; }
   .sf-kb-toolbar { display: flex; gap: 8px; align-items: center; }
@@ -187,9 +189,10 @@ function ensureKeycapStyle() {
     box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.25));
   }
   .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); }
-  /* 8-way movement ring grid */
-  .sf-kb-ring { display: grid; grid-template-columns: repeat(3, auto); grid-auto-rows: auto; gap: 12px; justify-content: center; align-items: center; margin: 8px 0; }
-  .sf-kb-ring .slot { display: flex; justify-content: center; align-items: center; min-width: 2rem; min-height: 2rem; }
+  /* 5x5 movement ring grid with arrow indicators */
+  .sf-kb-ring5 { display: grid; grid-template-columns: repeat(5, auto); grid-auto-rows: auto; gap: 8px; justify-content: center; align-items: center; margin: 8px 0; }
+  .sf-kb-ring5 .slot { display: flex; justify-content: center; align-items: center; min-width: 2rem; min-height: 2rem; }
+  .sf-kb-ring5 .arrow { color: var(--ui-fg, #eee); opacity: 0.85; font-size: 0.95rem; user-select: none; pointer-events: none; text-shadow: var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.35)); }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
@@ -198,8 +201,8 @@ function ensureKeycapStyle() {
 function normalizeKey(k) {
   if (!k) return '';
   if (k === ' ' || k === 'Spacebar') return 'Space';
-  // Use upper-case letters for readability; keep names like ArrowUp as-is
-  if (k.length === 1) return k.toUpperCase();
+  // Preserve case for shifted bindings (e.g., 'a' vs 'A', '<', '>')
+  if (k.length === 1) return k;
   return k;
 }
 function prettyKey(k) {
@@ -285,36 +288,72 @@ export function renderControlTab(opts) {
 
     // Special layout for Movement: 8-way circle (3x3 grid with center wait)
     if (g.id === 'movement') {
-      const ring = document.createElement('div');
-      ring.className = 'sf-kb-ring';
-      const slots = [
-        ['moveUpLeft', 'moveUp', 'moveUpRight'],
-        ['moveLeft', 'waitTurn', 'moveRight'],
-        ['moveDownLeft', 'moveDown', 'moveDownRight'],
-      ];
-      for (const rowIds of slots) {
-        for (const actId of rowIds) {
+      // 5x5 grid with non-clickable arrows and clickable keycaps at nine positions
+      const grid = document.createElement('div');
+      grid.className = 'sf-kb-ring5';
+
+      const keyPos = {
+        moveUpLeft: [1,1],
+        moveUp: [1,3],
+        moveUpRight: [1,5],
+        moveLeft: [3,1],
+        waitTurn: [3,3],
+        moveRight: [3,5],
+        moveDownLeft: [5,1],
+        moveDown: [5,3],
+        moveDownRight: [5,5],
+      };
+      const arrowPos = {
+        '2,2': '↖', '2,3': '↑', '2,4': '↗',
+        '3,2': '←',              '3,4': '→',
+        '4,2': '↙', '4,3': '↓', '4,4': '↘',
+      };
+      const placeMap = {
+        moveUpLeft: 'tl', moveUp: 't', moveUpRight: 'tr',
+        moveLeft: 'l', waitTurn: 'bc', moveRight: 'r',
+        moveDownLeft: 'bl', moveDown: 'b', moveDownRight: 'br',
+      };
+
+      function getActionAt(r, c) {
+        for (const [aid, rc] of Object.entries(keyPos)) {
+          if (rc[0] === r && rc[1] === c) return aid;
+        }
+        return null;
+      }
+
+      for (let r = 1; r <= 5; r++) {
+        for (let c = 1; c <= 5; c++) {
           const slot = document.createElement('div');
           slot.className = 'slot';
-          const act = g.actions.find(a => a.id === actId);
-          if (act) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'sf-keycap mglyph';
-            btn.setAttribute('data-action', act.id);
-            btn.textContent = MOVE_GLYPHS[act.id] || '·';
-            attachTooltip(btn, { mode: 'near', placement: 't' });
-            const cur = state.map[act.id] || '';
-            updateTooltip(btn, `${act.label} — bound to: ${cur ? prettyKey(cur) : 'Unbound'}. Click to rebind`);
-            btn.onclick = () => startListening(btn, act);
-            // Track label and mglyph so renderAll can format properly
-            keyEls.set(act.id, { btn, lab: null, label: act.label, mglyph: true });
-            slot.appendChild(btn);
+          const akey = `${r},${c}`;
+          if (arrowPos[akey]) {
+            const s = document.createElement('span');
+            s.className = 'arrow';
+            s.textContent = arrowPos[akey];
+            slot.appendChild(s);
+          } else {
+            const actId = getActionAt(r, c);
+            if (actId) {
+              const act = g.actions.find(a => a.id === actId);
+              if (act) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'sf-keycap';
+                btn.setAttribute('data-action', act.id);
+                const cur = state.map[act.id] || '';
+                btn.textContent = prettyKey(cur);
+                attachTooltip(btn, { mode: 'far', placement: placeMap[act.id] || 't' });
+                updateTooltip(btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
+                btn.onclick = () => startListening(btn, act);
+                keyEls.set(act.id, { btn, lab: null, label: act.label, mglyph: false });
+                slot.appendChild(btn);
+              }
+            }
           }
-          ring.appendChild(slot);
+          grid.appendChild(slot);
         }
       }
-      gSec.appendChild(ring);
+      gSec.appendChild(grid);
       return; // done with movement group
     }
 
@@ -333,7 +372,7 @@ export function renderControlTab(opts) {
       btn.className = 'sf-keycap';
       btn.setAttribute('data-action', act.id);
       btn.textContent = prettyKey(state.map[act.id]);
-      attachTooltip(btn, { mode: 'near', placement: 't' });
+      attachTooltip(btn, { mode: 'far', placement: 'r' });
       updateTooltip(btn, `${act.label} — bound to: ${state.map[act.id] ? prettyKey(state.map[act.id]) : 'Unbound'}. Click to rebind`);
       btn.onclick = () => startListening(btn, act);
       row.appendChild(btn);
@@ -361,7 +400,7 @@ export function renderControlTab(opts) {
       if (!k) refs.btn.classList.add('unbound'); else refs.btn.classList.remove('unbound');
       // Tooltip reflects binding
       const label = refs.label || actId;
-      updateTooltip(refs.btn, `${label} — bound to: ${k ? prettyKey(k) : 'Unbound'}. Click to rebind`);
+      updateTooltip(refs.btn, `${label} — ${k ? 'bound to: ' + prettyKey(k) : 'UNBOUND'}. Click to rebind`);
     }
   }
 
@@ -382,6 +421,10 @@ export function renderControlTab(opts) {
         cleanup();
         return;
       }
+      // Ignore pure modifier presses so Shift+Key (for capitals and symbols like < >) works
+      if (k === 'Shift' || k === 'Control' || k === 'Alt' || k === 'Meta' || k === 'OS' || k === 'CapsLock') {
+        return; // keep listening for the actual printable key
+      }
       const keyNorm = normalizeKey(k);
       if (!keyNorm) { cleanup(); return; }
       // Conflict handling: unassign any other action using this key
@@ -390,6 +433,17 @@ export function renderControlTab(opts) {
         if (aid !== act.id && val === keyNorm) { conflicted = aid; break; }
       }
       if (conflicted) {
+        // transiently highlight the conflicted keycap and show tooltip note
+        const refs = keyEls.get(conflicted);
+        if (refs && refs.btn) {
+          refs.btn.classList.add('conflict');
+          updateTooltip(refs.btn, `${refs.label || conflicted} — CONFLICT: unbinding due to reassignment`);
+          setTimeout(() => {
+            refs.btn.classList.remove('conflict');
+            const cur = state.map[conflicted] || '';
+            updateTooltip(refs.btn, `${refs.label || conflicted} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
+          }, 1200);
+        }
         state.map[conflicted] = '';
       }
       state.map[act.id] = keyNorm;
