@@ -132,7 +132,7 @@ function makeVolumeKnobsGrid() {
   // Use UI gap variable at half-scale (defaults to 0.5rem if --ui-gap is 1rem)
   wrap.style.gap = 'calc(var(--ui-gap, 1rem) * 0.5)';
   wrap.style.alignItems = 'center';
-  wrap.style.justifyContent = 'flex-start';
+  wrap.style.justifyContent = 'space-between';
 
   const groups = [
     { id: 'MASTER', label: 'Master' },
