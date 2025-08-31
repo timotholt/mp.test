@@ -147,11 +147,17 @@ function makeVolumeKnobsGrid() {
     cell.style.width = '110px';
 
     const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: 64, segments: 20 });
-    // Micro-adjust: push the outer ring down by +2px (total ~4px at this size) for better visual centering
-    // Also brighten the dark gray off LED segments for improved contrast.
+    // Micro-adjusts for audio knobs:
+    // - Push the outer ring down by +2px (to ~4px total) for visual centering
+    // - Increase radial gap between knob and LED ring via --kn-ring-offset
+    // - Brighten the dark gray off segments for contrast
+    // - Add a subtle glow to lit segments (stronger on hover/focus)
     try {
       el.style.setProperty('--kn-ring-global-y', '4px');
+      el.style.setProperty('--kn-ring-offset', '14px');
       el.style.setProperty('--kn-seg-off', '#3b4350');
+      el.style.setProperty('--kn-seg-glow', '0 0 8px rgba(140,190,255,0.85)');
+      el.style.setProperty('--kn-seg-glow-strong', '0 0 16px rgba(140,190,255,0.90)');
     } catch (_) {}
     const cap = document.createElement('div');
     cap.textContent = g.label;

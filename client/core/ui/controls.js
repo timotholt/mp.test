@@ -144,6 +144,11 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.style.borderRadius = '0';
       b.style.borderTopLeftRadius = '6px';
       b.style.borderTopRightRadius = '6px';
+      // Center the tab label content
+      b.style.display = 'inline-flex';
+      b.style.alignItems = 'center';
+      b.style.justifyContent = 'center';
+      b.style.textAlign = 'center';
       const isActive = (key === activeKey);
       b.style.background = isActive
         ? 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.35)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.28)) 100%)'
