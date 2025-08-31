@@ -129,7 +129,8 @@ function makeVolumeKnobsGrid() {
   const wrap = document.createElement('div');
   wrap.style.display = 'flex';
   wrap.style.flexWrap = 'wrap';
-  wrap.style.gap = '14px';
+  // Use UI gap variable at half-scale (defaults to 0.5rem if --ui-gap is 1rem)
+  wrap.style.gap = 'calc(var(--ui-gap, 1rem) * 0.5)';
   wrap.style.alignItems = 'center';
   wrap.style.justifyContent = 'flex-start';
 

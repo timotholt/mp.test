@@ -89,6 +89,25 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-scrollbar-width': '10px',
     '--ui-scrollbar-radius': '8px',
 
+    /*
+     * IMPORTANT: ui-glass-scrollbar width clamps (LOCKED)
+     * ---------------------------------------------------
+     * These variables define the absolute minimum and maximum width constraints
+     * intended for containers that OPT-IN to the 'ui-glass-scrollbar' styling.
+     * They DO NOT auto-apply any width constraints by themselves; components can
+     * reference these to clamp their layout when needed.
+     *
+     * Rationale: Some narrow tab groups need a strict 500px width to prevent
+     * scrollbar/overflow layout jitter. Making this a locked variable ensures
+     * theme packs cannot accidentally alter core geometry.
+     *
+     * Usage example (in a component that wants the clamp):
+     *   el.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
+     *   el.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
+     */
+    '--ui-glass-scrollbar-min-width': '500px',
+    '--ui-glass-scrollbar-max-width': '500px',
+
     // Locked list row backgrounds (themes cannot change; a notheme path may override via allowLocked)
     '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
     '--ui-list-row-even': 'rgba(255,255,255,0.02)',

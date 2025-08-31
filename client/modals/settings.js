@@ -786,6 +786,8 @@ function presentSettingsOverlay() {
     contentWrap.style.marginTop = '0px';
     contentWrap.style.minHeight = '240px';
     contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
+    contentWrap.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
+    contentWrap.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
     try {
       contentWrap.style.border = UI.border;
       // Sharp top-left corner only
@@ -1064,15 +1066,18 @@ function presentSettingsOverlay() {
           if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createIntensityKnob) {
             const knobRow = document.createElement('div');
             knobRow.style.display = 'flex';
-            knobRow.style.gap = '18px';
+            // Use theme gap variable with sensible fallback
+            knobRow.style.gap = 'var(--ui-gap, 1rem)';
             knobRow.style.alignItems = 'center';
-            knobRow.style.justifyContent = 'center';
-            knobRow.style.margin = '6px 0 10px';
-            // Extra breathing room so full 360° Hue ring isn't clipped
-            knobRow.style.padding = '6px 4px';
+            // Space knobs across the row evenly
+            knobRow.style.justifyContent = 'space-between';
+            // Top: 2x gap, Right: gap, Bottom: 0, Left: gap
+            knobRow.style.margin = 'calc(var(--ui-gap, 1rem) * 2) var(--ui-gap, 1rem) 0 var(--ui-gap, 1rem)';
+            // Extra breathing room not needed; keep edges tight
+            knobRow.style.padding = '0';
             knobRow.style.overflow = 'visible';
-            // Standardize spacing above knobs via UI variable (fallback to 1rem)
-            knobRow.style.marginTop = 'var(--ui-gap, 1rem)';
+            // Ensure explicit top margin aligns with requested 2rem equivalent via variable
+            knobRow.style.marginTop = 'calc(var(--ui-gap, 1rem) * 2)';
 
             const makeCol = (el, caption) => {
               const wrap = document.createElement('div');
