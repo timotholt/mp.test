@@ -6,6 +6,7 @@ import { bindRange, getValue, setValue, DEFAULT_WHEEL_STEP } from '../../../core
 import { createVolumeKnob } from '../../../core/audio/volumeKnob.js';
 import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
+import { createCheckbox } from '../../../core/ui/controls.js';
 
 export function renderSoundTab(opts) {
   const {
@@ -183,29 +184,18 @@ function makeVolumeKnobsGrid() {
 }
 
 function makeCheckboxRow(labelText, storageKey, eventName) {
-  const row = document.createElement('div');
-  row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.marginBottom = '6px';
-  const cb = document.createElement('input'); cb.type = 'checkbox';
-  try { cb.checked = LS.getItem(storageKey, '0') === '1'; } catch (_) { cb.checked = false; }
-  // Themed checkbox
-  try {
-    cb.style.accentColor = 'var(--ui-bright, rgba(120,170,255,0.90))';
-    cb.style.outline = 'none';
-    cb.style.outlineOffset = '2px';
-    cb.style.cursor = 'pointer';
-    const onHover = () => { try { cb.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; cb.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-    const onLeave = () => { try { cb.style.boxShadow = 'none'; cb.style.outline = 'none'; } catch (_) {} };
-    cb.addEventListener('mouseenter', onHover);
-    cb.addEventListener('mouseleave', onLeave);
-    cb.addEventListener('focus', onHover);
-    cb.addEventListener('blur', onLeave);
-  } catch (_) {}
-  const lbl = document.createElement('label'); lbl.textContent = labelText; lbl.style.fontSize = '12px'; lbl.style.lineHeight = '1.2';
-  try { const id = `settings-${String(storageKey)}`; cb.id = id; lbl.htmlFor = id; } catch (_) {}
-  cb.onchange = () => {
-    try { LS.setItem(storageKey, cb.checked ? '1' : '0'); } catch (_) {}
-    try { window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled: cb.checked } })); } catch (_) {}
-  };
-  row.appendChild(cb); row.appendChild(lbl);
-  return row;
+  let checked = false;
+  try { checked = (LS.getItem(storageKey, '0') === '1'); } catch (_) { checked = false; }
+  const cb = createCheckbox({
+    label: labelText,
+    checked,
+    onChange: (val) => {
+      try { LS.setItem(storageKey, val ? '1' : '0'); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled: !!val } })); } catch (_) {}
+    }
+  });
+  try { cb.el.style.marginBottom = '6px'; } catch (_) {}
+  return cb.el;
 }
+
+// (Checkbox styles provided by shared controls via createCheckbox())

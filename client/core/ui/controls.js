@@ -406,3 +406,83 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
 
   return { el: wrap, button: btn, menu, setItems, setValue, getValue, open, close };
 }
+
+// Create a tooltip-styled checkbox (reusable across the app)
+// Usage:
+//   const cb = createCheckbox({ label: 'Enable thing', checked: true, onChange: (val) => {} });
+//   parent.appendChild(cb.el);
+export function createCheckbox({ label = '', checked = false, onChange } = {}) {
+  ensureCheckboxStyle();
+  const lab = document.createElement('label');
+  lab.className = 'sf-check';
+  lab.style.cursor = 'pointer';
+
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.className = 'sf-check-input';
+  input.checked = !!checked;
+
+  const box = document.createElement('span');
+  box.className = 'sf-check-box';
+
+  const text = document.createElement('span');
+  text.className = 'sf-check-text';
+  text.textContent = label;
+
+  input.onchange = () => {
+    if (typeof onChange === 'function') onChange(!!input.checked);
+  };
+
+  lab.appendChild(input);
+  lab.appendChild(box);
+  lab.appendChild(text);
+
+  function setChecked(v) { input.checked = !!v; if (typeof onChange === 'function') onChange(!!input.checked); }
+  function getChecked() { return !!input.checked; }
+
+  return { el: lab, input, setChecked, getChecked };
+}
+
+// Inject minimal CSS for the tooltip-like checkbox once
+function ensureCheckboxStyle() {
+  let st = document.getElementById('sf-checkbox-style');
+  if (!st) { st = document.createElement('style'); st.id = 'sf-checkbox-style'; }
+  st.textContent = `
+  /* Minimal tooltip-like checkbox visuals; only the box uses glass/glow */
+  .sf-check { display: inline-flex; align-items: center; gap: 8px; color: var(--ui-fg, #eee); }
+  .sf-check-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .sf-check-box {
+    position: relative; width: 14px; height: 14px; flex: 0 0 14px; display: inline-block;
+    border-radius: 3px;
+    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    background: linear-gradient(180deg,
+      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
+      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
+    );
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18));
+  }
+  .sf-check:hover .sf-check-box,
+  .sf-check-input:focus-visible + .sf-check-box {
+    box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35)), var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.22));
+    outline: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    outline-offset: 1px;
+  }
+  .sf-check-input:checked + .sf-check-box {
+    /* Keep the same look as unchecked (no theme fill), only add a white checkmark */
+    background: linear-gradient(180deg,
+      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
+      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
+    );
+    border-color: var(--ui-surface-border, rgba(120,170,255,0.70));
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18));
+  }
+  .sf-check-input:checked + .sf-check-box::after {
+    content: '✓';
+    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+    font-weight: 900; font-size: 12px; line-height: 14px; text-align: center;
+    color: #fff;
+  }
+  .sf-check-text { font-size: 12px; line-height: 1.2; }
+  `;
+  try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
+}
