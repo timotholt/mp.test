@@ -478,25 +478,7 @@ function presentSettingsOverlay() {
         // New simplified API: only pass the container; the tab resolves its own helpers/state
         renderAccountTab(contentWrap);
       } else if (tab === 'Profile') {
-        renderProfileTab({
-          container: contentWrap,
-          makeSection,
-          makeNote,
-          createInputRow,
-          wireFocusHighlight,
-          UI,
-          LS,
-          headerTitle: 'Profile',
-          headerDesc: '',
-          loggedIn: !!loggedIn,
-          variant: 'overlay',
-          getNickname: () => nicknameVal,
-          setNickname: (v) => { nicknameVal = String(v || ''); },
-          getBio: () => bioVal,
-          setBio: (v) => { bioVal = String(v || ''); },
-          setDirty: (v) => setDirty(!!v),
-          reRender: () => render()
-        });
+        renderProfileTab(contentWrap);
       } else if (tab === 'Theme') {
         // Overlay Theme tab: delegate to modular renderer with cached quip subtitle
         if (_quipThemeColor == null) {
@@ -525,13 +507,7 @@ function presentSettingsOverlay() {
           headerDesc: _quipThemeColor
         });
       } else if (tab === 'Display') {
-        renderDisplayTab({
-          container: contentWrap,
-          makeSection,
-          headerTitle: 'Display',
-          headerDesc: 'Legibility and scale.',
-          variant: 'overlay'
-        });
+        renderDisplayTab(contentWrap);
       } else if (tab === 'Sound')  {
         // Clean up any previous overlay listener before re-attaching via tab module
         try {

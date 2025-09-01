@@ -2,21 +2,16 @@
 // Variant 'panel' and 'overlay' differ only by input IDs and container naming.
 // Minimal, commented, and human-readable per project conventions.
 
-export function renderDisplayTab(opts) {
-  const {
-    container,
-    makeSection,
-    headerTitle = 'Display',
-    headerDesc = 'Legibility and scale.',
-    variant = 'panel',
-  } = opts || {};
+import { makeSection } from '../uiHelpers.js';
+
+export function renderDisplayTab(container) {
 
   // Section header: quip aligned upper-right using inline layout
-  const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
+  const sec = makeSection('Display', 'Legibility and scale.', 'afterTitle', true);
   container.appendChild(sec);
 
   // IDs differ per variant so inputs are unique between contexts
-  const idSuffix = variant === 'overlay' ? '-ovl' : '';
+  const idSuffix = '-ovl';
   // Refs for Reset handler
   let fsRngRef = null;
   let fsValRef = null;
@@ -46,7 +41,7 @@ export function renderDisplayTab(opts) {
     const scale = p / 100;
     const px = Math.round(16 * scale);
     fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
-    try { console.debug(`[display] fontScale(${variant}/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
+    try { console.debug(`[display] fontScale(overlay/display) p=${p} scale=${scale} px=${px}`); } catch (_) {}
     try { window.UITheme && window.UITheme.applyDynamicTheme({ fontScale: scale }); } catch (_) {}
     try { localStorage.setItem('ui_font_scale', String(scale)); } catch (_) {}
   };
