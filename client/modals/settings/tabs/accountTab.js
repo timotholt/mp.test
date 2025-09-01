@@ -3,7 +3,7 @@
 // We resolve helpers and auth state internally to keep callers simple.
 import { makeSection, makeNote } from '../uiHelpers.js';
 import { getUser } from '../../../core/auth/supabaseAuth.js';
-import { getRandomLoginPhrase } from '../../../core/util/loginPhrases.js';
+import { getQuip } from '../../../core/ui/quip.js';
 
 // How frequently to re-check auth while the Account tab is open (ms)
 // Can be overridden at runtime via window.__settingsAccountPollMs
@@ -19,7 +19,28 @@ export function renderAccountTab(container) {
   // Fixed copy kept local for consistency across callers
   const headerTitle = 'Account';
   // Use a right-aligned quip like other tabs
-  const headerDesc = getRandomLoginPhrase();
+  const headerDesc = getQuip('settings.overlay.accountTag', [
+'Passwords expire. Embarrassment does not.',
+  'Your login is the only loot you keep forever.',
+  'Forgot your password? So did the last hero.',
+  'One click from “account secured” to “account screwed.”',
+  'Eternal glory requires a stable email.',
+  'Bind your fate to digits and symbols.',
+  'Change your password. Impress absolutely nobody.',
+  'Security questions: riddles, but less fun.',
+  'Your credentials are worth more than your gear.',
+  'Lose your account, lose your legacy.',
+  'Accounts are fragile. Dungeons are not.',
+  'Email, password, dignity — update at will.',
+  'Your bones file is useless without a login.',
+  'Lock it down before goblins guess it.',
+  "Even the dragon can’t reset your password.",
+  "Your email address isn’t as cool as you think.",
+  "Protect your password. Or don’t. Free country.",
+  'Security review: it’s not cheating, it’s surviving.',
+  'Authentication: because trust issues are healthy.',
+  'The dungeon doesn’t forgive weak passwords.'
+  ]);
   const loginMsg = 'Login required. Sign in to manage your account.';
   const loggedInMsg = 'You are logged in.';
 

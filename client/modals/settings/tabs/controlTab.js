@@ -96,13 +96,16 @@ export function renderControlTab(container) {
     'If you die, blame the keybinds. We always do.',
     'Muscle memory installed separately.',
     'Rebinding keys counts as cardio.',
-    'One does not simply "learn all the commands."',
+    'One does not simply "learn all the commands".',
     "You will press the wrong key and die. It’s tradition.",
     'HJKL: One bind to rule them all',
     'No one ever said this was going to be easy. Or fun.',
     'Blank blind, blank mind.',
     "Those blank buttons aren't going to bind themselves.",
-    "You can win even with blank binds. Source? Trust me bro."
+    "You can win even with blank binds. Source? Trust me bro.",
+    "You want Brief or Pedit layouts? Sorry but NO.",
+    "Every keystroke forges your destiny.",
+    "Every keystroke changes your reality."
   ]);
 
   ensureKeycapStyle();
