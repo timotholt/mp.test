@@ -114,8 +114,12 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
      *   el.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
      *   el.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
      */
-    '--ui-glass-scrollbar-min-width': '500px',
-    '--ui-glass-scrollbar-max-width': '500px',
+    // '--ui-glass-scrollbar-min-width': '500px',
+    // '--ui-glass-scrollbar-max-width': '500px',
+
+    '--ui-glass-scrollbar-min-width': '32rem',
+    '--ui-glass-scrollbar-max-width': '32rem',
+
 
     // Locked list row backgrounds (themes cannot change; a notheme path may override via allowLocked)
     '--ui-list-row-odd': 'rgba(255,255,255,0.04)',

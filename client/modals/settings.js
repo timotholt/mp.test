@@ -512,8 +512,8 @@ function presentSettingsOverlay() {
 
     // Card
     const card = document.createElement('div');
-    card.style.width = 'min(50vw, 820px, calc(100vw - 32px))';
-    card.style.maxWidth = 'min(50vw, 820px, calc(100vw - 32px))';
+    card.style.width = 'auto';
+    card.style.maxWidth = 'calc(100vw - 32px)';
     card.style.color = 'var(--ui-fg, #eee)';
     card.style.borderRadius = '14px';
     card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
@@ -604,7 +604,7 @@ function presentSettingsOverlay() {
     contentWrap.style.marginTop = '0px';
     contentWrap.style.minHeight = '240px';
     contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
-    contentWrap.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
+    // contentWrap minWidth intentionally omitted so the card can size to content
     contentWrap.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
     try {
       contentWrap.style.border = UI.border;
