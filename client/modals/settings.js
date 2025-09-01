@@ -145,8 +145,8 @@ function createSettingsPanel() {
 
   const title = document.createElement('div');
   title.textContent = 'Settings';
-  title.style.fontWeight = 'bold';
-  title.style.fontSize = '18px';
+  title.style.fontWeight = 'var(--ui-title-weight, 700)';
+  title.style.fontSize = 'var(--ui-title-size, 1.5rem)';
 
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '✕';
@@ -188,10 +188,10 @@ function createSettingsPanel() {
     ];
     const tagline = document.createElement('div');
     tagline.textContent = getQuip('settings.panel.header', settingsTaglines);
-    tagline.style.fontSize = '13px';
+    tagline.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)';
     tagline.style.opacity = '0.9';
     tagline.style.margin = '0 0 1rem 0';
-    tagline.style.color = 'var(--ui-fg, #eee)';
+    tagline.style.color = 'var(--ui-fg-quip, #bbb)';
     tagline.style.userSelect = 'none';
     panel.appendChild(tagline);
   } catch (_) {}
@@ -346,8 +346,8 @@ function makeSection(title, desc, hrPosition) {
   const t = document.createElement('div');
   t.textContent = title;
   // Standardize via CSS variables with sensible fallbacks
-  t.style.fontSize = 'var(--settings-sec-subtitle-size, var(--ui-subtitle-size, 1.5rem))';
-  t.style.fontWeight = 'var(--settings-sec-subtitle-weight, var(--ui-subtitle-weight, 700))';
+  t.style.fontSize = 'var(--ui-section-title-size, var(--ui-title-size, 1.5rem))';
+  t.style.fontWeight = 'var(--ui-section-title-weight, var(--ui-title-weight, 700))';
   t.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
   // Ensure consistent foreground color (locked token)
   t.style.color = 'var(--ui-fg, #eee)';
@@ -373,9 +373,10 @@ function makeSection(title, desc, hrPosition) {
     d.textContent = desc;
     // Use quip tone + locked quip size
     try { d.classList.add('text-quip'); } catch (_) {}
-    d.style.fontSize = 'var(--settings-sec-subtitle-size, var(--ui-subtitle-quip-size, 0.9rem))';
+    d.style.fontSize = 'var(--ui-section-quip-size, var(--ui-title-quip-size, 0.9rem))';
     d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
     d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
+    d.style.color = 'var(--ui-fg-quip, #bbb)';
     d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
     wrap.appendChild(d);
     // Optionally place the rule after the quip instead
@@ -496,8 +497,8 @@ function presentSettingsOverlay() {
     header.style.marginBottom = '2px';
     const title = document.createElement('div');
     title.textContent = 'Settings';
-    title.style.fontSize = '22px';
-    title.style.fontWeight = '700';
+    title.style.fontSize = 'var(--ui-title-size, 1.5rem)';
+    title.style.fontWeight = 'var(--ui-title-weight, 700)';
     title.style.userSelect = 'none';
     try { title.id = 'settings-modal-title'; card.setAttribute('aria-labelledby', 'settings-modal-title'); } catch (_) {}
     const closeBtn = document.createElement('button');
@@ -543,10 +544,10 @@ function presentSettingsOverlay() {
     try {
       _quipSettings = getQuip('settings.overlay.header', settingsTaglines);
       tagline.textContent = _quipSettings;
-      tagline.style.fontSize = '13px';
+      tagline.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)';
       tagline.style.opacity = '0.9';
       tagline.style.margin = '0 0 1rem 0';
-      tagline.style.color = 'var(--ui-fg, #eee)';
+      tagline.style.color = 'var(--ui-fg-quip, #bbb)';
       tagline.style.userSelect = 'none';
     } catch (_) {}
     try { tagline.id = 'settings-modal-desc'; card.setAttribute('aria-describedby', 'settings-modal-desc'); } catch (_) {}

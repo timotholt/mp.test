@@ -70,7 +70,6 @@ export function renderSoundTab(opts) {
       try {
         const desc = sec.children && sec.children[1];
         if (desc) {
-          desc.style.fontSize = '13px';
           desc.style.opacity = '0.9';
           desc.style.margin = '0 0 10px 0';
           desc.style.userSelect = 'none';
@@ -101,7 +100,6 @@ export function renderSoundTab(opts) {
     try {
       const desc = sec.children && sec.children[1];
       if (desc) {
-        desc.style.fontSize = '13px';
         desc.style.opacity = '0.9';
         desc.style.margin = '0 0 10px 0';
         desc.style.userSelect = 'none';
