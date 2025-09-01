@@ -10,7 +10,7 @@ export function renderProfileTab(container) {
 
   // Quips about identity and the hero's journey
   const QUIPS = [
-    'A legend starts with a name.',
+    'A legend starts with a name. A good name.',
     "Be the hero. Or at least spell it right.",
     'A hero or a harlot? Choose wisely.',
     'Rename yourself, rewrite your fate.',
@@ -23,7 +23,7 @@ export function renderProfileTab(container) {
     'Choose a name that echoes in eternity.',
     "Heroes don’t answer to 'Guest123.'",
     'What’s in a name? Everything, actually.',
-    'The first quest: a cool name.',
+    'The first quest in Grimdark: a cool name.',
     'Alias now, immortality later.',
     'Be someone worth remembering.',
     'Even villains brand themselves.',
