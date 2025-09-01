@@ -604,8 +604,11 @@ function presentSettingsOverlay() {
     contentWrap.style.marginTop = '0px';
     contentWrap.style.minHeight = '240px';
     contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
-    // contentWrap minWidth intentionally omitted so the card can size to content
+
+    // Tim - contentWrap minWidth and maxWidth intentionally set to the same size
     contentWrap.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
+    contentWrap.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
+
     try {
       contentWrap.style.border = UI.border;
       // Sharp top-left corner only
