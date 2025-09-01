@@ -549,12 +549,8 @@ function presentSettingsOverlay() {
           setDirty
         });
       } else if (tab === 'Controls') {
-        renderControlTab({
-          container: contentWrap,
-          makeSection,
-          makeNote,
-          variant: 'overlay'
-        });
+        // New simplified API: only pass the container; the tab resolves its own helpers/state
+        renderControlTab(contentWrap);
       }
     }
 
