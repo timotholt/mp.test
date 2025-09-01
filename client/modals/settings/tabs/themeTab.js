@@ -10,23 +10,42 @@ import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 
 export function renderThemeTab(container) {
   const variant = 'overlay';
-  const headerTitle = 'Overall Color';
+  const headerTitle = 'UI Presets';
   const headerDesc = getQuip('settings.overlay.themeTag', [
-    "They say color defines your personality. What's yours?",
-    'Death knows no color, but we do.',
-    'Paint the town red. Or any other color you want.',
-    'Hue today, gone tomorrow.',
-    'Saturate your soul.',
+    'If in doubt, Steel Blue never loses.',
+    'Select a preset. Roll with it.',
     'Pick a vibe, survive the dungeon.',
-    'Red increases your damage rolls. Source? Trust me bro.',
-    'Those color knobs took forever to code. Use them wisely.',
-    'If your colors suck, I might change them back.',
-    "Reminder: colors can’t fix your lack of skill.",
-    'Pick a color. Regret is free.',
+    'Colorblind? We got presets for that vibe too.',
+    'This preset was made by Van Gough.',
+    'This preset was made by Michael Angelo.',
+    'This preset was made by Leonardo da Vinci.',
+    'This preset was made by Claude Monet.',
+    'Pick a preset. Pretend it was intentional.',
+    'Mood ring broke? Try these instead.',
+    'Colors chosen by wizards with crayons.',
+    'One click = instant personality.',
+    'RGB is just astrology with numbers.',
+    'These palettes survived the Dark Ages.',
+    'Preset: because chaos needs boundaries.',
+    'Somewhere, a designer is crying.',
+    'Your eyes will thank you (eventually).',
+    'Match the theme, dodge the memes.',
+    'Presets: the training wheels of taste.',
+    'No color theory degree required.',
+    'Even dragons respect a good gradient.',
+    'These presets passed the vibe check.',
+    'Palette curated by eldritch interns.',
+    'Click until destiny feels right.',
+    'Neon Pink is always a power move.',
+    'Sometimes "old photos" is the bold choice.',
+    "Heroes don’t pick Pink.",
+    'Presets: art, but without the suffering.',
+    'Warning: some themes unlock trauma.',
+    'Every theme tells a story.',
   ]);
 
-  // Section header with no quip; we'll use the quip for the "Overall UI" section instead
-  const sec = makeSection(headerTitle, '', 'afterTitle', true);
+  // Section header with quip right-aligned
+  const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
 
   // Quip is rendered inline by makeSection; no extra styling needed
 
@@ -169,15 +188,31 @@ export function renderThemeTab(container) {
     if (variant === 'overlay') {
       // Insert "Overall UI" section header before the color knobs
       try {
-        // Move the top-of-tab quip down to this section; fallback to local quip list
+        // Generate a separate quip for this section; avoid repeating header quip
         const fallbackQuips = [
           'Small tweaks, big vibes.',
-          'A touch here, a glow there.',
-          'Polish the feel, sharpen the steel.',
-          'Style your survival.',
-          'Mood is a setting too.'
+          "Sorry we didn't have a mood dial.",
+          'Paint your pixels, paint your doom.',
+          'Saturate your soul.',
+          'Crank saturation. Enter gamer mode.',
+          'What? Our presets not good enough?',
+          'Paint the town red. Or any other color you want.',
+          'You know, those color knobs took forever to code.',
+          'Too bright? Too dark? Too opinionated? Good.',
+          'Hue today, gone tomorrow.',          
+          "They say color defines your personality. What's yours?",
+          'Death knows no color, but we do.',
+          'Choosing red does more damage. Source? Trust me bro.',
+          'If your colors suck, I might change them back.',
+          "Reminder: colors can’t fix your lack of skill.",
+          'Pick a color. Regret is free.',
+          'If your UI hurts, move a knob until it apologizes.',
+          'Colors are temporary. Regret is forever.',
+          "Just because you can, doesn't mean you should.",
+          "It’s not you, it’s saturation.",
+          "So you think you know more about color than we do?"
         ];
-        const overallQuip = (headerDesc && String(headerDesc)) || getQuip('settings.overlay.overallUI', fallbackQuips);
+        const overallQuip = getQuip('settings.overlay.overallUI', fallbackQuips);
         container.appendChild(makeSection('Base UI Color', overallQuip, 'afterTitle', true));
       } catch (_) {}
       const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
@@ -395,7 +430,8 @@ export function renderThemeTab(container) {
         'A small glow alters the whole room.',
         'The faintest line divides worlds.',
         "You'll never glow up, but the glow knob will.",
-        'Glow up? No. Glow knob? Absolutely.'
+        'Glow up? No. Glow knob? Absolutely.',
+        'A touch here, a glow there.'
       ];
       container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips), 'afterTitle', true));
     } catch (_) {}

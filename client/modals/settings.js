@@ -21,7 +21,6 @@ const SETTINGS_TAGLINES = [
   "You just have to touch everything don't you.",
   'Set the stage for heroics.',
   "Change your settings all you want. It won't help.",
-  'Paint your pixels, we paint your doom',
   'Buttons for the brave.',
   'Your dungeon, your rules.',
   'Fine‑tune the fear factor.',
@@ -30,7 +29,9 @@ const SETTINGS_TAGLINES = [
   'Customize the chaos.',
   "Even the programmer who made this doesn't know what half these things do.",
   "You can change your settings … but should you?",
-  "Change your settings, cause you can't change your life."
+  "Change your settings, cause you can't change your life.",
+  "Style your survival.",
+  'Polish the feel, sharpen the steel.'
 ];
 
 // Settings Modal presented via OverlayManager (external mode)
