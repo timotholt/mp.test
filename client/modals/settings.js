@@ -9,6 +9,33 @@ import { renderSoundTab } from './settings/tabs/soundTab.js';
 import { renderControlTab } from './settings/tabs/controlTab.js';
 import { renderThemeTab } from './settings/tabs/themeTab.js';
 
+// Shared taglines used by both the fallback panel and the overlay modal
+const SETTINGS_TAGLINES = [
+  'Tune the dials. Tame the darkness.',
+  'Make the abyss more habitable.',
+  'Adjust reality to your liking.',
+  'Personalization: because every doom is unique.',
+  'Polish your experience. Leave the grime.',
+  'Twist the knobs; not your fate.',
+  'Balance chaos with preferences.',
+  'Sharper fangs, softer UI.',
+  'Your look, your feel, your death',
+  'Dye your death, attenuate your scream.',
+  "You just have to touch everything don't you.",
+  'Set the stage for heroics.',
+  "Change your settings all you want. It won't help.",
+  'Paint your pixels, we paint your doom',
+  'Buttons for the brave.',
+  'Your dungeon, your rules.',
+  'Fine‑tune the fear factor.',
+  'Dial-in the doom.',
+  'Refine the ritual.',
+  'Customize the chaos.',
+  "Even the programmer who made this doesn't know what half these things do.",
+  "You can change your settings … but should you?",
+  "Change your settings, cause you can't change your life."
+];
+
 // Self-contained Settings Panel (always-available)
 // Lives outside OverlayManager and routes. JS-only, no external CSS.
 // Tabs: Account, Profile, Display, Sound, Controls.
@@ -63,47 +90,10 @@ function attachWheel(rng) {
 }
 
 export function presentSettingsPanel() {
-  // Prefer overlay modal when available for dark backdrop + centering
-  try { if (presentSettingsOverlay && presentSettingsOverlay()) return; } catch (_) {}
+  // Always use overlay modal (OverlayManager is globally available via main.js import)
+  try { presentSettingsOverlay(); return; } catch (_) {}
   let panel = document.getElementById('settings-panel');
   if (!panel) panel = createSettingsPanel();
-  // Ensure tagline exists even for panels created before tagline feature
-  try {
-    if (!panel.querySelector('#settings-panel-tagline')) {
-      const settingsTaglines = [
-        'Tune the dials. Tame the darkness.',
-        'Make the abyss more habitable.',
-        'Adjust reality to your liking.',
-        'Personalization: because every doom is unique.',
-        'Polish your experience. Leave the grime.',
-        'Twist the knobs; not your fate.',
-        'Balance chaos with preferences.',
-        'Sharper fangs, softer UI.',
-        'Your look, your feel, your death',
-        'Dye your death, attenuate your scream.',
-        "You just have to touch everything don't you.",
-        'Set the stage for heroics.',
-        "Change your settings all you want. It won't help.",
-        'Paint your pixels, we paint your doom',
-        'Buttons for the brave.',
-        'Your dungeon, your rules.',
-        'Fine‑tune the fear factor.',
-        'Dial-in the doom.',
-        'Refine the ritual.',
-        'Customize the chaos.'
-      ];
-      const t = document.createElement('div');
-      t.id = 'settings-panel-tagline';
-      t.textContent = getQuip('settings.panel.header', settingsTaglines);
-      t.style.fontSize = '13px';
-      t.style.opacity = '0.9';
-      t.style.margin = '0 0 1rem 0';
-      t.style.color = 'var(--ui-fg, #eee)';
-      t.style.userSelect = 'none';
-      const tabsEl = panel.querySelector('#settings-tabs');
-      if (tabsEl) panel.insertBefore(t, tabsEl); else panel.appendChild(t);
-    }
-  } catch (_) {}
   // Update auth-gated state each open
   __settingsState.accountEnabled = computeAccountEnabled();
   renderSettingsContent(panel);
@@ -164,30 +154,8 @@ function createSettingsPanel() {
 
   // Settings-specific tagline under header (stable per panel instance)
   try {
-    const settingsTaglines = [
-      'Tune the dials. Tame the darkness.',
-      'Make the abyss more habitable.',
-      'Adjust reality to your liking.',
-      'Personalization: because every doom is unique.',
-      'Polish your experience. Leave the grime.',
-      'Twist the knobs; not your fate.',
-      'Balance chaos with preferences.',
-      'Sharper fangs, softer UI.',
-      'Your look, your feel, your death',
-      'Dye your death, attenuate your scream.',
-      "You just have to touch everything don't you.",
-      'Set the stage for heroics.',
-      "Change your settings all you want. It won't help.",
-      'Paint your pixels, we paint your doom',
-      'Buttons for the brave.',
-      'Your dungeon, your rules.',
-      'Fine‑tune the fear factor.',
-      'Dial-in the doom.',
-      'Refine the ritual.',
-      'Customize the chaos.'
-    ];
     const tagline = document.createElement('div');
-    tagline.textContent = getQuip('settings.panel.header', settingsTaglines);
+    tagline.textContent = getQuip('settings.panel.header', SETTINGS_TAGLINES);
     tagline.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)';
     tagline.style.opacity = '0.9';
     tagline.style.margin = '0 0 1rem 0';
@@ -507,8 +475,10 @@ function presentSettingsOverlay() {
     center.style.display = 'flex';
     center.style.alignItems = 'center';
     center.style.justifyContent = 'center';
-    center.style.padding = '24px';
-    center.style.transform = 'translateY(-2vh)';
+
+    // Centered container, no need for padding or transforms anymore
+    // center.style.padding = '24px';
+    // center.style.transform = 'translateY(-2vh)';
 
     // Card
     const card = document.createElement('div');
@@ -553,35 +523,9 @@ function presentSettingsOverlay() {
     // Cache random quip for overlay header (hoisted before use)
     let _quipSettings = null;
 
-    // Settings-specific taglines
-    const settingsTaglines = [
-      'Tune the dials. Tame the darkness.',
-      'Make the abyss more habitable.',
-      'Adjust reality to your liking.',
-      'Personalization: because every doom is unique.',
-      'Polish your experience. Leave the grime.',
-      'Twist the knobs; not your fate.',
-      'Balance chaos with preferences.',
-      'Sharper fangs, softer UI.',
-      'Your look, your feel, your death.',
-      'Silence your screams, dye your death.',
-      "You just have to touch everything don't you.",
-      'Set the stage for heroics.',
-      "Change your settings all you want. It won't help.",
-      'Paint your pixels, we paint your doom.',
-      'Buttons for the brave.',
-      'Your dungeon, your rules.',
-      'Fine‑tune the fear factor.',
-      'Dial-in the doom.',
-      'Refine the ritual.',
-      'Customize the chaos.',
-      "Even the programmer who made this doesn't know what half these things do.",
-      "You can change your settings … but should you?",
-      "Change your settings, cause you can't change your life."
-    ];
     const tagline = document.createElement('div');
     try {
-      _quipSettings = getQuip('settings.overlay.header', settingsTaglines);
+      _quipSettings = getQuip('settings.overlay.header', SETTINGS_TAGLINES);
       tagline.textContent = _quipSettings;
       tagline.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)';
       tagline.style.opacity = '0.9';

@@ -65,19 +65,46 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
 
   // Locked theme defaults (single source of truth) and derived keys
   const LockedThemeDefaults = Object.freeze({
-    '--ui-fg': 'rgba(220,220,220,1.0)',
-    '--ui-fg-quip': 'rgba(176,176,176,1.0)',
-    '--ui-fg-muted': 'rgba(200,200,200,1.0)',
-    '--ui-fg-weak': 'rgba(144,144,144,1.0)',
+
+    // These define the foreground colors of text in the app. App should never reference these.
+    '--ui-fg': 'rgba(220,220,220,1.0)',                     // Brightest text
+    '--ui-fg-muted': 'rgba(200,200,200,1.0)',               // Second brightest text
+    '--ui-fg-quip': 'rgba(176,176,176,1.0)',                // Third brighest text
+    '--ui-fg-weak': 'rgba(144,144,144,1.0)',                // Fourth brightest text
+
+    '--ui-fontsize-xlarge': '1.5rem',                       // Titles of screens & modals
+    '--ui-fontsize-large': '1.25rem',                       // Section headers
+    '--ui-fontsize-medium': '1rem',                         // Body text
+    '--ui-fontsize-small': '0.8rem',                        // Quips
+    '--ui-fontsize-xsmall': '0.75rem',                      // Subtitles
+
+    '--ui-fontweight-bold': '700',
+    '--ui-fontweight-normal': '400',
+
+    // App should reference these
+    '--ui-modal-title-fg': 'var(--ui-fg)',
+    '--ui-modal-title-size': 'var(--ui-fontsize-xlarge)',
+    '--ui-modal-title-weight': 'var(--ui-fontweight-bold)',
+
+    '--ui-modal-title-quip-fg': 'var(--ui-fg-quip)',
+    '--ui-modal-title-quip-size': 'var(--ui-fontsize-small)',
+    '--ui-modal-title-weight': 'var(--ui-fontweight-normal)',
+
+    '--ui-modal-subtitle-fg': 'var(--ui-fg)',
+    '--ui-modal-subtitle-size': 'var(--ui-fontsize-medium)',
+    '--ui-modal-subtitle-weight': 'var(--ui-fontweight-bold)',
+
+    '--ui-modal-subtitle-quip-fg': 'var(--ui-fg-qiup)',
+    '--ui-modal-subtitle-quip-size': 'var(--ui-fontsize-small)',
+    '--ui-modal-subtitle-quip-weight': 'var(--ui-fontweight-normal)',
+
     '--ui-opacity-mult': '2.125',
     '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
     '--ui-font-mono': 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+
     // Locked typography sizes
-    '--ui-title-size': '1.5rem',
-    '--ui-title-weight': '700',
 
     '--ui-subtitle-size': '1rem',
-    '--ui-title-quip-size': '0.9rem',
     // Locked section header aliases (used by Settings sections)
     // These mirror login/title tokens to guarantee visual parity across screens
     '--ui-section-title-size': '1.0rem',
