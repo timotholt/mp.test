@@ -29,7 +29,8 @@ export const LOGIN_PHRASES = [
     "Firewall hotter than a plasma gun.",
     "Access granted by the Inquisition of Auth.",
     "CSRF wards etched into the sigils.",
-    "Audit trails longer than a crusade."
+    "Audit trails longer than a crusade.",
+    "A hero’s journey starts at login.",
   ];
   
   export function getRandomLoginPhrase() {
