@@ -208,20 +208,22 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
         const v = parseFloat(cs.getPropertyValue(name));
         return Number.isFinite(v) ? v : fallback;
       };
-      const currentHue = readCssNum('--ui-hue', 210);
-      const currentIntensity = readCssNum('--ui-intensity', 60);
+      // Base preset fallbacks (single source of truth)
+      const basePreset = themePresets['Steel Blue'] || {};
+      const currentHue = readCssNum('--ui-hue', basePreset.hue);
+      const currentIntensity = readCssNum('--ui-intensity', basePreset.intensity);
       const currentScale = readCssNum('--ui-font-scale', 1);
       // New controls: gradient strength (0..100), milkiness/backdrop blur (0..8 px)
       // Fallbacks when CSS vars are not yet set.
-      const currentGradient = readCssNum('--ui-gradient', 60);
-      const currentMilkiness = readCssNum('--ui-backdrop-blur', 3);
+      const currentGradient = readCssNum('--ui-gradient', basePreset.gradient);
+      const currentMilkiness = readCssNum('--ui-backdrop-blur', basePreset.blur);
       // Additional new controls (persisted in LS):
       let currentBorderStrength = parseFloat(localStorage.getItem('ui_border_intensity'));
-      if (!Number.isFinite(currentBorderStrength)) currentBorderStrength = 70; // default ~0.70 border alpha baseline
+      if (!Number.isFinite(currentBorderStrength)) currentBorderStrength = basePreset.border;
       let currentGlowStrength = parseFloat(localStorage.getItem('ui_glow_strength'));
-      if (!Number.isFinite(currentGlowStrength)) currentGlowStrength = 60; // default matches prior glow look
+      if (!Number.isFinite(currentGlowStrength)) currentGlowStrength = basePreset.glow;
       let currentOverlayDarkness = parseFloat(localStorage.getItem('ui_overlay_darkness'));
-      if (!Number.isFinite(currentOverlayDarkness)) currentOverlayDarkness = 50; // 50% darkness baseline
+      if (!Number.isFinite(currentOverlayDarkness)) currentOverlayDarkness = basePreset.overlayDarkness;
 
       const hue = clamp(params.hue != null ? params.hue : currentHue, 0, 360);
       const intensity = clamp(params.intensity != null ? params.intensity : currentIntensity, 0, 100);
