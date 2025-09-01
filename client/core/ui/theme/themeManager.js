@@ -128,6 +128,13 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-button-disabled-fg': 'var(--ui-fg)', // how do i add 0.6 opacity?
     '--ui-opacity-enabled-button': '1.0',
     '--ui-opacity-disabled-button': '0.6',        
+    
+    // Locked knob face colors (used by core knob UI). Themes cannot override directly.
+    // Dynamic theme will set these at runtime; these are safe fallbacks.
+    '--ui-knob-bg-top': '#1a1a1a',
+    '--ui-knob-bg-bottom': '#101010',
+    // Locked control for additional knob darkness (0..0.5 recommended). Higher -> darker.
+    '--ui-knob-darken': '0.06',
   });
 
   const LockedThemeVars = Object.freeze(Object.keys(LockedThemeDefaults));
@@ -366,6 +373,23 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
       root.style.setProperty('--ui-highlight', bright);
       // Back-compat alias used in some components
       root.style.setProperty('--ui-bright', bright);
+      
+      // Compute solid (non-alpha) knob face colors: neutral/dark, slightly darker than surfaces.
+      // Controlled by locked --ui-knob-darken (0..~0.5). At intensity=0, force true black.
+      try {
+        const kd = clamp(parseFloat(cs.getPropertyValue('--ui-knob-darken')) || 0, 0, 1);
+        // Base lights start well below surface; ease-in near zero intensity to avoid jumps.
+        const kLtBase = (intensity <= 0) ? 0 : Math.max(light - 52, intensity * 0.06);
+        const kLbBase = (intensity <= 0) ? 0 : Math.max(light - 58, intensity * 0.04);
+        const darkenBoost = kd * 20; // up to ~20 lightness points darker at kd=1
+        const kLt = clamp(kLtBase - darkenBoost, 0, 22);
+        const kLb = clamp(kLbBase - darkenBoost, 0, 20);
+        const knobTop = colorFromHSLC({ h: hue, s: 0, l: kLt, alpha: 1 });
+        const knobBottom = colorFromHSLC({ h: hue, s: 0, l: kLb, alpha: 1 });
+        root.style.setProperty('--ui-knob-bg-top', knobTop);
+        root.style.setProperty('--ui-knob-bg-bottom', knobBottom);
+      } catch (_) {}
+
       // Flat themed overlay tint (no gradient): keeps color while preserving contrast.
       // Uses the current hue with a dark lightness so content still pops. Alpha comes from --ui-overlay-darkness.
       try {

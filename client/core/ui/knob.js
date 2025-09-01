@@ -422,15 +422,34 @@ function ensureStyle() {
   st.textContent = `
   .knob { position: relative; width: var(--kn-size, 64px); height: var(--kn-size, 64px);
     border-radius: 50%; outline: none; cursor: ns-resize; user-select: none; touch-action: none; overflow: visible;
-    background: linear-gradient(to bottom, var(--kn-bg-top, #202020) 0%, var(--kn-bg-bottom, #1a1a1a) 100%);
+    background: linear-gradient(to bottom,
+      var(--ui-knob-bg-top, var(--kn-bg-top, #202020)) 0%,
+      var(--ui-knob-bg-bottom, var(--kn-bg-bottom, #1a1a1a)) 100%);
     box-shadow:
       -2px -2px 3px rgba(255,255,255,0.28),
-       2px  2px 7px rgba(0,0,0,1.0),
+       2px  2px  7px rgba(0,0,0,1.0),
       inset -2px -2px 3px rgba(0,0,0,0.40),
       inset  2px  2px 2px rgba(255,255,255,0.14);
   }
   .knob:focus { box-shadow: var(--kn-focus-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), var(--kn-focus-ring, 0 0 0 2px rgba(100,160,255,0.5)), -2px -2px 3px rgba(255,255,255,0.28), 2px 2px 7px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0,0.40), inset 2px 2px 2px rgba(255,255,255,0.14); }
   .knob:hover { box-shadow: var(--kn-hover-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), -2px -2px 3px rgba(255,255,255, calc(0.28 + 0.06 * var(--kn-hover-strength, 1))), 2px 2px 8px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0, calc(0.40 + 0.06 * var(--kn-hover-strength, 1))), inset 2px 2px 2px rgba(255,255,255, calc(0.14 + 0.04 * var(--kn-hover-strength, 1))); }
+
+  /* Centered theme ring painted on the knob surface (hidden by default) */
+  .knob::before { content: '';
+    position: absolute; left: 50%; top: 50%;
+    width: var(--kn-center-ring-d, 70%);
+    height: var(--kn-center-ring-d, 70%);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: var(--kn-center-ring-w, 2px) solid var(--kn-center-ring-color, var(--kn-seg-on, var(--ui-surface-border)));
+    box-shadow: var(--kn-center-ring-glow, var(--kn-seg-glow, none));
+    opacity: var(--kn-center-ring-opacity, 0);
+    pointer-events: none;
+  }
+  .knob:hover::before, .knob:focus::before {
+    border-color: var(--kn-center-ring-color-hover, var(--kn-seg-on-bright, var(--ui-bright)));
+    box-shadow: var(--kn-center-ring-glow-strong, var(--kn-seg-glow-strong, var(--kn-center-ring-glow, var(--kn-seg-glow, none))));
+  }
 
   .knob .k-dot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; transform-origin: 50% 50%; }
   .knob .k-dot::after { content: ''; position: absolute; left: 50%; top: calc(6% + 5px);

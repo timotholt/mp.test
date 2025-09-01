@@ -150,6 +150,32 @@ function makeVolumeKnobsGrid() {
       el.style.setProperty('--kn-seg-glow-strong', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
       // Match overall knob hover glow to border slider hover glow
       el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
+
+      // Centered theme circle on the knob face; matches LED segment color
+      // Hidden by default in knob.css; enable here for Sound tab knobs only
+      // Softer opacity to reduce perceived brightness
+      el.style.setProperty('--kn-center-ring-opacity', '0.65');
+      // Subtle but visible line weight
+      el.style.setProperty('--kn-center-ring-w', '2px');
+      // Keep a clear gap so the ring never touches the white dot
+      el.style.setProperty('--kn-center-ring-gap', '4px');
+      // Precise diameter so the ring stroke centerline matches the dot center radius minus gap:
+      // Rdot_center = 0.5*size - (0.06*size + 5px + 0.5*dot) = 0.44*size - 5px - 0.5*dot
+      // We want: Rring_centerline = Rdot_center - gap
+      // In CSS border terms, Rring_centerline = contentRadius + 0.5*borderWidth
+      // => contentRadius = Rdot_center - gap - 0.5*borderWidth
+      // => contentDiameter = 2 * (0.44*size - 5px - 0.5*dot - gap - 0.5*borderWidth)
+      el.style.setProperty('--kn-center-ring-d', 'calc(2 * (0.44 * var(--kn-size) - 5px - 0.5 * var(--kn-dot-size) - var(--kn-center-ring-gap) - 0.5 * var(--kn-center-ring-w)))');
+      // Match LED colors (and brighten on hover via CSS in knob.js)
+      el.style.setProperty('--kn-center-ring-color', 'var(--kn-seg-on, var(--ui-surface-border))');
+      el.style.setProperty('--kn-center-ring-color-hover', 'var(--kn-seg-on-bright, var(--ui-bright))');
+      // Softer ring glow to avoid bleed, but glow both inward and outward
+      // Idle: tiny inner+outer; Hover: small inner+outer
+      el.style.setProperty('--kn-center-ring-glow', 'inset 0 0 2px var(--kn-seg-on), 0 0 2px var(--kn-seg-on)');
+      el.style.setProperty('--kn-center-ring-glow-strong', 'inset 0 0 4px var(--kn-seg-on-bright), 0 0 4px var(--kn-seg-on-bright)');
+
+      // When the center ring is present, hide the white dot for a cleaner look
+      try { const d = el.querySelector('.k-dot'); if (d) d.style.display = 'none'; } catch (_) {}
     } catch (_) {}
     const cap = document.createElement('div');
     cap.textContent = g.label;
