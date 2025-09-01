@@ -134,6 +134,92 @@ export function makeCenterLayer({ rootId = 'settings-overlay-root' } = {}) {
   return { mount, scrim, center };
 }
 
+// Present an external OverlayManager layer and mount a center container
+// Returns { mount, scrim, center, dismiss } or null on failure
+export function presentExternalOverlayLayer({ id = 'GENERIC_MODAL', priority = (window.PRIORITY || { MEDIUM: 50 }).MEDIUM, rootId = 'modal-overlay-root' } = {}) {
+  try { if (!window || !window.OverlayManager) return null; } catch (_) { return null; }
+  try {
+    window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority, external: true });
+  } catch (_) {}
+
+  let content = null;
+  try {
+    const overlay = document.getElementById('overlay');
+    content = overlay ? overlay.querySelector('#overlay-content') : null;
+  } catch (_) { content = null; }
+  if (!content) return null;
+
+  try {
+    const prev = content.querySelector(`#${rootId}`);
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+  } catch (_) {}
+
+  const layer = makeCenterLayer({ rootId });
+  try { content.appendChild(layer.mount); } catch (_) {}
+
+  const dismiss = () => {
+    try { const m = document.getElementById(rootId); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
+    try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+  };
+
+  return { ...layer, dismiss };
+}
+
+// Focus trap utility for modal dialogs
+// Usage: const remove = attachFocusTrap(cardEl, { onEscape, autoFocus: true, focusSelector: 'input,button' });
+export function attachFocusTrap(rootEl, { onEscape = null, autoFocus = true, focusSelector = null } = {}) {
+  if (!rootEl || typeof rootEl.addEventListener !== 'function') return () => {};
+
+  const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable() {
+    try {
+      const nodes = rootEl.querySelectorAll(selector);
+      return Array.from(nodes).filter(el => !el.disabled && el.offsetParent !== null);
+    } catch (_) { return []; }
+  }
+
+  const keyHandler = (ev) => {
+    try {
+      if (ev.key === 'Escape') {
+        ev.preventDefault(); ev.stopPropagation();
+        if (typeof onEscape === 'function') onEscape();
+        return;
+      }
+      if (ev.key !== 'Tab') return;
+      const focusables = getFocusable();
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); try { last.focus(); } catch (_) {} }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); try { first.focus(); } catch (_) {} }
+    } catch (_) {}
+  };
+
+  try { rootEl.addEventListener('keydown', keyHandler); } catch (_) {}
+
+  if (autoFocus) {
+    setTimeout(() => {
+      try {
+        let node = null;
+        if (focusSelector) {
+          const custom = rootEl.querySelectorAll(focusSelector);
+          node = Array.from(custom).find(el => !el.disabled && el.offsetParent !== null) || null;
+        }
+        if (!node) {
+          const focusables = getFocusable();
+          node = focusables[0] || null;
+        }
+        if (node) node.focus();
+      } catch (_) {}
+    }, 0);
+  }
+
+  return () => {
+    try { rootEl.removeEventListener('keydown', keyHandler); } catch (_) {}
+  };
+}
+
 // Thin divider, useful outside of makeSection
 export function makeSectionSeparator() {
   const hr = document.createElement('div');

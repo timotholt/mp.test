@@ -1,4 +1,4 @@
-import { makeCard, makeTitleBlock, makeTabs, makeContentPane, makeCenterLayer } from '../core/ui/blocks.js';
+import { makeCard, makeTitleBlock, makeTabs, makeContentPane, presentExternalOverlayLayer, attachFocusTrap } from '../core/ui/blocks.js';
 import { renderAccountTab } from './settings/tabs/accountTab.js';
 import { renderProfileTab } from './settings/tabs/profileTab.js';
 import { renderDisplayTab } from './settings/tabs/displayTab.js';
@@ -44,25 +44,10 @@ let __settingsState = {
 
 export function presentSettingsPanel() {
   try {
-    if (!window.OverlayManager) return false;
     const id = 'SETTINGS_MODAL';
     const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
-    try {
-      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
-    } catch (_) {}
-
-    const overlay = document.getElementById('overlay');
-    const content = overlay ? overlay.querySelector('#overlay-content') : null;
-    if (!content) return false;
-    // Do NOT clear shared overlay content; create our own mount layer instead
-    // Remove any stale instance from a previous open
-    try {
-      const prev = content.querySelector('#settings-overlay-root');
-      if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
-    } catch (_) {}
-    // Create centered overlay mount + scrim using blocks
-    const layer = makeCenterLayer({ rootId: 'settings-overlay-root' });
-    try { content.appendChild(layer.mount); } catch (_) {}
+    const layer = presentExternalOverlayLayer({ id, priority: PRIORITY.MEDIUM, rootId: 'settings-overlay-root' });
+    if (!layer) return false;
 
     // Centered container
     const center = layer.center;
@@ -72,10 +57,11 @@ export function presentSettingsPanel() {
     try { card.setAttribute('aria-modal', 'true'); } catch (_) {}
 
     // Title block with quip + close
+    let removeTrap = null;
     const handleClose = () => {
       try { if (typeof volAdjustHandler === 'function') volAdjustHandler(); } catch (_) {}
-      try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
-      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+      try { if (typeof removeTrap === 'function') removeTrap(); } catch (_) {}
+      try { layer.dismiss && layer.dismiss(); } catch (_) {}
     };
     const titleBlock = makeTitleBlock({ title: 'Settings', quips: SETTINGS_TAGLINES, onClose: handleClose });
     try {
@@ -159,31 +145,14 @@ export function presentSettingsPanel() {
     // Mount settings centered UI into our dedicated layer
     layer.mount.appendChild(center);
 
-    // Focus trap within the card
+    // Focus trap within the card (centralized helper)
     try {
-      const trap = (ev) => {
-        if (ev.key === 'Escape') {
-          ev.preventDefault(); ev.stopPropagation();
+      removeTrap = attachFocusTrap(card, {
+        onEscape: () => {
           try { (titleBlock && titleBlock.closeBtn) ? titleBlock.closeBtn.click() : handleClose(); } catch (_) {}
-          return;
-        }
-        if (ev.key !== 'Tab') return;
-        const nodes = card.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        const focusables = Array.from(nodes).filter(el => !el.disabled && el.offsetParent !== null);
-        if (!focusables.length) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); try { last.focus(); } catch (_) {} }
-        else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); try { first.focus(); } catch (_) {} }
-      };
-      card.addEventListener('keydown', trap);
-      // Initial focus to first button/input
-      setTimeout(() => {
-        try {
-          const nodes = card.querySelectorAll('input, button, select, textarea');
-          for (const n of nodes) { if (!n.disabled) { n.focus(); break; } }
-        } catch (_) {}
-      }, 0);
+        },
+        autoFocus: true,
+      });
     } catch (_) {}
 
     // Initial render
