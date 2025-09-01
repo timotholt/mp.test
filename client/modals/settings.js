@@ -1,8 +1,6 @@
-import * as LS from '../core/localStorage.js';
-import { createTabsBar, createLeftIconInput, wireFocusHighlight, UI, createInputRow, createDropdown } from '../core/ui/controls.js';
-import { getUser, ensureProfileForCurrentUser } from '../core/auth/supabaseAuth.js';
+import { createTabsBar, UI } from '../core/ui/controls.js';
 import { getQuip } from '../core/ui/quip.js';
-import { renderAccountTab, computeAccountEnabled, setSettingsAuth } from './settings/tabs/accountTab.js';
+import { renderAccountTab } from './settings/tabs/accountTab.js';
 import { renderProfileTab } from './settings/tabs/profileTab.js';
 import { renderDisplayTab } from './settings/tabs/displayTab.js';
 import { renderSoundTab } from './settings/tabs/soundTab.js';
@@ -43,7 +41,6 @@ const SETTINGS_TAGLINES = [
 
 let __settingsState = {
   activeTab: 'Profile',
-  accountEnabled: false,
 };
 export function presentSettingsPanel() {
   // Always use overlay modal. No fallback panel.
@@ -197,10 +194,6 @@ function presentSettingsOverlay() {
 
     // Local UI state for this overlay instance
     let activeTab = __settingsState.activeTab || 'Profile';
-    let dirty = false;
-    let loggedIn = false;
-    let nicknameVal = '';
-    let bioVal = '';
     let volAdjustHandler = null;
 
     // (Inline confirm removed; settings auto-save and no discard flow is used.)
@@ -220,7 +213,7 @@ function presentSettingsOverlay() {
       render();
     }
 
-    function setDirty(v) { dirty = !!v; }
+    // No dirty tracking: tabs auto-save or manage their own state.
 
     function render() {
       // Tabs UI
@@ -315,27 +308,7 @@ function presentSettingsOverlay() {
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     };
 
-    // Resolve auth, drafts, and server profile, then conditionally render
-    (async () => {
-      const prevLoggedIn = loggedIn;
-      const prevNick = nicknameVal;
-      try { loggedIn = !!(await getUser()); } catch (_) { loggedIn = false; }
-      // Load local drafts first
-      try { nicknameVal = LS.getItem('draft:nickname', '') || ''; } catch (_) {}
-      try { bioVal = LS.getItem('draft:bio', '') || ''; } catch (_) {}
-      // If logged in and no local nickname draft, prefill from server profile (creates one if missing)
-      if (loggedIn && !nicknameVal) {
-        try {
-          const prof = await ensureProfileForCurrentUser();
-          if (prof && prof.display_name && !nicknameVal) nicknameVal = String(prof.display_name);
-        } catch (_) {}
-      }
-      // Only re-render if we're on Account/Profile and auth or nickname changed
-      const tabNeedsAuth = (activeTab === 'Account' || activeTab === 'Profile');
-      if (tabNeedsAuth && (loggedIn !== prevLoggedIn || nicknameVal !== prevNick)) {
-        render();
-      }
-    })();
+    // Tabs manage their own auth/profile state and re-rendering as needed.
 
     // Initial render (before async auth completes)
     render();
@@ -348,4 +321,3 @@ function presentSettingsOverlay() {
 
 // Optional global exposure for quick access/debug
 window.presentSettingsPanel = presentSettingsPanel;
-window.setSettingsAuth = setSettingsAuth;
