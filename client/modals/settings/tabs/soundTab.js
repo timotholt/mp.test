@@ -7,15 +7,10 @@ import { createVolumeKnob } from '../../../core/audio/volumeKnob.js';
 import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createCheckbox } from '../../../core/ui/controls.js';
+import { makeSection } from '../uiHelpers.js';
 
-export function renderSoundTab(opts) {
-  const {
-    container,
-    makeSection,
-    makeNote, // not used now but left for parity with other tabs
-    variant = 'panel',
-    setDirty, // overlay uses this to mark dirty while adjusting master volume
-  } = opts || {};
+export function renderSoundTab(container) {
+  const variant = 'overlay';
 
   // 1) Sound mixer header + Knobs grid
   if (variant === 'overlay') {
@@ -42,9 +37,9 @@ export function renderSoundTab(opts) {
 
   // While adjusting from the overlay, broadcast/track adjusting flag via window event and setDirty(true)
   let cleanup = null;
-  if (variant === 'overlay' && typeof setDirty === 'function') {
+  if (variant === 'overlay') {
     try {
-      const handler = (e) => { if (e && e.detail && e.detail.adjusting) setDirty(true); };
+      const handler = (e) => { /* marker hook removed; settings overlay tracks auto-save */ };
       window.addEventListener('ui:volume:adjusting', handler);
       cleanup = () => { try { window.removeEventListener('ui:volume:adjusting', handler); } catch(_) {} };
     } catch (_) {}

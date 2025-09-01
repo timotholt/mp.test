@@ -6,29 +6,24 @@
 import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createDropdown } from '../../../core/ui/controls.js';
+import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 
-export function renderThemeTab(opts) {
-  const {
-    container,
-    makeSection,
-    attachWheel, // provided by settings.js
-    attachHover, // provided by settings.js
-    headerTitle = 'Choose Your Theme',
-    headerDesc = getQuip('settings.panel.themeTag', [
-      "They say color defines your personality. What's yours?",
-      'Death knows no color, but we do.',
-      'Paint the town red. Or any other color you want.',
-      'Hue today, gone tomorrow.',
-      'Saturate your soul.',
-      'Pick a vibe, survive the dungeon.',
-      'Red increases your damage rolls. Source? Trust me bro.',
-      'Those color knobs took forever to code. Use them wisely.',
-      'If your colors suck, I might change them back.',
-      "Reminder: colors can’t fix your lack of skill.",
-      'Pick a color. Regret is free.',
-    ]),
-    variant = 'panel',
-  } = opts || {};
+export function renderThemeTab(container) {
+  const variant = 'overlay';
+  const headerTitle = 'Overall Color';
+  const headerDesc = getQuip('settings.overlay.themeTag', [
+    "They say color defines your personality. What's yours?",
+    'Death knows no color, but we do.',
+    'Paint the town red. Or any other color you want.',
+    'Hue today, gone tomorrow.',
+    'Saturate your soul.',
+    'Pick a vibe, survive the dungeon.',
+    'Red increases your damage rolls. Source? Trust me bro.',
+    'Those color knobs took forever to code. Use them wisely.',
+    'If your colors suck, I might change them back.',
+    "Reminder: colors can’t fix your lack of skill.",
+    'Pick a color. Regret is free.',
+  ]);
 
   // Section header with no quip; we'll use the quip for the "Overall UI" section instead
   const sec = makeSection(headerTitle, '', 'afterTitle', true);

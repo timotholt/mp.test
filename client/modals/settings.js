@@ -356,10 +356,6 @@ function presentSettingsOverlay() {
     let nicknameVal = '';
     let bioVal = '';
     let volAdjustHandler = null;
-    // Cache random quips so they don't change on re-render
-    let _quipThemeColor = null;
-    let _quipSoundMixer = null;
-    let _quipNotif = null;
 
     // Add mouse wheel support for range sliders in overlay
     function attachWheel(rng) {
@@ -480,32 +476,7 @@ function presentSettingsOverlay() {
       } else if (tab === 'Profile') {
         renderProfileTab(contentWrap);
       } else if (tab === 'Theme') {
-        // Overlay Theme tab: delegate to modular renderer with cached quip subtitle
-        if (_quipThemeColor == null) {
-          const colorQuips = [
-            "They say color defines your personality. What's yours?",
-            'Death knows no color, but we do.',
-            'Paint the town red. Or any other color you want.',
-            'Hue today, gone tomorrow.',
-            'Saturate your soul.',
-            'Pick a vibe, survive the dungeon.',
-            'Red increases your damage rolls. Source? Trust me bro.',
-            'Those color knobs took forever to code. Use them wisely.',
-            'If your colors suck, I might change them back.',
-            "Reminder: colors can’t fix a lack of skill.",
-            "Pick a color. Regret is free.",
-          ];
-          _quipThemeColor = getQuip('settings.overlay.themeTag', colorQuips);
-        }
-        renderThemeTab({
-          variant: 'overlay',
-          container: contentWrap,
-          makeSection,
-          attachWheel,
-          attachHover,
-          headerTitle: 'Overall Color',
-          headerDesc: _quipThemeColor
-        });
+        renderThemeTab(contentWrap);
       } else if (tab === 'Display') {
         renderDisplayTab(contentWrap);
       } else if (tab === 'Sound')  {
@@ -517,13 +488,7 @@ function presentSettingsOverlay() {
           }
         } catch (_) {}
         // Render Sound tab via module; capture cleanup function
-        volAdjustHandler = renderSoundTab({
-          container: contentWrap,
-          makeSection,
-          makeNote,
-          variant: 'overlay',
-          setDirty
-        });
+        volAdjustHandler = renderSoundTab(contentWrap);
       } else if (tab === 'Controls') {
         // New simplified API: only pass the container; the tab resolves its own helpers/state
         renderControlTab(contentWrap);
