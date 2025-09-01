@@ -16,6 +16,7 @@ import { renderDefaultTwoColGroup } from '../../../core/ui/modals/settings/tabs/
 import { ensureControlsKbStyle } from '../../../core/ui/modals/settings/tabs/control/styles.js';
 import { normalizeKey, prettyKey, isMovementActionId, keyFromEvent, splitChord } from '../../../core/ui/modals/settings/tabs/control/ui.js';
 import { makeSection } from '../uiHelpers.js';
+import { getQuip } from '../../../core/ui/quip.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
@@ -70,8 +71,38 @@ function saveBindings(preset, map) {
 }
 
 export function renderControlTab(container) {
-  const headerTitle = 'Controls';
-  const headerDesc = 'Pick your poison. HJKL, WASD, or roll your own.';
+  const headerTitle = 'Control Presets';
+  const headerDesc = getQuip('settings.overlay.controlsTag', [
+    'No one ever said roguelikes were easy to learn.',
+    'You just wait. The next version will add 20 more commands.',
+    'Your brain is way too small to remember all this.',
+    'Hate VIM? Yea, me too.',
+    'Hate WASD? Yea, me too.',
+    "HJKL isn’t a phase, it’s a lifestyle.",
+    'Arrow keys: the training wheels of greatness.',
+    'WASD is for walking. Dying is on you.',
+    'Remap boldly. Forget instantly.',
+    'Press any key to panic.',
+    'Presets are for cowards. Rebinding is for legends.',
+    'Your pinky finger is the real tank.',
+    'Pro tip: the spacebar does not pause life.',
+    'Emacs users, we believe in you. Barely.',
+    'Vim users already know where this is going.',
+    'The best key is the one you meant to press.',
+    'Pro-tip: Try binding Alt+F4 to fire.',
+    'Numpad mains, your secret is safe with us.',
+    'Every bind is a life choice. Most are bad.',
+    'Set it, forget it, regret it.',
+    'If you die, blame the keybinds. We always do.',
+    'Muscle memory installed separately.',
+    'Rebinding keys counts as cardio.',
+    'One does not simply "learn all the commands."',
+    "You will press the wrong key and die. It’s tradition.",
+    'HJKL: One bind to rule them all',
+    'No one ever said this was going to be easy. Or fun.',
+    'Blank button, blank mind.',
+    "Those blank buttons aren't going to bind themselves.",
+  ]);
 
   ensureKeycapStyle();
   ensureControlsKbStyle();
@@ -110,7 +141,7 @@ export function renderControlTab(container) {
   });
   const presetLabel = document.createElement('div');
   presetLabel.className = 'sf-kb-label';
-  presetLabel.textContent = 'Control Preset:';
+  presetLabel.textContent = 'Layout Style:';
   toolbar.appendChild(presetLabel);
   toolbar.appendChild(presetDD.el);
 
