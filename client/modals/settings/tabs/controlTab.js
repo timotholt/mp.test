@@ -89,7 +89,7 @@ export function renderControlTab(container) {
     'Emacs users, we believe in you. Barely.',
     'Vim users already know where this is going.',
     'The best key is the one you meant to press.',
-    'Pro-tip: Try binding Alt+F4 to fire.',
+    'Pro-tip: Try binding Alt+F4 to move up.',
     'Numpad mains, your secret is safe with us.',
     'Every bind is a life choice. Most are bad.',
     'Set it, forget it, regret it.',
