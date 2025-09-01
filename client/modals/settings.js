@@ -64,10 +64,6 @@ export function presentSettingsPanel() {
     const layer = makeCenterLayer({ rootId: 'settings-overlay-root' });
     try { content.appendChild(layer.mount); } catch (_) {}
 
-    // Keep settings isolated: do NOT mutate the shared #overlay styles here.
-    // OverlayManager already manages its own backdrop/shade using theme vars.
-    // Our mount captures input via pointer-events: auto; no global overrides.
-
     // Centered container
     const center = layer.center;
 
@@ -103,8 +99,6 @@ export function presentSettingsPanel() {
     let activeTab = __settingsState.activeTab || 'Profile';
     let volAdjustHandler = null;
 
-    // (Inline confirm removed; settings auto-save and no discard flow is used.)
-
     function onSelectTab(name) {
       // Tabs switch immediately; settings auto-save, no discard prompts
       // If we are leaving the Sound tab, run its cleanup (remove listeners)
@@ -118,8 +112,6 @@ export function presentSettingsPanel() {
       __settingsState.activeTab = activeTab;
       render();
     }
-
-    // No dirty tracking: tabs auto-save or manage their own state.
 
     function render() {
       // Tabs UI
@@ -194,12 +186,7 @@ export function presentSettingsPanel() {
       }, 0);
     } catch (_) {}
 
-    // Close without unsaved-change prompts (auto-save behavior)
-    // close handled via titleBlock's close button
-
-    // Tabs manage their own auth/profile state and re-rendering as needed.
-
-    // Initial render (before async auth completes)
+    // Initial render
     render();
 
     return true;
