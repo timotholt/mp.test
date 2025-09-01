@@ -475,16 +475,8 @@ function presentSettingsOverlay() {
       contentWrap.innerHTML = '';
       const tab = activeTab;
       if (tab === 'Account') {
-        renderAccountTab({
-          container: contentWrap,
-          makeSection,
-          makeNote,
-          headerTitle: 'Account',
-          headerDesc: 'Manage your account, authentication and linked providers.',
-          loggedIn: !!loggedIn,
-          loginMsg: 'Login required. Sign in to manage your account.',
-          loggedInMsg: 'You are logged in.'
-        });
+        // New simplified API: only pass the container; the tab resolves its own helpers/state
+        renderAccountTab(contentWrap);
       } else if (tab === 'Profile') {
         renderProfileTab({
           container: contentWrap,
