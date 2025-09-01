@@ -3,6 +3,7 @@
 // We resolve helpers and auth state internally to keep callers simple.
 import { makeSection, makeNote } from '../uiHelpers.js';
 import { getUser } from '../../../core/auth/supabaseAuth.js';
+import { getRandomLoginPhrase } from '../../../core/util/loginPhrases.js';
 
 // How frequently to re-check auth while the Account tab is open (ms)
 // Can be overridden at runtime via window.__settingsAccountPollMs
@@ -17,12 +18,13 @@ export function renderAccountTab(container) {
 
   // Fixed copy kept local for consistency across callers
   const headerTitle = 'Account';
-  const headerDesc = 'Manage your account, authentication and linked providers.';
+  // Use a right-aligned quip like other tabs
+  const headerDesc = getRandomLoginPhrase();
   const loginMsg = 'Login required. Sign in to manage your account.';
   const loggedInMsg = 'You are logged in.';
 
   // Section header
-  try { container.appendChild(makeSection(headerTitle, headerDesc, 'afterTitle')); } catch (_) {}
+  try { container.appendChild(makeSection(headerTitle, headerDesc, 'afterTitle', true)); } catch (_) {}
 
   // Create a placeholder note; start blank until we confirm auth state
   let noteEl = null;

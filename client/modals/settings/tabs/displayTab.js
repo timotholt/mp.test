@@ -2,12 +2,39 @@
 // Variant 'panel' and 'overlay' differ only by input IDs and container naming.
 // Minimal, commented, and human-readable per project conventions.
 
-import { makeSection } from '../uiHelpers.js';
+import { makeSection, attachWheel } from '../uiHelpers.js';
+
+// Quips for Display tab (eyesight, scaling, glasses, etc.)
+const DISPLAY_QUIPS = [
+  'Font size is not a substitute for glasses.',
+  'Sit closer. Or slide right.',
+  "Font sliders: Cause squinting isn't a good look.",
+  'Bigger fonts: the oldest monitor overclock.',
+  'Pixels too small? Summon larger ones.',
+  'Get better glasses or better excuses.',
+  'Scaling: because monitors lie about inches.',
+  'Lean in like you mean it.',
+  'Font size: a bandaid for tiny screens.',
+  'Gargoyles read at 8px. Mortals need 16+.',
+  'Move the slider, save your eyesight.',
+  'Monitor small? Ego big? Compensate here.',
+  'Reading glasses: analog upscaling.',
+  'Squinting is not accessibility.',
+  "Make text huge. Pretend it’s for testing.",
+  'Your eyes called. They want 18px.',
+  'UI scale: the poor man’s 4K.',
+  'The screen is far; the slider is near.',
+  'More pixels per letter, fewer tears per quest.',
+  'Pro tip: 16px is the new 12px.',
+  'Less eyestrain, more brainstrain.',
+  'Real men move the slider all the way left.'
+];
 
 export function renderDisplayTab(container) {
 
-  // Section header: quip aligned upper-right using inline layout
-  const sec = makeSection('Display', 'Legibility and scale.', 'afterTitle', true);
+  // Section header: random quip aligned upper-right
+  const quip = DISPLAY_QUIPS[Math.floor(Math.random() * DISPLAY_QUIPS.length)];
+  const sec = makeSection('Display', quip, 'afterTitle', true);
   container.appendChild(sec);
 
   // IDs differ per variant so inputs are unique between contexts
@@ -34,6 +61,9 @@ export function renderDisplayTab(container) {
     const px = Math.round(16 * (p / 100));
     fsVal.textContent = `${px}px`; fsRng.title = `${px}px`;
   } catch (_) {}
+
+  // Add mouse wheel support to the range input
+  attachWheel(fsRng);
 
   fsRng.oninput = () => {
     const p = Math.max(80, Math.min(120, Math.round(parseFloat(fsRng.value) || 100)));

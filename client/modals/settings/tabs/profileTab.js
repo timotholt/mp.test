@@ -10,9 +10,9 @@ export function renderProfileTab(container) {
 
   // Quips about identity and the hero's journey
   const QUIPS = [
-    'A legend starts with a name. A good name.',
+    'A legend starts with a name. A good one.',
     "Be the hero. Or at least spell it right.",
-    'A hero or a harlot? Choose wisely.',
+    'Are you a hero or a harlot? Choose wisely.',
     'Rename yourself, rewrite your fate.',
     'Every odyssey begins with an alias.',
     'Player today. Famous martyr tomorrow.',
@@ -37,7 +37,7 @@ export function renderProfileTab(container) {
     'Choose a name that casts a shadow.',
     'Victory tastes better with a good alias.',
     'Heroes never hide behind default tags.',
-    "A name is like a wife: don't get stuck with a bad one.",
+    "A name is like a wife: don't get stuck with a bad one forever.",
     'Even gods rebrand sometimes.',
     'Heroes are forged, not autofilled.',
     'Become the myth you mistyped.',
