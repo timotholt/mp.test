@@ -100,7 +100,7 @@ export function renderControlTab(container) {
     "You will press the wrong key and die. It’s tradition.",
     'HJKL: One bind to rule them all',
     'No one ever said this was going to be easy. Or fun.',
-    'Blank blind, blank mind.',
+    'Blank bind, blank mind.',
     "Those blank buttons aren't going to bind themselves.",
     "You can win even with blank binds. Source? Trust me bro.",
     "You want Brief or Pedit layouts? Sorry but NO.",
