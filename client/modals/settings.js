@@ -45,50 +45,6 @@ let __settingsState = {
   activeTab: 'Profile',
   accountEnabled: false,
 };
-
-// Shared helpers across panel and overlay
-function attachHover(rng, labelEl) {
-  const on = () => {
-    try { labelEl.style.color = 'var(--ui-bright, #dff1ff)'; } catch (_) {}
-    try { rng.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; } catch (_) {}
-    try { rng.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {}
-  };
-  const off = () => {
-    try { labelEl.style.color = ''; } catch (_) {}
-    try { rng.style.boxShadow = 'none'; } catch (_) {}
-    try { rng.style.outline = 'none'; } catch (_) {}
-  };
-  try {
-    rng.addEventListener('mouseenter', on);
-    rng.addEventListener('mouseleave', off);
-    rng.addEventListener('focus', on);
-    rng.addEventListener('blur', off);
-  } catch (_) {}
-}
-
-function attachWheel(rng) {
-  try {
-    rng.addEventListener('wheel', (e) => {
-      // Ignore if user holds modifier keys (allow browser gestures)
-      if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return;
-      if (e && e.cancelable !== false) e.preventDefault();
-      let step = parseFloat(rng.step);
-      if (!Number.isFinite(step)) step = 1;
-      let min = parseFloat(rng.min); if (!Number.isFinite(min)) min = 0;
-      let max = parseFloat(rng.max); if (!Number.isFinite(max)) max = 100;
-      let val = parseFloat(rng.value); if (!Number.isFinite(val)) val = min;
-      // Wheel up -> increase, wheel down -> decrease
-      val += (e.deltaY < 0 ? step : -step);
-      // Clamp and snap to step precision
-      val = Math.min(max, Math.max(min, val));
-      const decs = (String(step).split('.')[1] || '').length;
-      if (decs) val = parseFloat(val.toFixed(decs));
-      rng.value = String(val);
-      try { rng.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) { try { rng.oninput && rng.oninput(); } catch (_) {} }
-    }, { passive: false });
-  } catch (_) {}
-}
-
 export function presentSettingsPanel() {
   // Always use overlay modal. No fallback panel.
   try { presentSettingsOverlay(); } catch (_) {}
@@ -216,8 +172,8 @@ function presentSettingsOverlay() {
 
     // Tabs bar
     const tabsBar = createTabsBar({ onSelect: onSelectTab });
-    // Rename Display -> Theme, and introduce a separate Display tab
-    const allTabs = ['Account', 'Profile', 'Theme', 'Display', 'Sound', 'Controls'];
+    // Tab order per spec: Account, Profile, Display, Theme, Controls, Sound
+    const allTabs = ['Account', 'Profile', 'Display', 'Theme', 'Controls', 'Sound'];
 
     // Bordered content area with scroll
     const contentWrap = document.createElement('div');
@@ -247,82 +203,7 @@ function presentSettingsOverlay() {
     let bioVal = '';
     let volAdjustHandler = null;
 
-    // Add mouse wheel support for range sliders in overlay
-    function attachWheel(rng) {
-      try {
-        rng.addEventListener('wheel', (e) => {
-          // Ignore if user holds modifier keys (allow browser gestures)
-          if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return;
-          if (e && e.cancelable !== false) e.preventDefault();
-          let step = parseFloat(rng.step);
-          if (!Number.isFinite(step)) step = 1;
-          let min = parseFloat(rng.min); if (!Number.isFinite(min)) min = 0;
-          let max = parseFloat(rng.max); if (!Number.isFinite(max)) max = 100;
-          let val = parseFloat(rng.value); if (!Number.isFinite(val)) val = min;
-          // Wheel up -> increase, wheel down -> decrease
-          val += (e.deltaY < 0 ? step : -step);
-          // Clamp and snap to step precision
-          val = Math.min(max, Math.max(min, val));
-          const decs = (String(step).split('.')[1] || '').length;
-          if (decs) val = parseFloat(val.toFixed(decs));
-          rng.value = String(val);
-          try { rng.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) { try { rng.oninput && rng.oninput(); } catch (_) {} }
-        }, { passive: false });
-      } catch (_) {}
-    }
-
-    // Simple inline-styled confirm overlay within this card
-    function presentInlineConfirm(message = 'Discard changes?') {
-      return new Promise((resolve) => {
-        try {
-          const scrim = document.createElement('div');
-          scrim.style.position = 'absolute';
-          scrim.style.inset = '0';
-          scrim.style.background = 'rgba(0,0,0,0.45)';
-          scrim.style.backdropFilter = 'blur(1px)';
-          scrim.style.display = 'flex';
-          scrim.style.alignItems = 'center';
-          scrim.style.justifyContent = 'center';
-          scrim.style.zIndex = '10';
-
-          const box = document.createElement('div');
-          box.style.minWidth = '280px';
-          box.style.maxWidth = '90%';
-          box.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.52) 0%, rgba(8,14,28,0.48) 100%)';
-          box.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-          box.style.borderRadius = '10px';
-          box.style.boxShadow = '0 0 20px rgba(120,170,255,0.33)';
-          box.style.padding = '12px';
-          box.style.color = 'var(--ui-fg, #eee)';
-
-          const msg = document.createElement('div');
-          msg.textContent = String(message || 'Are you sure?');
-          msg.style.marginBottom = '10px';
-          msg.style.fontWeight = '600';
-          box.appendChild(msg);
-
-          const row = document.createElement('div');
-          row.style.display = 'flex';
-          row.style.justifyContent = 'flex-end';
-          row.style.gap = '8px';
-
-          const noBtn = document.createElement('button');
-          noBtn.textContent = 'Cancel';
-          const yesBtn = document.createElement('button');
-          yesBtn.textContent = 'Discard';
-          [noBtn, yesBtn].forEach(b => { b.style.cursor = 'pointer'; b.style.userSelect = 'none'; b.style.borderRadius = '10px'; b.style.padding = '6px 10px'; b.style.fontWeight = '600'; b.style.fontSize = '14px'; b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)'; b.style.color = '#dff1ff'; b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))'; b.style.boxShadow = 'inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18)'; });
-
-          noBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(false); };
-          yesBtn.onclick = () => { try { card.removeChild(scrim); } catch (_) {} resolve(true); };
-
-          row.appendChild(noBtn); row.appendChild(yesBtn);
-          box.appendChild(row);
-          scrim.appendChild(box);
-          card.appendChild(scrim);
-          try { yesBtn.focus(); } catch (_) {}
-        } catch (_) { resolve(false); }
-      });
-    }
+    // (Inline confirm removed; settings auto-save and no discard flow is used.)
 
     function onSelectTab(name) {
       // Tabs switch immediately; settings auto-save, no discard prompts
