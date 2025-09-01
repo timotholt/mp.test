@@ -4,6 +4,13 @@
 import { makeSection, makeNote } from '../uiHelpers.js';
 import { getUser } from '../../../core/auth/supabaseAuth.js';
 
+// How frequently to re-check auth while the Account tab is open (ms)
+// Can be overridden at runtime via window.__settingsAccountPollMs
+const ACCOUNT_AUTH_POLL_MS = (() => {
+  try { const v = Number(window.__settingsAccountPollMs); if (Number.isFinite(v) && v > 250) return v; } catch (_) {}
+  return 4000; // default: every few seconds
+})();
+
 export function renderAccountTab(container) {
   // Fail safe: no work if container missing
   if (!container) return;
@@ -17,24 +24,48 @@ export function renderAccountTab(container) {
   // Section header
   try { container.appendChild(makeSection(headerTitle, headerDesc, 'afterTitle')); } catch (_) {}
 
-  // Initial heuristic: enable note based on computeAccountEnabled(); refine via getUser()
-  let loggedIn = false;
-  try { loggedIn = !!computeAccountEnabled(); } catch (_) { loggedIn = false; }
-
-  // Render a note and keep a handle so we can update text after async auth resolves
+  // Create a placeholder note; start blank until we confirm auth state
   let noteEl = null;
-  try { noteEl = makeNote(loggedIn ? loggedInMsg : loginMsg); } catch (_) { noteEl = null; }
+  try { noteEl = makeNote(''); } catch (_) { noteEl = null; }
   if (noteEl) { try { container.appendChild(noteEl); } catch (_) {} }
 
-  // Asynchronously check real auth state; update text if it changes
-  (async () => {
+  // Track last known state so we only update when it changes
+  const state = { known: false, loggedIn: false };
+
+  // Ensure only one polling loop per container; cancel any previous one
+  try { if (container.__accountAuthTimer) { clearTimeout(container.__accountAuthTimer); container.__accountAuthTimer = null; } } catch (_) {}
+  container.__accountAuthGen = (container.__accountAuthGen || 0) + 1;
+  const gen = container.__accountAuthGen;
+
+  const isAlive = () => {
+    try { if (!document || !document.body) return false; } catch (_) { return false; }
+    // Stop when this tab content is no longer current (noteEl removed when switching tabs)
+    return container.__accountAuthGen === gen && noteEl && document.body.contains(noteEl);
+  };
+
+  async function refreshAuth() {
     try {
       const user = await getUser();
       const isIn = !!user;
-      if (noteEl && isIn !== loggedIn) {
-        try { noteEl.textContent = isIn ? loggedInMsg : loginMsg; } catch (_) {}
+      if (!state.known || isIn !== state.loggedIn) {
+        state.known = true; state.loggedIn = isIn;
+        if (noteEl) {
+          try { noteEl.textContent = isIn ? loggedInMsg : loginMsg; } catch (_) {}
+        }
       }
-    } catch (_) {}
+    } catch (_) { /* keep blank on errors until next poll */ }
+  }
+
+  // Kick off: do an immediate check (keeps UI blank until resolved), then poll
+  (async () => {
+    await refreshAuth();
+    const tick = async () => {
+      if (!isAlive()) return;
+      await refreshAuth();
+      if (!isAlive()) return;
+      try { container.__accountAuthTimer = setTimeout(tick, ACCOUNT_AUTH_POLL_MS); } catch (_) {}
+    };
+    try { container.__accountAuthTimer = setTimeout(tick, ACCOUNT_AUTH_POLL_MS); } catch (_) {}
   })();
 }
 
