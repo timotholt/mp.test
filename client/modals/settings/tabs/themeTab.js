@@ -94,7 +94,7 @@ export function renderThemeTab(opts) {
             }
           } catch (_) {}
           // Minimal fallback if UITheme isn't ready
-          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 60, overlayDarkness: 60, blur: 3 } };
+          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 60, overlayDarkness: 60, blur: 3 } };
         })();
 
         const themeTopRow = document.createElement('div');
@@ -109,14 +109,34 @@ export function renderThemeTab(opts) {
         lbl.style.fontWeight = '600';
 
         try {
-          let savedPreset = LS.getItem('ui_preset', null);
-          if (savedPreset === 'Emerald') { savedPreset = 'Verdant Veil'; try { LS.setItem('ui_preset', savedPreset); } catch (_) {} }
+          // Use unified key 'grimDark.theme'; migrate from legacy 'ui_preset' if present
+          let savedPreset = null;
+          try { savedPreset = (localStorage.getItem('grimDark.theme') || '').trim(); } catch (_) {}
+          if (!savedPreset) {
+            try {
+              const legacy = LS.getItem('ui_preset', null);
+              if (legacy) {
+                const mig = (legacy === 'Custom') ? 'custom' : legacy;
+                try { localStorage.setItem('grimDark.theme', mig); } catch (_) {}
+                savedPreset = mig;
+              }
+            } catch (_) {}
+          }
+          // Old alias migration
+          if (savedPreset === 'Emerald') { savedPreset = 'Verdant Veil'; try { localStorage.setItem('grimDark.theme', savedPreset); } catch (_) {} }
           const names = Object.keys(themePresets);
           const items = [{ label: 'Custom', value: 'Custom' }].concat(names.map(n => ({ label: n, value: n })));
-          if (!savedPreset || (!themePresets[savedPreset] && savedPreset !== 'Custom')) savedPreset = 'Steel Blue';
-          dd = createDropdown({ items, value: savedPreset, width: '240px', onChange: (val) => {
-            try { LS.setItem('ui_preset', val); } catch (_) {}
-            if (val !== 'Custom') { try { if (typeof applyPreset === 'function') applyPreset(val); } catch (_) {} }
+          let ddValue = 'Steel Blue';
+          if (savedPreset && savedPreset.toLowerCase() === 'custom') ddValue = 'Custom';
+          else if (savedPreset && names.includes(savedPreset)) ddValue = savedPreset;
+          dd = createDropdown({ items, value: ddValue, width: '240px', onChange: (val) => {
+            if (val === 'Custom') {
+              try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
+              // No immediate apply; user will tweak controls.
+            } else {
+              try { localStorage.setItem('grimDark.theme', val); } catch (_) {}
+              try { if (typeof applyPreset === 'function') applyPreset(val); } catch (_) {}
+            }
           }});
         } catch (_) {
           dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '240px' });
@@ -143,7 +163,7 @@ export function renderThemeTab(opts) {
 
   // Helper: when any slider/knob changes, mark preset as Custom (do not re-apply values)
   function selectCustomPreset() {
-    try { LS.setItem('ui_preset', 'Custom'); } catch (_) {}
+    try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
     try { dd && dd.setValue && dd.setValue('Custom', false); } catch (_) {}
   }
 
@@ -317,35 +337,14 @@ export function renderThemeTab(opts) {
   const opLbl = document.createElement('label'); opLbl.textContent = 'Transparency:'; opLbl.style.minWidth = '140px'; opLbl.title = 'Higher = clearer panels; lower = more solid'; opLbl.style.textAlign = 'left';
   const opRng = document.createElement('input'); opRng.type = 'range'; opRng.min = '0'; opRng.max = '100'; opRng.step = '1'; opRng.style.flex = '1'; opRng.id = 'settings-ui-opacity';
   const opVal = document.createElement('span'); opVal.style.width = '46px'; opVal.style.textAlign = 'right'; opVal.style.color = '#ccc'; opVal.style.paddingRight = '6px'; opVal.id = 'settings-ui-opacity-val';
-  // Initialize from storage, default 85% transparency. Read both namespaced and raw keys for compatibility
+  // Initialize display from current CSS only (passive; no writes)
   try {
-    const OPDBG = true; const MMAX = 2.5; // ceiling for opacity multiplier
-    let raw = null; try { raw = localStorage.getItem('ui_opacity_mult'); } catch (_) {}
-    let ns = null; try { ns = LS.getItem('ui_opacity_mult', null); } catch (_) {}
-    let mult = null; let p = 85; // default transparency percent
-    if (raw != null || ns != null) {
-      mult = parseFloat(ns != null ? ns : raw);
-      if (!Number.isFinite(mult) || mult < 0) mult = 0.375; // fallback to previous default if corrupted
-      // Detect legacy semantics (old stored mult was proportional to opacity, not transparency)
-      if (mult > 1.25) {
-        const pOld = Math.max(0, Math.min(100, Math.round((mult / MMAX) * 100)));
-        p = Math.max(0, Math.min(100, 100 - pOld));
-      } else {
-        // New semantics: mult = (100 - p)/100 * MMAX
-        p = Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100)));
-      }
-    }
-    // Apply and persist remapped multiplier
-    const multClamped = ((100 - p) / 100) * MMAX;
+    const MMAX = 2.5;
+    const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+    const mult = parseFloat(css);
+    const p = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
     opRng.value = String(p);
-    const pct = String(p) + '%'; opVal.textContent = pct; opRng.title = pct;
-    document.documentElement.style.setProperty('--ui-opacity-mult', String(multClamped));
-    try { LS.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
-    try { localStorage.setItem('ui_opacity_mult', String(multClamped)); } catch (_) {}
-    if (OPDBG) { try {
-      const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-      console.debug(`[opacity] display-tab-init(${variant},rev) css=${css} p=${p} multClamped=${multClamped} rawLS=${raw}`);
-    } catch (_) {} }
+    const pct = `${p}%`; opVal.textContent = pct; opRng.title = pct;
   } catch (_) {}
   opRng.oninput = () => {
     const OPDBG = true; const MMAX = 2.5;
@@ -355,16 +354,12 @@ export function renderThemeTab(opts) {
     const pct = String(p) + '%';
     opVal.textContent = pct; opRng.title = pct;
     try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
-    // Persist to namespaced LS as well, since init prefers LS over raw localStorage for this key
-    try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
+    // Persist to localStorage so custom mode reloads the same transparency
+    try { localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
     // Gradient tooltip visible only when panels aren’t fully clear
     try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
-    if (OPDBG) {
-      try {
-        const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-        console.debug(`[opacity] slider(${variant},rev) css=${css} p=${p} mult=${mult}`);
-      } catch (_) {}
-    }
+    // Optional debug: read back CSS
+    try { const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim(); console.debug(`[opacity] slider(${variant},rev) css=${css} p=${p} mult=${mult}`); } catch (_) {}
     try { selectCustomPreset(); } catch (_) {}
   };
   attachWheel && attachWheel(opRng); attachHover && attachHover(opRng, opLbl);
@@ -432,40 +427,54 @@ export function renderThemeTab(opts) {
   try {
     if (resetBtn) {
       resetBtn.onclick = () => {
-        const OPDBG = true; const MMAX = 2.5; const p = 85; // default transparency percent
-        const mult = ((100 - p) / 100) * MMAX; // reversed semantics mapping
-        // Reset theme selection to preset
-        try { LS.setItem('theme', 'steelBlue'); } catch (_) {}
+        // Reset theme selection to default preset
+        try { localStorage.setItem('grimDark.theme', 'Steel Blue'); } catch (_) {}
         try { dd && dd.setValue('Steel Blue', true); } catch (_) {}
-        // Ensure any explicit saturation override is cleared so preset-derived saturation applies immediately
-        try { localStorage.removeItem('ui_saturation'); } catch (_) {}
-        // Apply preset directly (ignores LS overrides for H/S/B and related knobs)
+        // Apply preset fully (includes transparency via themeManager)
         try { window.UITheme && window.UITheme.applyTheme('Steel Blue'); } catch (_) {}
-        // Reset opacity via dynamic param and font scale to 1
-        try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult, fontScale: 1 }); } catch (_) {}
-        try { localStorage.setItem('ui_font_scale', '1'); } catch (_) {}
-        try { LS.setItem('ui_opacity_mult', String(mult)); localStorage.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
         try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
 
-        // Reset sliders to preset defaults and persist
-        try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; localStorage.setItem('ui_gradient', '60'); window.UITheme && window.UITheme.applyDynamicTheme({ gradient: 60 }); } catch (_) {}
-        try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; localStorage.setItem('ui_milkiness', '3'); window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: 3 }); } catch (_) {}
-        try { odRng.value = '60'; odVal.textContent = '60%'; odRng.title = '60%'; localStorage.setItem('ui_overlay_darkness', '60'); window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: 60 }); } catch (_) {}
-        try { biRng.value = '80'; biVal.textContent = '80%'; biRng.title = '80%'; localStorage.setItem('ui_border_intensity', '80'); window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: 80 }); } catch (_) {}
-        try { gsRng.value = '18'; const px = Math.round((18 / 100) * 44); gsVal.textContent = `${px}px`; gsRng.title = '18%'; localStorage.setItem('ui_glow_strength', '18'); window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: 18 }); } catch (_) {}
-        try { opRng.value = String(p); const pct = `${p}%`; opVal.textContent = pct; opRng.title = pct; } catch (_) {}
-        // Gradient label helper visibility
-        try { if (p < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
-
-        // Silently sync knobs to the preset values
-        try { if (hueKn && hueKn.setValue) hueKn.setValue(207, { silent: true }); } catch (_) {}
-        try { if (satKn && satKn.setValue) satKn.setValue(Math.max(0, Math.min(85, Math.round(60 * 0.8))), { silent: true }); } catch (_) {}
-        try { if (briKn && briKn.setValue) briKn.setValue(60, { silent: true }); } catch (_) {}
-
-        if (OPDBG) { try {
+        // Sync sliders from current state (passive display)
+        try {
+          let gr = parseFloat(localStorage.getItem('ui_gradient')); if (!Number.isFinite(gr)) gr = 60;
+          gr = Math.max(0, Math.min(100, Math.round(gr)));
+          grRng.value = String(gr); grVal.textContent = `${gr}%`; grRng.title = `${gr}%`;
+        } catch (_) {}
+        try {
+          let m = parseFloat(localStorage.getItem('ui_milkiness')); if (!Number.isFinite(m)) m = 3;
+          m = Math.max(0, Math.min(10, m));
+          mkRng.value = String(m); mkVal.textContent = `${m.toFixed(1)}px`; mkRng.title = `${m.toFixed(1)}px`;
+        } catch (_) {}
+        try {
+          let od = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(od)) od = 60;
+          od = Math.max(0, Math.min(100, Math.round(od)));
+          odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`;
+        } catch (_) {}
+        try {
+          let b = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(b)) b = 80;
+          b = Math.max(0, Math.min(100, Math.round(b)));
+          biRng.value = String(b); biVal.textContent = `${b}%`; biRng.title = `${b}%`;
+        } catch (_) {}
+        try {
+          let g = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(g)) g = 18;
+          g = Math.max(0, Math.min(100, Math.round(g)));
+          gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round((g / 100) * 44); gsVal.textContent = `${px}px`;
+        } catch (_) {}
+        try {
+          const MMAX = 2.5;
           const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-          console.debug(`[opacity] theme-reset(${variant},rev) css=${css} p=${p} mult=${mult}`);
-        } catch (_) {} }
+          const mult = parseFloat(css);
+          const pNow = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
+          opRng.value = String(pNow); const pct = `${pNow}%`; opVal.textContent = pct; opRng.title = pct;
+          // Gradient label helper visibility
+          if (pNow < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; }
+          else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
+        } catch (_) {}
+
+        // Sync knobs silently to preset hue/intensity
+        try { if (hueKn && hueKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { hue: 207, intensity: 60 }; hueKn.setValue(p.hue, { silent: true }); } } catch (_) {}
+        try { if (satKn && satKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8))); satKn.setValue(satEff, { silent: true }); } } catch (_) {}
+        try { if (briKn && briKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; briKn.setValue(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60))), { silent: true }); } } catch (_) {}
       };
     }
   } catch (_) {}
@@ -473,73 +482,31 @@ export function renderThemeTab(opts) {
   // Apply a named preset to all sliders and persist values (overlay usage)
   function applyPreset(name) {
     try {
-      const themePresets = (() => {
-        try {
-          const tm = (window && window.UITheme) ? window.UITheme : null;
-          if (tm) {
-            if (typeof tm.getPresets === 'function') return tm.getPresets();
-            if (tm.presets) return tm.presets;
-          }
-        } catch (_) {}
-        return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 60, overlayDarkness: 60, blur: 3 } };
-      })();
-      const defName = 'Steel Blue';
-      const p = themePresets[name] || themePresets[defName];
-      if (!p) return;
-      const MMAX = 2.5;
-      const t = Math.max(0, Math.min(100, Math.round(p.transparency)));
-      const mult = ((100 - t) / 100) * MMAX;
-
-      // Apply and persist via UITheme
-      try {
-        try { localStorage.removeItem('ui_saturation'); } catch (_) {}
-        window.UITheme && window.UITheme.applyDynamicTheme({
-          hue: p.hue,
-          intensity: p.intensity,
-          borderStrength: p.border,
-          glowStrength: p.glow,
-          opacityMult: mult,
-          gradient: p.gradient,
-          milkiness: p.blur,
-          overlayDarkness: p.overlayDarkness
-        });
-      } catch (_) {}
+      // Delegate theme application to UITheme (includes transparency)
+      try { window.UITheme && window.UITheme.applyTheme(name); } catch (_) {}
+      try { localStorage.setItem('grimDark.theme', name); } catch (_) {}
       try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
 
-      // Update UI controls to reflect preset values
-      try { const b = Math.max(0, Math.min(100, Math.round(p.border))); biRng.value = String(b); biVal.textContent = `${b}%`; biRng.title = `${b}%`; } catch (_) {}
-      try { const g = Math.max(0, Math.min(100, Math.round(p.glow))); gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round((g / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {}
-      try { const gr = Math.max(0, Math.min(100, Math.round(p.gradient))); grRng.value = String(gr); grVal.textContent = `${gr}%`; grRng.title = `${gr}%`; } catch (_) {}
-      try { let m = Number(p.blur); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkRng.value = String(m); mkVal.textContent = `${m.toFixed(1)}px`; mkRng.title = `${m.toFixed(1)}px`; } catch (_) {}
-      try { const od = Math.max(0, Math.min(100, Math.round(p.overlayDarkness))); odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`; } catch (_) {}
-      try { opRng.value = String(t); opVal.textContent = `${t}%`; opRng.title = `${t}%`; } catch (_) {}
+      // Update UI controls from current persisted state/CSS
+      try { const b = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_border_intensity')) || 80))); biRng.value = String(b); biVal.textContent = `${b}%`; biRng.title = `${b}%`; } catch (_) {}
+      try { const g = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_glow_strength')) || 18))); gsRng.value = String(g); gsRng.title = `${g}%`; const px = Math.round((g / 100) * 44); gsVal.textContent = `${px}px`; } catch (_) {}
+      try { const gr = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_gradient')) || 60))); grRng.value = String(gr); grVal.textContent = `${gr}%`; grRng.title = `${gr}%`; } catch (_) {}
+      try { let m = parseFloat(localStorage.getItem('ui_milkiness')); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkRng.value = String(m); mkVal.textContent = `${m.toFixed(1)}px`; mkRng.title = `${m.toFixed(1)}px`; } catch (_) {}
+      try { const od = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_overlay_darkness')) || 60))); odRng.value = String(od); odVal.textContent = `${od}%`; odRng.title = `${od}%`; } catch (_) {}
+      try { const MMAX = 2.5; const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim(); const mult = parseFloat(css); const t = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100; opRng.value = String(t); opVal.textContent = `${t}%`; opRng.title = `${t}%`; } catch (_) {}
 
-      // Silently sync knobs to the preset without re-applying handlers
-      try { if (hueKn && hueKn.setValue) hueKn.setValue(p.hue, { silent: true }); } catch (_) {}
+      // Silently sync knobs to the preset hue/intensity if available
       try {
-        const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8)));
-        if (satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
+        const tm = (window && window.UITheme) ? window.UITheme : null;
+        const p = (tm && tm.presets && tm.presets[name]) ? tm.presets[name] : null;
+        if (p) {
+          if (hueKn && hueKn.setValue) hueKn.setValue(p.hue, { silent: true });
+          const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8)));
+          if (satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
+          const br = Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)));
+          if (briKn && briKn.setValue) briKn.setValue(br, { silent: true });
+        }
       } catch (_) {}
-      try {
-        const br = Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)));
-        if (briKn && briKn.setValue) briKn.setValue(br, { silent: true });
-      } catch (_) {}
-
-      // Persist values so preset selection survives reloads and Reset applies correctly
-      try {
-        localStorage.setItem('ui_hue', String(p.hue));
-        localStorage.setItem('ui_intensity', String(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)))));
-        localStorage.setItem('ui_border_intensity', String(Math.max(0, Math.min(100, Math.round(p.border)))));
-        localStorage.setItem('ui_glow_strength', String(Math.max(0, Math.min(100, Math.round(p.glow)))));
-        localStorage.setItem('ui_gradient', String(Math.max(0, Math.min(100, Math.round(p.gradient)))));
-        const mLS = Math.max(0, Math.min(10, Number(p.blur)));
-        localStorage.setItem('ui_milkiness', String(mLS));
-        localStorage.setItem('ui_overlay_darkness', String(Math.max(0, Math.min(100, Math.round(p.overlayDarkness)))));
-        try { LS.setItem('ui_opacity_mult', String(mult)); } catch (_) {}
-        localStorage.setItem('ui_opacity_mult', String(mult));
-      } catch (_) {}
-
-      try { LS.setItem('ui_preset', name); } catch (_) {}
     } catch (_) {}
   }
 }

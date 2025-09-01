@@ -161,6 +161,15 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
           intensity: (preset.intensity != null ? preset.intensity : 60),
           borderStrength: preset.border,
           glowStrength: preset.glow,
+          // Map preset transparency percent -> opacity multiplier used by CSS
+          // Formula: opacityMult = ((100 - transparency)/100) * MMAX
+          // Where MMAX is the ceiling used by Settings (2.5)
+          opacityMult: (function () {
+            const MMAX = 2.5;
+            const t = (preset.transparency != null ? Number(preset.transparency) : 0);
+            const tp = Math.min(100, Math.max(0, t));
+            return ((100 - tp) / 100) * MMAX;
+          })(),
           gradient: preset.gradient,
           milkiness: preset.blur,
           overlayDarkness: preset.overlayDarkness
@@ -490,20 +499,15 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
       }
     }
 
-    // Ensure opacity multiplier is initialized at boot from persistence (or default 85% transparency)
-    try {
-      const MMAX = 2.5;
-      let op = parseFloat(localStorage.getItem('ui_opacity_mult'));
-      if (!Number.isFinite(op)) {
-        // Default to 85% transparency for new users
-        op = ((100 - 85) / 100) * MMAX;
-      }
-      root.style.setProperty('--ui-opacity-mult', String(op));
-      localStorage.setItem('ui_opacity_mult', String(op));
-    } catch (_) {}
+    // Opacity is applied via preset (applyTheme) or via custom persisted value.
+    // Do NOT set any default here; allow the selected path below to define it.
 
     if (themeNameLc === 'custom') {
       // Custom theme: honor persisted user parameters
+      try {
+        const op = parseFloat(localStorage.getItem('ui_opacity_mult'));
+        if (Number.isFinite(op)) params.opacityMult = op;
+      } catch (_) {}
       applyDynamicTheme(params);
     } else if (resolvedPreset) {
       // Named preset: apply exactly from the table (ignore LS overrides for H/S/B)
@@ -513,6 +517,10 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
       applyTheme('Steel Blue');
     } else {
       // Legacy/unspecified theme with persisted values: treat as custom
+      try {
+        const op = parseFloat(localStorage.getItem('ui_opacity_mult'));
+        if (Number.isFinite(op)) params.opacityMult = op;
+      } catch (_) {}
       applyDynamicTheme(params);
     }
   } catch (_) {}
