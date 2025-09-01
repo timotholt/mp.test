@@ -13,7 +13,7 @@ export function renderThemeTab(opts) {
     makeSection,
     attachWheel, // provided by settings.js
     attachHover, // provided by settings.js
-    headerTitle = 'Overall Color',
+    headerTitle = 'Choose Your Theme',
     headerDesc = getQuip('settings.panel.themeTag', [
       "They say color defines your personality. What's yours?",
       'Death knows no color, but we do.',
@@ -30,69 +30,53 @@ export function renderThemeTab(opts) {
     variant = 'panel',
   } = opts || {};
 
-  // Section header with quip subtitle and a Reset button on the right.
-  const sec = makeSection(headerTitle, headerDesc, 'afterTitle');
+  // Section header with no quip; we'll use the quip for the "Overall UI" section instead
+  const sec = makeSection(headerTitle, '', 'afterTitle', true);
 
-  // Ensure subtitle quip class exists (JS-only style injection)
-  try {
-    let st = document.getElementById('settings-panel-style');
-    if (!st) {
-      st = document.createElement('style');
-      st.id = 'settings-panel-style';
-      st.textContent = '.settings-subtitle-quip{ padding-left:6px; --settings-sec-subtitle-color: var(--ui-fg, #eee); }';
-      document.head.appendChild(st);
-    }
-  } catch (_) {}
+  // Quip is rendered inline by makeSection; no extra styling needed
 
-  // Apply padding class and enforce subdued color via CSS var inline
-  try {
-    // After adding HR after the title, the subtitle shifts to index 2
-    const sub = sec.children[2] || sec.children[1];
-    if (sub) {
-      sub.classList.add('settings-subtitle-quip');
-      sub.style.setProperty('--settings-sec-subtitle-color', 'var(--ui-fg, #eee)');
-    }
-  } catch (_) {}
-
-  // Insert Reset button and a left header box for the Theme label
-  let resetBtn = null; // hoisted so we can wire onclick after sliders are created
-  try {
-    const hdr = sec.firstChild; // title div
-    if (hdr) {
-      hdr.style.display = 'flex';
-      hdr.style.alignItems = 'center';
-      hdr.style.justifyContent = 'space-between';
-
-      // Left box attaches the static theme display row (to the left of Reset)
-      const leftBox = document.createElement('div');
-      leftBox.id = 'theme-hdr-left-panel';
-      leftBox.style.display = 'flex';
-      leftBox.style.alignItems = 'center';
-      leftBox.style.gap = '8px';
-      hdr.appendChild(leftBox);
-
-      resetBtn = document.createElement('button');
-      resetBtn.textContent = 'Reset';
-      resetBtn.style.background = 'transparent';
-      resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-      resetBtn.style.borderRadius = '10px';
-      resetBtn.style.color = 'var(--ui-fg, #eee)';
-      resetBtn.style.padding = '4px 10px';
-      resetBtn.style.cursor = 'pointer';
-      // Hover/focus glow
-      const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
-      const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
-      resetBtn.addEventListener('mouseenter', onHover);
-      resetBtn.addEventListener('mouseleave', onLeave);
-      resetBtn.addEventListener('focus', onHover);
-      resetBtn.addEventListener('blur', onLeave);
-
-      // onclick wired after slider elements are created
-      hdr.appendChild(resetBtn);
-    }
-  } catch (_) {}
+  // Reset button hoisted reference (wired after controls are created)
+  let resetBtn = null;
 
   container.appendChild(sec);
+
+  // Below-header controls row: preset dropdown (left) + Reset (right)
+  const controlsRow = document.createElement('div');
+  controlsRow.style.display = 'flex';
+  controlsRow.style.alignItems = 'center';
+  controlsRow.style.justifyContent = 'space-between';
+  controlsRow.style.gap = '8px';
+  controlsRow.style.margin = '8px 0';
+  const leftBox = document.createElement('div');
+  leftBox.id = 'theme-hdr-left-panel';
+  leftBox.style.display = 'flex';
+  leftBox.style.alignItems = 'center';
+  leftBox.style.gap = '8px';
+  const rightBox = document.createElement('div');
+  rightBox.style.display = 'flex';
+  rightBox.style.alignItems = 'center';
+  // Create Reset button now; wire onclick after sliders are built
+  resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Reset';
+  resetBtn.style.background = 'transparent';
+  resetBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  resetBtn.style.borderRadius = '10px';
+  resetBtn.style.color = 'var(--ui-fg, #eee)';
+  resetBtn.style.padding = '4px 10px';
+  resetBtn.style.cursor = 'pointer';
+  try {
+    const onHover = () => { try { resetBtn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'; resetBtn.style.outline = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {} };
+    const onLeave = () => { try { resetBtn.style.boxShadow = 'none'; resetBtn.style.outline = 'none'; } catch (_) {} };
+    resetBtn.addEventListener('mouseenter', onHover);
+    resetBtn.addEventListener('mouseleave', onLeave);
+    resetBtn.addEventListener('focus', onHover);
+    resetBtn.addEventListener('blur', onLeave);
+  } catch (_) {}
+  rightBox.appendChild(resetBtn);
+  controlsRow.appendChild(leftBox);
+  controlsRow.appendChild(rightBox);
+  // Place the row inside the section wrapper so it sits just below the header
+  sec.appendChild(controlsRow);
 
   // Optional Theme preset dropdown for overlay; simple label for panel
   let dd = null; // preset dropdown (overlay only)
@@ -110,7 +94,7 @@ export function renderThemeTab(opts) {
             }
           } catch (_) {}
           // Minimal fallback if UITheme isn't ready
-          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 20, overlayDarkness: 60, blur: 3 } };
+          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 60, overlayDarkness: 60, blur: 3 } };
         })();
 
         const themeTopRow = document.createElement('div');
@@ -168,6 +152,19 @@ export function renderThemeTab(opts) {
   let hueKn = null, satKn = null, briKn = null;
   try {
     if (variant === 'overlay') {
+      // Insert "Overall UI" section header before the color knobs
+      try {
+        // Move the top-of-tab quip down to this section; fallback to local quip list
+        const fallbackQuips = [
+          'Small tweaks, big vibes.',
+          'A touch here, a glow there.',
+          'Polish the feel, sharpen the steel.',
+          'Style your survival.',
+          'Mood is a setting too.'
+        ];
+        const overallQuip = (headerDesc && String(headerDesc)) || getQuip('settings.overlay.overallUI', fallbackQuips);
+        container.appendChild(makeSection('Overall UI', overallQuip, 'afterTitle', true));
+      } catch (_) {}
       const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
       if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createIntensityKnob) {
         const knobRow = document.createElement('div');
@@ -310,7 +307,7 @@ export function renderThemeTab(opts) {
         "It's the little things that matter",
         'It whispers, not shouts.'
       ];
-      container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips), 'afterTitle'));
+      container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips), 'afterTitle', true));
     } catch (_) {}
   }
 
@@ -409,7 +406,7 @@ export function renderThemeTab(opts) {
         "You'll never glow up, but the glow knob will.",
         'Glow up? No. Glow knob? Absolutely.'
       ];
-      container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips), 'afterTitle'));
+      container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips), 'afterTitle', true));
     } catch (_) {}
   }
 
@@ -451,7 +448,7 @@ export function renderThemeTab(opts) {
         try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
 
         // Reset sliders to preset defaults and persist
-        try { grRng.value = '20'; grVal.textContent = '20%'; grRng.title = '20%'; localStorage.setItem('ui_gradient', '20'); window.UITheme && window.UITheme.applyDynamicTheme({ gradient: 20 }); } catch (_) {}
+        try { grRng.value = '60'; grVal.textContent = '60%'; grRng.title = '60%'; localStorage.setItem('ui_gradient', '60'); window.UITheme && window.UITheme.applyDynamicTheme({ gradient: 60 }); } catch (_) {}
         try { mkRng.value = '3'; mkVal.textContent = '3.0px'; mkRng.title = '3.0px'; localStorage.setItem('ui_milkiness', '3'); window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: 3 }); } catch (_) {}
         try { odRng.value = '60'; odVal.textContent = '60%'; odRng.title = '60%'; localStorage.setItem('ui_overlay_darkness', '60'); window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: 60 }); } catch (_) {}
         try { biRng.value = '80'; biVal.textContent = '80%'; biRng.title = '80%'; localStorage.setItem('ui_border_intensity', '80'); window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: 80 }); } catch (_) {}
@@ -484,7 +481,7 @@ export function renderThemeTab(opts) {
             if (tm.presets) return tm.presets;
           }
         } catch (_) {}
-        return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 20, overlayDarkness: 60, blur: 3 } };
+        return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 85, gradient: 60, overlayDarkness: 60, blur: 3 } };
       })();
       const defName = 'Steel Blue';
       const p = themePresets[name] || themePresets[defName];
