@@ -42,16 +42,12 @@ const SETTINGS_TAGLINES = [
 let __settingsState = {
   activeTab: 'Profile',
 };
+
 export function presentSettingsPanel() {
-  // Always use overlay modal. No fallback panel.
-  try { presentSettingsOverlay(); } catch (_) {}
-}
 
 // No closeSettingsPanel: overlay handles dismissal via OverlayManager
 // Helpers for sections/rows/inputs/notes now live in 'client/modals/settings/uiHelpers.js'.
 
-// Overlay-based Settings Modal (preferred). Returns true if shown, false to fall back.
-function presentSettingsOverlay() {
   try {
     if (!window.OverlayManager) return false;
     const id = 'SETTINGS_MODAL';
@@ -233,29 +229,28 @@ function presentSettingsOverlay() {
 
       // Body
       contentWrap.innerHTML = '';
-      const tab = activeTab;
-      if (tab === 'Account') {
-        // New simplified API: only pass the container; the tab resolves its own helpers/state
-        renderAccountTab(contentWrap);
-      } else if (tab === 'Profile') {
-        renderProfileTab(contentWrap);
-      } else if (tab === 'Theme') {
-        renderThemeTab(contentWrap);
-      } else if (tab === 'Display') {
-        renderDisplayTab(contentWrap);
-      } else if (tab === 'Sound')  {
-        // Clean up any previous overlay listener before re-attaching via tab module
-        try {
-          if (volAdjustHandler) {
-            if (typeof volAdjustHandler === 'function') volAdjustHandler();
-            else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
-          }
-        } catch (_) {}
-        // Render Sound tab via module; capture cleanup function
-        volAdjustHandler = renderSoundTab(contentWrap);
-      } else if (tab === 'Controls') {
-        // New simplified API: only pass the container; the tab resolves its own helpers/state
-        renderControlTab(contentWrap);
+      switch (activeTab) {
+        case 'Account': renderAccountTab(contentWrap); break;
+        case 'Profile': renderProfileTab(contentWrap); break;
+        case 'Theme':   renderThemeTab(contentWrap); break;
+        case 'Display': renderDisplayTab(contentWrap); break;
+        case 'Sound': {
+          try {
+            if (volAdjustHandler) {
+              if (typeof volAdjustHandler === 'function') volAdjustHandler();
+              else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+            }
+          } catch (_) {}
+          // Render Sound tab via module; capture cleanup function
+          volAdjustHandler = renderSoundTab(contentWrap);
+          break;
+        }
+        case 'Controls': renderControlTab(contentWrap); break;
+
+        // This should eventually go away
+        default:
+          console.log('ERROR: Unknown tab: ' + activeTab);
+          break;
       }
     }
 

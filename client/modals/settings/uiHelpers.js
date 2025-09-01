@@ -3,9 +3,9 @@
 // Each function mirrors usage patterns in tabs and keeps styling inline.
 
 // Create a section wrapper with a title and optional quip/description.
-// makeSection(title, desc = '', position = 'afterTitle', rightAlign = false)
+// makeSection(title, desc = '', position = 'afterTitle', rightAlign = false, underline = true)
 // Returns a container element callers can append content to.
-export function makeSection(title, desc = '', position = 'afterTitle', rightAlign = false) {
+export function makeSection(title, desc = '', position = 'afterTitle', rightAlign = false, underline = true) {
   const sec = document.createElement('div');
   sec.className = 'sf-sec';
   sec.style.display = 'block';
@@ -38,8 +38,15 @@ export function makeSection(title, desc = '', position = 'afterTitle', rightAlig
     header.appendChild(q);
   }
 
-  // Title/quip goes first; controls/rows will be appended to 'sec' by callers
+  // Title/quip goes first; optional underline below; rows/control content follow by callers
   sec.appendChild(header);
+  if (underline) {
+    const hr = document.createElement('div');
+    hr.className = 'sf-sec-hr';
+    hr.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))';
+    hr.style.margin = '0.25rem 0 0.5rem 0';
+    sec.appendChild(hr);
+  }
   return sec;
 }
 
