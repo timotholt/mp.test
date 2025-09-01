@@ -517,7 +517,7 @@ export function renderControlTab(opts) {
   ensureControlsKbStyle();
 
   // Section header
-  const sec = makeSection(headerTitle, headerDesc, 'afterTitle');
+  const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
   container.appendChild(sec);
 
   // Toolbar: Preset dropdown + Reset button

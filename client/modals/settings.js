@@ -340,9 +340,11 @@ function renderSettingsContent(panel) {
   }
 }
 
-function makeSection(title, desc, hrPosition) {
+function makeSection(title, desc, hrPosition, inlineQuip = false) {
   // hrPosition: undefined | 'afterTitle' | 'afterQuip'
   const wrap = document.createElement('div');
+
+  // Title element (shared styles)
   const t = document.createElement('div');
   t.textContent = title;
   // Standardize via CSS variables with sensible fallbacks
@@ -351,7 +353,6 @@ function makeSection(title, desc, hrPosition) {
   t.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
   // Ensure consistent foreground color (locked token)
   t.style.color = 'var(--ui-fg, #eee)';
-  wrap.appendChild(t);
 
   // Helper to create a themed horizontal rule
   function makeHr() {
@@ -359,33 +360,71 @@ function makeSection(title, desc, hrPosition) {
     hr.style.height = '1px';
     hr.style.width = '100%';
     hr.style.background = 'var(--ui-surface-border, rgba(120,170,255,0.32))';
-    hr.style.margin = '0.35rem 0';
+    hr.style.margin = '0.35rem 0 var(--ui-section-padding-after)';
     return hr;
   }
 
-  // If caller asked for a rule immediately after the title
-  if (hrPosition === true || hrPosition === 'afterTitle') {
-    wrap.appendChild(makeHr());
-  }
+  if (inlineQuip) {
+    // Render title and quip on the same line
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'baseline';
+    row.style.flexWrap = 'wrap';
+    row.style.width = '100%';
+    row.style.gap = '0.5rem';
+    row.appendChild(t);
 
-  if (desc) {
-    const d = document.createElement('div');
-    d.textContent = desc;
-    // Use quip tone + locked quip size
-    try { d.classList.add('text-quip'); } catch (_) {}
-    d.style.fontSize = 'var(--ui-section-quip-size, var(--ui-title-quip-size, 0.9rem))';
-    d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
-    d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
-    d.style.color = 'var(--ui-fg-quip, #bbb)';
-    d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
-    wrap.appendChild(d);
-    // Optionally place the rule after the quip instead
-    if (hrPosition === 'afterQuip') {
+    if (desc) {
+      const d = document.createElement('div');
+      d.textContent = desc;
+      try { d.classList.add('text-quip'); } catch (_) {}
+      d.style.fontSize = 'var(--ui-section-quip-size, var(--ui-title-quip-size, 0.9rem))';
+      d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
+      d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
+      d.style.color = 'var(--ui-fg-quip, #bbb)';
+      // Inline quip: no bottom margin; add a small left gap via row.gap
+      d.style.margin = '0';
+      // Push quip to the far right when on the same line
+      d.style.marginLeft = 'auto';
+      d.style.textAlign = 'right';
+      d.style.minWidth = '0';
+      row.appendChild(d);
+    }
+
+    wrap.appendChild(row);
+
+    // For inline layout, place rule after the combined row if requested
+    if (hrPosition === true || hrPosition === 'afterTitle' || hrPosition === 'afterQuip') {
       wrap.appendChild(makeHr());
     }
-  } else if (hrPosition === 'afterQuip') {
-    // No quip provided; fall back to placing after title
-    wrap.appendChild(makeHr());
+  } else {
+    // Default stacked layout
+    wrap.appendChild(t);
+
+    // If caller asked for a rule immediately after the title
+    if (hrPosition === true || hrPosition === 'afterTitle') {
+      wrap.appendChild(makeHr());
+    }
+
+    if (desc) {
+      const d = document.createElement('div');
+      d.textContent = desc;
+      // Use quip tone + locked quip size
+      try { d.classList.add('text-quip'); } catch (_) {}
+      d.style.fontSize = 'var(--ui-section-quip-size, var(--ui-title-quip-size, 0.9rem))';
+      d.style.lineHeight = 'var(--settings-sec-subtitle-line, 1.25)';
+      d.style.opacity = 'var(--settings-sec-subtitle-opacity, 0.9)';
+      d.style.color = 'var(--ui-fg-quip, #bbb)';
+      d.style.margin = 'var(--settings-sec-subtitle-margin, 0 0 10px 0)';
+      wrap.appendChild(d);
+      // Optionally place the rule after the quip instead
+      if (hrPosition === 'afterQuip') {
+        wrap.appendChild(makeHr());
+      }
+    } else if (hrPosition === 'afterQuip') {
+      // No quip provided; fall back to placing after title
+      wrap.appendChild(makeHr());
+    }
   }
 
   return wrap;

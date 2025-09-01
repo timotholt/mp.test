@@ -80,9 +80,12 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-title-quip-size': '0.9rem',
     // Locked section header aliases (used by Settings sections)
     // These mirror login/title tokens to guarantee visual parity across screens
-    '--ui-section-title-size': '1.5rem',
+    '--ui-section-title-size': '1.0rem',
     '--ui-section-title-weight': '700',
-    '--ui-section-quip-size': '0.9rem',
+    // '--ui-section-quip-size': '0.9rem',
+    '--ui-section-quip-size': '0.8rem',
+    '--ui-section-padding-after': '1rem',
+
     // Locked layout tokens
     '--ui-card-radius': '0.875rem',
     '--ui-page-padding': '24px',

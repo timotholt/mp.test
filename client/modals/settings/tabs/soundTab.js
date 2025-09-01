@@ -29,9 +29,9 @@ export function renderSoundTab(opts) {
         'Temper the noise, amplify the legend.',
         'Turn it up. Your speakers will thank you.'
       ];
-      container.appendChild(makeSection('Sound Mixer', getQuip('settings.overlay.soundMixerTag', mixerQuips), 'afterTitle'));
+      container.appendChild(makeSection('Sound Mixer', getQuip('settings.overlay.soundMixerTag', mixerQuips), 'afterTitle', true));
     } catch (_) {
-      container.appendChild(makeSection('Sound Mixer', '', 'afterTitle'));
+      container.appendChild(makeSection('Sound Mixer', '', 'afterTitle', true));
     }
   } else {
     container.appendChild(makeSection('Sound', '', 'afterTitle'));
@@ -66,18 +66,10 @@ export function renderSoundTab(opts) {
         'Notifications ignored = fate accepted.',
         'If you mute these, don’t cry later.'
       ];
-      const sec = makeSection('Notifications', getQuip('settings.overlay.notificationsTag', notifQuips), 'afterTitle');
-      try {
-        const desc = sec.children && sec.children[1];
-        if (desc) {
-          desc.style.opacity = '0.9';
-          desc.style.margin = '0 0 10px 0';
-          desc.style.userSelect = 'none';
-        }
-      } catch (_) {}
+      const sec = makeSection('Notifications', getQuip('settings.overlay.notificationsTag', notifQuips), 'afterTitle', true);
       container.appendChild(sec);
     } catch (_) {
-      container.appendChild(makeSection('Notifications', '', 'afterTitle'));
+      container.appendChild(makeSection('Notifications', '', 'afterTitle', true));
     }
 
     const notifGrid = document.createElement('div');
@@ -96,15 +88,7 @@ export function renderSoundTab(opts) {
     notifGrid.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
   } else {
     const spacer = document.createElement('div'); spacer.style.height = '12px'; container.appendChild(spacer);
-    const sec = makeSection('Notifications', 'Choose which alerts to receive.', 'afterTitle');
-    try {
-      const desc = sec.children && sec.children[1];
-      if (desc) {
-        desc.style.opacity = '0.9';
-        desc.style.margin = '0 0 10px 0';
-        desc.style.userSelect = 'none';
-      }
-    } catch (_) {}
+    const sec = makeSection('Notifications', 'Choose which alerts to receive.', 'afterTitle', true);
     container.appendChild(sec);
 
     container.appendChild(makeCheckboxRow('Player joins/leaves lobby/room', 'notif_playerJoinLeave', 'ui:notif:playerJoinLeave'));
