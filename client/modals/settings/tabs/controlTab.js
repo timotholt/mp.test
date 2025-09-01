@@ -100,8 +100,9 @@ export function renderControlTab(container) {
     "You will press the wrong key and die. It’s tradition.",
     'HJKL: One bind to rule them all',
     'No one ever said this was going to be easy. Or fun.',
-    'Blank button, blank mind.',
+    'Blank blind, blank mind.',
     "Those blank buttons aren't going to bind themselves.",
+    "You can win even with blank binds. Source? Trust me bro."
   ]);
 
   ensureKeycapStyle();
@@ -173,6 +174,7 @@ export function renderControlTab(container) {
   const arrowByAction = new Map(); // actionId -> arrow span element
   let extMirrorEls = []; // mirrors of extended prefix within extended rows
   let listening = null; // { btn, act, timer }
+  let listeningCleanup = null; // function to immediately cancel active listening
 
   function registerKeyEl(id, refs) {
     const arr = keyEls.get(id) || [];
@@ -544,9 +546,18 @@ export function renderControlTab(container) {
       listening = null;
     }
 
+    // expose this specific cleanup to the tab-level return value
+    listeningCleanup = cleanup;
+
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('blur', onBlur, true);
     listening = { btn, act, onKey, onBlur, blinkBtns: initialBlink, timer: setTimeout(() => cleanup(), 12000) };
     try { btn.focus(); } catch (_) {}
   }
+
+  // Return a cleanup function so the settings container can cancel any active listeners immediately
+  return () => {
+    try { if (typeof listeningCleanup === 'function') listeningCleanup(); } catch (_) {}
+    listeningCleanup = null;
+  };
 }

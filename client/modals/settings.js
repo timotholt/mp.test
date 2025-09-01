@@ -61,6 +61,7 @@ export function presentSettingsPanel() {
     let removeTrap = null;
     const handleClose = () => {
       try { if (typeof volAdjustHandler === 'function') volAdjustHandler(); } catch (_) {}
+      try { if (typeof controlsCleanup === 'function') controlsCleanup(); } catch (_) {}
       try { if (typeof removeTrap === 'function') removeTrap(); } catch (_) {}
       try { layer.dismiss && layer.dismiss(); } catch (_) {}
     };
@@ -85,14 +86,21 @@ export function presentSettingsPanel() {
     // Local UI state for this overlay instance
     let activeTab = __settingsState.activeTab || 'Profile';
     let volAdjustHandler = null;
+    let controlsCleanup = null;
 
     function onSelectTab(name) {
       // Tabs switch immediately; settings auto-save, no discard prompts
       // If we are leaving the Sound tab, run its cleanup (remove listeners)
       try {
+        // Leaving Sound: detach volume listeners
         if (activeTab === 'Sound' && name !== 'Sound' && typeof volAdjustHandler === 'function') {
           volAdjustHandler();
           volAdjustHandler = null;
+        }
+        // Leaving Controls: cancel any active keybinding listener immediately
+        if (activeTab === 'Controls' && name !== 'Controls' && typeof controlsCleanup === 'function') {
+          controlsCleanup();
+          controlsCleanup = null;
         }
       } catch (_) {}
       activeTab = String(name || 'Profile');
@@ -129,7 +137,11 @@ export function presentSettingsPanel() {
           volAdjustHandler = renderSoundTab(contentWrap);
           break;
         }
-        case 'Controls': renderControlTab(contentWrap); break;
+        case 'Controls': {
+          // Render Controls and capture cleanup to cancel global listeners if needed
+          controlsCleanup = renderControlTab(contentWrap);
+          break;
+        }
 
         // This should eventually go away
         default:
