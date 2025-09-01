@@ -18,7 +18,7 @@ export function renderExtendedGroup({
   const wrap = document.createElement('div');
   gSec.appendChild(wrap);
   // Widen key column for two-key chord (prefix + letter)
-  try { gSec.style.setProperty('--kb-keycol', '168px'); } catch (_) {}
+  try { gSec.style.setProperty('--kb-keycol', '10.5rem'); } catch (_) {}
 
   g.actions.forEach((act) => {
     const row = document.createElement('div');
@@ -48,7 +48,7 @@ export function renderExtendedGroup({
         // Hidden plus preserves spacing
         const plusGhost = document.createElement('span');
         plusGhost.textContent = ' + ';
-        plusGhost.style.margin = '0 6px';
+        plusGhost.style.margin = '0 0.375rem';
         plusGhost.style.color = 'var(--ui-fg, #eee)';
         plusGhost.style.visibility = 'hidden';
         cell.appendChild(plusGhost);
@@ -79,7 +79,7 @@ export function renderExtendedGroup({
 
     const plus = document.createElement('span');
     plus.textContent = ' + ';
-    plus.style.margin = '0 6px';
+    plus.style.margin = '0 0.375rem';
     plus.style.color = 'var(--ui-fg, #eee)';
     // Interactive letter cap uses this action's own independent binding
     const lk = state.map[act.id] || '';

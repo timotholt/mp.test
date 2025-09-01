@@ -32,35 +32,36 @@ export function renderMovementGroup({
     circle.className = 'sf-kb-move-circle';
     col.appendChild(circle);
 
-    const center = 110; // half of 220px box
-    const rArrow = 87;  // outer radius for arrow glyphs
-    const rKey = 55;    // inner radius for keycaps
+    // REM-based geometry to match CSS: .sf-kb-move-circle { width/height: 13rem }
+    const centerRem = 6.5; // half of 13rem circle
+    const rArrowRem = centerRem * (87 / 110); // preserve original proportions
+    const rKeyRem = centerRem * (55 / 110);   // preserve original proportions
 
-    function place(el, angleDeg, radius) {
+    function place(el, angleDeg, radiusRem) {
       const rad = (angleDeg * Math.PI) / 180;
-      const x = center + Math.cos(rad) * radius;
-      const y = center + Math.sin(rad) * radius;
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
+      const xRem = centerRem + Math.cos(rad) * radiusRem;
+      const yRem = centerRem + Math.sin(rad) * radiusRem;
+      el.style.left = xRem + 'rem';
+      el.style.top = yRem + 'rem';
     }
 
     function addArrow(angleDeg, glyph) {
       const s = document.createElement('span');
       s.className = 'arrow';
       s.textContent = glyph;
-      place(s, angleDeg, rArrow);
+      place(s, angleDeg, rArrowRem);
       circle.appendChild(s);
       return s;
     }
 
-    function addKey(actId, angleDeg, radius) {
+    function addKey(actId, angleDeg, radiusRem) {
       // Find action definition across KEY_GROUPS by id
       let act = null;
       for (const gg of KEY_GROUPS) { const f = (gg.actions || []).find(a => a.id === actId); if (f) { act = f; break; } }
       if (!act) return;
       const cur = state.map[act.id] || '';
       const cap = buildKeycap(act, cur ? prettyKey(cur) : '', 'themed', { mode: 'far', placement: 't' });
-      place(cap.btn, angleDeg, radius);
+      place(cap.btn, angleDeg, radiusRem);
       updateTooltip(cap.btn, `${act.label} — ${cur ? 'bound to: ' + prettyKey(cur) : 'UNBOUND'}. Click to rebind`);
       cap.btn.onclick = () => startListening(cap.btn, act);
       registerKeyEl(act.id, { btn: cap.btn, lab: cap.lab, label: act.label, mglyph: false });
@@ -78,15 +79,15 @@ export function renderMovementGroup({
     arrowByAction.set(ids.dr, addArrow(45,   MOVE_GLYPHS.moveDownRight));
 
     // Keycaps slightly inside the arrows
-    addKey(ids.ul, -135, rKey);
-    addKey(ids.u,  -90,  rKey);
-    addKey(ids.ur, -45,  rKey);
-    addKey(ids.l,  180,  rKey);
+    addKey(ids.ul, -135, rKeyRem);
+    addKey(ids.u,  -90,  rKeyRem);
+    addKey(ids.ur, -45,  rKeyRem);
+    addKey(ids.l,  180,  rKeyRem);
     addKey(ids.c,  0,    0);   // center wait
-    addKey(ids.r,  0,    rKey);
-    addKey(ids.dl, 135,  rKey);
-    addKey(ids.d,  90,   rKey);
-    addKey(ids.dr, 45,   rKey);
+    addKey(ids.r,  0,    rKeyRem);
+    addKey(ids.dl, 135,  rKeyRem);
+    addKey(ids.d,  90,   rKeyRem);
+    addKey(ids.dr, 45,   rKeyRem);
 
     return col;
   }
