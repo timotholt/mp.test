@@ -1,5 +1,4 @@
-import { createTabsBar, UI } from '../core/ui/controls.js';
-import { getQuip } from '../core/ui/quip.js';
+import { makeCard, makeTitleBlock, makeTabs, makeContentPane, makeCenterLayer } from '../core/ui/blocks.js';
 import { renderAccountTab } from './settings/tabs/accountTab.js';
 import { renderProfileTab } from './settings/tabs/profileTab.js';
 import { renderDisplayTab } from './settings/tabs/displayTab.js';
@@ -65,30 +64,9 @@ export function presentSettingsPanel() {
       const prev = content.querySelector('#settings-overlay-root');
       if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
     } catch (_) {}
-    const mount = document.createElement('div');
-    mount.id = 'settings-overlay-root';
-    // Fixed full-viewport layer so it overlays existing lobby/login siblings
-    mount.style.position = 'fixed';
-    mount.style.inset = '0';
-    mount.style.zIndex = '20001';
-    // Allow this layer to capture pointer events (modal blocks background)
-    mount.style.pointerEvents = 'auto';
-    try { content.appendChild(mount); } catch (_) {}
-    // Local scrim to subtly dim background behind the settings card
-    try {
-      const scrim = document.createElement('div');
-      scrim.style.position = 'absolute';
-      scrim.style.inset = '0';
-      // Use theme-driven overlay tint and blur so sliders affect this scrim
-      // Darkness comes from --ui-overlay-darkness via --ui-overlay-bg (set in UITheme)
-      scrim.style.background = 'var(--ui-overlay-bg, rgba(0,0,0,0.50))';
-      // Blur comes from --ui-backdrop-blur (e.g., 3px), updated by applyDynamicTheme({ milkiness })
-      scrim.style.backdropFilter = 'blur(var(--ui-backdrop-blur, 3px))';
-      scrim.style.webkitBackdropFilter = 'blur(var(--ui-backdrop-blur, 3px))';
-      scrim.style.zIndex = '0';
-      scrim.style.pointerEvents = 'auto';
-      mount.appendChild(scrim);
-    } catch (_) {}
+    // Create centered overlay mount + scrim using blocks
+    const layer = makeCenterLayer({ rootId: 'settings-overlay-root' });
+    try { content.appendChild(layer.mount); } catch (_) {}
 
     // Keep settings isolated: do NOT mutate the shared #overlay styles here.
     // OverlayManager already manages its own backdrop/shade using theme vars.
@@ -96,97 +74,44 @@ export function presentSettingsPanel() {
     const prevFocus = document.activeElement;
 
     // Centered container
-    const center = document.createElement('div');
-    center.style.position = 'relative';
-    center.style.zIndex = '1';
-    center.style.minHeight = '100vh';
-    center.style.display = 'flex';
-    center.style.alignItems = 'center';
-    center.style.justifyContent = 'center';
+    const center = layer.center;
 
     // Centered container, no need for padding or transforms anymore
     // center.style.padding = '24px';
     // center.style.transform = 'translateY(-2vh)';
 
     // Card
-    const card = document.createElement('div');
-    card.style.width = 'auto';
-    card.style.maxWidth = 'calc(100vw - 32px)';
-    card.style.color = 'var(--ui-fg, #eee)';
-    card.style.borderRadius = '14px';
-    card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
-    card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-    card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-    card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
-    card.style.padding = '16px';
-    card.style.maxHeight = 'min(80vh, 820px)';
-    card.style.height = 'min(80vh, 820px)';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.minWidth = '0';
-    try { card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); } catch (_) {}
+    const card = makeCard();
+    try { card.setAttribute('aria-modal', 'true'); } catch (_) {}
 
-    // Header row (title left, close right)
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'space-between';
-    header.style.marginBottom = '2px';
-    const title = document.createElement('div');
-    title.textContent = 'Settings';
-    title.style.fontSize = 'var(--ui-title-size, 1.5rem)';
-    title.style.fontWeight = 'var(--ui-title-weight, 700)';
-    title.style.userSelect = 'none';
-    try { title.id = 'settings-modal-title'; card.setAttribute('aria-labelledby', 'settings-modal-title'); } catch (_) {}
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    closeBtn.style.background = 'transparent';
-    closeBtn.style.border = '1px solid var(--ui-surface-border)';
-    closeBtn.style.borderRadius = '8px';
-    closeBtn.style.color = 'var(--ui-fg, #eee)';
-    closeBtn.style.cursor = 'pointer';
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // Cache random quip for overlay header (hoisted before use)
-    let _quipSettings = null;
-
-    const tagline = document.createElement('div');
+    // Title block with quip + close
+    const handleClose = () => {
+      try {
+        if (volAdjustHandler) {
+          if (typeof volAdjustHandler === 'function') volAdjustHandler();
+          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+        }
+      } catch (_) {}
+      try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
+      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
+    };
+    const titleBlock = makeTitleBlock({ title: 'Settings', quips: SETTINGS_TAGLINES, onClose: handleClose });
     try {
-      _quipSettings = getQuip('settings.overlay.header', SETTINGS_TAGLINES);
-      tagline.textContent = _quipSettings;
-      tagline.style.fontSize = 'var(--ui-title-quip-size, 0.9rem)';
-      tagline.style.opacity = '0.9';
-      tagline.style.margin = '0 0 1rem 0';
-      tagline.style.color = 'var(--ui-fg-quip, #bbb)';
-      tagline.style.userSelect = 'none';
+      // ARIA association
+      if (titleBlock.titleEl && titleBlock.titleEl.id) card.setAttribute('aria-labelledby', titleBlock.titleEl.id);
+      if (titleBlock.quipEl) {
+        if (!titleBlock.quipEl.id) titleBlock.quipEl.id = 'settings-modal-desc';
+        card.setAttribute('aria-describedby', titleBlock.quipEl.id);
+      }
     } catch (_) {}
-    try { tagline.id = 'settings-modal-desc'; card.setAttribute('aria-describedby', 'settings-modal-desc'); } catch (_) {}
 
-    // Tabs bar
-    const tabsBar = createTabsBar({ onSelect: onSelectTab });
+    // Tabs bar (wrapped)
+    const tabsBar = makeTabs({ onSelect: onSelectTab });
     // Tab order per spec: Account, Profile, Display, Theme, Controls, Sound
     const allTabs = ['Account', 'Profile', 'Display', 'Theme', 'Controls', 'Sound'];
 
     // Bordered content area with scroll
-    const contentWrap = document.createElement('div');
-    try { contentWrap.classList.add('ui-glass-scrollbar'); } catch (_) {}
-    contentWrap.style.overflow = 'auto';
-    contentWrap.style.padding = '1.0rem';
-    contentWrap.style.marginTop = '0px';
-    contentWrap.style.minHeight = '240px';
-    contentWrap.style.maxHeight = 'calc(min(80vh, 820px) - 120px)';
-
-    // Tim - contentWrap minWidth and maxWidth intentionally set to the same size
-    contentWrap.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
-    contentWrap.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
-
-    try {
-      contentWrap.style.border = UI.border;
-      // Sharp top-left corner only
-      contentWrap.style.borderRadius = '0 8px 8px 8px';
-      contentWrap.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
-    } catch (_) {}
+    const contentWrap = makeContentPane();
 
     // Local UI state for this overlay instance
     let activeTab = __settingsState.activeTab || 'Profile';
@@ -255,20 +180,19 @@ export function presentSettingsPanel() {
     }
 
     // Assemble
-    card.appendChild(header);
-    card.appendChild(tagline);
+    card.appendChild(titleBlock.el);
     card.appendChild(tabsBar.el);
     card.appendChild(contentWrap);
     center.appendChild(card);
     // Mount settings centered UI into our dedicated layer
-    mount.appendChild(center);
+    layer.mount.appendChild(center);
 
     // Focus trap within the card
     try {
       const trap = (ev) => {
         if (ev.key === 'Escape') {
           ev.preventDefault(); ev.stopPropagation();
-          try { closeBtn.click(); } catch (_) {}
+          try { (titleBlock && titleBlock.closeBtn) ? titleBlock.closeBtn.click() : handleClose(); } catch (_) {}
           return;
         }
         if (ev.key !== 'Tab') return;
@@ -291,17 +215,7 @@ export function presentSettingsPanel() {
     } catch (_) {}
 
     // Close without unsaved-change prompts (auto-save behavior)
-    closeBtn.onclick = () => {
-      try {
-        if (volAdjustHandler) {
-          if (typeof volAdjustHandler === 'function') volAdjustHandler();
-          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
-        }
-      } catch (_) {}
-      // Clean up our mount layer
-      try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
-      try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
-    };
+    // close handled via titleBlock's close button
 
     // Tabs manage their own auth/profile state and re-rendering as needed.
 
