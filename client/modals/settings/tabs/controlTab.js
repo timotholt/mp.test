@@ -523,7 +523,7 @@ export function renderControlTab(opts) {
   // Toolbar: Preset dropdown + Reset button
   const toolbar = document.createElement('div');
   toolbar.className = 'sf-kb-toolbar';
-  toolbar.style.margin = '6px 0 12px 0';
+  toolbar.style.margin = '0.375rem 0 0.75rem 0';
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,
@@ -545,7 +545,7 @@ export function renderControlTab(opts) {
       saveBindings(state.preset, state.map);
       renderAll();
     },
-    width: '220px',
+    width: '13.75rem',
     placeholder: 'Layout Preset'
   });
   const presetLabel = document.createElement('div');
@@ -701,7 +701,7 @@ export function renderControlTab(opts) {
       function appendPair(act) {
         if (!act) {
           const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
-          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '30px';
+          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '2rem';
           wrap.appendChild(emptyLab); wrap.appendChild(emptyCell);
           return;
         }
