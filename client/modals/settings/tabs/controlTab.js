@@ -548,6 +548,10 @@ export function renderControlTab(opts) {
     width: '220px',
     placeholder: 'Layout Preset'
   });
+  const presetLabel = document.createElement('div');
+  presetLabel.className = 'sf-kb-label';
+  presetLabel.textContent = 'Control Preset:';
+  toolbar.appendChild(presetLabel);
   toolbar.appendChild(presetDD.el);
 
   const resetBtn = document.createElement('button');
