@@ -163,7 +163,7 @@ export function renderThemeTab(opts) {
           'Mood is a setting too.'
         ];
         const overallQuip = (headerDesc && String(headerDesc)) || getQuip('settings.overlay.overallUI', fallbackQuips);
-        container.appendChild(makeSection('Overall UI', overallQuip, 'afterTitle', true));
+        container.appendChild(makeSection('Base UI Color', overallQuip, 'afterTitle', true));
       } catch (_) {}
       const CK = (window && window.ColorKnobs) ? window.ColorKnobs : null;
       if (CK && CK.createHueKnob && CK.createSaturationKnob && CK.createIntensityKnob) {
