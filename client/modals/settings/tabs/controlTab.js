@@ -509,7 +509,7 @@ export function renderControlTab(opts) {
     makeSection,
     makeNote,
     headerTitle = 'Controls',
-    headerDesc = 'HJKL, WASD, arrows, or roll your own... pick your poison.',
+    headerDesc = 'Pick your poison. HJKL, WASD, or roll your own.',
     variant = 'panel', // currently unused but reserved for future differences
   } = opts || {};
 
