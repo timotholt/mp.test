@@ -154,7 +154,7 @@ function makeVolumeKnobsGrid() {
       // Centered theme circle on the knob face; matches LED segment color
       // Hidden by default in knob.css; enable here for Sound tab knobs only
       // Softer opacity to reduce perceived brightness
-      el.style.setProperty('--kn-center-ring-opacity', '0.65');
+      el.style.setProperty('--kn-center-ring-opacity', '1.0');
       // Subtle but visible line weight
       el.style.setProperty('--kn-center-ring-w', '2px');
       // Keep a clear gap so the ring never touches the white dot
