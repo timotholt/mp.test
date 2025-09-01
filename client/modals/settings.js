@@ -33,20 +33,16 @@ const SETTINGS_TAGLINES = [
   "Change your settings, cause you can't change your life."
 ];
 
-// Self-contained Settings Panel (always-available)
-// Lives outside OverlayManager and routes. JS-only, no external CSS.
-// Tabs: Account, Profile, Display, Sound, Controls.
-// Account tab is disabled until authenticated.
+// Settings Modal presented via OverlayManager (external mode)
+// JS-only and built from UI blocks; no external CSS edits here.
+// Tabs: Account, Profile, Display, Theme, Controls, Sound.
+// Account tab may be blank until auth resolves.
 
 let __settingsState = {
   activeTab: 'Profile',
 };
 
 export function presentSettingsPanel() {
-
-// No closeSettingsPanel: overlay handles dismissal via OverlayManager
-// Helpers for sections/rows/inputs/notes now live in 'client/modals/settings/uiHelpers.js'.
-
   try {
     if (!window.OverlayManager) return false;
     const id = 'SETTINGS_MODAL';
@@ -71,14 +67,9 @@ export function presentSettingsPanel() {
     // Keep settings isolated: do NOT mutate the shared #overlay styles here.
     // OverlayManager already manages its own backdrop/shade using theme vars.
     // Our mount captures input via pointer-events: auto; no global overrides.
-    const prevFocus = document.activeElement;
 
     // Centered container
     const center = layer.center;
-
-    // Centered container, no need for padding or transforms anymore
-    // center.style.padding = '24px';
-    // center.style.transform = 'translateY(-2vh)';
 
     // Card
     const card = makeCard();
@@ -86,12 +77,7 @@ export function presentSettingsPanel() {
 
     // Title block with quip + close
     const handleClose = () => {
-      try {
-        if (volAdjustHandler) {
-          if (typeof volAdjustHandler === 'function') volAdjustHandler();
-          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
-        }
-      } catch (_) {}
+      try { if (typeof volAdjustHandler === 'function') volAdjustHandler(); } catch (_) {}
       try { const m = document.getElementById('settings-overlay-root'); if (m && m.parentNode) m.parentNode.removeChild(m); } catch (_) {}
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     };
@@ -123,9 +109,8 @@ export function presentSettingsPanel() {
       // Tabs switch immediately; settings auto-save, no discard prompts
       // If we are leaving the Sound tab, run its cleanup (remove listeners)
       try {
-        if (activeTab === 'Sound' && name !== 'Sound' && volAdjustHandler) {
-          if (typeof volAdjustHandler === 'function') volAdjustHandler();
-          else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
+        if (activeTab === 'Sound' && name !== 'Sound' && typeof volAdjustHandler === 'function') {
+          volAdjustHandler();
           volAdjustHandler = null;
         }
       } catch (_) {}
@@ -160,12 +145,7 @@ export function presentSettingsPanel() {
         case 'Theme':   renderThemeTab(contentWrap); break;
         case 'Display': renderDisplayTab(contentWrap); break;
         case 'Sound': {
-          try {
-            if (volAdjustHandler) {
-              if (typeof volAdjustHandler === 'function') volAdjustHandler();
-              else window.removeEventListener('ui:volume:adjusting', volAdjustHandler);
-            }
-          } catch (_) {}
+          try { if (typeof volAdjustHandler === 'function') volAdjustHandler(); } catch (_) {}
           // Render Sound tab via module; capture cleanup function
           volAdjustHandler = renderSoundTab(contentWrap);
           break;
@@ -228,5 +208,3 @@ export function presentSettingsPanel() {
   }
 }
 
-// Optional global exposure for quick access/debug
-window.presentSettingsPanel = presentSettingsPanel;
