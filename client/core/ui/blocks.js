@@ -50,6 +50,9 @@ export function makeTitleBlock({ title = '', quips = null, desc = '', onClose = 
   closeBtn.style.borderRadius = '0.5rem';
   closeBtn.style.color = 'var(--ui-fg)';
   closeBtn.style.cursor = 'pointer';
+  // Scale with root font-size (rem-based). Keeps close icon proportional to UI scale.
+  closeBtn.style.fontSize = 'var(--ui-fontsize-medium)';
+  closeBtn.style.padding = '0.25rem 0.5rem';
   if (typeof onClose === 'function') {
     try { closeBtn.onclick = onClose; } catch (_) {}
   }

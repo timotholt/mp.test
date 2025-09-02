@@ -5,6 +5,164 @@
 
 import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobalTextStyle, colorFromHSLC, colorFromHSLCAlphaCss } from './themeHelpers.js';
 
+export function createUiElement(style = {}, a = 'div', b = '', c) {
+  // Resolve parameters with backward compatibility and a new optional id
+  const isTag = (s) => typeof s === 'string' && /^[a-z][a-z0-9-]*$/.test(s); // lowercase tags only
+  let tag = 'div', content = '', id = undefined;
+  let tagExplicit = false;
+  const argc = arguments.length;
+  if (argc === 1) {
+    // only style
+  } else if (argc === 2) {
+    // (style, tag) or (style, content)
+    if (isTag(a)) { tag = a; tagExplicit = true; } else { content = a; }
+  } else if (argc === 3) {
+    // (style, tag, content) or (style, content, id)
+    if (isTag(a)) { tag = a; tagExplicit = true; content = b ?? ''; }
+    else { content = a; id = b; }
+  } else {
+    // argc >= 4: (style, tag, content, id) or (style, id, tag, content)
+    if (!isTag(a) && isTag(b)) { id = a; tag = b; tagExplicit = true; content = c ?? ''; }
+    else { tag = a; tagExplicit = true; content = b ?? ''; id = c; }
+  }
+
+  // Start from caller-provided style template(s).
+  // Accept either a single object or an array of objects to merge (left→right)
+  let out = {};
+  if (Array.isArray(style)) {
+    for (const s of style) { if (s && typeof s === 'object') Object.assign(out, s); }
+  } else {
+    out = { ...(style || {}) };
+  }
+
+  // Meta: default tag from template if not explicitly provided
+  const tmplTag = out.__tag || out.tag;
+  if (!tagExplicit && isTag(tmplTag)) tag = tmplTag;
+  delete out.__tag; delete out.tag;
+
+  // Meta: hover style (apply on listeners; restore on leave)
+  const hover = (out && typeof out.hover === 'object') ? { ...out.hover } : null;
+  if (hover) delete out.hover;
+
+  const el = document.createElement(tag);
+  if (id) try { el.id = id; } catch (_) {}
+  // Meta: input type
+  if (tag === 'input') {
+    const t = out.__type || out.inputType;
+    if (t) { try { el.type = String(t); } catch (_) {} }
+    delete out.__type; delete out.inputType;
+  }
+  if (content != null) {
+    if (tag === 'input') { try { el.value = content; } catch (_) {} }
+    else { el.textContent = content; }
+  }
+
+  // Shorthands: color
+  if (out.fg != null) { out.color = out.fg; delete out.fg; }
+  if (out.textColor != null) { out.color = out.textColor; delete out.textColor; }
+
+  // Shorthands: opacity
+  if (out.op != null && out.opacity == null) { out.opacity = String(out.op); delete out.op; }
+
+  // Shorthands: pointer/cursor
+  if (Object.prototype.hasOwnProperty.call(out, 'pointer')) {
+    const v = out.pointer;
+    if (v === true) out.cursor = 'pointer';
+    else if (typeof v === 'string') out.cursor = v;
+    delete out.pointer;
+  }
+
+  // Shorthands: background
+  if (out.bg != null) { out.background = out.bg; delete out.bg; }
+  if (out.bgColor != null) { out.background = out.bgColor; delete out.bgColor; }
+  if (out.backgroundColor != null && out.background == null) {
+    out.background = out.backgroundColor; delete out.backgroundColor;
+  }
+
+  // Shorthand: font (string or object)
+  if (out.font && typeof out.font === 'object') {
+    const f = out.font;
+    if (f.size) out.fontSize = f.size;
+    if (f.weight) out.fontWeight = f.weight;
+    if (f.family) out.fontFamily = f.family;
+    if (f.lineHeight) out.lineHeight = f.lineHeight;
+    if (f.letterSpacing) out.letterSpacing = f.letterSpacing;
+    delete out.font;
+  }
+  // If font is a string, leave it as-is (CSS font shorthand)
+
+  // Shorthands: margin/padding (m, mt, mr, mb, ml, mx, my, p, pt, pr, pb, pl, px, py)
+  // Minimal and non-intrusive: expand only when target longhand is not already provided
+  (function applyBoxShorthands() {
+    const asCss = (v) => (typeof v === 'number' ? `${v}px` : String(v));
+    const expandParts = (val) => {
+      // Accept CSS-like shorthand: 1, 2, 3, or 4 values -> [t, r, b, l]
+      const s = String(val).trim().split(/\s+/).map(asCss);
+      if (s.length === 1) return [s[0], s[0], s[0], s[0]];
+      if (s.length === 2) return [s[0], s[1], s[0], s[1]];
+      if (s.length === 3) return [s[0], s[1], s[2], s[1]];
+      return [s[0], s[1], s[2], s[3]]; // 4+
+    };
+    const applySet = (kind, key, val) => {
+      const K = kind === 'm' ? 'margin' : 'padding';
+      const [t, r, b, l] = Array.isArray(val) ? val : expandParts(val);
+      const setIfMissing = (prop, value) => { if (out[prop] == null) out[prop] = value; };
+      if (key === '') {
+        // m / p
+        setIfMissing(`${K}Top`, t);
+        setIfMissing(`${K}Right`, r);
+        setIfMissing(`${K}Bottom`, b);
+        setIfMissing(`${K}Left`, l);
+        return;
+      }
+      if (key === 'x') { setIfMissing(`${K}Left`, asCss(val)); setIfMissing(`${K}Right`, asCss(val)); return; }
+      if (key === 'y') { setIfMissing(`${K}Top`, asCss(val)); setIfMissing(`${K}Bottom`, asCss(val)); return; }
+      if (key === 't') { setIfMissing(`${K}Top`, asCss(val)); return; }
+      if (key === 'r') { setIfMissing(`${K}Right`, asCss(val)); return; }
+      if (key === 'b') { setIfMissing(`${K}Bottom`, asCss(val)); return; }
+      if (key === 'l') { setIfMissing(`${K}Left`, asCss(val)); return; }
+    };
+    const keys = [
+      ['m', ''], ['mt', 't'], ['mr', 'r'], ['mb', 'b'], ['ml', 'l'], ['mx', 'x'], ['my', 'y'],
+      ['p', ''], ['pt', 't'], ['pr', 'r'], ['pb', 'b'], ['pl', 'l'], ['px', 'x'], ['py', 'y']
+    ];
+    for (const [k, sub] of keys) {
+      if (Object.prototype.hasOwnProperty.call(out, k) && out[k] != null) {
+        applySet(k[0], sub, out[k]);
+        delete out[k];
+      }
+    }
+  })();
+
+  // Convenience: apply themed surface styling in one flag
+  if (out.surface === true) {
+    out.background = 'linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom))';
+    out.border = 'var(--ui-surface-border-css)';
+    out.boxShadow = 'var(--ui-surface-glow-outer)';
+    out.borderRadius = 'var(--ui-card-radius)';
+    delete out.surface;
+  }
+
+  // Apply to element
+  Object.assign(el.style, out);
+
+  // Attach hover listeners if provided by template
+  if (hover) {
+    const keys = Object.keys(hover);
+    const base = {};
+    for (const k of keys) base[k] = el.style[k];
+    try {
+      const apply = () => { for (const k of keys) el.style[k] = hover[k]; };
+      const clear = () => { for (const k of keys) el.style[k] = base[k] || ''; };
+      el.addEventListener('mouseenter', apply);
+      el.addEventListener('mouseleave', clear);
+      el.addEventListener('focus', apply);
+      el.addEventListener('blur', clear);
+    } catch (_) {}
+  }
+  return el;
+}
+
 // --- UITheme (moved from core/ui/theme.js) ---
 (function initUITheme() {
   const root = document.documentElement;
@@ -81,7 +239,7 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-fontweight-bold': '700',
     '--ui-fontweight-normal': '400',
 
-    // App should reference these
+    // App-level tokens used by basicStyles presets (map to locked base tokens)
     '--ui-modal-title-fg': 'var(--ui-fg)',
     '--ui-modal-title-size': 'var(--ui-fontsize-large)',
     '--ui-modal-title-weight': 'var(--ui-fontweight-bold)',
@@ -556,14 +714,217 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     window.UITheme = {
       applyTheme,
       applyDynamicTheme,
-      // Expose theme presets for Settings UI consumption
-      getPresets: () => themePresets,
-      getPresetNames: () => Object.keys(themePresets),
-      presets: themePresets,
       get active() { return state.active; }
     };
   } catch (_) {}
+
 })();
+
+// Style presets using existing tokens (text, surfaces, states)
+export const basicStyles = Object.freeze({
+  // Text
+  title: {
+    __tag: 'div',
+    color: 'var(--ui-modal-title-fg)',
+    fontSize: 'var(--ui-modal-title-size)',
+    fontWeight: 'var(--ui-modal-title-weight)',
+    userSelect: 'none'
+  },
+  subtitle: {
+    __tag: 'div',
+    color: 'var(--ui-modal-subtitle-fg)',
+    fontSize: 'var(--ui-modal-subtitle-size)',
+    fontWeight: 'var(--ui-modal-subtitle-weight)'
+  },
+  quipTitle: {
+    __tag: 'div',
+    color: 'var(--ui-modal-title-quip-fg)',
+    fontSize: 'var(--ui-modal-title-quip-size)',
+    fontWeight: 'var(--ui-modal-title-quip-weight)'
+  },
+  quipSubtitle: {
+    __tag: 'div',
+    color: 'var(--ui-modal-subtitle-quip-fg)',
+    fontSize: 'var(--ui-modal-subtitle-quip-size)',
+    fontWeight: 'var(--ui-modal-subtitle-quip-weight)'
+  },
+  body: {
+    __tag: 'div',
+    color: 'var(--ui-fg)',
+    fontSize: 'var(--ui-fontsize-medium)',
+    fontWeight: 'var(--ui-fontweight-normal)'
+  },
+  quip: {
+    __tag: 'div',
+    color: 'var(--ui-fg-quip)',
+    fontSize: 'var(--ui-fontsize-small)',
+    fontWeight: 'var(--ui-fontweight-normal)'
+  },
+
+  // Surfaces
+  card: {
+    __tag: 'div',
+    background: 'linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom))',
+    border: 'var(--ui-surface-border-css)',
+    boxShadow: 'var(--ui-surface-glow-outer)',
+    borderRadius: 'var(--ui-card-radius)',
+    padding: 'var(--ui-modal-padding)'
+  },
+
+  // States
+  disabled: {
+    color: 'var(--ui-button-disabled-fg)',
+    opacity: 'var(--ui-opacity-disabled-button)',
+    pointerEvents: 'none',
+    cursor: 'not-allowed'
+  },
+
+  // Controls
+  button: {
+    __tag: 'input',
+    __type: 'button',
+    background: 'transparent',
+    border: 'var(--ui-surface-border-css)',
+    color: 'var(--ui-fg)',
+    borderRadius: 'var(--ui-card-radius)',
+    py: '0.25rem',
+    px: '0.625rem',
+    pointer: true,
+    hover: {
+      boxShadow: 'var(--ui-surface-glow-outer)',
+      outline: 'var(--ui-surface-border-css)'
+    }
+  },
+
+  // Form helpers
+  formRow: {
+    __tag: 'div',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    mb: 8
+  },
+  formLabel: {
+    __tag: 'label',
+    color: 'var(--ui-fg)',
+    fontSize: 'var(--ui-fontsize-medium)',
+    minWidth: '140px',
+    userSelect: 'none'
+  },
+  formValue: {
+    __tag: 'span',
+    color: 'var(--ui-fg-muted, #ccc)',
+    width: '52px',
+    textAlign: 'right'
+  },
+  inputRange: {
+    __tag: 'input',
+    __type: 'range',
+    flex: '1'
+  }
+});
+
+// Convenience aliases (template-first usage)
+export const basicTitle = basicStyles.title;
+export const basicSubtitle = basicStyles.subtitle;
+export const basicQuipTitle = basicStyles.quipTitle;
+export const basicQuipSubtitle = basicStyles.quipSubtitle;
+export const basicBody = basicStyles.body;
+export const basicQuip = basicStyles.quip;
+export const basicCard = basicStyles.card;
+export const basicDisabled = basicStyles.disabled;
+export const basicButton = basicStyles.button;
+export const basicFormRow = basicStyles.formRow;
+export const basicFormLabel = basicStyles.formLabel;
+export const basicFormValue = basicStyles.formValue;
+export const basicInputRange = basicStyles.inputRange;
+
+// Simple gap/spacer element template (used between headers and sections)
+export const basicGap = Object.freeze({ height: '0.5rem' });
+
+// Small helper to create a labeled range row using basic form templates.
+// Returns an object so callers can bind events and customize behavior.
+export function createRangeElement(min, max, step, resetValue, labelText = 'Value:', opts = {}) {
+  const row = createUiElement(basicStyles.formRow);
+  const label = createUiElement(basicStyles.formLabel, labelText);
+  const input = createUiElement(basicStyles.inputRange);
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  const value = createUiElement(basicStyles.formValue);
+
+  const clamp = (x) => {
+    let v = parseFloat(x);
+    if (!Number.isFinite(v)) v = resetValue;
+    // Snap to step
+    const inv = 1 / (step || 1);
+    v = Math.round(v * inv) / inv;
+    // Clamp
+    if (v < min) v = min;
+    if (v > max) v = max;
+    return v;
+  };
+
+  const toDisplay = typeof opts.toDisplay === 'function'
+    ? opts.toDisplay
+    : (v) => ({ text: String(v), title: String(v), derived: {} });
+  const toStorage = typeof opts.toStorage === 'function'
+    ? opts.toStorage
+    : (v) => String(v);
+  const fromStorage = typeof opts.fromStorage === 'function'
+    ? opts.fromStorage
+    : (s) => clamp(parseFloat(s));
+
+  const writeDisplay = (v) => {
+    const out = toDisplay(v) || {};
+    const txt = out.text != null ? out.text : String(v);
+    const tit = out.title != null ? out.title : txt;
+    try { value.textContent = txt; } catch (_) {}
+    try { input.title = tit; } catch (_) {}
+    return out;
+  };
+
+  const apply = (v) => {
+    const vv = clamp(v);
+    if (String(vv) !== input.value) try { input.value = String(vv); } catch (_) {}
+    const out = writeDisplay(vv);
+    if (opts.debugLabel) {
+      try { console.debug(`[${opts.debugLabel}] v=${vv}`, out?.derived || {}); } catch (_) {}
+    }
+    if (typeof opts.onChange === 'function') {
+      try { opts.onChange(vv, { row, label, input, value, derived: out.derived || {} }); } catch (_) {}
+    }
+    if (opts.storageKey) {
+      try { localStorage.setItem(opts.storageKey, toStorage(vv)); } catch (_) {}
+    }
+  };
+
+  // Initialize value (possibly from storage)
+  let initV = resetValue;
+  if (opts.storageKey) {
+    try {
+      const s = localStorage.getItem(opts.storageKey);
+      if (s != null) initV = fromStorage(s);
+    } catch (_) {}
+  }
+  try { input.value = String(initV); } catch (_) {}
+  writeDisplay(initV);
+
+  // Optional wheel binder from caller to keep deps minimal
+  if (typeof opts.attachWheel === 'function') {
+    try { opts.attachWheel(input); } catch (_) {}
+  }
+
+  input.oninput = () => apply(input.value);
+
+  row.appendChild(label); row.appendChild(input); row.appendChild(value);
+
+  return {
+    row, label, input, value,
+    reset: () => { try { input.value = String(resetValue); input.dispatchEvent(new Event('input')); } catch (_) {} },
+    set: (v) => apply(v)
+  };
+}
 
 // --- Theme bootstrap notes ---
 // All required CSS variables are initialized by initUITheme() on module import.

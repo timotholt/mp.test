@@ -170,7 +170,7 @@ export function applyControlsStyle(options = {}) {
       input[type="range"]::-moz-range-progress { height: 0.375rem; background: var(--ui-accent); border-radius: 999px; }
       /* Center the thumb across browsers */
       input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none; appearance: none; width: 0.875rem; height: 0.875rem; margin-top: -0.375rem;
+        -webkit-appearance: none; appearance: none; width: 0.875rem; height: 0.875rem; margin-top: -0.25rem;
         background: var(--ui-accent);
         border: 1px solid var(--ui-surface-border);
         border-radius: 50%; box-shadow: none;
