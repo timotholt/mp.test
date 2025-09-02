@@ -154,7 +154,7 @@ export function applyControlsStyle(options = {}) {
         background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom));
         color: var(--ui-fg);
         border: 1px solid var(--ui-surface-border);
-        border-radius: 8px;
+        border-radius: 0.5rem;
       }
       select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); }
       select option { background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)); color: var(--ui-fg); }
@@ -162,27 +162,27 @@ export function applyControlsStyle(options = {}) {
       /* Make form sliders reflect the current theme hue */
       input[type="range"] { accent-color: var(--ui-accent); }
       /* Accent-colored track for range controls (thumb/progress matches theme) */
-      input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
-      input[type="range"]::-moz-range-track { height: 6px; background: var(--ui-accent) !important; border-radius: 999px; }
+      input[type="range"]::-webkit-slider-runnable-track { height: 0.375rem; background: var(--ui-accent) !important; border-radius: 999px; }
+      input[type="range"]::-moz-range-track { height: 0.375rem; background: var(--ui-accent) !important; border-radius: 999px; }
       input[type="range"]:disabled::-webkit-slider-runnable-track { background: var(--ui-accent) !important; opacity: 0.6; }
       input[type="range"]:disabled::-moz-range-track { background: var(--ui-accent) !important; opacity: 0.6; }
       /* Firefox: color the filled progress portion with the accent */
-      input[type="range"]::-moz-range-progress { height: 6px; background: var(--ui-accent); border-radius: 999px; }
+      input[type="range"]::-moz-range-progress { height: 0.375rem; background: var(--ui-accent); border-radius: 999px; }
       /* Center the thumb across browsers */
       input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -4px;
+        -webkit-appearance: none; appearance: none; width: 0.875rem; height: 0.875rem; margin-top: -0.375rem;
         background: var(--ui-accent);
         border: 1px solid var(--ui-surface-border);
         border-radius: 50%; box-shadow: none;
       }
       input[type="range"]::-moz-range-thumb {
-        width: 14px; height: 14px; background: var(--ui-accent);
+        width: 0.875rem; height: 0.875rem; background: var(--ui-accent);
         border: 1px solid var(--ui-surface-border);
         border-radius: 50%; box-shadow: none;
       }
       /* Bright white + glow on label hover across app */
       label { transition: color 0.12s ease, text-shadow 0.12s ease; }
-      label:hover { color: var(--ui-bright); text-shadow: 0 0 9px var(--ui-bright), 0 0 18px var(--ui-accent); }
+      label:hover { color: var(--ui-bright); text-shadow: 0 0 0.5625rem var(--ui-bright), 0 0 1.125rem var(--ui-accent); }
     `;
     if (existing) {
       existing.textContent = css;

@@ -76,41 +76,34 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-fontsize-large': '1.25rem',                       // Section headers
     '--ui-fontsize-medium': '1rem',                         // Body text
     '--ui-fontsize-small': '0.8rem',                        // Quips
-    '--ui-fontsize-xsmall': '0.75rem',                      // Subtitles
+    '--ui-fontsize-xsmall': '0.7rem',                      // Subtitles
 
     '--ui-fontweight-bold': '700',
     '--ui-fontweight-normal': '400',
 
     // App should reference these
     '--ui-modal-title-fg': 'var(--ui-fg)',
-    '--ui-modal-title-size': 'var(--ui-fontsize-xlarge)',
+    '--ui-modal-title-size': 'var(--ui-fontsize-large)',
     '--ui-modal-title-weight': 'var(--ui-fontweight-bold)',
 
     '--ui-modal-title-quip-fg': 'var(--ui-fg-quip)',
     '--ui-modal-title-quip-size': 'var(--ui-fontsize-small)',
-    '--ui-modal-title-weight': 'var(--ui-fontweight-normal)',
+    '--ui-modal-title-quip-weight': 'var(--ui-fontweight-bold)',
 
     '--ui-modal-subtitle-fg': 'var(--ui-fg)',
     '--ui-modal-subtitle-size': 'var(--ui-fontsize-medium)',
     '--ui-modal-subtitle-weight': 'var(--ui-fontweight-bold)',
 
-    '--ui-modal-subtitle-quip-fg': 'var(--ui-fg-qiup)',
+    '--ui-modal-subtitle-quip-fg': 'var(--ui-fg-quip)',
     '--ui-modal-subtitle-quip-size': 'var(--ui-fontsize-small)',
     '--ui-modal-subtitle-quip-weight': 'var(--ui-fontweight-normal)',
+
+    // '--ui-root-fg': 'var(--ui-fg)',
 
     '--ui-opacity-mult': '2.125',
     '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
     '--ui-font-mono': 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
 
-    // Locked typography sizes
-
-    '--ui-subtitle-size': '1rem',
-    // Locked section header aliases (used by Settings sections)
-    // These mirror login/title tokens to guarantee visual parity across screens
-    '--ui-section-title-size': '1.0rem',
-    '--ui-section-title-weight': '700',
-    // '--ui-section-quip-size': '0.9rem',
-    '--ui-section-quip-size': '0.8rem',
     '--ui-section-padding-after': '1rem',
 
     // Locked layout tokens
@@ -122,8 +115,8 @@ import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobal
     '--ui-surface-border-css': 'var(--ui-border-size) solid var(--ui-surface-border)',
 
     // Locked scrollbar geometry (themes cannot change; a notheme path may override via allowLocked)
-    '--ui-scrollbar-width': '10px',
-    '--ui-scrollbar-radius': '8px',
+    '--ui-scrollbar-width': '0.625rem',
+    '--ui-scrollbar-radius': '0.5rem',
 
     /*
      * IMPORTANT: ui-glass-scrollbar width clamps (LOCKED)

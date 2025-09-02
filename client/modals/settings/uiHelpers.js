@@ -18,22 +18,22 @@ export function makeSection(title, desc = '', position = 'afterTitle', rightAlig
   header.style.justifyContent = rightAlign ? 'space-between' : 'flex-start';
   header.style.gap = '0.75rem';
 
+  // Add title
   const h = document.createElement('div');
-  h.className = 'sf-sec-title';
+  h.className = 'sf-sec-subtitle';
   h.textContent = String(title || '');
-  h.style.fontWeight = '700';
-  h.style.fontSize = 'calc(16px * var(--ui-font-scale, 1))';
-  h.style.color = 'var(--ui-fg, #eee)';
-
+  h.style.fontWeight = 'var(--ui-modal-subtitle-weight);'
+  h.style.fontSize = 'var(--ui-modal-subtitle-size)';
+  h.style.color = 'var(--ui-modal-subtitle-fg)';
   header.appendChild(h);
 
+  // If we have a quip
   if (desc) {
     const q = document.createElement('div');
     q.className = 'sf-sec-quip';
     q.textContent = String(desc);
-    q.style.opacity = '0.8';
-    q.style.fontSize = '12px';
-    q.style.color = 'var(--ui-fg-muted, #ccd)';
+    q.style.fontSize = 'var(--ui-modal-subtitle-quip-size)';
+    q.style.color = 'var(--ui-modal-subtitle-quip-fg)';
     q.style.marginLeft = rightAlign ? 'auto' : '0';
     header.appendChild(q);
   }
@@ -56,9 +56,9 @@ export function makeNote(text) {
   n.className = 'sf-note';
   n.textContent = String(text || '');
   n.style.margin = '0.25rem 0 0.5rem 0';
-  n.style.fontSize = '12px';
+  n.style.fontSize = '0.75rem';
   n.style.opacity = '0.9';
-  n.style.color = 'var(--ui-fg-muted, #ccd)';
+  n.style.color = 'var(--ui-fg-quip)';
   return n;
 }
 
@@ -68,13 +68,13 @@ export function makeRow(labelText, inputEl) {
   row.className = 'sf-row';
   row.style.display = 'flex';
   row.style.alignItems = 'center';
-  row.style.gap = '8px';
-  row.style.margin = '6px 0';
+  row.style.gap = '0.5rem';
+  row.style.margin = '0.625rem 0';
 
   const lab = document.createElement('label');
   lab.textContent = String(labelText || '');
   lab.style.minWidth = '100px';
-  lab.style.color = 'var(--ui-fg, #eee)';
+  lab.style.color = 'var(--ui-fg)';
   row.appendChild(lab);
 
   const cell = document.createElement('div');
@@ -90,14 +90,14 @@ export function makeInput(type = 'text', value = '') {
   el.type = type;
   el.value = value != null ? String(value) : '';
   el.style.display = 'inline-block';
-  el.style.height = '32px';
-  el.style.lineHeight = '32px';
+  el.style.height = '2rem';
+  el.style.lineHeight = '2rem';
   el.style.background = 'transparent';
   el.style.outline = 'none';
   el.style.color = 'var(--ui-fg, #eee)';
   el.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))';
-  el.style.borderRadius = '8px';
-  el.style.padding = '0 8px';
+  el.style.borderRadius = '0.5rem';
+  el.style.padding = '0 0.5rem';
   el.style.flex = '1';
   el.style.width = '100%';
   return el;
@@ -110,8 +110,8 @@ export function createInputRow({ dataName } = {}) {
   if (dataName) try { row.dataset.name = String(dataName); } catch (_) {}
   row.style.display = 'flex';
   row.style.alignItems = 'center';
-  row.style.gap = '8px';
-  row.style.marginBottom = '8px';
+  row.style.gap = '0.5rem';
+  row.style.marginBottom = '0.5rem';
   return row;
 }
 
