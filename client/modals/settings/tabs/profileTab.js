@@ -4,7 +4,7 @@ import * as LS from '../../../core/localStorage.js';
 import { makeSection, makeNote, createInputRow, wireFocusHighlight } from '../uiHelpers.js';
 import { UI } from '../../../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser, getClient } from '../../../core/auth/supabaseAuth.js';
-import { createUiElement, basicButton } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, basicPanelLabel, basicTextInput } from '../../../core/ui/theme/elements.js';
 
 export function renderProfileTab(container) {
   if (!container) return;
@@ -67,22 +67,19 @@ export function renderProfileTab(container) {
       } catch (_) {}
     }
 
-    // Nickname row with embedded dice button
+    // Nickname row with embedded dice button (templated)
     const nickRow = createInputRow({ dataName: 'nickname' });
-    const nickLabel = document.createElement('label'); nickLabel.textContent = 'Nickname:'; nickLabel.style.minWidth = '100px';
-    const nickWrap = document.createElement('div'); nickWrap.style.position = 'relative'; nickWrap.style.display = 'flex'; nickWrap.style.alignItems = 'center'; nickWrap.style.flex = '1';
+    const nickLabel = createUiElement(basicPanelLabel, 'Nickname:');
+    const nickWrap = createUiElement([{ __tag: 'div' }, { position: 'relative', display: 'flex', alignItems: 'center', flex: '1' }]);
 
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.placeholder = 'Pick a unique nickname';
-    nameInput.value = nicknameVal || '';
-    nameInput.style.display = 'inline-block'; nameInput.style.height = '40px'; nameInput.style.lineHeight = '40px';
-    nameInput.style.background = 'transparent'; nameInput.style.outline = 'none'; nameInput.style.color = 'var(--sf-tip-fg, #fff)';
-    nameInput.style.border = '0'; nameInput.style.borderRadius = '8px';
-    try { const sz = UI?.iconSize ?? 18; const lg = UI?.leftGap ?? '10px'; nameInput.style.padding = `0 calc(${sz}px + ${lg}) 0 10px`; } catch (_) { nameInput.style.padding = '0 28px 0 10px'; }
-    try { if (UI?.insetShadow) nameInput.style.boxShadow = UI.insetShadow; } catch (_) {}
-    nameInput.style.flex = '1'; nameInput.style.width = '100%';
-    try { nameInput.id = 'settings-nickname'; nickLabel.htmlFor = 'settings-nickname'; } catch (_) {}
+    const nameInput = createUiElement([basicTextInput, { fontSize: 'var(--ui-fontsize-medium)', pr: '2rem' }]);
+    try {
+      nameInput.type = 'text';
+      nameInput.placeholder = 'Pick a unique nickname';
+      nameInput.value = nicknameVal || '';
+      nameInput.id = 'settings-nickname';
+      nickLabel.htmlFor = 'settings-nickname';
+    } catch (_) {}
 
     const diceBtn = createUiElement([
       basicButton,
@@ -97,15 +94,17 @@ export function renderProfileTab(container) {
         justifyContent: 'center',
         color: 'var(--ui-bright, var(--ui-highlight))',
         padding: '0',
+        width: '1.125rem',
+        height: '1.125rem',
+        fontSize: '1.125rem',
         boxSizing: 'border-box',
       }
     ]);
     try { diceBtn.type = 'button'; } catch (_) {}
     try { diceBtn.title = 'Roll a random nickname'; diceBtn.setAttribute('aria-label', 'Roll a random nickname'); } catch (_) {}
-    try { const s = UI?.iconSize ?? 18; diceBtn.style.width = `${s}px`; diceBtn.style.height = `${s}px`; } catch (_) {}
     // Preserve theme-driven border if provided via UI helpers
     try { if (UI?.border) diceBtn.style.border = UI.border; } catch (_) {}
-    diceBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/></svg>';
+    diceBtn.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/></svg>';
     diceBtn.onclick = () => {
       try {
         const base = ['Vox', 'Hex', 'Gloom', 'Iron', 'Vermilion', 'Ash', 'Rune', 'Blight', 'Grim', 'Cipher'];
@@ -120,17 +119,21 @@ export function renderProfileTab(container) {
     container.appendChild(nickRow);
     try { wireFocusHighlight(nameInput, nickRow); } catch (_) {}
 
-    // Bio (multiline)
-    const bioRow = document.createElement('div'); bioRow.style.display = 'flex'; bioRow.style.flexDirection = 'column'; bioRow.style.gap = '6px'; bioRow.style.marginBottom = '8px';
-    const bioLbl = document.createElement('label'); bioLbl.textContent = 'Bio:';
-    const bioWrap = document.createElement('div'); bioWrap.style.position = 'relative'; bioWrap.style.display = 'flex'; bioWrap.style.flex = '1';
-    try { if (UI?.border) bioWrap.style.border = UI.border; bioWrap.style.borderRadius = '8px'; if (UI?.insetShadow) bioWrap.style.boxShadow = UI.insetShadow; } catch (_) {}
-    const bio = document.createElement('textarea');
-    bio.placeholder = 'Whisper your legend into the static...';
-    bio.value = bioVal || ''; bio.rows = 5; bio.style.resize = 'vertical'; bio.style.minHeight = '120px'; bio.style.maxHeight = '200px';
-    bio.style.border = '0'; bio.style.outline = 'none'; bio.style.padding = '8px 10px'; bio.style.color = 'var(--ui-fg, #eee)'; bio.style.background = 'transparent'; bio.style.width = '100%';
-    try { bio.id = 'settings-bio'; bioLbl.htmlFor = 'settings-bio'; } catch (_) {}
-    bioWrap.appendChild(bio); bioRow.appendChild(bioLbl); bioRow.appendChild(bioWrap); container.appendChild(bioRow);
+    // Bio (multiline, templated)
+    const bioRow = createUiElement([{ __tag: 'div' }, { display: 'flex', flexDirection: 'column', gap: '0.375rem', mb: '0.5rem' }]);
+    const bioLbl = createUiElement(basicPanelLabel, 'Bio:');
+    const bioWrap = createUiElement([{ __tag: 'div' }, { position: 'relative', display: 'flex', flex: '1', borderRadius: 'var(--ui-card-radius, 0.5rem)' }]);
+    try { bioWrap.classList && bioWrap.classList.add('ui-focus-reset'); } catch (_) {}
+    const bio = createUiElement([basicTextInput, { __tag: 'textarea', rows: 5, resize: 'vertical', minHeight: '7.5rem', maxHeight: '12.5rem', fontSize: 'var(--ui-fontsize-medium)', px: '0.625rem', py: '0.5rem' }]);
+    try {
+      bio.placeholder = 'Whisper your legend into the static...';
+      bio.value = bioVal || '';
+      bio.id = 'settings-bio'; bioLbl.htmlFor = 'settings-bio';
+    } catch (_) {}
+    bioWrap.appendChild(bio);
+    bioRow.appendChild(bioLbl);
+    bioRow.appendChild(bioWrap);
+    container.appendChild(bioRow);
     try { wireFocusHighlight(bio, bioWrap); } catch (_) {}
 
     // Persist: save draft immediately; try server when possible (debounced)
