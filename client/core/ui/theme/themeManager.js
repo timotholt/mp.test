@@ -516,11 +516,39 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
 
   // UI helper appliers are provided by themeHelpers.js and imported at top.
 
+  // Inject minimal utility CSS classes used by JS behaviors (no external CSS files required)
+  function injectUtilityStyles() {
+    try {
+      const id = 'ui-utility-styles';
+      if (document.getElementById(id)) return;
+      const style = document.createElement('style');
+      style.id = id;
+      style.textContent = [
+        '.ui-focus-ring{',
+        '  box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30));',
+        '}',
+        '.ui-focus-glow{',
+        '  box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30));',
+        '  border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));',
+        '}',
+        '.ui-focus-reset{',
+        '  border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.30));',
+        '}',
+        '.ui-hover-glow{',
+        '  filter: drop-shadow(0 0 6px rgba(120,170,255,0.25));',
+        '}',
+      ].join('\n');
+      document.head && document.head.appendChild(style);
+    } catch (_) {}
+  }
+
   // Apply default UI helpers on boot
   try { applyListRowStyle(); } catch (_) {}
   try { applyScrollbarStyle(); } catch (_) {}
   try { applyControlsStyle(); } catch (_) {}
   try { applyGlobalTextStyle(); } catch (_) {}
+  // Ensure utility classes are available globally
+  try { injectUtilityStyles(); } catch (_) {}
 
   // Apply persisted dynamic theme knobs at boot
   try {

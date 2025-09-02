@@ -127,6 +127,75 @@ export const basicStyles = Object.freeze({
     __tag: 'div',
     borderTop: '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))',
     m: '0.25rem 0 0.5rem 0'
+  },
+
+  // Misc text blocks
+  note: {
+    __tag: 'div',
+    m: '0.25rem 0 0.5rem 0',
+    fontSize: '0.75rem',
+    opacity: '0.9',
+    color: 'var(--ui-fg-quip)'
+  },
+
+  // Panel rows (label + control)
+  panelRow: {
+    __tag: 'div',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    m: '0.625rem 0'
+  },
+  panelLabel: {
+    __tag: 'label',
+    minWidth: '100px',
+    color: 'var(--ui-fg)'
+  },
+  panelCell: {
+    __tag: 'div',
+    flex: '1'
+  },
+
+  // Simple text input
+  textInput: {
+    __tag: 'input',
+    __type: 'text',
+    display: 'inline-block',
+    height: '2rem',
+    lineHeight: '2rem',
+    background: 'transparent',
+    outline: 'none',
+    color: 'var(--ui-fg, #eee)',
+    border: '1px solid var(--ui-surface-border, rgba(120,170,255,0.60))',
+    borderRadius: '0.5rem',
+    px: '0.5rem',
+    flex: '1',
+    width: '100%'
+  },
+
+  // Overlay input row scaffold
+  inputRow: {
+    __tag: 'div',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    mb: '0.5rem'
+  },
+
+  // Behavioral style tokens (used by event handlers)
+  focusGlowOn: {
+    boxShadow: 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))',
+    border: '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'
+  },
+  focusGlowOff: {
+    boxShadow: 'none',
+    border: '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))'
+  },
+  hoverGlowOn: {
+    filter: 'drop-shadow(0 0 6px rgba(120,170,255,0.25))'
+  },
+  hoverGlowOff: {
+    filter: 'none'
   }
 });
 
@@ -147,6 +216,16 @@ export const basicInputRange = basicStyles.inputRange;
 export const basicSection = basicStyles.section;
 export const basicSectionHeader = basicStyles.sectionHeader;
 export const basicSectionRule = basicStyles.sectionRule;
+export const basicNote = basicStyles.note;
+export const basicPanelRow = basicStyles.panelRow;
+export const basicPanelLabel = basicStyles.panelLabel;
+export const basicPanelCell = basicStyles.panelCell;
+export const basicTextInput = basicStyles.textInput;
+export const basicInputRow = basicStyles.inputRow;
+export const basicFocusGlowOn = basicStyles.focusGlowOn;
+export const basicFocusGlowOff = basicStyles.focusGlowOff;
+export const basicHoverGlowOn = basicStyles.hoverGlowOn;
+export const basicHoverGlowOff = basicStyles.hoverGlowOff;
 
 // Simple gap/spacer element template (used between headers and sections)
 export const basicGap = Object.freeze({ height: '0.5rem' });
