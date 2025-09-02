@@ -803,20 +803,20 @@ export const basicStyles = Object.freeze({
     __tag: 'div',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '1.0rem',
     mb: 8
   },
   formLabel: {
     __tag: 'label',
     color: 'var(--ui-fg)',
-    fontSize: 'var(--ui-fontsize-medium)',
-    minWidth: '140px',
+    fontSize: 'var(--ui-fontsize-small)',
+    minWidth: '8.75rem',
     userSelect: 'none'
   },
   formValue: {
     __tag: 'span',
     color: 'var(--ui-fg-muted, #ccc)',
-    width: '52px',
+    width: '3.25rem',
     textAlign: 'right'
   },
   inputRange: {

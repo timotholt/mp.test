@@ -3,6 +3,7 @@
 
 import { createTabsBar, UI } from './controls.js';
 import { getQuip } from './quip.js';
+import { createUiElement, basicButton } from './theme/elements.js';
 
 // Modal card container
 export function makeCard() {
@@ -43,16 +44,13 @@ export function makeTitleBlock({ title = '', quips = null, desc = '', onClose = 
   titleEl.style.userSelect = 'none';
   try { titleEl.id = 'modal-title'; } catch (_) {}
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '✕';
-  closeBtn.style.background = 'transparent';
-  closeBtn.style.border = '1px solid var(--ui-surface-border)';
-  closeBtn.style.borderRadius = '0.5rem';
-  closeBtn.style.color = 'var(--ui-fg)';
-  closeBtn.style.cursor = 'pointer';
-  // Scale with root font-size (rem-based). Keeps close icon proportional to UI scale.
-  closeBtn.style.fontSize = 'var(--ui-fontsize-medium)';
-  closeBtn.style.padding = '0.25rem 0.5rem';
+  // Close button: use standard UI button template with minimal overrides
+  // Use 'button' tag explicitly to keep textContent and semantics; template defaults to input[type=button].
+  const closeBtn = createUiElement([
+    basicButton,
+    { fontSize: 'var(--ui-fontsize-medium)', borderRadius: '0.5rem', px: '0.5rem', py: '0.25rem' }
+  ], 'button', '✕');
+  try { closeBtn.setAttribute('aria-label', 'Close'); } catch (_) {}
   if (typeof onClose === 'function') {
     try { closeBtn.onclick = onClose; } catch (_) {}
   }
