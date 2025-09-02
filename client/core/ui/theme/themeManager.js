@@ -4,6 +4,10 @@
 // and not theme-overridable to ensure consistent UI foreground color.
 
 import { applyListRowStyle, applyScrollbarStyle, applyControlsStyle, applyGlobalTextStyle, colorFromHSLC, colorFromHSLCAlphaCss } from './themeHelpers.js';
+import { LockedThemeDefaults, LockedThemeVars, LockedThemeVarsSet } from './tokens.js';
+import { themePresets } from './presets.js';
+import { basicStyles } from './templates.js';
+export { basicStyles, basicTitle, basicSubtitle, basicQuipTitle, basicQuipSubtitle, basicBody, basicQuip, basicCard, basicDisabled, basicButton, basicFormRow, basicFormLabel, basicFormValue, basicInputRange, basicGap } from './templates.js';
 
 export function createUiElement(style = {}, a = 'div', b = '', c) {
   // Resolve parameters with backward compatibility and a new optional id
@@ -186,141 +190,12 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
    and dynamic params (border, glow, gradient, blur, overlay darkness).
   */
   // Fixed, theme-agnostic foreground color for consistent UI text
-  // Default sans-serif font for the whole app, applied at :root
   // Moved var definition to LockedThemeDefaults; keep root font binding here
   try { root.style.fontFamily = 'var(--ui-font-family, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif)'; } catch (_) {}
  
-  // Preset definitions (hue, saturation, intensity, border intensity, glow strength, transparency %, gradient, overlay darkness %, blur px)
-  // Centralized here so Settings UI can consume via UITheme API
-  const themePresets = Object.freeze({
-    // Ordered by Hue around the color wheel
-    'Blood Red':      { hue: 0,   saturation: 50, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Ember Glow':     { hue: 20,  saturation: 70, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Old Photos':     { hue: 40,  saturation: 30, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Amber Forge':    { hue: 50,  saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Golden Dusk':    { hue: 60,  saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Desert Mirage':  { hue: 75,  saturation: 55, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Lime Spark':     { hue: 90,  saturation: 70, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Moss Crown':     { hue: 110, saturation: 50, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Verdant Veil':   { hue: 140, saturation: 50, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Teal Tide':      { hue: 160, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Sea Glass':      { hue: 175, saturation: 50, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Cyan Frost':     { hue: 180, saturation: 50, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Steel Blue':     { hue: 207, saturation: 35, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Azure Storm':    { hue: 210, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Cobalt Drift':   { hue: 225, saturation: 55, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Cerulean Surge': { hue: 240, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Indigo Night':   { hue: 260, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Midnight Iris':  { hue: 270, saturation: 55, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Royal Violet':   { hue: 280, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Neon Magenta':   { hue: 300, saturation: 90, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Hot Pink':       { hue: 320, saturation: 80, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Fuchsia Bloom':  { hue: 330, saturation: 85, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Rose Storm':     { hue: 340, saturation: 75, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Coral Blade':    { hue: 350, saturation: 70, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-    'Crimson Dawn':   { hue: 355, saturation: 60, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 }
-  });
+  // themePresets now imported from presets.js
 
-  // Locked theme defaults (single source of truth) and derived keys
-  const LockedThemeDefaults = Object.freeze({
-
-    // These define the foreground colors of text in the app. App should never reference these.
-    '--ui-fg': 'rgba(220,220,220,1.0)',                     // Brightest text
-    '--ui-fg-muted': 'rgba(200,200,200,1.0)',               // Second brightest text
-    '--ui-fg-quip': 'rgba(176,176,176,1.0)',                // Third brighest text
-    '--ui-fg-weak': 'rgba(144,144,144,1.0)',                // Fourth brightest text
-
-    '--ui-fontsize-xlarge': '1.5rem',                       // Titles of screens & modals
-    '--ui-fontsize-large': '1.25rem',                       // Section headers
-    '--ui-fontsize-medium': '1rem',                         // Body text
-    '--ui-fontsize-small': '0.8rem',                        // Quips
-    '--ui-fontsize-xsmall': '0.7rem',                      // Subtitles
-
-    '--ui-fontweight-bold': '700',
-    '--ui-fontweight-normal': '400',
-
-    // App-level tokens used by basicStyles presets (map to locked base tokens)
-    '--ui-modal-title-fg': 'var(--ui-fg)',
-    '--ui-modal-title-size': 'var(--ui-fontsize-large)',
-    '--ui-modal-title-weight': 'var(--ui-fontweight-bold)',
-
-    '--ui-modal-title-quip-fg': 'var(--ui-fg-quip)',
-    '--ui-modal-title-quip-size': 'var(--ui-fontsize-small)',
-    '--ui-modal-title-quip-weight': 'var(--ui-fontweight-bold)',
-
-    '--ui-modal-subtitle-fg': 'var(--ui-fg)',
-    '--ui-modal-subtitle-size': 'var(--ui-fontsize-medium)',
-    '--ui-modal-subtitle-weight': 'var(--ui-fontweight-bold)',
-
-    '--ui-modal-subtitle-quip-fg': 'var(--ui-fg-quip)',
-    '--ui-modal-subtitle-quip-size': 'var(--ui-fontsize-small)',
-    '--ui-modal-subtitle-quip-weight': 'var(--ui-fontweight-normal)',
-
-    // '--ui-root-fg': 'var(--ui-fg)',
-
-    '--ui-opacity-mult': '2.125',
-    '--ui-font-family': 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
-    '--ui-font-mono': 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-
-    '--ui-section-padding-after': '1rem',
-
-    // Locked layout tokens
-    '--ui-card-radius': '0.875rem',
-    '--ui-page-padding': '24px',
-    '--ui-modal-padding': '1rem',
-    // Locked border system
-    '--ui-border-size': '0.0625rem',
-    '--ui-surface-border-css': 'var(--ui-border-size) solid var(--ui-surface-border)',
-
-    // Locked scrollbar geometry (themes cannot change; a notheme path may override via allowLocked)
-    '--ui-scrollbar-width': '0.625rem',
-    '--ui-scrollbar-radius': '0.5rem',
-
-    /*
-     * IMPORTANT: ui-glass-scrollbar width clamps (LOCKED)
-     * ---------------------------------------------------
-     * These variables define the absolute minimum and maximum width constraints
-     * intended for containers that OPT-IN to the 'ui-glass-scrollbar' styling.
-     * They DO NOT auto-apply any width constraints by themselves; components can
-     * reference these to clamp their layout when needed.
-     *
-     * Rationale: Some narrow tab groups need a strict 500px width to prevent
-     * scrollbar/overflow layout jitter. Making this a locked variable ensures
-     * theme packs cannot accidentally alter core geometry.
-     *
-     * Usage example (in a component that wants the clamp):
-     *   el.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
-     *   el.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
-     */
-    // '--ui-glass-scrollbar-min-width': '500px',
-    // '--ui-glass-scrollbar-max-width': '500px',
-
-    '--ui-glass-scrollbar-min-width': '32rem',
-    '--ui-glass-scrollbar-max-width': '32rem',
-
-
-    // Locked list row backgrounds (themes cannot change; a notheme path may override via allowLocked)
-    '--ui-list-row-odd': 'rgba(255,255,255,0.04)',
-    '--ui-list-row-even': 'rgba(255,255,255,0.02)',
-
-    // Button colors
-    '--ui-button-fg': 'var(--ui-fg)',
-    '--ui-button-hover-fg': 'var(--ui-fg)',
-    '--ui-button-active-fg': 'var(--ui-fg)',
-    '--ui-button-disabled-fg': 'var(--ui-fg)', // how do i add 0.6 opacity?
-    '--ui-opacity-enabled-button': '1.0',
-    '--ui-opacity-disabled-button': '0.6',        
-    
-    // Locked knob face colors (used by core knob UI). Themes cannot override directly.
-    // Dynamic theme will set these at runtime; these are safe fallbacks.
-    '--ui-knob-bg-top': '#1a1a1a',
-    '--ui-knob-bg-bottom': '#101010',
-    // Locked control for additional knob darkness (0..0.5 recommended). Higher -> darker.
-    '--ui-knob-darken': '0.06',
-  });
-
-  const LockedThemeVars = Object.freeze(Object.keys(LockedThemeDefaults));
-  const LockedThemeVarsSet = new Set(LockedThemeVars);
+  // LockedThemeDefaults and vars now imported from tokens.js
 
   function applyThemeVars(vars, allowLocked = false) {
     if (!vars) return;
@@ -720,129 +595,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
 
 })();
 
-// Style presets using existing tokens (text, surfaces, states)
-export const basicStyles = Object.freeze({
-  // Text
-  title: {
-    __tag: 'div',
-    color: 'var(--ui-modal-title-fg)',
-    fontSize: 'var(--ui-modal-title-size)',
-    fontWeight: 'var(--ui-modal-title-weight)',
-    userSelect: 'none'
-  },
-  subtitle: {
-    __tag: 'div',
-    color: 'var(--ui-modal-subtitle-fg)',
-    fontSize: 'var(--ui-modal-subtitle-size)',
-    fontWeight: 'var(--ui-modal-subtitle-weight)'
-  },
-  quipTitle: {
-    __tag: 'div',
-    color: 'var(--ui-modal-title-quip-fg)',
-    fontSize: 'var(--ui-modal-title-quip-size)',
-    fontWeight: 'var(--ui-modal-title-quip-weight)'
-  },
-  quipSubtitle: {
-    __tag: 'div',
-    color: 'var(--ui-modal-subtitle-quip-fg)',
-    fontSize: 'var(--ui-modal-subtitle-quip-size)',
-    fontWeight: 'var(--ui-modal-subtitle-quip-weight)'
-  },
-  body: {
-    __tag: 'div',
-    color: 'var(--ui-fg)',
-    fontSize: 'var(--ui-fontsize-medium)',
-    fontWeight: 'var(--ui-fontweight-normal)'
-  },
-  quip: {
-    __tag: 'div',
-    color: 'var(--ui-fg-quip)',
-    fontSize: 'var(--ui-fontsize-small)',
-    fontWeight: 'var(--ui-fontweight-normal)'
-  },
-
-  // Surfaces
-  card: {
-    __tag: 'div',
-    background: 'linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom))',
-    border: 'var(--ui-surface-border-css)',
-    boxShadow: 'var(--ui-surface-glow-outer)',
-    borderRadius: 'var(--ui-card-radius)',
-    padding: 'var(--ui-modal-padding)'
-  },
-
-  // States
-  disabled: {
-    color: 'var(--ui-button-disabled-fg)',
-    opacity: 'var(--ui-opacity-disabled-button)',
-    pointerEvents: 'none',
-    cursor: 'not-allowed'
-  },
-
-  // Controls
-  button: {
-    __tag: 'input',
-    __type: 'button',
-    background: 'transparent',
-    border: 'var(--ui-surface-border-css)',
-    color: 'var(--ui-fg)',
-    borderRadius: 'var(--ui-card-radius)',
-    py: '0.25rem',
-    px: '0.625rem',
-    fontSize: 'var(--ui-fontsize-small)',
-    fontWeight: 'var(--ui-fontweight-normal)',
-    pointer: true,
-    hover: {
-      boxShadow: 'var(--ui-surface-glow-outer)',
-      outline: 'var(--ui-surface-border-css)'
-    }
-  },
-
-  // Form helpers
-  formRow: {
-    __tag: 'div',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.0rem',
-    mb: 8
-  },
-  formLabel: {
-    __tag: 'label',
-    color: 'var(--ui-fg)',
-    fontSize: 'var(--ui-fontsize-small)',
-    minWidth: '8.75rem',
-    userSelect: 'none'
-  },
-  formValue: {
-    __tag: 'span',
-    color: 'var(--ui-fg-muted, #ccc)',
-    width: '3.25rem',
-    textAlign: 'right'
-  },
-  inputRange: {
-    __tag: 'input',
-    __type: 'range',
-    flex: '1'
-  }
-});
-
-// Convenience aliases (template-first usage)
-export const basicTitle = basicStyles.title;
-export const basicSubtitle = basicStyles.subtitle;
-export const basicQuipTitle = basicStyles.quipTitle;
-export const basicQuipSubtitle = basicStyles.quipSubtitle;
-export const basicBody = basicStyles.body;
-export const basicQuip = basicStyles.quip;
-export const basicCard = basicStyles.card;
-export const basicDisabled = basicStyles.disabled;
-export const basicButton = basicStyles.button;
-export const basicFormRow = basicStyles.formRow;
-export const basicFormLabel = basicStyles.formLabel;
-export const basicFormValue = basicStyles.formValue;
-export const basicInputRange = basicStyles.inputRange;
-
-// Simple gap/spacer element template (used between headers and sections)
-export const basicGap = Object.freeze({ height: '0.5rem' });
+// basicStyles and convenience aliases are now exported from templates.js
 
 // Small helper to create a labeled range row using basic form templates.
 // Returns an object so callers can bind events and customize behavior.

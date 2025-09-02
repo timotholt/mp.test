@@ -25,6 +25,7 @@ export function makeSection(title, desc = '', position = 'afterTitle', rightAlig
   h.style.fontWeight = 'var(--ui-modal-subtitle-weight);'
   h.style.fontSize = 'var(--ui-modal-subtitle-size)';
   h.style.color = 'var(--ui-modal-subtitle-fg)';
+  h.style.userSelect = 'none';
   header.appendChild(h);
 
   // If we have a quip
@@ -34,6 +35,7 @@ export function makeSection(title, desc = '', position = 'afterTitle', rightAlig
     q.textContent = String(desc);
     q.style.fontSize = 'var(--ui-modal-subtitle-quip-size)';
     q.style.color = 'var(--ui-modal-subtitle-quip-fg)';
+    q.style.userSelect = 'none';
     q.style.marginLeft = rightAlign ? 'auto' : '0';
     header.appendChild(q);
   }

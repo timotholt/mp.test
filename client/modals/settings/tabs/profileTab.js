@@ -4,6 +4,7 @@ import * as LS from '../../../core/localStorage.js';
 import { makeSection, makeNote, createInputRow, wireFocusHighlight } from '../uiHelpers.js';
 import { UI } from '../../../core/ui/controls.js';
 import { getUser, ensureProfileForCurrentUser, getClient } from '../../../core/auth/supabaseAuth.js';
+import { createUiElement, basicButton } from '../../../core/ui/theme/elements.js';
 
 export function renderProfileTab(container) {
   if (!container) return;
@@ -83,13 +84,27 @@ export function renderProfileTab(container) {
     nameInput.style.flex = '1'; nameInput.style.width = '100%';
     try { nameInput.id = 'settings-nickname'; nickLabel.htmlFor = 'settings-nickname'; } catch (_) {}
 
-    const diceBtn = document.createElement('button');
-    diceBtn.type = 'button'; diceBtn.title = 'Roll a random nickname';
-    diceBtn.style.position = 'absolute'; diceBtn.style.right = '0'; diceBtn.style.top = '50%'; diceBtn.style.transform = 'translateY(-50%)';
+    const diceBtn = createUiElement([
+      basicButton,
+      {
+        __tag: 'button', // need real button to host SVG content
+        position: 'absolute',
+        right: '0',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--ui-bright, var(--ui-highlight))',
+        padding: '0',
+        boxSizing: 'border-box',
+      }
+    ]);
+    try { diceBtn.type = 'button'; } catch (_) {}
+    try { diceBtn.title = 'Roll a random nickname'; diceBtn.setAttribute('aria-label', 'Roll a random nickname'); } catch (_) {}
     try { const s = UI?.iconSize ?? 18; diceBtn.style.width = `${s}px`; diceBtn.style.height = `${s}px`; } catch (_) {}
-    diceBtn.style.display = 'inline-flex'; diceBtn.style.alignItems = 'center'; diceBtn.style.justifyContent = 'center';
-    diceBtn.style.background = 'transparent'; try { if (UI?.border) diceBtn.style.border = UI.border; } catch (_) {}
-    diceBtn.style.borderRadius = '8px'; diceBtn.style.boxSizing = 'border-box'; diceBtn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))'; diceBtn.style.cursor = 'pointer';
+    // Preserve theme-driven border if provided via UI helpers
+    try { if (UI?.border) diceBtn.style.border = UI.border; } catch (_) {}
     diceBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/></svg>';
     diceBtn.onclick = () => {
       try {

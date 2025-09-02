@@ -3,7 +3,8 @@
 // Minimal, commented, and human-readable per project conventions.
 
 import { makeSection, attachWheel } from '../uiHelpers.js';
-import { createUiElement, basicSubtitle, basicGap, basicButton, createRangeElement } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, createRangeElement } from '../../../core/ui/theme/elements.js';
+import { getQuip } from '../../../core/ui/quip.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
 const DISPLAY_QUIPS = [
@@ -33,17 +34,13 @@ const DISPLAY_QUIPS = [
 
 export function renderDisplayTab(container) {
 
-  // // This is how I expect these things to be used (template, text, id)
-  // container.appendChild(createUiElement(basicSubtitle, 'Display', 'display-tab-subtitle'));
-  // container.appendChild(createUiElement(basicGap));
-
-  // Section header: random quip aligned upper-right
-  const quip = DISPLAY_QUIPS[Math.floor(Math.random() * DISPLAY_QUIPS.length)];
+  // Section header: rotating quip aligned upper-right (via quip library)
+  const quip = getQuip('settings.display.header', DISPLAY_QUIPS);
   const sec = makeSection('Display', quip, 'afterTitle', true);
   container.appendChild(sec);
 
   // Font Size slider (root rem scale) shown in pixels
-  const { row: fsRow, label: fsLbl, input: fsRng, value: fsVal, reset: fsReset } = createRangeElement(
+  const { row: fsRow, input: fsRng, value: fsVal, reset: fsReset } = createRangeElement(
     80, 120, 1, 100, 'Font Size:', {
       storageKey: 'ui_font_scale',
       attachWheel,

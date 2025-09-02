@@ -1,11 +1,15 @@
 // UI Elements facade: exports creation helpers and common templates
-// Keeps templates in themeManager, while providing a clean entry-point for UI element creation.
+// Decoupled: factories from themeManager, templates from templates.js
 
 export {
   // Factories
   createUiElement,
   createRangeElement,
+} from './themeManager.js';
+
+export {
   // Common templates
+  basicStyles,
   basicTitle,
   basicSubtitle,
   basicQuipTitle,
@@ -19,5 +23,5 @@ export {
   basicFormLabel,
   basicFormValue,
   basicInputRange,
-  basicGap
-} from './themeManager.js';
+  basicGap,
+} from './templates.js';
