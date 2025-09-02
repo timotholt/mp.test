@@ -1,52 +1,41 @@
 // Centralized UI helpers for Settings tabs
 // Minimal, human-readable implementations with no external CSS.
 // Each function mirrors usage patterns in tabs and keeps styling inline.
+import { createUiElement, basicSection, basicSectionHeader, basicSectionRule, basicSubtitle, basicQuipSubtitle } from '../../core/ui/theme/elements.js';
 
 // Create a section wrapper with a title and optional quip/description.
 // makeSection(title, desc = '', position = 'afterTitle', rightAlign = false, underline = true)
 // Returns a container element callers can append content to.
 export function makeSection(title, desc = '', position = 'afterTitle', rightAlign = false, underline = true) {
-  const sec = document.createElement('div');
-  sec.className = 'sf-sec';
-  sec.style.display = 'block';
-  sec.style.margin = '0.5rem 0 0.75rem 0';
+  // Container
+  const sec = createUiElement(basicSection);
+  try { sec.className = 'sf-sec'; } catch (_) {}
 
-  const header = document.createElement('div');
-  header.className = 'sf-sec-hdr';
-  header.style.display = 'flex';
-  header.style.alignItems = 'baseline';
-  header.style.justifyContent = rightAlign ? 'space-between' : 'flex-start';
-  header.style.gap = '0.75rem';
+  // Header
+  const header = createUiElement([
+    basicSectionHeader,
+    { justifyContent: rightAlign ? 'space-between' : 'flex-start' }
+  ]);
+  try { header.className = 'sf-sec-hdr'; } catch (_) {}
 
-  // Add title
-  const h = document.createElement('div');
-  h.className = 'sf-sec-subtitle';
-  h.textContent = String(title || '');
-  h.style.fontWeight = 'var(--ui-modal-subtitle-weight);'
-  h.style.fontSize = 'var(--ui-modal-subtitle-size)';
-  h.style.color = 'var(--ui-modal-subtitle-fg)';
-  h.style.userSelect = 'none';
+  // Title
+  const h = createUiElement(basicSubtitle, String(title || ''));
+  try { h.className = 'sf-sec-subtitle'; } catch (_) {}
   header.appendChild(h);
 
-  // If we have a quip
+  // Optional quip/description
   if (desc) {
-    const q = document.createElement('div');
-    q.className = 'sf-sec-quip';
-    q.textContent = String(desc);
-    q.style.fontSize = 'var(--ui-modal-subtitle-quip-size)';
-    q.style.color = 'var(--ui-modal-subtitle-quip-fg)';
-    q.style.userSelect = 'none';
-    q.style.marginLeft = rightAlign ? 'auto' : '0';
+    const q = createUiElement(basicQuipSubtitle, String(desc));
+    try { q.className = 'sf-sec-quip'; } catch (_) {}
+    try { q.style.marginLeft = rightAlign ? 'auto' : '0'; } catch (_) {}
     header.appendChild(q);
   }
 
   // Title/quip goes first; optional underline below; rows/control content follow by callers
   sec.appendChild(header);
   if (underline) {
-    const hr = document.createElement('div');
-    hr.className = 'sf-sec-hr';
-    hr.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))';
-    hr.style.margin = '0.25rem 0 0.5rem 0';
+    const hr = createUiElement(basicSectionRule);
+    try { hr.className = 'sf-sec-hr'; } catch (_) {}
     sec.appendChild(hr);
   }
   return sec;

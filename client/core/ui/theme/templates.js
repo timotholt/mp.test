@@ -108,6 +108,25 @@ export const basicStyles = Object.freeze({
     __tag: 'input',
     __type: 'range',
     flex: '1'
+  },
+
+  // Section scaffolding
+  section: {
+    __tag: 'div',
+    display: 'block',
+    m: '0.5rem 0 0.75rem 0'
+  },
+  sectionHeader: {
+    __tag: 'div',
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.75rem',
+    justifyContent: 'flex-start'
+  },
+  sectionRule: {
+    __tag: 'div',
+    borderTop: '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))',
+    m: '0.25rem 0 0.5rem 0'
   }
 });
 
@@ -125,6 +144,9 @@ export const basicFormRow = basicStyles.formRow;
 export const basicFormLabel = basicStyles.formLabel;
 export const basicFormValue = basicStyles.formValue;
 export const basicInputRange = basicStyles.inputRange;
+export const basicSection = basicStyles.section;
+export const basicSectionHeader = basicStyles.sectionHeader;
+export const basicSectionRule = basicStyles.sectionRule;
 
 // Simple gap/spacer element template (used between headers and sections)
 export const basicGap = Object.freeze({ height: '0.5rem' });

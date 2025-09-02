@@ -23,5 +23,8 @@ export {
   basicFormLabel,
   basicFormValue,
   basicInputRange,
+  basicSection,
+  basicSectionHeader,
+  basicSectionRule,
   basicGap,
 } from './templates.js';
