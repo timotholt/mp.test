@@ -789,6 +789,8 @@ export const basicStyles = Object.freeze({
     borderRadius: 'var(--ui-card-radius)',
     py: '0.25rem',
     px: '0.625rem',
+    fontSize: 'var(--ui-fontsize-small)',
+    fontWeight: 'var(--ui-fontweight-normal)',
     pointer: true,
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer)',
