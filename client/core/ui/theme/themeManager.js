@@ -216,6 +216,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
           saturation: preset.saturation,
           // Use preset-provided intensity when available; fall back to a sane default
           intensity: (preset.intensity != null ? preset.intensity : 60),
+          // Apply preset-provided foreground text brightness (0..100; 50 is neutral)
+          fgBrightness: preset.fgBrightness,
           borderStrength: preset.border,
           glowStrength: preset.glow,
           // Map preset transparency percent -> opacity multiplier used by CSS
@@ -449,9 +451,12 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       root.style.setProperty('--ui-bright', bright);
 
       // Foreground brightness application (override locked defaults at runtime)
-      // Map 0..100 -> factor 0.6..1.4 (baseline 50 -> 1.0)
+      // Map: extend lower dimming. 0→0.4, 50→1.0, 100→1.4 (piecewise-linear)
       try {
-        const f = 0.6 + (fgBrightness / 100) * 0.8;
+        const b = fgBrightness;
+        let f;
+        if (b >= 50) { f = 1 + ((b - 50) / 50) * 0.4; }
+        else { f = 0.4 + (b / 50) * 0.6; }
         const clamp255 = (x) => Math.max(0, Math.min(255, Math.round(x)));
         // Base grayscale anchors from LockedThemeDefaults
         const baseMain = 220, baseMuted = 200, baseQuip = 176, baseWeak = 144;

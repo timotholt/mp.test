@@ -278,10 +278,15 @@ export function renderThemeTab(container) {
         // Match other knobs' hover/focus glow
         try { txtKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
+        // Centering fudge: align spectrum ring vertically like other knobs
+        try { txtKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
 
         knobRow.appendChild(makeCol(txtKn.el, 'Text Brightness'));
 
         container.appendChild(knobRow);
+
+        // Spacer between knob row and Transparency slider (exactly 1rem)
+        try { const spacer = document.createElement('div'); spacer.style.height = '1rem'; spacer.style.width = '100%'; spacer.style.pointerEvents = 'none'; container.appendChild(spacer); } catch (_) {}
 
         // Initialize knob values from persisted state (silent)
         try {
@@ -383,6 +388,11 @@ export function renderThemeTab(container) {
   try {
     const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
     if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
+  } catch (_) {}
+  // New section header to group Gradient / Overlay Darkness / Overlay Blur
+  try {
+    container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
+    container.appendChild(makeSection('Backdrop & Depth', 'Surface gradient, dimming, and blur', 'afterTitle', true));
   } catch (_) {}
   container.appendChild(grRow);
 
