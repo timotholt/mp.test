@@ -239,15 +239,15 @@ function ensureStyle() {
   .sf-tooltip {
     position: fixed; left: 0; top: 0; z-index: 2147483600; pointer-events: none;
     color: var(--ui-fg, #eee); font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
-    padding: 6px 8px; border-radius: 6px;
+    padding: 6px 8px; border-radius: var(--ui-card-radius, 6px);
     /* Theme variables with fallbacks */
     background: linear-gradient(180deg,
-      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
-      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
+      var(--sf-tip-bg-top, var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1))))) 0%,
+      var(--sf-tip-bg-bottom, var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1))))) 100%
     );
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)),
-                var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18));
+    border: 1px solid var(--sf-tip-border, var(--ui-bright));
+    box-shadow: var(--sf-tip-glow-outer, var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))),
+                var(--sf-tip-glow-inset, var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18)));
     text-shadow: var(--sf-tip-text-glow, 0 0 9px rgba(120,170,255,0.70));
     backdrop-filter: var(--sf-tip-backdrop, blur(4px) saturate(1.2));
     transform: translate(-9999px, -9999px);
@@ -256,11 +256,11 @@ function ensureStyle() {
     content: '';
     position: absolute; width: 8px; height: 8px; left: 10px; top: 100%;
     background: linear-gradient(180deg,
-      var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
-      var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
+      var(--sf-tip-bg-top, var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1))))) 0%,
+      var(--sf-tip-bg-bottom, var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1))))) 100%
     );
-    border-right: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    border-bottom: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    border-right: 1px solid var(--sf-tip-border, var(--ui-bright));
+    border-bottom: 1px solid var(--sf-tip-border, var(--ui-bright));
     transform: translateY(-4px) rotate(45deg);
     filter: var(--sf-tip-arrow-glow, drop-shadow(0 0 9px rgba(120,170,255,0.35)));
   }
@@ -269,7 +269,7 @@ function ensureStyle() {
     position: fixed; left: 0; top: 0; height: 1px; width: 0; z-index: 2147483599;
     pointer-events: none;
     /* Match tooltip outline hue/glow via theme variables */
-    background: var(--sf-tip-line-color, rgba(120,170,255,0.70));
+    background: var(--sf-tip-line-color, var(--ui-bright));
     box-shadow: var(--sf-tip-line-glow-outer, 0 0 18px rgba(120,170,255,0.33)),
                var(--sf-tip-line-glow-core, 0 0 3px rgba(120,170,255,0.70));
     transform-origin: 0 50%;
