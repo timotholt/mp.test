@@ -580,12 +580,14 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
     const intensity = parseFloat(localStorage.getItem('ui_intensity')); // 0..100
     const fontScale = parseFloat(localStorage.getItem('ui_font_scale')); // 0.8..1.2
     const gradient = parseFloat(localStorage.getItem('ui_gradient')); // 0..100
+    const milkinessLS = parseFloat(localStorage.getItem('ui_milkiness')); // 0..10 (px)
     const satOverride = parseFloat(localStorage.getItem('ui_saturation')); // optional 0..100
     const params = {};
     if (Number.isFinite(hue)) params.hue = hue;
     if (Number.isFinite(intensity)) params.intensity = intensity;
     if (Number.isFinite(fontScale)) params.fontScale = fontScale;
     if (Number.isFinite(gradient)) params.gradient = gradient;
+    if (Number.isFinite(milkinessLS)) params.milkiness = milkinessLS;
     if (Number.isFinite(satOverride)) params.saturation = satOverride;
 
     // First-run detection
