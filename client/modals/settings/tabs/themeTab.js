@@ -351,7 +351,10 @@ export function renderThemeTab(container) {
     const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
     const mult = parseFloat(css);
     const p = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
-    opSet && opSet(p);
+    // Suppress marking preset as Custom during this initial programmatic sync
+    isApplyingPreset = true;
+    try { opSet && opSet(p); } catch (_) {}
+    isApplyingPreset = false;
   } catch (_) {}
   attachHover && attachHover(opRng, opLbl);
   // Unify value styling with label template
