@@ -273,8 +273,8 @@ export function renderControlTab(container) {
       return;
     }
 
-    // Match previous look: rule directly after the title (before any quip)
-    const gSec = makeSection(g.title, g.quip, 'afterTitle');
+    // Match previous look; right-align quip for Extended with one-liner
+    const gSec = makeSection(g.title, g.quip, 'afterTitle', g.id === 'extended');
     // try { gSec.style.margin = '1rem 0'; } catch (_) {}
     container.appendChild(gSec);
 

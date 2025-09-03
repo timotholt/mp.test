@@ -27,6 +27,7 @@ export function renderMovementGroup({
     col.className = 'sf-kb-move-col';
     const titleEl = createUiElement(basicFormLabel, title);
     try { titleEl.classList.add('sf-kb-move-title'); } catch (_) {}
+    try { titleEl.style.display = 'block'; } catch (_) {}
     col.appendChild(titleEl);
     const circle = document.createElement('div');
     circle.className = 'sf-kb-move-circle';
