@@ -666,6 +666,74 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
     }
   } catch (_) {}
 
+  // Developer utility: export current theme as a presets.js-compatible object.
+  // Reads values from CSS variables and localStorage using the same mappings
+  // as applyDynamicTheme(). No side effects.
+  function exportCurrentPreset() {
+    try {
+      const cs = getComputedStyle(root);
+      const numCss = (name, fb) => {
+        const v = parseFloat(cs.getPropertyValue(name));
+        return Number.isFinite(v) ? v : fb;
+      };
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const round = (v) => Math.round(Number(v) || 0);
+
+      // Core knobs
+      const hue = round(numCss('--ui-hue', 210));
+      const intensity = round(numCss('--ui-intensity', 60));
+
+      // Saturation: prefer LS override; otherwise derive from intensity (0..85)
+      let satLS = NaN;
+      try { satLS = parseFloat(localStorage.getItem('ui_saturation')); } catch (_) {}
+      const saturation = round(Number.isFinite(satLS) ? clamp(satLS, 0, 100) : clamp(intensity * 0.8, 0, 85));
+
+      // Border / glow strengths (LS-backed, with sensible fallbacks)
+      let border = parseFloat(localStorage.getItem('ui_border_intensity'));
+      if (!Number.isFinite(border)) border = 80;
+      let glow = parseFloat(localStorage.getItem('ui_glow_strength'));
+      if (!Number.isFinite(glow)) glow = 18;
+
+      // Transparency: inverse of opacity multiplier (MMAX = 2.5)
+      const MMAX = 2.5;
+      let m = parseFloat(localStorage.getItem('ui_opacity_mult'));
+      if (!Number.isFinite(m)) { m = numCss('--ui-opacity-mult', MMAX); }
+      const transparency = round(100 - clamp((m / MMAX) * 100, 0, 100));
+
+      // Gradient (CSS var) and blur (strip px)
+      const gradient = round(numCss('--ui-gradient', 20));
+      const blur = round(parseFloat(cs.getPropertyValue('--ui-backdrop-blur')) || 0);
+
+      // Overlay darkness: LS (0..100) else CSS var (0..1 -> percent)
+      let overlayDarkness = parseFloat(localStorage.getItem('ui_overlay_darkness'));
+      if (!Number.isFinite(overlayDarkness)) {
+        overlayDarkness = round(clamp((parseFloat(cs.getPropertyValue('--ui-overlay-darkness')) || 0) * 100, 0, 100));
+      } else {
+        overlayDarkness = round(clamp(overlayDarkness, 0, 100));
+      }
+
+      // Foreground text brightness (0..100; 50 neutral)
+      let fgBrightness = parseFloat(localStorage.getItem('ui_fg_brightness'));
+      if (!Number.isFinite(fgBrightness)) fgBrightness = 50;
+      fgBrightness = round(clamp(fgBrightness, 0, 100));
+
+      const out = {
+        hue,
+        saturation,
+        intensity,
+        border: round(border),
+        glow: round(glow),
+        transparency,
+        gradient,
+        overlayDarkness,
+        blur,
+        fgBrightness
+      };
+      try { console.log('[UITheme] Export current preset:', out); } catch (_) {}
+      return out;
+    } catch (_) { return null; }
+  }
+
   // Expose lightweight API for future theme switching
   try {
     window.UITheme = {
@@ -673,7 +741,9 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       applyDynamicTheme,
       // Expose presets so Settings UI can read values when syncing knobs
       presets: themePresets,
-      get active() { return state.active; }
+      get active() { return state.active; },
+      // Dev-only helper to export the current theme in presets.js format
+      exportCurrentPreset
     };
   } catch (_) {}
 

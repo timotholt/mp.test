@@ -68,14 +68,27 @@ export function renderThemeTab(container) {
   const setTheme = (name) => lsSet('grimDark.theme', name);
   const saveLastPresetIfReal = () => { const cur = getTheme(); if (cur && cur.toLowerCase() !== 'custom') lsSet('grimDark.theme.lastPreset', cur); };
   const lastPresetOrDefault = (d = 'Steel Blue') => { const last = (lsGet('grimDark.theme.lastPreset', '').trim()); return last || d; };
-  const DEFAULTS = {
-    hue: 210,
-    intensity: 60,
-    satFromIntensity: (i) => Math.round(i * 0.8),
-    fgBrightness: 50,
-    milkiness: 3,
-    opacityMMAX: 2.5,
-  };
+  
+  // Defaults: prefer CSS variables as the single source of truth.
+  // Fall back to stable numbers only if CSS is unavailable.
+  const DEFAULTS = (() => {
+    const parseCssNum = (name, fb) => {
+      try {
+        const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+        return Number.isFinite(v) ? v : fb;
+      } catch (_) { return fb; }
+    };
+    return {
+      get hue() { return Math.round(parseCssNum('--ui-hue', 210)); },
+      get intensity() { return Math.round(parseCssNum('--ui-intensity', 60)); },
+      satFromIntensity: (i) => Math.round(i * 0.8),
+      get fgBrightness() { return 50; },
+      // Backdrop blur in px; UI default is 3 if CSS not present
+      get milkiness() { return parseCssNum('--ui-backdrop-blur', 3); },
+      // System constant used across UI for opacity multiplier range
+      opacityMMAX: 2.5,
+    };
+  })();
   const applyKnobChrome = (kn) => {
     if (!kn || !kn.el) return;
     try { kn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
@@ -160,12 +173,27 @@ export function renderThemeTab(container) {
   }
 
   // Style helper: make right-side slider value look like a label (unified template)
-  function styleAsLabel(el) {
+  function styleAsLabel(el, refLabel) {
     try {
-      el.style.color = 'var(--ui-fg)';
-      el.style.fontSize = 'var(--ui-fontsize-small)';
+      // Prefer copying from the real label so it feels identical
+      if (refLabel) {
+        const cs = getComputedStyle(refLabel);
+        el.style.color = cs.color;
+        el.style.fontSize = cs.fontSize;
+        el.style.fontWeight = cs.fontWeight;
+        el.style.opacity = cs.opacity;
+      } else {
+        // Fallback to CSS vars if no reference is provided
+        el.style.color = 'var(--ui-fg)';
+        el.style.fontSize = 'var(--ui-fontsize)';
+      }
       el.style.userSelect = 'none';
     } catch (_) {}
+  }
+
+  // Unified percentage formatter for right-side value labels
+  function fmtPct(p) {
+    try { const v = Math.round(Number(p)); return { text: `${v}%`, title: `${v}%` }; } catch (_) { return { text: `${p}%`, title: `${p}%` }; }
   }
 
   // Optional color knobs (Hue / Saturation / Intensity) + Text Brightness for overlay if available
@@ -252,6 +280,8 @@ export function renderThemeTab(container) {
           // ColorKnobs already applies hue on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
+        // Place Hue tooltip to the left of the knob
+        try { if (hueKn && hueKn.el) hueKn.el.__sfTipPlacementPriority = 'lc,l'; } catch (_) {}
         satKn = CK.createSaturationKnob({
           size: knobSizePx,
           label: 'Saturation',
@@ -304,6 +334,9 @@ export function renderThemeTab(container) {
           }
         });
 
+        // Place Text Brightness tooltip to the right of the knob
+        try { if (txtKn && txtKn.el) { txtKn.el.__sfTipMode = 'far'; txtKn.el.__sfTipPlacementPriority = 'rc,r'; } } catch (_) {}
+
         // Match other knobs' hover/focus glow
         try { txtKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
@@ -317,12 +350,18 @@ export function renderThemeTab(container) {
         // Spacer between knob row and Transparency slider (exactly 1rem)
         try { const spacer = document.createElement('div'); spacer.style.height = '1rem'; spacer.style.width = '100%'; spacer.style.pointerEvents = 'none'; container.appendChild(spacer); } catch (_) {}
 
-        // Initialize knob values from persisted state (silent)
+        // Initialize knob values from current CSS (single source of truth),
+        // falling back to storage and then hard defaults (silent)
         try {
-          const hueInit = clamp(Math.round(lsGetNum('ui_hue', DEFAULTS.hue)), 0, 360);
+          const root = document.documentElement;
+          const cs = getComputedStyle(root);
+
+          const cssHue = parseFloat(cs.getPropertyValue('--ui-hue'));
+          const hueInit = clamp(Math.round(Number.isFinite(cssHue) ? cssHue : lsGetNum('ui_hue', DEFAULTS.hue)), 0, 360);
           setKnob(hueKn, hueInit);
 
-          const intensityInit = clamp(Math.round(lsGetNum('ui_intensity', DEFAULTS.intensity)), 0, 100);
+          const cssInt = parseFloat(cs.getPropertyValue('--ui-intensity'));
+          const intensityInit = clamp(Math.round(Number.isFinite(cssInt) ? cssInt : lsGetNum('ui_intensity', DEFAULTS.intensity)), 0, 100);
           const satStored = lsGetNum('ui_saturation', NaN);
           const satInit = clamp(Number.isFinite(satStored) ? Math.round(satStored) : DEFAULTS.satFromIntensity(intensityInit), 0, 100);
           setKnob(satKn, satInit);
@@ -343,13 +382,14 @@ export function renderThemeTab(container) {
       storageKey: 'ui_gradient',
       attachWheel,
       debugLabel: 'display',
-      toDisplay: (p) => ({ text: `${p}%`, title: `${p}%` }),
+      toDisplay: fmtPct,
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   attachHover && attachHover(grRng, grLbl);
+  attachHover && attachHover(grRng, grVal);
   // Unify value styling with label template
-  try { styleAsLabel(grVal); } catch (_) {}
+  try { styleAsLabel(grVal, grLbl); } catch (_) {}
 
   // Blur slider (backdrop blur 0-10px)
   const { row: mkRow, label: mkLbl, input: mkRng, value: mkVal, set: mkSet } = createRangeElement(
@@ -363,8 +403,9 @@ export function renderThemeTab(container) {
   );
   try { mkLbl.title = 'Background blur behind panels/overlays'; } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
+  attachHover && attachHover(mkRng, mkVal);
   // Unify value styling with label template
-  try { styleAsLabel(mkVal); } catch (_) {}
+  try { styleAsLabel(mkVal, mkLbl); } catch (_) {}
 
   // Transparency slider now grouped under the "Base UI Color" section (no extra header)
 
@@ -374,7 +415,7 @@ export function renderThemeTab(container) {
       storageKey: 'ui_opacity_mult',
       attachWheel,
       debugLabel: 'opacity',
-      toDisplay: (p) => ({ text: `${p}%`, title: `${p}%` }),
+      toDisplay: fmtPct,
       toStorage: (p) => String(((100 - p) / 100) * DEFAULTS.opacityMMAX),
       fromStorage: (s) => {
         const mult = parseFloat(s);
@@ -401,8 +442,9 @@ export function renderThemeTab(container) {
     syncGradientHelper(p);
   } catch (_) {}
   attachHover && attachHover(opRng, opLbl);
+  attachHover && attachHover(opRng, opVal);
   // Unify value styling with label template
-  try { styleAsLabel(opVal); } catch (_) {}
+  try { styleAsLabel(opVal, opLbl); } catch (_) {}
   container.appendChild(opRow);
 
   // Place Gradient and Blur after Transparency now
@@ -423,15 +465,16 @@ export function renderThemeTab(container) {
       storageKey: 'ui_overlay_darkness',
       attachWheel,
       debugLabel: 'display',
-      toDisplay: (p) => ({ text: `${p}%`, title: `${p}%` }),
+      toDisplay: fmtPct,
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try { odLbl.title = 'Dimming behind dialogs/menus'; } catch (_) {}
   attachHover && attachHover(odRng, odLbl);
+  attachHover && attachHover(odRng, odVal);
   container.appendChild(odRow);
   // Unify value styling with label template
-  try { styleAsLabel(odVal); } catch (_) {}
+  try { styleAsLabel(odVal, odLbl); } catch (_) {}
   // Place Overlay Blur after Overlay Darkness
   container.appendChild(mkRow);
 
@@ -463,15 +506,16 @@ export function renderThemeTab(container) {
       storageKey: 'ui_border_intensity',
       attachWheel,
       debugLabel: 'display',
-      toDisplay: (p) => ({ text: `${p}%`, title: `${p}%` }),
+      toDisplay: fmtPct,
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try { biLbl.title = 'Strength of panel borders'; } catch (_) {}
   attachHover && attachHover(biRng, biLbl);
+  attachHover && attachHover(biRng, biVal);
   biRow && container.appendChild(biRow);
   // Unify value styling with label template
-  try { styleAsLabel(biVal); } catch (_) {}
+  try { styleAsLabel(biVal, biLbl); } catch (_) {}
 
   // New: Glow Strength (0-100)
   const { row: gsRow, label: gsLbl, input: gsRng, value: gsVal, set: gsSet } = createRangeElement(
@@ -487,9 +531,10 @@ export function renderThemeTab(container) {
   );
   try { gsLbl.title = 'Strength of panel glow and highlights'; } catch (_) {}
   attachHover && attachHover(gsRng, gsLbl);
+  attachHover && attachHover(gsRng, gsVal);
   container.appendChild(gsRow);
   // Unify value styling with label template
-  try { styleAsLabel(gsVal); } catch (_) {}
+  try { styleAsLabel(gsVal, gsLbl); } catch (_) {}
 
   // Now that all controls exist, wire the Reset to also update their UI values instantly
   try {
@@ -510,6 +555,27 @@ export function renderThemeTab(container) {
     }
   } catch (_) {}
 
+  // Hidden dev hotkey: Ctrl+E to export current settings to console while this tab is active
+  try {
+    const onKey = (ev) => {
+      try {
+        // Auto-cleanup when container is gone
+        if (!document.body.contains(container)) { window.removeEventListener('keydown', onKey); return; }
+        if (ev.ctrlKey && !ev.altKey && !ev.shiftKey && String(ev.key).toLowerCase() === 'e') {
+          const tm = (window && window.UITheme) ? window.UITheme : null;
+          const preset = tm && typeof tm.exportCurrentPreset === 'function' ? tm.exportCurrentPreset() : null;
+          if (preset) {
+            console.log('[ThemeTab] Export (Ctrl+E):', preset);
+            try { console.log(JSON.stringify({ 'My Preset': preset }, null, 2)); } catch (_) {}
+          } else {
+            console.warn('[ThemeTab] UITheme.exportCurrentPreset() unavailable');
+          }
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('keydown', onKey);
+  } catch (_) {}
+
   // Apply a named preset to all sliders and persist values (overlay usage)
   function applyPreset(name) {
     try {
@@ -519,20 +585,18 @@ export function renderThemeTab(container) {
       try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
 
       // Update UI controls from current persisted state/CSS
-      try { const b = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_border_intensity')) || 80))); biSet && biSet(b); } catch (_) {}
-      try { const g = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_glow_strength')) || 18))); gsSet && gsSet(g); } catch (_) {}
-      try { const gr = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_gradient')) || 60))); grSet && grSet(gr); } catch (_) {}
-      try { let m = parseFloat(localStorage.getItem('ui_milkiness')); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkSet && mkSet(m); } catch (_) {}
-      try { const od = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_overlay_darkness')) || 60))); odSet && odSet(od); } catch (_) {}
-      try { const MMAX = 2.5; const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim(); const mult = parseFloat(css); const t = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100; opSet && opSet(t); } catch (_) {}
-      // Keep Gradient helper visibility consistent with current transparency
+      try { const b = clamp(Math.round(lsGetNum('ui_border_intensity', 80)), 0, 100); biSet && biSet(b); } catch (_) {}
+      try { const g = clamp(Math.round(lsGetNum('ui_glow_strength', 18)), 0, 100); gsSet && gsSet(g); } catch (_) {}
+      try { const gr = clamp(Math.round(lsGetNum('ui_gradient', 60)), 0, 100); grSet && grSet(gr); } catch (_) {}
+      try { let m = lsGetNum('ui_milkiness', 3); m = clamp(m, 0, 10); mkSet && mkSet(m); } catch (_) {}
+      try { const od = clamp(Math.round(lsGetNum('ui_overlay_darkness', 60)), 0, 100); odSet && odSet(od); } catch (_) {}
       try {
-        const MMAX = 2.5;
         const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
         const mult = parseFloat(css);
-        const t = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
-        if (t < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; }
-        else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
+        const t = Number.isFinite(mult) ? clamp(Math.round(100 - (mult / DEFAULTS.opacityMMAX) * 100), 0, 100) : 100;
+        opSet && opSet(t);
+        // Keep Gradient helper visibility consistent with current transparency
+        syncGradientHelper(t);
       } catch (_) {}
 
       // Silently sync knobs to the preset values if available
