@@ -9,6 +9,7 @@ import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
 import { createKnob } from '../../../core/ui/knob.js';
+import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 
 export function renderThemeTab(container) {
   // Theme tab is overlay-only; remove variant checks
@@ -98,12 +99,31 @@ export function renderThemeTab(container) {
   const syncGradientHelper = (percent) => {
     try {
       if (percent < 100) {
-        grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)';
+        // RNG quips for gradient
+        const quips = [
+          'Gradients: because flat is yesterday\'s apocalypse.',
+          'Add gradient. Pretend it\'s depth. Profit.',
+          'Surface gradient: subtle flex, big vibes.',
+          'Turn the gradient up and whisper "graphics".',
+          'Make it shiny. Make it dangerous.',
+          'A tasteful gradient never killed anyone. Probably.',
+          'Flat UI is for cowards. Embrace the slope.'
+        ];
+        try { grLbl.removeAttribute('title'); } catch (_) {}
+        updateTooltip(grLbl, getQuip('settings.overlay.gradient', quips));
         grLbl.style.opacity = '1';
       } else {
-        grLbl.title = '';
+        // At 100% transparency the gradient hides behind glass — keep it chill
+        try { grLbl.removeAttribute('title'); } catch (_) {}
+        updateTooltip(grLbl, getQuip('settings.overlay.gradientMaxed', [
+          'Panels fully clear: gradient on stealth mode.',
+          'Nothing to gradient here, move along.',
+          'Transparency 100%: gradient took a lunch break.'
+        ]));
         grLbl.style.opacity = '0.8';
       }
+      // Keep Sci-Fi tooltip text in sync with label
+      // Tooltip text already updated above
     } catch (_) {}
   };
   
@@ -386,6 +406,12 @@ export function renderThemeTab(container) {
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
+  // Attach Sci-Fi tooltip to Gradient label and initialize text
+  try {
+    try { grLbl.removeAttribute('title'); } catch (_) {}
+    attachTooltip(grLbl, { mode: 'near', placement: 'rc' });
+    updateTooltip(grLbl, 'Surface gradient intensity');
+  } catch (_) {}
   attachHover && attachHover(grRng, grLbl);
   attachHover && attachHover(grRng, grVal);
   // Unify value styling with label template
@@ -397,15 +423,28 @@ export function renderThemeTab(container) {
       storageKey: 'ui_milkiness',
       attachWheel,
       debugLabel: 'display',
-      toDisplay: (v) => ({ text: `${Number(v).toFixed(1)}px`, title: `${Number(v).toFixed(1)}px` }),
+      // Display as percentage (0..10px -> 0..100%)
+      toDisplay: (v) => fmtPct(Number(v) * 10),
       onChange: (v) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
-  try { mkLbl.title = 'Background blur behind panels/overlays'; } catch (_) {}
+  try {
+    try { mkLbl.removeAttribute('title'); } catch (_) {}
+    updateTooltip(mkLbl, getQuip('settings.overlay.blur', [
+      'Blur the world. Focus on victory.',
+      'A little blur hides a lot of sins.',
+      'Smudge reality for better UI.',
+      'Blur it like you meant to click that.',
+      "If it's ugly, blur harder.",
+      'Gaussian vibes, battlefield focus.'
+    ]));
+  } catch (_) {}
+  // Attach Sci-Fi tooltip to Blur label and initialize text
+  try { attachTooltip(mkLbl, { mode: 'near', placement: 'rc' }); } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
   attachHover && attachHover(mkRng, mkVal);
   // Unify value styling with label template
-  try { styleAsLabel(mkVal, mkLbl); } catch (_) {}
+  try { styleAsLabel(mkVal, mkLbl); mkVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
 
   // Transparency slider now grouped under the "Base UI Color" section (no extra header)
 
@@ -426,13 +465,16 @@ export function renderThemeTab(container) {
         const mult = ((100 - p) / 100) * DEFAULTS.opacityMMAX;
         try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
         // Gradient tooltip visible only when panels aren’t fully clear
-        try { opLbl.title = 'Higher = clearer panels; lower = more solid'; } catch (_) {}
+        try { opLbl.removeAttribute('title'); } catch (_) {}
+        try { updateTooltip(opLbl, 'Higher = clearer panels; lower = more solid'); } catch (_) {}
         syncGradientHelper(p);
         try { selectCustomPreset(); } catch (_) {}
       }
     }
   );
-  try { opLbl.title = 'Higher = clearer panels; lower = more solid'; } catch (_) {}
+  // Attach Sci-Fi tooltip to Transparency label and initialize text
+  try { opLbl && opLbl.removeAttribute && opLbl.removeAttribute('title'); } catch (_) {}
+  try { attachTooltip(opLbl, { mode: 'near', placement: 'rc' }); updateTooltip(opLbl, 'Higher = clearer panels; lower = more solid'); } catch (_) {}
   // Initialize from CSS var if available (preferred over LS default)
   try {
     const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
@@ -444,7 +486,7 @@ export function renderThemeTab(container) {
   attachHover && attachHover(opRng, opLbl);
   attachHover && attachHover(opRng, opVal);
   // Unify value styling with label template
-  try { styleAsLabel(opVal, opLbl); } catch (_) {}
+  try { styleAsLabel(opVal, opLbl); opVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
   container.appendChild(opRow);
 
   // Place Gradient and Blur after Transparency now
@@ -455,7 +497,14 @@ export function renderThemeTab(container) {
   // New section header to group Gradient / Overlay Darkness / Overlay Blur
   try {
     container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
-    container.appendChild(makeSection('Backdrop & Depth', 'Surface gradient, dimming, and blur', 'afterTitle', true));
+    const bdQuip = getQuip('settings.overlay.backdropDepth', [
+      'Backdrop tricks: gradient, dimming, and blur — the holy trinity.',
+      'A little depth keeps the UI from looking like a PDF.',
+      'Depth effects: tasteful seasoning for your interface stew.',
+      'Turn knobs here until reality looks expensive.',
+      'Layered vibes for layered problems.'
+    ]);
+    container.appendChild(makeSection('Backdrop & Depth', bdQuip, 'afterTitle', true));
   } catch (_) {}
   container.appendChild(grRow);
 
@@ -469,7 +518,18 @@ export function renderThemeTab(container) {
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
-  try { odLbl.title = 'Dimming behind dialogs/menus'; } catch (_) {}
+  try {
+    try { odLbl.removeAttribute('title'); } catch (_) {}
+    updateTooltip(odLbl, getQuip('settings.overlay.darkness', [
+      'Darken the world. Or your mood. Both work.',
+      'Dim the background so your choices look brighter.',
+      'More darkness, fewer distractions. Very brooding.',
+      'If in doubt: more dramatic lighting.',
+      'Overlay darkness: because gritty is in.'
+    ]));
+  } catch (_) {}
+  // Attach Sci-Fi tooltip to Overlay Darkness label and initialize text
+  try { attachTooltip(odLbl, { mode: 'near', placement: 'rc' }); } catch (_) {}
   attachHover && attachHover(odRng, odLbl);
   attachHover && attachHover(odRng, odVal);
   container.appendChild(odRow);
@@ -510,7 +570,9 @@ export function renderThemeTab(container) {
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
-  try { biLbl.title = 'Strength of panel borders'; } catch (_) {}
+  try { biLbl && biLbl.removeAttribute && biLbl.removeAttribute('title'); } catch (_) {}
+  // Attach Sci-Fi tooltip to Border Intensity label and initialize text
+  try { attachTooltip(biLbl, { mode: 'near', placement: 'rc' }); updateTooltip(biLbl, 'Strength of panel borders'); } catch (_) {}
   attachHover && attachHover(biRng, biLbl);
   attachHover && attachHover(biRng, biVal);
   biRow && container.appendChild(biRow);
@@ -523,18 +585,22 @@ export function renderThemeTab(container) {
       storageKey: 'ui_glow_strength',
       attachWheel,
       debugLabel: 'display',
-      toDisplay: (p) => {
-        try { const px = Math.round((p / 100) * 44); return { text: `${px}px`, title: `${p}%` }; } catch (_) { return { text: `${p}%`, title: `${p}%` }; }
-      },
+      // Show as simple percentage to unify all displays
+      toDisplay: fmtPct,
       onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
-  try { gsLbl.title = 'Strength of panel glow and highlights'; } catch (_) {}
+  try { gsLbl && gsLbl.removeAttribute && gsLbl.removeAttribute('title'); } catch (_) {}
+  // Attach Sci-Fi tooltip to Glow Strength label and initialize text
+  try { attachTooltip(gsLbl, { mode: 'near', placement: 'rc' }); updateTooltip(gsLbl, 'Strength of panel glow and highlights'); } catch (_) {}
   attachHover && attachHover(gsRng, gsLbl);
   attachHover && attachHover(gsRng, gsVal);
   container.appendChild(gsRow);
   // Unify value styling with label template
   try { styleAsLabel(gsVal, gsLbl); } catch (_) {}
+
+  // Ensure Gradient value font matches others (explicit size)
+  try { styleAsLabel(grVal, grLbl); grVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
 
   // Now that all controls exist, wire the Reset to also update their UI values instantly
   try {

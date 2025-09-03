@@ -297,6 +297,12 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       let currentFgBrightness = NaN;
       try { currentFgBrightness = parseFloat(localStorage.getItem('ui_fg_brightness')); } catch (_) {}
       const fgBrightness = clamp(params.fgBrightness != null ? Number(params.fgBrightness) : (Number.isFinite(currentFgBrightness) ? currentFgBrightness : 50), 0, 100);
+      // Derive a reusable brightness scale for tokens (50 -> 1.0, 0 -> 0.4, 100 -> 1.4)
+      const fgScale = (function () {
+        const b = fgBrightness;
+        if (b >= 50) return 1 + ((b - 50) / 50) * 0.4;
+        return 0.4 + (b / 50) * 0.6;
+      })();
       // Debug: entry point (verify sliders call into here)
       try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale, gradient, milkiness, borderStrength, glowStrength, overlayDarkness }); } catch (_) {}
 
@@ -374,8 +380,9 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Scale border/glow by user strengths (normalize to keep prior defaults unchanged)
       let borderAlphaEff = clamp(borderAlpha * (borderStrength / 70), 0, 1);
       // Much stronger glow: scale towards 1.0 quickly as glowStrength increases
-      // 0% -> ~0.6x base, 100% -> ~3.0x (clamped to 1)
-      let glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4), 0, 1);
+      // Soften overall glow by ~20% to make max less overpowering
+      // 0% -> ~0.48x base, 100% -> ~2.4x (clamped to 1)
+      let glowAlphaEff = clamp(glowAlpha * (0.6 + (glowStrength / 100) * 2.4) * 0.8, 0, 1);
       // Fade in border/glow over first ~20 intensity points to avoid a big 0→1 step
       const nearZeroFade = Math.min(1, intensity / 20);
       borderAlphaEff *= nearZeroFade;
@@ -417,7 +424,10 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       const cGlow2 = colorFromHSLC({ h: hue, s: sat, l: Math.min(95, light + 30), alpha: Math.min(1, glowAlphaEff + 0.25) });
       const glowOuter = `0 0 ${glowR}px ${cGlow1}, 0 0 ${Math.round(glowR / 2)}px ${cGlow2}`;
       const glowInset = `inset 0 0 ${glowR}px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 20), l: Math.max(25, light - 10), alpha: Math.min(0.30, glowAlphaEff + 0.06) })}`;
-      const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.98 });
+      // Accent "bright" now respects Text Brightness via fgScale
+      const brightLBase = Math.min(95, light + 35);
+      const brightL = clamp(Math.round(brightLBase * fgScale), 0, 98);
+      const bright = colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: brightL, alpha: 0.98 });
       // (reverted) Do not derive a custom inner keycap token; fall back to scrollbar thumb
 
       // Surfaces (alpha scaled by --ui-opacity-mult; gradient strength mixes top/bottom toward flat at 0, dramatic at 100)
@@ -719,8 +729,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
 
       const out = {
         hue,
-        saturation,
         intensity,
+        saturation,
         fgBrightness,
         border: round(border),
         glow: round(glow),
