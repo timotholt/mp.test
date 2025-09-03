@@ -477,62 +477,11 @@ export function renderThemeTab(container) {
   try {
     if (resetBtn) {
       resetBtn.onclick = () => {
+        // Use the same code path as choosing a preset from the dropdown to avoid mismatches
         isApplyingPreset = true;
         try {
-          // Reset theme selection to default preset
-          try { localStorage.setItem('grimDark.theme', 'Steel Blue'); } catch (_) {}
-          try { dd && dd.setValue('Steel Blue', false); } catch (_) {}
-          // Apply preset fully (includes transparency via themeManager)
-          try { window.UITheme && window.UITheme.applyTheme('Steel Blue'); } catch (_) {}
-          try { window.dispatchEvent(new CustomEvent('ui:hue-changed')); } catch (_) {}
-
-          // Sync sliders from current state (passive display)
-          try {
-            let gr = parseFloat(localStorage.getItem('ui_gradient')); if (!Number.isFinite(gr)) gr = 60;
-            gr = Math.max(0, Math.min(100, Math.round(gr)));
-            grSet && grSet(gr);
-          } catch (_) {}
-          try {
-            let m = parseFloat(localStorage.getItem('ui_milkiness')); if (!Number.isFinite(m)) m = 3;
-            m = Math.max(0, Math.min(10, m));
-            mkSet && mkSet(m);
-          } catch (_) {}
-          try {
-            let od = parseFloat(localStorage.getItem('ui_overlay_darkness')); if (!Number.isFinite(od)) od = 60;
-            od = Math.max(0, Math.min(100, Math.round(od)));
-            odSet && odSet(od);
-          } catch (_) {}
-          try {
-            let b = parseFloat(localStorage.getItem('ui_border_intensity')); if (!Number.isFinite(b)) b = 80;
-            b = Math.max(0, Math.min(100, Math.round(b)));
-            biSet && biSet(b);
-          } catch (_) {}
-          try {
-            let g = parseFloat(localStorage.getItem('ui_glow_strength')); if (!Number.isFinite(g)) g = 18;
-            g = Math.max(0, Math.min(100, Math.round(g)));
-            gsSet && gsSet(g);
-          } catch (_) {}
-          try {
-            const MMAX = 2.5;
-            const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
-            const mult = parseFloat(css);
-            const pNow = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
-            opSet && opSet(pNow);
-            // Gradient label helper visibility
-            if (pNow < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; }
-            else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
-          } catch (_) {}
-
-          // Sync knobs silently to preset hue/intensity
-          try { if (hueKn && hueKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { hue: 207, intensity: 60 }; hueKn.setValue(p.hue, { silent: true }); } } catch (_) {}
-          try { if (satKn && satKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8))); satKn.setValue(satEff, { silent: true }); } } catch (_) {}
-          try { if (briKn && briKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; briKn.setValue(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60))), { silent: true }); } } catch (_) {}
-          try {
-            // Reset Text Brightness to neutral 50 and apply
-            if (txtKn && txtKn.setValue) txtKn.setValue(50, { silent: true });
-            try { localStorage.setItem('ui_fg_brightness', '50'); } catch (_) {}
-            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: 50 }); } catch (_) {}
-          } catch (_) {}
+          if (typeof applyPreset === 'function') applyPreset('Steel Blue');
+          try { dd && dd.setValue && dd.setValue('Steel Blue', false); } catch (_) {}
         } catch (_) {}
         isApplyingPreset = false;
       };
