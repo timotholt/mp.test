@@ -502,8 +502,10 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Tooltip related
       root.style.setProperty('--sf-tip-bg-top', tipTop);
       root.style.setProperty('--sf-tip-bg-bottom', tipBot);
+      // Keep original border brightness behavior (unchanged), only glow is unified
       root.style.setProperty('--sf-tip-border', bright);
-      root.style.setProperty('--sf-tip-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
+      // Match tooltip outer glow to the general surface glow for consistent size/brightness
+      root.style.setProperty('--sf-tip-glow-outer', glowOuter);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
       // Tooltip text glow: scale alpha by glow strength and intensity so tooltips respect glow slider
       const tipTextGlow = `0 0 6px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: Math.min(0.9, glowAlphaEff * Math.min(1, intensity / 20)) })}`;
