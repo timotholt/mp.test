@@ -125,11 +125,14 @@ export function applyScrollbarStyle(options = {}) {
       }
       .${className}::-webkit-scrollbar-thumb {
         background-color: var(--ui-scrollbar-thumb) !important;
-        border: 1px solid var(--ui-surface-border);
+        border: var(--ui-surface-border-css);
         border-radius: var(--ui-scrollbar-radius);
         box-shadow: var(--ui-surface-glow-outer);
       }
-      .${className}:hover::-webkit-scrollbar-thumb { background-color: var(--ui-scrollbar-thumb-hover) !important; }
+      .${className}:hover::-webkit-scrollbar-thumb {
+        background-color: var(--ui-scrollbar-thumb-hover) !important;
+        border-color: var(--ui-bright);
+      }
       .${className}::-webkit-scrollbar-corner { background: transparent !important; }
     `;
     if (existing) {

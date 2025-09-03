@@ -7,6 +7,8 @@ export function ensureControlsKbStyle() {
   st.textContent = `
   .sf-kb-row { display: grid; grid-template-columns: 1fr var(--kb-keycol, 6.5rem); align-items: center; gap: 0.375rem; margin: 0.375rem 0; }
   .sf-kb-label { color: var(--ui-fg, #eee); font-size: 0.8rem; opacity: 0.95; }
+  /* In the 4-col combat grid, let labels shrink so the 4th column (right key) stays visible */
+  .sf-kb-two-col-keys .sf-kb-label { min-width: 0; }
   .sf-kb-toolbar { display: flex; gap: 0.5rem; align-items: center; }
   .sf-btn {
     display: inline-flex; align-items: center; justify-content: center;

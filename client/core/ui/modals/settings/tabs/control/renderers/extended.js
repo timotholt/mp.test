@@ -1,6 +1,7 @@
 // Extended Commands renderer
 // Renders the special layout for the "Extended" group as [prefix] + [interactive letter]
 // Dependencies are passed in to avoid cross-module coupling.
+import { createUiElement, basicFormLabel } from '../../../../../theme/themeManager.js';
 
 export function renderExtendedGroup({
   g,
@@ -23,9 +24,8 @@ export function renderExtendedGroup({
   g.actions.forEach((act) => {
     const row = document.createElement('div');
     row.className = 'sf-kb-row';
-    const lab = document.createElement('div');
-    lab.className = 'sf-kb-label';
-    lab.textContent = act.label;
+    const lab = createUiElement(basicFormLabel, act.label);
+    try { lab.classList.add('sf-kb-label'); } catch (_) {}
     row.appendChild(lab);
     const cell = document.createElement('div');
     cell.className = 'sf-kb-cell';

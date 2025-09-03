@@ -130,11 +130,14 @@
 
   // Expose lightweight API for future theme switching
   try {
-    window.UITheme = {
-      applyTheme,
-      registerTheme,
-      themes,
-      get active() { return state.active; }
-    };
+    // Do not clobber a newer UITheme (with applyDynamicTheme) if it already exists
+    if (!window.UITheme) {
+      window.UITheme = {
+        applyTheme,
+        registerTheme,
+        themes,
+        get active() { return state.active; }
+      };
+    }
   } catch (_) {}
 })();

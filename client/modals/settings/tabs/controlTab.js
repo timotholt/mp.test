@@ -120,6 +120,12 @@ export function renderControlTab(container) {
   // Toolbar: Preset dropdown + Reset button (templated)
   const toolbar = createUiElement(basicSection);
   toolbar.className = 'sf-kb-toolbar';
+  // Layout: left group (label+dropdown), right-aligned Reset
+  try {
+    toolbar.style.display = 'flex';
+    toolbar.style.alignItems = 'center';
+    toolbar.style.gap = '0.5rem';
+  } catch (_) {}
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,
@@ -146,8 +152,16 @@ export function renderControlTab(container) {
   });
   const presetLabel = createUiElement(basicFormLabel, 'Layout Style:');
   try { presetLabel.classList.add('sf-kb-label'); } catch (_) {}
-  toolbar.appendChild(presetLabel);
-  toolbar.appendChild(presetDD.el);
+  // Left group wrapper for spacing between label and dropdown
+  const leftGroup = document.createElement('div');
+  try {
+    leftGroup.style.display = 'flex';
+    leftGroup.style.alignItems = 'center';
+    leftGroup.style.gap = '0.5rem';
+  } catch (_) {}
+  leftGroup.appendChild(presetLabel);
+  leftGroup.appendChild(presetDD.el);
+  toolbar.appendChild(leftGroup);
 
   const resetBtn = createUiElement(basicButton, 'button', 'Reset All');
   try { resetBtn.setAttribute('aria-label', 'Reset all keybindings'); } catch (_) {}
@@ -163,6 +177,8 @@ export function renderControlTab(container) {
     saveBindings(state.preset, state.map);
     renderAll();
   };
+  // Right-justify Reset All
+  try { resetBtn.style.marginLeft = 'auto'; } catch (_) {}
   toolbar.appendChild(resetBtn);
   container.appendChild(toolbar);
 
@@ -286,38 +302,7 @@ export function renderControlTab(container) {
 
     // (Movement Additional) now uses default two-column layout; no special-casing
 
-    // Combat: render as four-column grid like movement additional
-    if (g.id === 'combat') {
-      const wrap = document.createElement('div');
-      wrap.className = 'sf-kb-two-col-keys';
-      gSec.appendChild(wrap);
-
-      function appendPair(act) {
-        if (!act) {
-          const emptyLab = document.createElement('div'); emptyLab.className = 'sf-kb-label'; emptyLab.textContent = '';
-          const emptyCell = document.createElement('div'); emptyCell.className = 'sf-kb-cell'; emptyCell.style.minHeight = '2rem';
-          wrap.appendChild(emptyLab); wrap.appendChild(emptyCell);
-          return;
-        }
-        const lab = document.createElement('div');
-        lab.className = 'sf-kb-label';
-        lab.textContent = act.label;
-        wrap.appendChild(lab);
-        const cell = document.createElement('div');
-        cell.className = 'sf-kb-cell';
-        wrap.appendChild(cell);
-        attachKeyForAction(cell, act);
-      }
-
-      const acts = (g.actions || []).slice();
-      for (let i = 0; i < acts.length; i += 2) {
-        appendPair(acts[i]);
-        appendPair(acts[i + 1]);
-      }
-      // Gap after Combat section
-      try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
-      return; // done with combat
-    }
+    // Combat now uses the default two-column renderer like other groups
 
     // Special layout for Extended Commands: show [prefix] + [interactive letter]
     if (g.id === 'extended') {

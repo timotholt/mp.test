@@ -1,6 +1,7 @@
 // Movement Rings renderer
 // Renders the dual circular movement layout (Primary/Secondary rings)
 // Dependencies are passed in to avoid cross-module coupling.
+import { createUiElement, basicFormLabel } from '../../../../../theme/themeManager.js';
 
 export function renderMovementGroup({
   g,
@@ -24,9 +25,8 @@ export function renderMovementGroup({
   function ringFor(groupId, title, ids) {
     const col = document.createElement('div');
     col.className = 'sf-kb-move-col';
-    const titleEl = document.createElement('div');
-    titleEl.className = 'sf-kb-move-title';
-    titleEl.textContent = title;
+    const titleEl = createUiElement(basicFormLabel, title);
+    try { titleEl.classList.add('sf-kb-move-title'); } catch (_) {}
     col.appendChild(titleEl);
     const circle = document.createElement('div');
     circle.className = 'sf-kb-move-circle';

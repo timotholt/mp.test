@@ -485,6 +485,19 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       root.style.setProperty('--ui-glow-strong', strongGlow);
       root.style.setProperty('--ui-surface-bg-top', surfTop);
       root.style.setProperty('--ui-surface-bg-bottom', surfBot);
+      //============== WARNING ==================================================
+      // We attempted to tie scrollbar thickness to --ui-font-scale using:
+      //   calc(10px * var(--ui-font-scale, 1))
+      // but Chrome's overlay scrollbars on some systems did not respect live
+      // recomputation reliably. Rolling back to a fixed rem value for now.
+      // If you re-enable dynamic scaling, TEST across platforms and themes.
+      //=======================================================================
+      // Scrollbar sizing tokens (consumed by applyScrollbarStyle)
+      // Keep width in rem so it scales with the root font size consistently.
+      root.style.setProperty('--ui-scrollbar-width', '0.625rem');
+      root.style.setProperty('--ui-scrollbar-radius', 'var(--ui-card-radius)');
+      // Re-apply scrollbar style to nudge WebKit to recompute pseudo-element metrics
+      try { applyScrollbarStyle(); } catch (_) {}
 
       // Tooltip related
       root.style.setProperty('--sf-tip-bg-top', tipTop);
@@ -545,6 +558,11 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
   // Apply default UI helpers on boot
   try { applyListRowStyle(); } catch (_) {}
   try { applyScrollbarStyle(); } catch (_) {}
+  // Opt-in the viewport to themed scrollbars (rem-based, scales with font)
+  try {
+    document.body && document.body.classList.add('ui-glass-scrollbar');
+    document.documentElement && document.documentElement.classList.add('ui-glass-scrollbar');
+  } catch (_) {}
   try { applyControlsStyle(); } catch (_) {}
   try { applyGlobalTextStyle(); } catch (_) {}
   // Ensure utility classes are available globally
