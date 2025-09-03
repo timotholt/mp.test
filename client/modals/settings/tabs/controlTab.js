@@ -178,6 +178,9 @@ export function renderControlTab(container) {
   toolbar.appendChild(resetBtn);
   container.appendChild(toolbar);
 
+  // Gap between Presets toolbar and the first key group (e.g., Movement)
+  try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
+
   // Body note
   // container.appendChild(makeNote('Tip: Click a keycap, then press any key. Esc cancels. Backspace/Delete unbind.')); 
 

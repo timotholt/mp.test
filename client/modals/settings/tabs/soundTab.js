@@ -8,6 +8,7 @@ import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createCheckbox } from '../../../core/ui/controls.js';
 import { makeSection } from '../uiHelpers.js';
+import { createUiElement, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
 
 export function renderSoundTab(container) {
   const variant = 'overlay';
@@ -47,7 +48,8 @@ export function renderSoundTab(container) {
 
   // 2) Notifications section
   if (variant === 'overlay') {
-    const spacer = document.createElement('div'); spacer.style.height = '12px'; container.appendChild(spacer);
+    // Standardized gap between Sound Mixer and Notifications
+    try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
     try {
       const notifQuips = [
         'Only the alerts that matter.',
@@ -82,7 +84,8 @@ export function renderSoundTab(container) {
     notifGrid.appendChild(makeCheckboxRow('New game chat message', 'notif_gameChat', 'ui:notif:gameChat'));
     notifGrid.appendChild(makeCheckboxRow('@Mention', 'notif_mention', 'ui:notif:mention'));
   } else {
-    const spacer = document.createElement('div'); spacer.style.height = '12px'; container.appendChild(spacer);
+    // Standardized gap between Sound Mixer and Notifications
+    try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
     const sec = makeSection('Notifications', 'Choose which alerts to receive.', 'afterTitle', true);
     container.appendChild(sec);
 

@@ -507,7 +507,8 @@ function ensureCheckboxStyle() {
     font-weight: 900; font-size: 12px; line-height: 14px; text-align: center;
     color: #fff;
   }
-  .sf-check-text { font-size: 12px; line-height: 1.2; }
+  /* Scale checkbox label text with UI font size template */
+  .sf-check-text { font-size: var(--ui-fontsize-small); line-height: 1.2; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
 }
