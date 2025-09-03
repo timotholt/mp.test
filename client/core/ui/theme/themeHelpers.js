@@ -157,7 +157,10 @@ export function applyControlsStyle(options = {}) {
         background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom));
         color: var(--ui-fg);
         border: 1px solid var(--ui-surface-border);
-        border-radius: 0.5rem;
+        border-radius: var(--ui-card-radius);
+        /* Match button/dropdown height via padding and text scale */
+        padding: 0.375rem 0.625rem;
+        font-size: var(--ui-fontsize-small);
       }
       select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright); }
       select:hover { box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright); }

@@ -71,7 +71,7 @@ export const basicStyles = Object.freeze({
     border: 'var(--ui-surface-border-css)',
     color: 'var(--ui-fg)',
     borderRadius: 'var(--ui-card-radius)',
-    py: '0.25rem',
+    py: '0.425rem',
     px: '0.625rem',
     fontSize: 'var(--ui-fontsize-small)',
     fontWeight: 'var(--ui-fontweight-normal)',
