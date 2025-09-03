@@ -42,7 +42,7 @@ export const LockedThemeDefaults = Object.freeze({
 
   // Locked layout tokens
   '--ui-card-radius': '0.6rem',
-  '--ui-page-padding': '24px',
+  '--ui-page-padding': '1.5rem',
   '--ui-modal-padding': '1rem',
   // Locked border system
   '--ui-border-size': '0.0625rem',
