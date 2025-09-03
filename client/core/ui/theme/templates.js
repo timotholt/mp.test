@@ -79,7 +79,7 @@ export const basicStyles = Object.freeze({
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer)',
       outline: 'var(--ui-surface-border-css)',
-      border: '1px solid var(--ui-bright)'
+      border: '1px solid var(--ui-surface-border)'
     },
     userSelect: 'none'
   },
@@ -185,7 +185,7 @@ export const basicStyles = Object.freeze({
     width: '100%',
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))',
-      border: '1px solid var(--ui-bright)'
+      border: '1px solid var(--ui-surface-border)'
     }
   },
 

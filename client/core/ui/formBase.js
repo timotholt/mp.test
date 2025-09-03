@@ -21,7 +21,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22));
     }
     .btn-outline-glass:hover {
-      border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+      border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
     }
     .btn svg { width: 18px; height: 18px; }
@@ -49,9 +49,9 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
       box-sizing: border-box; max-width: 100%;
     }
     .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-    .input-glass:hover { border-color: var(--ui-bright, ${FALLBACK_FG_COLOR}); }
+    .input-glass:hover { border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR}); }
     .input-glass:focus {
-      border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+      border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
     }
 
@@ -69,7 +69,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     }
     .input-glass:-webkit-autofill:hover,
     #overlay input:-webkit-autofill:hover {
-      border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+      border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
     }
     /* Firefox */

@@ -56,7 +56,7 @@ function ensureLoginStyles() {
   }
   .btn-outline-glass:hover {
     border-color: #dff1ff;
-    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
     box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
   }
@@ -96,7 +96,7 @@ function ensureLoginStyles() {
   /* Allow hover color to win over autofill styles */
   .input-glass:-webkit-autofill:hover,
   #overlay input:-webkit-autofill:hover {
-    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
   }
   /* Firefox */
@@ -107,10 +107,10 @@ function ensureLoginStyles() {
     caret-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
   }
   .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-bright, ${FALLBACK_FG_COLOR}); }
+  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR}); }
   .input-glass:focus {
     border-color: #dff1ff;
-    border-color: var(--ui-bright, ${FALLBACK_FG_COLOR});
+    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
     box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30);
     box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
   }

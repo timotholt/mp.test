@@ -15,7 +15,7 @@ export function ensureControlsKbStyle() {
     color: var(--ui-fg, #eee); border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
     box-shadow: none;
   }
-  .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-bright, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 0.625rem rgba(120,170,255,0.25)); }
+  .sf-btn:hover, .sf-btn:focus-visible { border-color: var(--ui-surface-border, rgba(190,230,255,0.95)); box-shadow: var(--ui-surface-glow-outer, 0 0 0.625rem rgba(120,170,255,0.25)); }
   /* Circular movement layout */
   .sf-kb-move-circle { position: relative; width: 13rem; height: 13rem; margin: 0 0 0.5rem 0; }
   .sf-kb-move-circle .arrow { position: absolute; transform: translate(-50%, -50%); color: var(--ui-fg, #eee); opacity: 0.9; font-size: 1.375rem; line-height: 1; user-select: none; pointer-events: none; text-shadow: var(--ui-text-glow, 0 0 0.375rem rgba(140,190,255,0.35)); font-family: "Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols",sans-serif; }
