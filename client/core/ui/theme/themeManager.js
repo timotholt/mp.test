@@ -688,6 +688,11 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       try { satLS = parseFloat(localStorage.getItem('ui_saturation')); } catch (_) {}
       const saturation = round(Number.isFinite(satLS) ? clamp(satLS, 0, 100) : clamp(intensity * 0.8, 0, 85));
 
+      // Foreground text brightness (0..100; 50 neutral)
+      let fgBrightness = parseFloat(localStorage.getItem('ui_fg_brightness'));
+      if (!Number.isFinite(fgBrightness)) fgBrightness = 50;
+      fgBrightness = round(clamp(fgBrightness, 0, 100));
+
       // Border / glow strengths (LS-backed, with sensible fallbacks)
       let border = parseFloat(localStorage.getItem('ui_border_intensity'));
       if (!Number.isFinite(border)) border = 80;
@@ -712,23 +717,19 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
         overlayDarkness = round(clamp(overlayDarkness, 0, 100));
       }
 
-      // Foreground text brightness (0..100; 50 neutral)
-      let fgBrightness = parseFloat(localStorage.getItem('ui_fg_brightness'));
-      if (!Number.isFinite(fgBrightness)) fgBrightness = 50;
-      fgBrightness = round(clamp(fgBrightness, 0, 100));
-
       const out = {
         hue,
         saturation,
         intensity,
+        fgBrightness,
         border: round(border),
         glow: round(glow),
         transparency,
         gradient,
         overlayDarkness,
         blur,
-        fgBrightness
       };
+      
       try { console.log('[UITheme] Export current preset:', out); } catch (_) {}
       return out;
     } catch (_) { return null; }
