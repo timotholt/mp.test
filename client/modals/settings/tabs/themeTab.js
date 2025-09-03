@@ -11,7 +11,8 @@ import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
 
 export function renderThemeTab(container) {
-  const variant = 'overlay';
+  // Theme tab is overlay-only; remove variant checks
+  // const variant = 'overlay';
   const headerTitle = 'UI Presets';
   const headerDesc = getQuip('settings.overlay.themeTag', [
     'If in doubt, Steel Blue never loses.',
@@ -63,13 +64,15 @@ export function renderThemeTab(container) {
   controlsRow.style.display = 'flex';
   controlsRow.style.alignItems = 'center';
   controlsRow.style.justifyContent = 'space-between';
-  controlsRow.style.gap = '8px';
-  controlsRow.style.margin = '8px 0';
+  // Use rem instead of px for spacing
+  controlsRow.style.gap = '0.5rem';
+  controlsRow.style.margin = '0.5rem 0';
   const leftBox = document.createElement('div');
   leftBox.id = 'theme-hdr-left-panel';
   leftBox.style.display = 'flex';
   leftBox.style.alignItems = 'center';
-  leftBox.style.gap = '8px';
+  // rem gap for consistency
+  leftBox.style.gap = '0.5rem';
   const rightBox = document.createElement('div');
   rightBox.style.display = 'flex';
   rightBox.style.alignItems = 'center';
@@ -86,9 +89,8 @@ export function renderThemeTab(container) {
   (function buildThemeHeader() {
     try {
       const left = sec.querySelector('#theme-hdr-left-panel');
-      if (variant === 'overlay') {
-        // Theme presets: import centralized presets directly (single source of truth)
-        const presets = themePresets;
+      // Theme presets: import centralized presets directly (single source of truth)
+      const presets = themePresets;
 
         const themeTopRow = createUiElement(basicFormRow, 'div');
         const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
@@ -114,7 +116,7 @@ export function renderThemeTab(container) {
           let ddValue = 'Steel Blue';
           if (savedPreset && savedPreset.toLowerCase() === 'custom') ddValue = 'Custom';
           else if (savedPreset && names.includes(savedPreset)) ddValue = savedPreset;
-          dd = createDropdown({ items, value: ddValue, width: '240px', onChange: (val) => {
+          dd = createDropdown({ items, value: ddValue, width: '15rem', onChange: (val) => {
             if (val === 'Custom') {
               try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
               // No immediate apply; user will tweak controls.
@@ -124,32 +126,20 @@ export function renderThemeTab(container) {
               // Apply the preset while suppressing 'Custom' flips from onChange handlers
               isApplyingPreset = true;
               try { if (typeof applyPreset === 'function') applyPreset(val); } catch (_) {}
-              finally { isApplyingPreset = false; }
+              isApplyingPreset = false;
               try { dd && dd.setValue(val, false); } catch (_) {}
             }
           }});
           // Consistent spacing with other dropdowns
           try { if (dd && dd.el) dd.el.style.marginTop = '0.5rem'; } catch (_) {}
         } catch (_) {
-          dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '240px' });
+          dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '15rem' });
           // Consistent spacing even on fallback
           try { if (dd && dd.el) dd.el.style.marginTop = '0.5rem'; } catch (_) {}
         }
         themeTopRow.appendChild(lbl);
         if (dd) themeTopRow.appendChild(dd.el);
         if (left) left.appendChild(themeTopRow); else container.appendChild(themeTopRow);
-      } else {
-        const themeRow = document.createElement('div');
-        themeRow.style.display = 'flex'; themeRow.style.alignItems = 'center'; themeRow.style.gap = '8px'; themeRow.style.marginBottom = '8px';
-        const lbl = document.createElement('label'); lbl.textContent = 'Theme:';
-        const currentTheme = document.createElement('span');
-        currentTheme.textContent = 'Steel Blue';
-        currentTheme.style.opacity = '0.85';
-        currentTheme.style.fontSize = '12px';
-        try { const saved = LS.getItem('theme', null); if (!saved) LS.setItem('theme', 'steelBlue'); } catch (_) {}
-        themeRow.appendChild(lbl); themeRow.appendChild(currentTheme);
-        if (left) left.appendChild(themeRow); else container.appendChild(themeRow);
-      }
     } catch (_) {
       // Fallback: no-op if header cannot be built
     }
@@ -166,9 +156,8 @@ export function renderThemeTab(container) {
   // Mirrors previous inline overlay implementation and initializes from storage
   let hueKn = null, satKn = null, briKn = null;
   try {
-    if (variant === 'overlay') {
-      // Insert "Overall UI" section header before the color knobs
-      try {
+    // Insert "Overall UI" section header before the color knobs
+    try {
         // Generate a separate quip for this section; avoid repeating header quip
         const fallbackQuips = [
           'Small tweaks, big vibes.',
@@ -216,41 +205,51 @@ export function renderThemeTab(container) {
           wrap.style.display = 'flex';
           wrap.style.flexDirection = 'column';
           wrap.style.alignItems = 'center';
-          wrap.style.minWidth = '80px';
-          wrap.style.padding = '4px 2px';
+          // Columns in rem, not px
+          wrap.style.minWidth = '5rem';
+          wrap.style.padding = '0.25rem 0.125rem';
           wrap.style.overflow = 'visible';
           wrap.appendChild(el);
           const cap = document.createElement('div');
           cap.textContent = caption;
-          cap.style.fontSize = '12px';
+          // Use rem units for font sizing
+          cap.style.fontSize = '0.75rem';
           cap.style.opacity = '0.8';
-          cap.style.marginTop = 'calc(14px + 0.5rem)';
+          // 14px ≈ 0.875rem
+          cap.style.marginTop = '1.375rem';
           wrap.appendChild(cap);
           return wrap;
         };
 
+        // Compute knob sizes in rem -> px at runtime (ColorKnobs expects numeric px)
+        let remPx = 16;
+        try { remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; } catch (_) {}
+        const knobSizePx = 3.5 * remPx;      // 56px -> 3.5rem
+        const ringOffsetPx = 1.125 * remPx;  // 18px -> 1.125rem
+
         hueKn = CK.createHueKnob({
-          size: 56,
+          size: knobSizePx,
           label: 'Hue',
-          ringOffset: 18,
+          ringOffset: ringOffsetPx,
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
         satKn = CK.createSaturationKnob({
-          size: 56,
+          size: knobSizePx,
           label: 'Saturation',
-          ringOffset: 18,
+          ringOffset: ringOffsetPx,
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
         briKn = CK.createIntensityKnob({
-          size: 56,
+          size: knobSizePx,
           label: 'Intensity',
-          ringOffset: 18,
+          ringOffset: ringOffsetPx,
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
 
-        try { hueKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
-        try { satKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
-        try { briKn.el.style.setProperty('--kn-ring-global-y', '4px'); } catch (_) {}
+        // Use rem for global ring Y offset
+        try { hueKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
+        try { satKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
+        try { briKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
 
         knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
         knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
@@ -276,7 +275,6 @@ export function renderThemeTab(container) {
           try { if (briKn && briKn.setValue) briKn.setValue(briInit, { silent: true }); } catch (_) {}
         } catch (_) {}
       }
-    }
   } catch (_) {}
 
   // Gradient strength slider (0-100)
@@ -304,9 +302,8 @@ export function renderThemeTab(container) {
   try { mkLbl.title = 'Background blur behind panels/overlays'; } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
 
-  // Insert Transparency section header (overlay only)
-  if (variant === 'overlay') {
-    try {
+  // Insert Transparency section header
+  try {
       const subtleQuips = [
         'Big movements, subtle changes.',
         'If you do not look closely, you may miss it.',
@@ -317,8 +314,7 @@ export function renderThemeTab(container) {
       // Gap before the new section
       container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
       container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips), 'afterTitle', true));
-    } catch (_) {}
-  }
+  } catch (_) {}
 
   // Transparency slider (reversed: 100% = clear, 0% = opaque)
   const MMAX = 2.5;
@@ -377,9 +373,8 @@ export function renderThemeTab(container) {
   // Place Overlay Blur after Overlay Darkness
   container.appendChild(mkRow);
 
-  // Insert Border section header (overlay only)
-  if (variant === 'overlay') {
-    try {
+  // Insert Border section header
+  try {
       const borderQuips = [
         'Life is brighter living on the edge',
         'The sharper the edge, the sharper your blade.',
@@ -398,7 +393,7 @@ export function renderThemeTab(container) {
       container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
       container.appendChild(makeSection('Border', getQuip('settings.overlay.borderTag', borderQuips), 'afterTitle', true));
     } catch (_) {}
-  }
+  
 
   // New: Border Intensity (0-100)
   const { row: biRow, label: biLbl, input: biRng, value: biVal, set: biSet } = createRangeElement(
@@ -484,9 +479,8 @@ export function renderThemeTab(container) {
           try { if (hueKn && hueKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { hue: 207, intensity: 60 }; hueKn.setValue(p.hue, { silent: true }); } } catch (_) {}
           try { if (satKn && satKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8))); satKn.setValue(satEff, { silent: true }); } } catch (_) {}
           try { if (briKn && briKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; briKn.setValue(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60))), { silent: true }); } } catch (_) {}
-        } finally {
-          isApplyingPreset = false;
-        }
+        } catch (_) {}
+        isApplyingPreset = false;
       };
     }
   } catch (_) {}
