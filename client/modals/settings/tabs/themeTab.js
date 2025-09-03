@@ -192,25 +192,6 @@ export function renderThemeTab(container) {
     try { dd && dd.setValue && dd.setValue('Custom', false); } catch (_) {}
   }
 
-  // Style helper: make right-side slider value look like a label (unified template)
-  function styleAsLabel(el, refLabel) {
-    try {
-      // Prefer copying from the real label so it feels identical
-      if (refLabel) {
-        const cs = getComputedStyle(refLabel);
-        el.style.color = cs.color;
-        el.style.fontSize = cs.fontSize;
-        el.style.fontWeight = cs.fontWeight;
-        el.style.opacity = cs.opacity;
-      } else {
-        // Fallback to CSS vars if no reference is provided
-        el.style.color = 'var(--ui-fg)';
-        el.style.fontSize = 'var(--ui-fontsize)';
-      }
-      el.style.userSelect = 'none';
-    } catch (_) {}
-  }
-
   // Unified percentage formatter for right-side value labels
   function fmtPct(p) {
     try { const v = Math.round(Number(p)); return { text: `${v}%`, title: `${v}%` }; } catch (_) { return { text: `${p}%`, title: `${p}%` }; }
@@ -414,8 +395,6 @@ export function renderThemeTab(container) {
   } catch (_) {}
   attachHover && attachHover(grRng, grLbl);
   attachHover && attachHover(grRng, grVal);
-  // Unify value styling with label template
-  try { styleAsLabel(grVal, grLbl); } catch (_) {}
 
   // Blur slider (backdrop blur 0-10px)
   const { row: mkRow, label: mkLbl, input: mkRng, value: mkVal, set: mkSet } = createRangeElement(
@@ -443,8 +422,6 @@ export function renderThemeTab(container) {
   try { attachTooltip(mkLbl, { mode: 'near', placement: 'rc' }); } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
   attachHover && attachHover(mkRng, mkVal);
-  // Unify value styling with label template
-  try { styleAsLabel(mkVal, mkLbl); mkVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
 
   // Transparency slider now grouped under the "Base UI Color" section (no extra header)
 
@@ -486,7 +463,6 @@ export function renderThemeTab(container) {
   attachHover && attachHover(opRng, opLbl);
   attachHover && attachHover(opRng, opVal);
   // Unify value styling with label template
-  try { styleAsLabel(opVal, opLbl); opVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
   container.appendChild(opRow);
 
   // Place Gradient and Blur after Transparency now
@@ -498,7 +474,7 @@ export function renderThemeTab(container) {
   try {
     container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
     const bdQuip = getQuip('settings.overlay.backdropDepth', [
-      'Backdrop tricks: gradient, dimming, and blur — the holy trinity.',
+      'Gradient, dimming, and blur — the holy trinity.',
       'A little depth keeps the UI from looking like a PDF.',
       'Depth effects: tasteful seasoning for your interface stew.',
       'Turn knobs here until reality looks expensive.',
@@ -533,9 +509,6 @@ export function renderThemeTab(container) {
   attachHover && attachHover(odRng, odLbl);
   attachHover && attachHover(odRng, odVal);
   container.appendChild(odRow);
-  // Unify value styling with label template
-  try { styleAsLabel(odVal, odLbl); } catch (_) {}
-  // Place Overlay Blur after Overlay Darkness
   container.appendChild(mkRow);
 
   // Insert Border section header
@@ -576,8 +549,6 @@ export function renderThemeTab(container) {
   attachHover && attachHover(biRng, biLbl);
   attachHover && attachHover(biRng, biVal);
   biRow && container.appendChild(biRow);
-  // Unify value styling with label template
-  try { styleAsLabel(biVal, biLbl); } catch (_) {}
 
   // New: Glow Strength (0-100)
   const { row: gsRow, label: gsLbl, input: gsRng, value: gsVal, set: gsSet } = createRangeElement(
@@ -596,11 +567,6 @@ export function renderThemeTab(container) {
   attachHover && attachHover(gsRng, gsLbl);
   attachHover && attachHover(gsRng, gsVal);
   container.appendChild(gsRow);
-  // Unify value styling with label template
-  try { styleAsLabel(gsVal, gsLbl); } catch (_) {}
-
-  // Ensure Gradient value font matches others (explicit size)
-  try { styleAsLabel(grVal, grLbl); grVal.style.fontSize = 'var(--ui-fontsize)'; } catch (_) {}
 
   // Now that all controls exist, wire the Reset to also update their UI values instantly
   try {

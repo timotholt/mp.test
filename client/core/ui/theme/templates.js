@@ -101,7 +101,8 @@ export const basicStyles = Object.freeze({
   },
   formValue: {
     __tag: 'span',
-    color: 'var(--ui-fg-muted, #ccc)',
+    color: 'var(--ui-fg)',
+    fontSize:'var(--ui-fontsize-small)',
     width: '3.25rem',
     textAlign: 'right',
     userSelect: 'none'
