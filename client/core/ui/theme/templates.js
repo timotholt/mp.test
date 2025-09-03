@@ -102,7 +102,8 @@ export const basicStyles = Object.freeze({
     __tag: 'span',
     color: 'var(--ui-fg-muted, #ccc)',
     width: '3.25rem',
-    textAlign: 'right'
+    textAlign: 'right',
+    userSelect: 'none'
   },
   inputRange: {
     __tag: 'input',
@@ -229,3 +230,5 @@ export const basicHoverGlowOff = basicStyles.hoverGlowOff;
 
 // Simple gap/spacer element template (used between headers and sections)
 export const basicGap = Object.freeze({ height: '0.5rem' });
+// Larger gap specifically for separating major sections
+export const basicGapBetweenSections = Object.freeze({ height: '1rem' });

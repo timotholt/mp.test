@@ -7,6 +7,7 @@ import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
+import { themePresets } from '../../../core/ui/theme/presets.js';
 
 export function renderThemeTab(container) {
   const variant = 'overlay';
@@ -98,18 +99,8 @@ export function renderThemeTab(container) {
     try {
       const left = sec.querySelector('#theme-hdr-left-panel');
       if (variant === 'overlay') {
-        // Theme presets are centralized in UITheme
-        const themePresets = (() => {
-          try {
-            const tm = (window && window.UITheme) ? window.UITheme : null;
-            if (tm) {
-              if (typeof tm.getPresets === 'function') return tm.getPresets();
-              if (tm.presets) return tm.presets;
-            }
-          } catch (_) {}
-          // Minimal fallback if UITheme isn't ready
-          return { 'Steel Blue': { hue: 207, intensity: 60, border: 80, glow: 18, transparency: 0, gradient: 60, overlayDarkness: 60, blur: 3 } };
-        })();
+        // Theme presets: import centralized presets directly (single source of truth)
+        const presets = themePresets;
 
         const themeTopRow = document.createElement('div');
         themeTopRow.style.display = 'flex';
@@ -138,7 +129,7 @@ export function renderThemeTab(container) {
           }
           // Old alias migration
           if (savedPreset === 'Emerald') { savedPreset = 'Verdant Veil'; try { localStorage.setItem('grimDark.theme', savedPreset); } catch (_) {} }
-          const names = Object.keys(themePresets);
+          const names = Object.keys(presets);
           const items = [{ label: 'Custom', value: 'Custom' }].concat(names.map(n => ({ label: n, value: n })));
           let ddValue = 'Steel Blue';
           if (savedPreset && savedPreset.toLowerCase() === 'custom') ddValue = 'Custom';

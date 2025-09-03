@@ -3,7 +3,8 @@
 // Minimal, commented, and human-readable per project conventions.
 
 import { makeSection, attachWheel } from '../uiHelpers.js';
-import { createUiElement, basicButton, createRangeElement } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
+import { createDropdown } from '../../../core/ui/controls.js';
 import { getQuip } from '../../../core/ui/quip.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
@@ -32,6 +33,15 @@ const DISPLAY_QUIPS = [
   'Real men move the slider all the way left.'
 ];
 
+// Quips for Dungeon Settings section (fonts, tiles, terminal vibes)
+const DUNGEON_QUIPS = [
+  'Pick a font. Slay a goblin. In that order.',
+  'ASCII today, victory tomorrow.',
+  'The dungeon prefers monospaced manners.',
+  'Fonts so sharp, they crit on read.',
+  'Serifs in the dungeon? Bold move.',
+];
+
 export function renderDisplayTab(container) {
 
   // Section header: rotating quip aligned upper-right (via quip library)
@@ -55,10 +65,53 @@ export function renderDisplayTab(container) {
   fsVal.id = `settings-ui-fontscale-ovl-val`;
   container.appendChild(fsRow);
 
+  // Spacer between sections (1rem)
+  container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
+
+  // Dungeon Settings section
+  const dquip = getQuip('settings.dungeon.header', DUNGEON_QUIPS);
+  const dsec = makeSection('Dungeon Settings', dquip, 'afterTitle', true);
+  container.appendChild(dsec);
+
+  // Keep a reference to the Dungeon Font dropdown for Reset wiring
+  let dfDdRef = null;
+
+  // Dungeon Font dropdown (placeholder for ASCII font control)
+  // Uses shared dropdown factory for consistent visuals; persists selection.
+  try {
+    const dfRow = createUiElement(basicFormRow, 'div');
+    const dfLbl = createUiElement(basicFormLabel, 'Dungeon Font:');
+
+    let savedFont = 'A';
+    try { const s = localStorage.getItem('ui_dungeon_font'); if (s) savedFont = s; } catch (_) {}
+    const items = [
+      { label: 'Font A', value: 'A' },
+      { label: 'Font B', value: 'B' },
+    ];
+    // Use rem width so the control scales with UI font size
+    const dfDd = createDropdown({ items, value: savedFont, width: '14rem', onChange: (val) => {
+      try { localStorage.setItem('ui_dungeon_font', String(val)); } catch (_) {}
+      // Placeholder: future hook to update dungeon canvas font
+    }});
+    dfDdRef = dfDd;
+    // Top margin belongs to the dropdown element (not the row)
+    try { dfDd.el.style.marginTop = '0.5rem'; } catch (_) {}
+
+    dfRow.appendChild(dfLbl);
+    dfRow.appendChild(dfDd.el);
+    dsec.appendChild(dfRow);
+  } catch (_) {}
+
   // Create footer row with Reset button aligned bottom-right
-  const footer = createUiElement({ display: 'flex', justifyContent: 'flex-end', mt: 8 }, 'div');
+  const footer = createUiElement({ display: 'flex', justifyContent: 'flex-end', mt: '0.5rem' }, 'div');
   const resetBtn = createUiElement(basicButton, 'Reset');
-  resetBtn.onclick = () => { try { fsReset && fsReset(); } catch (_) {} };
+  resetBtn.onclick = () => {
+    try { fsReset && fsReset(); } catch (_) {}
+    try {
+      localStorage.setItem('ui_dungeon_font', 'A');
+      dfDdRef && dfDdRef.setValue && dfDdRef.setValue('A', true);
+    } catch (_) {}
+  };
   footer.appendChild(resetBtn);
   container.appendChild(footer);
 }

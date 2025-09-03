@@ -2,7 +2,7 @@
 // Keep styles in one place so Games/Players panels and Chat stay consistent.
 
 export const UI = {
-  border: '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))',
+  border: 'var(--ui-surface-border-css)',
   rowMinHeight: '46px',
   iconSize: 32,
   leftGap: '0.5rem',
@@ -216,15 +216,19 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'space-between';
-  btn.style.gap = '8px';
-  btn.style.padding = '6px 10px';
+  btn.style.gap = '0.5rem';
+  btn.style.padding = '0.375rem 0.625rem';
   btn.style.width = '100%';
   btn.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
   btn.style.color = 'var(--ui-fg, #eee)';
-  btn.style.border = UI.border;
-  btn.style.borderRadius = '10px';
+  btn.style.border = 'var(--ui-surface-border-css)';
+  btn.style.borderRadius = 'var(--ui-card-radius)';
   btn.style.cursor = 'pointer';
-  btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.25))';
+  // Scale text with UI font size and show glow only on hover/focus (button parity)
+  btn.style.fontSize = 'var(--ui-fontsize-small)';
+  // Avoid text selection when dragging over the closed dropdown label/caret
+  btn.style.userSelect = 'none';
+  btn.style.boxShadow = 'none';
   try { btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false'); } catch (_) {}
 
   const btnLabel = document.createElement('span');
@@ -241,22 +245,23 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   const menu = document.createElement('div');
   menu.style.position = 'absolute';
   menu.style.left = '0';
-  menu.style.top = 'calc(100% + 4px)';
+  menu.style.top = 'calc(100% + 0.25rem)';
   menu.style.zIndex = '100000';
   menu.style.minWidth = '100%';
-  menu.style.maxHeight = '240px';
+  menu.style.maxHeight = '15rem';
   menu.style.overflowY = 'auto';
   menu.style.display = 'none';
-  menu.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.95) 0%, rgba(10,16,22,0.92) 100%)';
+  menu.style.background = 'linear-gradient(180deg, var(--sf-tip-bg-top), var(--sf-tip-bg-bottom))';
   menu.style.color = 'var(--ui-fg, #eee)';
-  menu.style.border = UI.border;
-  menu.style.borderRadius = '10px';
+  menu.style.fontSize = 'var(--ui-fontsize-small)';
+  menu.style.border = 'var(--ui-surface-border-css)';
+  menu.style.borderRadius = 'var(--ui-card-radius)';
   menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.35))';
   try { menu.classList.add('ui-glass-scrollbar'); } catch (_) {}
   try { menu.setAttribute('role', 'listbox'); menu.tabIndex = -1; } catch (_) {}
 
   const list = document.createElement('div');
-  list.style.padding = '4px 0';
+  list.style.padding = '0.25rem 0';
   menu.appendChild(list);
 
   let _items = Array.isArray(items) ? items.slice() : [];
@@ -270,7 +275,8 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
       const row = document.createElement('div');
       row.textContent = it.label != null ? String(it.label) : String(it.value);
       row.setAttribute('data-value', String(it.value));
-      row.style.padding = '8px 10px';
+      row.style.padding = '0.5rem 0.625rem';
+      row.style.fontSize = 'var(--ui-fontsize-small)';
       row.style.cursor = 'pointer';
       row.style.userSelect = 'none';
       const isSel = (it.value === _value);
@@ -399,6 +405,23 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
 
   wrap.appendChild(btn);
   wrap.appendChild(menu);
+
+  // Hover/focus glow behavior aligned with basicButton template
+  try {
+    const hoverOn = () => {
+      btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
+      btn.style.outline = 'var(--ui-surface-border-css)';
+      btn.style.outlineOffset = '1px';
+    };
+    const hoverOff = () => {
+      btn.style.boxShadow = 'none';
+      btn.style.outline = 'none';
+    };
+    btn.addEventListener('mouseenter', hoverOn);
+    btn.addEventListener('mouseleave', hoverOff);
+    btn.addEventListener('focus', hoverOn);
+    btn.addEventListener('blur', hoverOff);
+  } catch (_) {}
 
   // Initialize
   setItems(_items);

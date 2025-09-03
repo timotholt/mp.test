@@ -37,4 +37,5 @@ export {
   basicHoverGlowOn,
   basicHoverGlowOff,
   basicGap,
+  basicGapBetweenSections,
 } from './templates.js';
