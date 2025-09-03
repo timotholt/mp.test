@@ -109,8 +109,6 @@ export function renderThemeTab(container) {
               }
             } catch (_) {}
           }
-          // Old alias migration
-          if (savedPreset === 'Emerald') { savedPreset = 'Verdant Veil'; try { localStorage.setItem('grimDark.theme', savedPreset); } catch (_) {} }
           const names = Object.keys(presets);
           const items = [{ label: 'Custom', value: 'Custom' }].concat(names.map(n => ({ label: n, value: n })));
           let ddValue = 'Steel Blue';
@@ -150,6 +148,15 @@ export function renderThemeTab(container) {
     if (isApplyingPreset) return;
     try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
     try { dd && dd.setValue && dd.setValue('Custom', false); } catch (_) {}
+  }
+
+  // Style helper: make right-side slider value look like a label (unified template)
+  function styleAsLabel(el) {
+    try {
+      el.style.color = 'var(--ui-fg)';
+      el.style.fontSize = 'var(--ui-fontsize-small)';
+      el.style.userSelect = 'none';
+    } catch (_) {}
   }
 
   // Optional color knobs (Hue / Saturation / Intensity) for overlay if available
@@ -210,10 +217,12 @@ export function renderThemeTab(container) {
           wrap.style.padding = '0.25rem 0.125rem';
           wrap.style.overflow = 'visible';
           wrap.appendChild(el);
-          const cap = document.createElement('div');
-          cap.textContent = caption;
-          // Use rem units for font sizing
-          cap.style.fontSize = '0.75rem';
+          // Use the standard label template for captions (unified styling)
+          const cap = createUiElement(basicFormLabel, caption);
+          // Center and constrain without the wide minWidth the label template has
+          cap.style.textAlign = 'center';
+          cap.style.minWidth = 'auto';
+          // Slightly subdued, like before
           cap.style.opacity = '0.8';
           // 14px ≈ 0.875rem
           cap.style.marginTop = '1.375rem';
@@ -288,6 +297,8 @@ export function renderThemeTab(container) {
     }
   );
   attachHover && attachHover(grRng, grLbl);
+  // Unify value styling with label template
+  try { styleAsLabel(grVal); } catch (_) {}
 
   // Blur slider (backdrop blur 0-10px)
   const { row: mkRow, label: mkLbl, input: mkRng, value: mkVal, set: mkSet } = createRangeElement(
@@ -301,6 +312,8 @@ export function renderThemeTab(container) {
   );
   try { mkLbl.title = 'Background blur behind panels/overlays'; } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
+  // Unify value styling with label template
+  try { styleAsLabel(mkVal); } catch (_) {}
 
   // Insert Transparency section header
   try {
@@ -348,6 +361,8 @@ export function renderThemeTab(container) {
     opSet && opSet(p);
   } catch (_) {}
   attachHover && attachHover(opRng, opLbl);
+  // Unify value styling with label template
+  try { styleAsLabel(opVal); } catch (_) {}
   container.appendChild(opRow);
 
   // Place Gradient and Blur after Transparency now
@@ -370,6 +385,8 @@ export function renderThemeTab(container) {
   try { odLbl.title = 'Dimming behind dialogs/menus'; } catch (_) {}
   attachHover && attachHover(odRng, odLbl);
   container.appendChild(odRow);
+  // Unify value styling with label template
+  try { styleAsLabel(odVal); } catch (_) {}
   // Place Overlay Blur after Overlay Darkness
   container.appendChild(mkRow);
 
@@ -408,6 +425,8 @@ export function renderThemeTab(container) {
   try { biLbl.title = 'Strength of panel borders'; } catch (_) {}
   attachHover && attachHover(biRng, biLbl);
   biRow && container.appendChild(biRow);
+  // Unify value styling with label template
+  try { styleAsLabel(biVal); } catch (_) {}
 
   // New: Glow Strength (0-100)
   const { row: gsRow, label: gsLbl, input: gsRng, value: gsVal, set: gsSet } = createRangeElement(
@@ -424,6 +443,8 @@ export function renderThemeTab(container) {
   try { gsLbl.title = 'Strength of panel glow and highlights'; } catch (_) {}
   attachHover && attachHover(gsRng, gsLbl);
   container.appendChild(gsRow);
+  // Unify value styling with label template
+  try { styleAsLabel(gsVal); } catch (_) {}
 
   // Now that all controls exist, wire the Reset to also update their UI values instantly
   try {
