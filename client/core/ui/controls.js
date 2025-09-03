@@ -93,8 +93,8 @@ export function wireFocusHighlight(inputEl, rowEl) {
         rowEl.setAttribute('data-saved-boxshadow', rowEl.style.boxShadow || '');
       }
       const prev = rowEl.getAttribute('data-saved-boxshadow') || '';
-      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px var(--ui-bright, #fff)'].filter(Boolean).join(', ');
-      rowEl.style.borderColor = 'var(--ui-bright, #fff)';
+      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px var(--ui-bright-border, var(--ui-bright, #fff))'].filter(Boolean).join(', ');
+      rowEl.style.borderColor = 'var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.70)))';
     } catch (_) {}
   });
   inputEl.addEventListener('blur', () => {
@@ -413,9 +413,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   try {
     const hoverOn = () => {
       btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
-      btn.style.outline = 'var(--ui-surface-border-css)';
-      btn.style.outlineOffset = '1px';
-      btn.style.border = '1px solid var(--ui-surface-border)';
+      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
     };
     const hoverOff = () => {
       btn.style.boxShadow = 'none';
@@ -492,8 +490,8 @@ function ensureCheckboxStyle() {
   .sf-check:hover .sf-check-box,
   .sf-check-input:focus-visible + .sf-check-box {
     box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35)), var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.22));
-    outline: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
-    outline-offset: 1px;
+    border-color: var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.70)));
+    outline: none;
   }
   .sf-check-input:checked + .sf-check-box {
     /* Keep the same look as unchecked (no theme fill), only add a white checkmark */

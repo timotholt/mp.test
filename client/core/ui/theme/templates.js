@@ -78,8 +78,7 @@ export const basicStyles = Object.freeze({
     pointer: true,
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer)',
-      outline: 'var(--ui-surface-border-css)',
-      border: '1px solid var(--ui-surface-border)'
+      border: '1px solid var(--ui-bright-border, var(--ui-surface-border))'
     },
     userSelect: 'none'
   },
@@ -185,7 +184,7 @@ export const basicStyles = Object.freeze({
     width: '100%',
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))',
-      border: '1px solid var(--ui-surface-border)'
+      border: '1px solid var(--ui-bright-border, var(--ui-surface-border))'
     }
   },
 
@@ -201,7 +200,7 @@ export const basicStyles = Object.freeze({
   // Behavioral style tokens (used by event handlers)
   focusGlowOn: {
     boxShadow: 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))',
-    border: '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'
+    border: '1px solid var(--ui-bright-border, var(--ui-surface-border))'
   },
   focusGlowOff: {
     boxShadow: 'none',

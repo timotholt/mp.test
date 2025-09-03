@@ -131,7 +131,7 @@ export function applyScrollbarStyle(options = {}) {
       }
       .${className}:hover::-webkit-scrollbar-thumb {
         background-color: var(--ui-scrollbar-thumb-hover) !important;
-        border-color: var(--ui-surface-border);
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
       }
       .${className}::-webkit-scrollbar-corner { background: transparent !important; }
     `;
@@ -162,19 +162,19 @@ export function applyControlsStyle(options = {}) {
         padding: 0.375rem 0.625rem;
         font-size: var(--ui-fontsize-small);
       }
-      select:focus, select:focus-visible, .ui-select:focus, .ui-select:focus-visible { outline: none; box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-surface-border); }
-      select:hover, .ui-select:hover { box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-surface-border); }
+      select:focus, select:focus-visible, .ui-select:focus, .ui-select:focus-visible { outline: none; box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright-border, var(--ui-surface-border)); }
+      select:hover, .ui-select:hover { box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright-border, var(--ui-surface-border)); }
       /* Bright border on hover/focus for common buttons and text inputs */
       button:hover, button:focus-visible,
       .sf-btn:hover, .sf-btn:focus-visible {
-        border-color: var(--ui-surface-border);
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
         box-shadow: var(--ui-surface-glow-outer);
         outline: none;
       }
       input[type="text"]:hover, input[type="text"]:focus,
       input[type="number"]:hover, input[type="number"]:focus,
       textarea:hover, textarea:focus {
-        border-color: var(--ui-surface-border);
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
         box-shadow: var(--ui-surface-glow-outer);
         outline: none;
       }

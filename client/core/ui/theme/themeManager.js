@@ -459,6 +459,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Apply tokens referenced across UI
       root.style.setProperty('--ui-accent', accent);
       root.style.setProperty('--ui-surface-border', border);
+      // Expose a brighter border token for hover/focus states across UI
+      root.style.setProperty('--ui-bright-border', brightBorder);
       root.style.setProperty('--ui-surface-glow-outer', glowOuter);
       root.style.setProperty('--ui-surface-glow-inset', glowInset);
       root.style.setProperty('--ui-highlight', bright);
@@ -587,7 +589,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
         '}',
         '.ui-focus-glow{',
         '  box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30));',
-        '  border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));',
+        '  border: 1px solid var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.30)));',
         '}',
         '.ui-focus-reset{',
         '  border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.30));',
