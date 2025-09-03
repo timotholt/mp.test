@@ -540,8 +540,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Tooltip related
       root.style.setProperty('--sf-tip-bg-top', tipTop);
       root.style.setProperty('--sf-tip-bg-bottom', tipBot);
-      // Keep original border brightness behavior (unchanged), only glow is unified
-      root.style.setProperty('--sf-tip-border', bright);
+      // Tooltip border should follow surface border intensity, not text brightness
+      root.style.setProperty('--sf-tip-border', border);
       // Match tooltip outer glow to the general surface glow for consistent size/brightness
       root.style.setProperty('--sf-tip-glow-outer', glowOuter);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
@@ -553,7 +553,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.35 })})`);
-      root.style.setProperty('--sf-tip-line-color', bright);
+      root.style.setProperty('--sf-tip-line-color', border);
       root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.85, (borderAlphaEff + 0.15) * Math.min(1, intensity / 20)) })}`);
       // Debug: exit point (verify full execution)
