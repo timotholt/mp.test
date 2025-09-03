@@ -418,6 +418,11 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Small saturation lift at high strength for perceived brightness without neon
       const borderSat = clamp(sat + (borderStrength - 70) * 0.5, 0, 100);
       const border = colorFromHSLC({ h: hue, s: borderSat, l: borderLight, alpha: borderAlphaEff });
+      // Derive a brighter border specifically for tooltips/lines while keeping it tied to strength
+      const brightBorderLight = clamp(borderLight + 18, 20, 98);
+      const brightBorderSat = clamp(borderSat + 10, 0, 100);
+      const brightBorderAlpha = clamp(borderAlphaEff * 1.35 + 0.05, 0, 1);
+      const brightBorder = colorFromHSLC({ h: hue, s: brightBorderSat, l: brightBorderLight, alpha: brightBorderAlpha });
       // Scale outer/inset glow radius strictly 0..44px from 0..100% strength
       const glowR = Math.round((glowStrength / 100) * 44);
       const cGlow1 = colorFromHSLC({ h: hue, s: sat, l: Math.max(35, light), alpha: glowAlphaEff });
@@ -540,8 +545,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Tooltip related
       root.style.setProperty('--sf-tip-bg-top', tipTop);
       root.style.setProperty('--sf-tip-bg-bottom', tipBot);
-      // Tooltip border should follow surface border intensity, not text brightness
-      root.style.setProperty('--sf-tip-border', border);
+      // Tooltip border: use a brighter variant for better visibility
+      root.style.setProperty('--sf-tip-border', brightBorder);
       // Match tooltip outer glow to the general surface glow for consistent size/brightness
       root.style.setProperty('--sf-tip-glow-outer', glowOuter);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
@@ -553,7 +558,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       // Backdrop blur derives from milkiness
       root.style.setProperty('--sf-tip-backdrop', `blur(${toFixed(milkiness, 2)}px) saturate(1.2)`);
       root.style.setProperty('--sf-tip-arrow-glow', `drop-shadow(0 0 9px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: 0.35 })})`);
-      root.style.setProperty('--sf-tip-line-color', border);
+      root.style.setProperty('--sf-tip-line-color', brightBorder);
       root.style.setProperty('--sf-tip-line-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-line-glow-core', `0 0 3px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: Math.min(0.85, (borderAlphaEff + 0.15) * Math.min(1, intensity / 20)) })}`);
       // Debug: exit point (verify full execution)
