@@ -8,7 +8,7 @@ import { getQuip } from '../../../core/ui/quip.js';
 import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
-import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
 
 export function renderThemeTab(container) {
   // Theme tab is overlay-only; remove variant checks
@@ -63,6 +63,8 @@ export function renderThemeTab(container) {
 
   // Create Reset button now; append after dropdown is created
   resetBtn = createUiElement(basicButton, 'button', 'Reset');
+  // Small gap between section header and toolbar row
+  try { sec.appendChild(createUiElement(basicQuarterGap)); } catch (_) {}
   sec.appendChild(hdrRow);
 
   // Optional Theme preset dropdown for overlay

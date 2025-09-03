@@ -18,7 +18,7 @@ import { normalizeKey, prettyKey, isMovementActionId, keyFromEvent, splitChord }
 import { makeSection } from '../uiHelpers.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createUiElement, basicButton, basicFormLabel } from '../../../core/ui/theme/themeManager.js';
-import { basicSection, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/templates.js';
+import { basicSection, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/templates.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
@@ -167,6 +167,8 @@ export function renderControlTab(container) {
   };
   // No special alignment needed; third column holds the reset button
   toolbar.appendChild(resetBtn);
+  // Small gap between section header and toolbar row
+  try { sec.appendChild(createUiElement(basicQuarterGap)); } catch (_) {}
   sec.appendChild(toolbar);
   
   // Spacer between toolbar and first group (Movement)

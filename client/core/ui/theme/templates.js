@@ -244,6 +244,7 @@ export const basicHoverGlowOn = basicStyles.hoverGlowOn;
 export const basicHoverGlowOff = basicStyles.hoverGlowOff;
 
 // Simple gap/spacer element template (used between headers and sections)
+export const basicQuarterGap = Object.freeze({ height: '0.25rem' });
 export const basicGap = Object.freeze({ height: '0.5rem' });
 // Larger gap specifically for separating major sections
 export const basicGapBetweenSections = Object.freeze({ height: '1rem' });

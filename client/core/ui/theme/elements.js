@@ -37,6 +37,7 @@ export {
   basicFocusGlowOff,
   basicHoverGlowOn,
   basicHoverGlowOff,
+  basicQuarterGap,
   basicGap,
   basicGapBetweenSections,
 } from './templates.js';
