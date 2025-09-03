@@ -16,7 +16,7 @@ export const themePresets = Object.freeze({
   '*Sea Glass':      { hue: 175, intensity: 60, saturation: 50, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   '*Cyan Frost':     { hue: 180, intensity: 60, saturation: 50, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   'Steel Blue':     { hue: 207, intensity:  60, saturation: 35, fgBrightness:  50, border: 80, glow: 40, transparency: 65, gradient: 0, overlayDarkness: 72, blur: 5 },
-  "Orange Crush":   { hue:  50, intensity: 100, saturation: 56, fgBrightness: 60, border: 80, glow: 60, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
+  "Orange Crush":   { hue:  50, intensity: 100, saturation: 56, fgBrightness: 66, border: 80, glow: 60, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
 
   '*Azure Storm':    { hue: 210, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
 
