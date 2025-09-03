@@ -85,6 +85,11 @@ export function renderThemeTab(container) {
           else if (savedPreset && names.includes(savedPreset)) ddValue = savedPreset;
           dd = createDropdown({ items, value: ddValue, width: '15rem', onChange: (val) => {
             if (val === 'Custom') {
+              // Persist the last non-Custom preset so Reset can restore it (like Controls tab)
+              try {
+                const cur = (localStorage.getItem('grimDark.theme') || '').trim();
+                if (cur && cur.toLowerCase() !== 'custom') localStorage.setItem('grimDark.theme.lastPreset', cur);
+              } catch (_) {}
               try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
               // No immediate apply; user will tweak controls.
               try { dd && dd.setValue('Custom', false); } catch (_) {}
@@ -114,6 +119,11 @@ export function renderThemeTab(container) {
   // Helper: when any slider/knob changes, mark preset as Custom (do not re-apply values)
   function selectCustomPreset() {
     if (isApplyingPreset) return;
+    // Record last real preset the first time we flip to Custom
+    try {
+      const cur = (localStorage.getItem('grimDark.theme') || '').trim();
+      if (cur && cur.toLowerCase() !== 'custom') localStorage.setItem('grimDark.theme.lastPreset', cur);
+    } catch (_) {}
     try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
     try { dd && dd.setValue && dd.setValue('Custom', false); } catch (_) {}
   }
@@ -300,8 +310,11 @@ export function renderThemeTab(container) {
 
           let intensityInit = parseFloat(localStorage.getItem('ui_intensity'));
           if (!Number.isFinite(intensityInit)) intensityInit = 60;
-          const satEffInit = Math.max(0, Math.min(85, Math.round(intensityInit * 0.8)));
-          try { if (satKn && satKn.setValue) satKn.setValue(satEffInit, { silent: true }); } catch (_) {}
+          // Prefer explicit saturation from storage (applied by boot/preset); fallback to derived from intensity
+          let satInit = parseFloat(localStorage.getItem('ui_saturation'));
+          if (!Number.isFinite(satInit)) satInit = Math.round(intensityInit * 0.8);
+          satInit = Math.max(0, Math.min(100, satInit));
+          try { if (satKn && satKn.setValue) satKn.setValue(satInit, { silent: true }); } catch (_) {}
 
           let briInit = parseFloat(localStorage.getItem('ui_intensity'));
           if (!Number.isFinite(briInit)) briInit = 60;
@@ -477,11 +490,22 @@ export function renderThemeTab(container) {
   try {
     if (resetBtn) {
       resetBtn.onclick = () => {
+        // Reset to the last real preset if currently Custom; else reset to the current preset
+        let target = 'Steel Blue';
+        try {
+          const cur = (localStorage.getItem('grimDark.theme') || '').trim();
+          if (!cur || cur.toLowerCase() === 'custom') {
+            const last = (localStorage.getItem('grimDark.theme.lastPreset') || '').trim();
+            target = last || 'Steel Blue';
+          } else {
+            target = cur;
+          }
+        } catch (_) {}
         // Use the same code path as choosing a preset from the dropdown to avoid mismatches
         isApplyingPreset = true;
         try {
-          if (typeof applyPreset === 'function') applyPreset('Steel Blue');
-          try { dd && dd.setValue && dd.setValue('Steel Blue', false); } catch (_) {}
+          if (typeof applyPreset === 'function') applyPreset(target);
+          try { dd && dd.setValue && dd.setValue(target, false); } catch (_) {}
         } catch (_) {}
         isApplyingPreset = false;
       };
