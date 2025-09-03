@@ -150,10 +150,13 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.style.justifyContent = 'center';
       b.style.textAlign = 'center';
       const isActive = (key === activeKey);
+
+      // This controls the background color of the active tab
       b.style.background = isActive
-        ? 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,26,0.35)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.28)) 100%)'
+        ? 'var(--ui-surface-border, rgba(190,230,255,0.98))'
         : 'rgba(255,255,255,0.06)';
-      b.style.color = isActive ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.98))';
+      // Unify text color so inactive tabs match active tab text color
+      b.style.color = 'var(--ui-fg-quip)';
       b.style.textShadow = isActive ? 'var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.75))' : '';
       try { b.setAttribute('aria-selected', isActive ? 'true' : 'false'); } catch (_) {}
       try { b.tabIndex = isActive ? 0 : -1; } catch (_) {}
