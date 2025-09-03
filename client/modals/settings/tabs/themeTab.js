@@ -260,6 +260,21 @@ export function renderThemeTab(container) {
         try { satKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
         try { briKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
 
+        // Match Sound tab knobs: strong, scalable hover/focus glow tied to UI glow tokens
+        // These scale with the Glow Strength slider via --ui-glow-strong / --ui-surface-glow-outer
+        try {
+          hueKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
+          hueKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
+        } catch (_) {}
+        try {
+          satKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
+          satKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
+        } catch (_) {}
+        try {
+          briKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
+          briKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
+        } catch (_) {}
+
         knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
         knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
         knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
