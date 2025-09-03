@@ -41,7 +41,7 @@ export const LockedThemeDefaults = Object.freeze({
   '--ui-section-padding-after': '1rem',
 
   // Locked layout tokens
-  '--ui-card-radius': '0.875rem',
+  '--ui-card-radius': '0.6rem',
   '--ui-page-padding': '24px',
   '--ui-modal-padding': '1rem',
   // Locked border system
