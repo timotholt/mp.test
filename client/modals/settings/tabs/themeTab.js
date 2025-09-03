@@ -49,15 +49,13 @@ export function renderThemeTab(container) {
 
   // Section header with quip right-aligned
   const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
-
-  // Quip is rendered inline by makeSection; no extra styling needed
+  container.appendChild(sec);
 
   // Reset button hoisted reference (wired after controls are created)
   let resetBtn = null;
   // Guard to avoid marking preset as Custom during programmatic updates
   let isApplyingPreset = false;
 
-  container.appendChild(sec);
 
   // Single header row: 3 columns (label | dropdown | reset), vertically centered
   const hdrRow = document.createElement('div');
@@ -66,6 +64,7 @@ export function renderThemeTab(container) {
   hdrRow.style.alignItems = 'center';
   hdrRow.style.gap = '0.5rem';
   hdrRow.style.margin = '0.5rem 0';
+  
   const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
   hdrRow.appendChild(lbl);
   // Create Reset button now; append after dropdown is created
