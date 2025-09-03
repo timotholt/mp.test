@@ -8,7 +8,7 @@ import { getQuip } from '../../../core/ui/quip.js';
 import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
-import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
 
 export function renderThemeTab(container) {
   // Theme tab is overlay-only; remove variant checks
@@ -52,24 +52,17 @@ export function renderThemeTab(container) {
   container.appendChild(sec);
 
   // Reset button hoisted reference (wired after controls are created)
-  let resetBtn = null;
   // Guard to avoid marking preset as Custom during programmatic updates
+  let resetBtn = null;
   let isApplyingPreset = false;
-
-
-  // Single header row: 3 columns (label | dropdown | reset), vertically centered
-  const hdrRow = document.createElement('div');
-  hdrRow.style.display = 'grid';
-  hdrRow.style.gridTemplateColumns = 'auto 1fr auto';
-  hdrRow.style.alignItems = 'center';
-  hdrRow.style.gap = '0.5rem';
-  hdrRow.style.margin = '0.5rem 0';
   
+  // Single header row: 3 columns (label | dropdown | reset), vertically centered
+  const hdrRow = createUiElement(basicToolbarRow);
   const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
   hdrRow.appendChild(lbl);
+
   // Create Reset button now; append after dropdown is created
   resetBtn = createUiElement(basicButton, 'button', 'Reset');
-  // Place the row inside the section so it sits just below the header
   sec.appendChild(hdrRow);
 
   // Optional Theme preset dropdown for overlay

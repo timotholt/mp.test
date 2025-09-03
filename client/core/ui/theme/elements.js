@@ -24,6 +24,7 @@ export {
   basicFormValue,
   basicInputRange,
   basicSection,
+  basicToolbarRow,
   basicSectionHeader,
   basicSectionRule,
   basicNote,

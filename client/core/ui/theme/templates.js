@@ -118,6 +118,15 @@ export const basicStyles = Object.freeze({
     display: 'block',
     m: '0.5rem 0 0.75rem 0'
   },
+  // Grid toolbar/header row (label | control | action)
+  toolbarRow: {
+    __tag: 'div',
+    display: 'grid',
+    gridTemplateColumns: 'auto 1fr auto',
+    alignItems: 'center',
+    gap: '0.5rem',
+    my: '0.5rem'
+  },
   sectionHeader: {
     __tag: 'div',
     display: 'flex',
@@ -228,6 +237,7 @@ export const basicPanelLabel = basicStyles.panelLabel;
 export const basicPanelCell = basicStyles.panelCell;
 export const basicTextInput = basicStyles.textInput;
 export const basicInputRow = basicStyles.inputRow;
+export const basicToolbarRow = basicStyles.toolbarRow;
 export const basicFocusGlowOn = basicStyles.focusGlowOn;
 export const basicFocusGlowOff = basicStyles.focusGlowOff;
 export const basicHoverGlowOn = basicStyles.hoverGlowOn;

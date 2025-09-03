@@ -18,7 +18,7 @@ import { normalizeKey, prettyKey, isMovementActionId, keyFromEvent, splitChord }
 import { makeSection } from '../uiHelpers.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createUiElement, basicButton, basicFormLabel } from '../../../core/ui/theme/themeManager.js';
-import { basicSection, basicGapBetweenSections } from '../../../core/ui/theme/templates.js';
+import { basicSection, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/templates.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
@@ -118,15 +118,7 @@ export function renderControlTab(container) {
   container.appendChild(sec);
 
   // First row: Preset label | dropdown | reset (simple grid)
-  const toolbar = document.createElement('div');
-  // Layout: single 3-column row (label | dropdown | reset), vertically centered
-  try {
-    toolbar.style.display = 'grid';
-    toolbar.style.gridTemplateColumns = 'auto 1fr auto';
-    toolbar.style.alignItems = 'center';
-    toolbar.style.gap = '0.5rem';
-    toolbar.style.margin = '0.5rem 0';
-  } catch (_) {}
+  const toolbar = createUiElement(basicToolbarRow);
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,
@@ -176,8 +168,9 @@ export function renderControlTab(container) {
   // No special alignment needed; third column holds the reset button
   toolbar.appendChild(resetBtn);
   sec.appendChild(toolbar);
-
-  // No extra gap; spacing controlled by row margin
+  
+  // Spacer between toolbar and first group (Movement)
+  try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
 
   // Body note
   // container.appendChild(makeNote('Tip: Click a keycap, then press any key. Esc cancels. Backspace/Delete unbind.')); 
