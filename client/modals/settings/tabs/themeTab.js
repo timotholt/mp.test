@@ -390,7 +390,7 @@ export function renderThemeTab(container) {
   // Attach Sci-Fi tooltip to Gradient label and initialize text
   try {
     try { grLbl.removeAttribute('title'); } catch (_) {}
-    attachTooltip(grLbl, { mode: 'near', placement: 'rc' });
+    attachTooltip(grLbl, { mode: 'far', placement: 'lc' });
     updateTooltip(grLbl, 'Surface gradient intensity');
   } catch (_) {}
   attachHover && attachHover(grRng, grLbl);
@@ -419,7 +419,7 @@ export function renderThemeTab(container) {
     ]));
   } catch (_) {}
   // Attach Sci-Fi tooltip to Blur label and initialize text
-  try { attachTooltip(mkLbl, { mode: 'near', placement: 'rc' }); } catch (_) {}
+  try { attachTooltip(mkLbl, { mode: 'far', placement: 'lc' }); } catch (_) {}
   attachHover && attachHover(mkRng, mkLbl);
   attachHover && attachHover(mkRng, mkVal);
 
@@ -451,7 +451,7 @@ export function renderThemeTab(container) {
   );
   // Attach Sci-Fi tooltip to Transparency label and initialize text
   try { opLbl && opLbl.removeAttribute && opLbl.removeAttribute('title'); } catch (_) {}
-  try { attachTooltip(opLbl, { mode: 'near', placement: 'rc' }); updateTooltip(opLbl, 'Higher = clearer panels; lower = more solid'); } catch (_) {}
+  try { attachTooltip(opLbl, { mode: 'far', placement: 'lc' }); updateTooltip(opLbl, 'Higher = clearer panels; lower = more solid'); } catch (_) {}
   // Initialize from CSS var if available (preferred over LS default)
   try {
     const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
@@ -505,7 +505,7 @@ export function renderThemeTab(container) {
     ]));
   } catch (_) {}
   // Attach Sci-Fi tooltip to Overlay Darkness label and initialize text
-  try { attachTooltip(odLbl, { mode: 'near', placement: 'rc' }); } catch (_) {}
+  try { attachTooltip(odLbl, { mode: 'far', placement: 'lc' }); } catch (_) {}
   attachHover && attachHover(odRng, odLbl);
   attachHover && attachHover(odRng, odVal);
   container.appendChild(odRow);
@@ -545,7 +545,7 @@ export function renderThemeTab(container) {
   );
   try { biLbl && biLbl.removeAttribute && biLbl.removeAttribute('title'); } catch (_) {}
   // Attach Sci-Fi tooltip to Border Intensity label and initialize text
-  try { attachTooltip(biLbl, { mode: 'near', placement: 'rc' }); updateTooltip(biLbl, 'Strength of panel borders'); } catch (_) {}
+  try { attachTooltip(biLbl, { mode: 'far', placement: 'lc' }); updateTooltip(biLbl, 'Strength of panel borders'); } catch (_) {}
   attachHover && attachHover(biRng, biLbl);
   attachHover && attachHover(biRng, biVal);
   biRow && container.appendChild(biRow);
@@ -563,7 +563,7 @@ export function renderThemeTab(container) {
   );
   try { gsLbl && gsLbl.removeAttribute && gsLbl.removeAttribute('title'); } catch (_) {}
   // Attach Sci-Fi tooltip to Glow Strength label and initialize text
-  try { attachTooltip(gsLbl, { mode: 'near', placement: 'rc' }); updateTooltip(gsLbl, 'Strength of panel glow and highlights'); } catch (_) {}
+  try { attachTooltip(gsLbl, { mode: 'far', placement: 'lc' }); updateTooltip(gsLbl, 'Strength of panel glow and highlights'); } catch (_) {}
   attachHover && attachHover(gsRng, gsLbl);
   attachHover && attachHover(gsRng, gsVal);
   container.appendChild(gsRow);

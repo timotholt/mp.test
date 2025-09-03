@@ -143,18 +143,40 @@ export function attachWheel(rangeEl) {
 export function attachHover(rangeEl, labelEl) {
   const target = labelEl || rangeEl;
   if (!target) return;
-  const on = () => { try { target.classList && target.classList.add('ui-hover-glow'); } catch (_) {} };
-  const off = () => { try { target.classList && target.classList.remove('ui-hover-glow'); } catch (_) {} };
+  // Hover should light up BOTH the target (label/value) and the slider itself
+  const onHover = () => {
+    try {
+      target.classList && target.classList.add('ui-hover-glow');
+      rangeEl && rangeEl.classList && rangeEl.classList.add('ui-hover-glow');
+    } catch (_) {}
+  };
+  const offHover = () => {
+    try {
+      target.classList && target.classList.remove('ui-hover-glow');
+      rangeEl && rangeEl.classList && rangeEl.classList.remove('ui-hover-glow');
+    } catch (_) {}
+  };
+  // Focus should visibly activate the slider itself
+  const onFocus = () => {
+    try {
+      rangeEl && rangeEl.classList && rangeEl.classList.add('ui-focus-glow');
+    } catch (_) {}
+  };
+  const offFocus = () => {
+    try {
+      rangeEl && rangeEl.classList && rangeEl.classList.remove('ui-focus-glow');
+    } catch (_) {}
+  };
   try {
-    rangeEl && rangeEl.addEventListener('mouseenter', on);
-    rangeEl && rangeEl.addEventListener('mouseleave', off);
-    rangeEl && rangeEl.addEventListener('focus', on);
-    rangeEl && rangeEl.addEventListener('blur', off);
+    rangeEl && rangeEl.addEventListener('mouseenter', onHover);
+    rangeEl && rangeEl.addEventListener('mouseleave', offHover);
+    rangeEl && rangeEl.addEventListener('focus', onFocus);
+    rangeEl && rangeEl.addEventListener('blur', offFocus);
     if (labelEl && labelEl !== rangeEl) {
-      labelEl.addEventListener('mouseenter', on);
-      labelEl.addEventListener('mouseleave', off);
-      labelEl.addEventListener('focus', on);
-      labelEl.addEventListener('blur', off);
+      labelEl.addEventListener('mouseenter', onHover);
+      labelEl.addEventListener('mouseleave', offHover);
+      labelEl.addEventListener('focus', onHover);
+      labelEl.addEventListener('blur', offHover);
     }
   } catch (_) {}
 }

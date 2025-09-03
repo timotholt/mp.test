@@ -90,7 +90,7 @@ export const basicStyles = Object.freeze({
     display: 'flex',
     alignItems: 'center',
     gap: '1.0rem',
-    mb: 8
+    mb: '0.5rem'
   },
   formLabel: {
     __tag: 'label',

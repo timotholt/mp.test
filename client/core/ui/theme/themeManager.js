@@ -835,6 +835,34 @@ export function createRangeElement(min, max, step, resetValue, labelText = 'Valu
     try { opts.attachWheel(input); } catch (_) {}
   }
 
+  // Also support forgiving wheel: scrolling anywhere in the row adjusts the slider
+  try {
+    const onWheelRow = (e) => {
+      try {
+        // If the event target is the slider input, let its own handler take it
+        if (e && e.target === input) return;
+        // If the wheel originated from the input itself, its handler already runs
+        // We still preventDefault to keep the page from scrolling while adjusting
+        e.preventDefault();
+        const stepAttr = parseFloat(input.step);
+        const stp = Number.isFinite(stepAttr) && stepAttr > 0 ? stepAttr : 1;
+        const mn = Number.isFinite(parseFloat(input.min)) ? parseFloat(input.min) : -Infinity;
+        const mx = Number.isFinite(parseFloat(input.max)) ? parseFloat(input.max) : Infinity;
+        const cur = Number.isFinite(parseFloat(input.value)) ? parseFloat(input.value) : resetValue;
+        const dir = (e.deltaY || 0) > 0 ? -1 : 1;
+        let nxt = cur + dir * stp;
+        if (nxt < mn) nxt = mn;
+        if (nxt > mx) nxt = mx;
+        if (nxt !== cur) {
+          input.value = String(nxt);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      } catch (_) {}
+    };
+    // Use non-passive to allow preventDefault()
+    row.addEventListener('wheel', onWheelRow, { passive: false });
+  } catch (_) {}
+
   input.oninput = () => apply(input.value);
 
   row.appendChild(label); row.appendChild(input); row.appendChild(value);
