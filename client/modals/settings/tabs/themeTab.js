@@ -56,6 +56,44 @@ export function renderThemeTab(container) {
   let resetBtn = null;
   let isApplyingPreset = false;
   
+  // --- Small helpers to keep things readable and DRY (no behavior changes) ---
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return (v === null || v === undefined) ? d : v; } catch (_) { return d; } };
+  const lsGetNum = (k, d) => { const n = parseFloat(lsGet(k, '')); return Number.isFinite(n) ? n : d; };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  const silently = (fn) => { const prev = isApplyingPreset; isApplyingPreset = true; try { fn && fn(); } finally { isApplyingPreset = prev; } };
+  const setKnob = (kn, v) => { try { kn && kn.setValue && kn.setValue(v, { silent: true }); } catch (_) {} };
+  const setRange = (setter, v) => { try { setter && setter(v); } catch (_) {} };
+  const getTheme = () => (lsGet('grimDark.theme', '').trim());
+  const setTheme = (name) => lsSet('grimDark.theme', name);
+  const saveLastPresetIfReal = () => { const cur = getTheme(); if (cur && cur.toLowerCase() !== 'custom') lsSet('grimDark.theme.lastPreset', cur); };
+  const lastPresetOrDefault = (d = 'Steel Blue') => { const last = (lsGet('grimDark.theme.lastPreset', '').trim()); return last || d; };
+  const DEFAULTS = {
+    hue: 210,
+    intensity: 60,
+    satFromIntensity: (i) => Math.round(i * 0.8),
+    fgBrightness: 50,
+    milkiness: 3,
+    opacityMMAX: 2.5,
+  };
+  const applyKnobChrome = (kn) => {
+    if (!kn || !kn.el) return;
+    try { kn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
+  };
+  const syncGradientHelper = (percent) => {
+    try {
+      if (percent < 100) {
+        grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)';
+        grLbl.style.opacity = '1';
+      } else {
+        grLbl.title = '';
+        grLbl.style.opacity = '0.8';
+      }
+    } catch (_) {}
+  };
+  
   // Single header row: 3 columns (label | dropdown | reset), vertically centered
   const hdrRow = createUiElement(basicToolbarRow);
   const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
@@ -86,27 +124,23 @@ export function renderThemeTab(container) {
           dd = createDropdown({ items, value: ddValue, width: '15rem', onChange: (val) => {
             if (val === 'Custom') {
               // Persist the last non-Custom preset so Reset can restore it (like Controls tab)
-              try {
-                const cur = (localStorage.getItem('grimDark.theme') || '').trim();
-                if (cur && cur.toLowerCase() !== 'custom') localStorage.setItem('grimDark.theme.lastPreset', cur);
-              } catch (_) {}
-              try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
+              saveLastPresetIfReal();
+              setTheme('custom');
               // No immediate apply; user will tweak controls.
-              try { dd && dd.setValue('Custom', false); } catch (_) {}
+              dd.setValue('Custom', false);
             } else {
-              try { localStorage.setItem('grimDark.theme', val); } catch (_) {}
+              setTheme(val);
               // Apply the preset while suppressing 'Custom' flips from onChange handlers
-              isApplyingPreset = true;
-              try { if (typeof applyPreset === 'function') applyPreset(val); } catch (_) {}
-              isApplyingPreset = false;
-              try { dd && dd.setValue(val, false); } catch (_) {}
+              silently(() => applyPreset(val));
+              dd.setValue(val, false);
             }
           }});
           // Keep dropdown flush for vertical centering in grid
-          try { if (dd && dd.el) dd.el.style.marginTop = '0'; } catch (_) {}
+          if (dd && dd.el) dd.el.style.marginTop = '0';
         } catch (_) {
           dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '15rem' });
           // Keep dropdown flush even on fallback
+          if (dd && dd.el) dd.el.style.marginTop = '0';
           try { if (dd && dd.el) dd.el.style.marginTop = '0'; } catch (_) {}
         }
         if (dd) hdrRow.appendChild(dd.el);
@@ -120,11 +154,8 @@ export function renderThemeTab(container) {
   function selectCustomPreset() {
     if (isApplyingPreset) return;
     // Record last real preset the first time we flip to Custom
-    try {
-      const cur = (localStorage.getItem('grimDark.theme') || '').trim();
-      if (cur && cur.toLowerCase() !== 'custom') localStorage.setItem('grimDark.theme.lastPreset', cur);
-    } catch (_) {}
-    try { localStorage.setItem('grimDark.theme', 'custom'); } catch (_) {}
+    try { saveLastPresetIfReal(); } catch (_) {}
+    try { setTheme('custom'); } catch (_) {}
     try { dd && dd.setValue && dd.setValue('Custom', false); } catch (_) {}
   }
 
@@ -236,25 +267,10 @@ export function renderThemeTab(container) {
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
 
-        // Use rem for global ring Y offset
-        try { hueKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
-        try { satKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
-        try { briKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
-
-        // Match Sound tab knobs: strong, scalable hover/focus glow tied to UI glow tokens
-        // These scale with the Glow Strength slider via --ui-glow-strong / --ui-surface-glow-outer
-        try {
-          hueKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
-          hueKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
-        } catch (_) {}
-        try {
-          satKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
-          satKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
-        } catch (_) {}
-        try {
-          briKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))');
-          briKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)');
-        } catch (_) {}
+        // Apply shared knob chrome (ring offset + hover/focus glow)
+        applyKnobChrome(hueKn);
+        applyKnobChrome(satKn);
+        applyKnobChrome(briKn);
 
         knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
         knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
@@ -303,29 +319,20 @@ export function renderThemeTab(container) {
 
         // Initialize knob values from persisted state (silent)
         try {
-          let hueInit = parseFloat(localStorage.getItem('ui_hue'));
-          if (!Number.isFinite(hueInit)) hueInit = 210;
-          hueInit = Math.max(0, Math.min(360, Math.round(hueInit)));
-          try { if (hueKn && hueKn.setValue) hueKn.setValue(hueInit, { silent: true }); } catch (_) {}
+          const hueInit = clamp(Math.round(lsGetNum('ui_hue', DEFAULTS.hue)), 0, 360);
+          setKnob(hueKn, hueInit);
 
-          let intensityInit = parseFloat(localStorage.getItem('ui_intensity'));
-          if (!Number.isFinite(intensityInit)) intensityInit = 60;
-          // Prefer explicit saturation from storage (applied by boot/preset); fallback to derived from intensity
-          let satInit = parseFloat(localStorage.getItem('ui_saturation'));
-          if (!Number.isFinite(satInit)) satInit = Math.round(intensityInit * 0.8);
-          satInit = Math.max(0, Math.min(100, satInit));
-          try { if (satKn && satKn.setValue) satKn.setValue(satInit, { silent: true }); } catch (_) {}
+          const intensityInit = clamp(Math.round(lsGetNum('ui_intensity', DEFAULTS.intensity)), 0, 100);
+          const satStored = lsGetNum('ui_saturation', NaN);
+          const satInit = clamp(Number.isFinite(satStored) ? Math.round(satStored) : DEFAULTS.satFromIntensity(intensityInit), 0, 100);
+          setKnob(satKn, satInit);
 
-          let briInit = parseFloat(localStorage.getItem('ui_intensity'));
-          if (!Number.isFinite(briInit)) briInit = 60;
-          briInit = Math.max(0, Math.min(100, Math.round(briInit)));
-          try { if (briKn && briKn.setValue) briKn.setValue(briInit, { silent: true }); } catch (_) {}
+          const briInit = intensityInit; // intensity knob mirrors ui_intensity
+          setKnob(briKn, briInit);
 
           // Foreground brightness init (default 50)
-          let fgInit = parseFloat(localStorage.getItem('ui_fg_brightness'));
-          if (!Number.isFinite(fgInit)) fgInit = 50;
-          fgInit = Math.max(0, Math.min(100, Math.round(fgInit)));
-          try { if (txtKn && txtKn.setValue) txtKn.setValue(fgInit, { silent: true }); } catch (_) {}
+          const fgInit = clamp(Math.round(lsGetNum('ui_fg_brightness', DEFAULTS.fgBrightness)), 0, 100);
+          setKnob(txtKn, fgInit);
         } catch (_) {}
       }
   } catch (_) {}
@@ -362,24 +369,24 @@ export function renderThemeTab(container) {
   // Transparency slider now grouped under the "Base UI Color" section (no extra header)
 
   // Transparency slider (reversed: 100% = clear, 0% = opaque)
-  const MMAX = 2.5;
   const { row: opRow, label: opLbl, input: opRng, value: opVal, set: opSet } = createRangeElement(
     0, 100, 1, 100, 'Transparency:', {
       storageKey: 'ui_opacity_mult',
       attachWheel,
       debugLabel: 'opacity',
       toDisplay: (p) => ({ text: `${p}%`, title: `${p}%` }),
-      toStorage: (p) => String(((100 - p) / 100) * MMAX),
+      toStorage: (p) => String(((100 - p) / 100) * DEFAULTS.opacityMMAX),
       fromStorage: (s) => {
         const mult = parseFloat(s);
-        const p = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
+        const p = Number.isFinite(mult) ? clamp(Math.round(100 - (mult / DEFAULTS.opacityMMAX) * 100), 0, 100) : 100;
         return p;
       },
       onChange: (p) => {
-        const mult = ((100 - p) / 100) * MMAX;
+        const mult = ((100 - p) / 100) * DEFAULTS.opacityMMAX;
         try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
         // Gradient tooltip visible only when panels aren’t fully clear
-        try { if (p < 100) { opLbl.title = 'Higher = clearer panels; lower = more solid'; grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; } } catch (_) {}
+        try { opLbl.title = 'Higher = clearer panels; lower = more solid'; } catch (_) {}
+        syncGradientHelper(p);
         try { selectCustomPreset(); } catch (_) {}
       }
     }
@@ -389,11 +396,9 @@ export function renderThemeTab(container) {
   try {
     const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
     const mult = parseFloat(css);
-    const p = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
-    // Suppress marking preset as Custom during this initial programmatic sync
-    isApplyingPreset = true;
-    try { opSet && opSet(p); } catch (_) {}
-    isApplyingPreset = false;
+    const p = Number.isFinite(mult) ? clamp(Math.round(100 - (mult / DEFAULTS.opacityMMAX) * 100), 0, 100) : 100;
+    silently(() => { setRange(opSet, p); });
+    syncGradientHelper(p);
   } catch (_) {}
   attachHover && attachHover(opRng, opLbl);
   // Unify value styling with label template
@@ -402,8 +407,8 @@ export function renderThemeTab(container) {
 
   // Place Gradient and Blur after Transparency now
   try {
-    const pInit = Math.max(0, Math.min(100, Math.round(parseFloat(opRng.value) || 0)));
-    if (pInit < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; } else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
+    const pInit = clamp(Math.round(parseFloat(opRng.value) || 0), 0, 100);
+    syncGradientHelper(pInit);
   } catch (_) {}
   // New section header to group Gradient / Overlay Darkness / Overlay Blur
   try {
@@ -493,21 +498,14 @@ export function renderThemeTab(container) {
         // Reset to the last real preset if currently Custom; else reset to the current preset
         let target = 'Steel Blue';
         try {
-          const cur = (localStorage.getItem('grimDark.theme') || '').trim();
-          if (!cur || cur.toLowerCase() === 'custom') {
-            const last = (localStorage.getItem('grimDark.theme.lastPreset') || '').trim();
-            target = last || 'Steel Blue';
-          } else {
-            target = cur;
-          }
+          const cur = getTheme();
+          target = (!cur || cur.toLowerCase() === 'custom') ? lastPresetOrDefault('Steel Blue') : cur;
         } catch (_) {}
         // Use the same code path as choosing a preset from the dropdown to avoid mismatches
-        isApplyingPreset = true;
-        try {
-          if (typeof applyPreset === 'function') applyPreset(target);
+        silently(() => {
+          try { if (typeof applyPreset === 'function') applyPreset(target); } catch (_) {}
           try { dd && dd.setValue && dd.setValue(target, false); } catch (_) {}
-        } catch (_) {}
-        isApplyingPreset = false;
+        });
       };
     }
   } catch (_) {}
