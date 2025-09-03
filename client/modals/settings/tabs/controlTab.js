@@ -117,11 +117,16 @@ export function renderControlTab(container) {
   const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
   container.appendChild(sec);
 
-  // Toolbar: Preset dropdown + Reset button (templated)
-  const toolbar = createUiElement(basicSection);
-  toolbar.className = 'sf-kb-toolbar';
-  // Layout: left group (label+dropdown), right-aligned Reset (styles via .sf-kb-toolbar)
-  try { toolbar.style.display = 'flex'; } catch (_) {}
+  // First row: Preset label | dropdown | reset (simple grid)
+  const toolbar = document.createElement('div');
+  // Layout: single 3-column row (label | dropdown | reset), vertically centered
+  try {
+    toolbar.style.display = 'grid';
+    toolbar.style.gridTemplateColumns = 'auto 1fr auto';
+    toolbar.style.alignItems = 'center';
+    toolbar.style.gap = '0.5rem';
+    toolbar.style.margin = '0.5rem 0';
+  } catch (_) {}
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,
@@ -146,18 +151,13 @@ export function renderControlTab(container) {
     width: '13.75rem',
     placeholder: 'Layout Preset'
   });
+  // Keep dropdown flush for vertical centering in the 3-col grid (no extra nudges)
+  try { if (presetDD && presetDD.el) presetDD.el.style.marginTop = '0'; } catch (_) {}
   const presetLabel = createUiElement(basicFormLabel, 'Layout Style:');
   try { presetLabel.classList.add('sf-kb-label'); } catch (_) {}
-  // Left group wrapper for spacing between label and dropdown
-  const leftGroup = document.createElement('div');
-  try {
-    leftGroup.style.display = 'flex';
-    leftGroup.style.alignItems = 'center';
-    leftGroup.style.gap = '0.5rem';
-  } catch (_) {}
-  leftGroup.appendChild(presetLabel);
-  leftGroup.appendChild(presetDD.el);
-  toolbar.appendChild(leftGroup);
+  // Append directly into 3-column grid
+  toolbar.appendChild(presetLabel);
+  toolbar.appendChild(presetDD.el);
 
   const resetBtn = createUiElement(basicButton, 'button', 'Reset All');
   try { resetBtn.setAttribute('aria-label', 'Reset all keybindings'); } catch (_) {}
@@ -173,13 +173,11 @@ export function renderControlTab(container) {
     saveBindings(state.preset, state.map);
     renderAll();
   };
-  // Right-justify Reset All
-  try { resetBtn.style.marginLeft = 'auto'; } catch (_) {}
+  // No special alignment needed; third column holds the reset button
   toolbar.appendChild(resetBtn);
-  container.appendChild(toolbar);
+  sec.appendChild(toolbar);
 
-  // Gap between Presets toolbar and the first key group (e.g., Movement)
-  try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
+  // No extra gap; spacing controlled by row margin
 
   // Body note
   // container.appendChild(makeNote('Tip: Click a keycap, then press any key. Esc cancels. Backspace/Delete unbind.')); 

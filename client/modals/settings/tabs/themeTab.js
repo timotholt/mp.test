@@ -59,41 +59,26 @@ export function renderThemeTab(container) {
 
   container.appendChild(sec);
 
-  // Below-header controls row: preset dropdown (left) + Reset (right)
-  const controlsRow = document.createElement('div');
-  controlsRow.style.display = 'flex';
-  controlsRow.style.alignItems = 'center';
-  controlsRow.style.justifyContent = 'space-between';
-  // Use rem instead of px for spacing
-  controlsRow.style.gap = '0.5rem';
-  controlsRow.style.margin = '0.5rem 0';
-  const leftBox = document.createElement('div');
-  leftBox.id = 'theme-hdr-left-panel';
-  leftBox.style.display = 'flex';
-  leftBox.style.alignItems = 'center';
-  // rem gap for consistency
-  leftBox.style.gap = '0.5rem';
-  const rightBox = document.createElement('div');
-  rightBox.style.display = 'flex';
-  rightBox.style.alignItems = 'center';
-  // Create Reset button now; wire onclick after sliders are built
-  resetBtn = createUiElement(basicButton, 'Reset');
-  rightBox.appendChild(resetBtn);
-  controlsRow.appendChild(leftBox);
-  controlsRow.appendChild(rightBox);
-  // Place the row inside the section wrapper so it sits just below the header
-  sec.appendChild(controlsRow);
+  // Single header row: 3 columns (label | dropdown | reset), vertically centered
+  const hdrRow = document.createElement('div');
+  hdrRow.style.display = 'grid';
+  hdrRow.style.gridTemplateColumns = 'auto 1fr auto';
+  hdrRow.style.alignItems = 'center';
+  hdrRow.style.gap = '0.5rem';
+  hdrRow.style.margin = '0.5rem 0';
+  const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
+  hdrRow.appendChild(lbl);
+  // Create Reset button now; append after dropdown is created
+  resetBtn = createUiElement(basicButton, 'button', 'Reset');
+  // Place the row inside the section so it sits just below the header
+  sec.appendChild(hdrRow);
 
-  // Optional Theme preset dropdown for overlay; simple label for panel
+  // Optional Theme preset dropdown for overlay
   let dd = null; // preset dropdown (overlay only)
   (function buildThemeHeader() {
     try {
-      const left = sec.querySelector('#theme-hdr-left-panel');
       // Theme presets: import centralized presets directly (single source of truth)
       const presets = themePresets;
-
-        const themeTopRow = createUiElement(basicFormRow, 'div');
-        const lbl = createUiElement(basicFormLabel, 'Theme Preset:');
 
         try {
           // Use unified key 'grimDark.theme'; migrate from legacy 'ui_preset' if present
@@ -128,16 +113,15 @@ export function renderThemeTab(container) {
               try { dd && dd.setValue(val, false); } catch (_) {}
             }
           }});
-          // Consistent spacing with other dropdowns
-          try { if (dd && dd.el) dd.el.style.marginTop = '0.5rem'; } catch (_) {}
+          // Keep dropdown flush for vertical centering in grid
+          try { if (dd && dd.el) dd.el.style.marginTop = '0'; } catch (_) {}
         } catch (_) {
           dd = createDropdown({ items: [{ label: 'Custom', value: 'Custom' }], value: 'Custom', width: '15rem' });
-          // Consistent spacing even on fallback
-          try { if (dd && dd.el) dd.el.style.marginTop = '0.5rem'; } catch (_) {}
+          // Keep dropdown flush even on fallback
+          try { if (dd && dd.el) dd.el.style.marginTop = '0'; } catch (_) {}
         }
-        themeTopRow.appendChild(lbl);
-        if (dd) themeTopRow.appendChild(dd.el);
-        if (left) left.appendChild(themeTopRow); else container.appendChild(themeTopRow);
+        if (dd) hdrRow.appendChild(dd.el);
+        if (resetBtn) hdrRow.appendChild(resetBtn);
     } catch (_) {
       // Fallback: no-op if header cannot be built
     }
