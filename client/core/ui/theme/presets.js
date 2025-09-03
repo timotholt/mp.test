@@ -15,8 +15,12 @@ export const themePresets = Object.freeze({
   '*Teal Tide':      { hue: 160, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   '*Sea Glass':      { hue: 175, intensity: 60, saturation: 50, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   '*Cyan Frost':     { hue: 180, intensity: 60, saturation: 50, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
-  'Steel Blue':     { hue: 207, intensity: 60, saturation: 35, fgBrightness: 50, border: 80, glow: 40, transparency: 65, gradient: 0, overlayDarkness: 72, blur: 5 },
+  'Steel Blue':     { hue: 207, intensity:  60, saturation: 35, fgBrightness:  50, border: 80, glow: 40, transparency: 65, gradient: 0, overlayDarkness: 72, blur: 5 },
+  "Orange Crush":   { hue:  50, intensity: 100, saturation: 56, fgBrightness: 100, border: 70, glow: 60, transparency: 68, gradient: 0, overlayDarkness: 80, blur: 6 },
+
   '*Azure Storm':    { hue: 210, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
+
+
   '*Cobalt Drift':   { hue: 225, intensity: 60, saturation: 55, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   '*Cerulean Surge': { hue: 240, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
   '*Indigo Night':   { hue: 260, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },
