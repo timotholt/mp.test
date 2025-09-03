@@ -200,8 +200,8 @@ export function renderThemeTab(container) {
         knobRow.style.display = 'flex';
         knobRow.style.gap = 'var(--ui-gap, 1rem)';
         knobRow.style.alignItems = 'center';
-        // Center knobs horizontally for symmetry
-        knobRow.style.justifyContent = 'center';
+        // Evenly distribute knobs across the row for better spacing
+        knobRow.style.justifyContent = 'space-evenly';
         knobRow.style.margin = 'calc(var(--ui-gap, 1rem) * 2) var(--ui-gap, 1rem) 0 var(--ui-gap, 1rem)';
         knobRow.style.padding = '0';
         knobRow.style.overflow = 'visible';

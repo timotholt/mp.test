@@ -505,8 +505,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       root.style.setProperty('--sf-tip-border', bright);
       root.style.setProperty('--sf-tip-glow-outer', `0 0 18px ${colorFromHSLC({ h: hue, s: sat, l: light, alpha: glowAlphaEff })}`);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
-      // Global text glow reduced by ~50% (blur radius and alpha)
-      const tipTextGlow = `0 0 6px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: 0.5 * Math.min(1, intensity / 20) })}`;
+      // Tooltip text glow: scale alpha by glow strength and intensity so tooltips respect glow slider
+      const tipTextGlow = `0 0 6px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: Math.min(0.9, glowAlphaEff * Math.min(1, intensity / 20)) })}`;
       root.style.setProperty('--sf-tip-text-glow', tipTextGlow);
       // Expose same glow for general UI text usage
       root.style.setProperty('--ui-text-glow', tipTextGlow);

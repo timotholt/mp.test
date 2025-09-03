@@ -121,17 +121,20 @@ function makeVolumeKnobsGrid() {
     cell.style.display = 'flex';
     cell.style.flexDirection = 'column';
     cell.style.alignItems = 'center';
-    cell.style.width = '110px';
+    // Scale cell width with UI font scale via rem (110px ≈ 6.875rem; round to 7rem)
+    cell.style.width = '7rem';
 
-    const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: 64, segments: 20 });
+    // Use rem so knob size respects --ui-font-scale via root rem
+    const { el } = createVolumeKnob({ groupId: g.id, label: g.label + ' Volume', size: '4rem', segments: 20 });
     // Micro-adjusts for audio knobs:
     // - Push the outer ring down by +2px (to ~4px total) for visual centering
     // - Increase radial gap between knob and LED ring via --kn-ring-offset
     // - Brighten the dark gray off segments for contrast
     // - Add a subtle glow to lit segments (stronger on hover/focus)
     try {
-      el.style.setProperty('--kn-ring-global-y', '4px');
-      el.style.setProperty('--kn-ring-offset', '14px');
+      // Convert micro-adjusts to rem to scale with UI font size
+      el.style.setProperty('--kn-ring-global-y', '0.25rem');
+      el.style.setProperty('--kn-ring-offset', '0.875rem');
       el.style.setProperty('--kn-seg-off', '#3b4350');
       // Match LED segment colors to themed border/highlight
       el.style.setProperty('--kn-seg-on', 'var(--ui-surface-border)');
@@ -153,7 +156,7 @@ function makeVolumeKnobsGrid() {
       // Subtle but visible line weight
       el.style.setProperty('--kn-center-ring-w', '2px');
       // Keep a clear gap so the ring never touches the white dot
-      el.style.setProperty('--kn-center-ring-gap', '4px');
+      el.style.setProperty('--kn-center-ring-gap', '0.25rem');
       // Precise diameter so the ring stroke centerline matches the dot center radius minus gap:
       // Rdot_center = 0.5*size - (0.06*size + 5px + 0.5*dot) = 0.44*size - 5px - 0.5*dot
       // We want: Rring_centerline = Rdot_center - gap
@@ -177,7 +180,8 @@ function makeVolumeKnobsGrid() {
     cap.style.marginTop = '6px';
     cap.style.color = 'var(--ui-fg, #eee)';
     cap.style.opacity = '0.9';
-    cap.style.fontSize = '12px';
+    // Caption scales with UI font size
+    cap.style.fontSize = '0.75rem';
 
     cell.appendChild(el);
     cell.appendChild(cap);
