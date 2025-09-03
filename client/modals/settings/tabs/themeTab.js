@@ -208,18 +208,21 @@ export function renderThemeTab(container) {
           size: knobSizePx,
           label: 'Hue',
           ringOffset: ringOffsetPx,
+          // ColorKnobs already applies hue on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
         satKn = CK.createSaturationKnob({
           size: knobSizePx,
           label: 'Saturation',
           ringOffset: ringOffsetPx,
+          // ColorKnobs already applies saturation on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
         briKn = CK.createIntensityKnob({
           size: knobSizePx,
           label: 'Intensity',
           ringOffset: ringOffsetPx,
+          // ColorKnobs already applies intensity on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
 
@@ -561,21 +564,19 @@ export function renderThemeTab(container) {
         else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
       } catch (_) {}
 
-      // Silently sync knobs to the preset hue/intensity if available
+      // Silently sync knobs to the preset values if available
       try {
         const tm = (window && window.UITheme) ? window.UITheme : null;
         const p = (tm && tm.presets && tm.presets[name]) ? tm.presets[name] : null;
         if (p) {
           if (hueKn && hueKn.setValue) hueKn.setValue(p.hue, { silent: true });
-          const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8)));
-          if (satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
+          const satVal = Math.max(0, Math.min(100, Math.round(Number(p.saturation))));
+          if (satKn && satKn.setValue) satKn.setValue(satVal, { silent: true });
           const br = Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)));
           if (briKn && briKn.setValue) briKn.setValue(br, { silent: true });
-          // Keep foreground brightness as user-defined; reflect current persisted value
+          // Sync Text Brightness knob to preset value
           try {
-            let fgb = parseFloat(localStorage.getItem('ui_fg_brightness'));
-            if (!Number.isFinite(fgb)) fgb = 50;
-            fgb = Math.max(0, Math.min(100, Math.round(fgb)));
+            const fgb = Math.max(0, Math.min(100, Math.round(Number(p.fgBrightness) || 50)));
             if (txtKn && txtKn.setValue) txtKn.setValue(fgb, { silent: true });
           } catch (_) {}
         }

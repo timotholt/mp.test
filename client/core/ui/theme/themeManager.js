@@ -671,6 +671,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
     window.UITheme = {
       applyTheme,
       applyDynamicTheme,
+      // Expose presets so Settings UI can read values when syncing knobs
+      presets: themePresets,
       get active() { return state.active; }
     };
   } catch (_) {}
