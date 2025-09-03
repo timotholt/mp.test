@@ -291,6 +291,10 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       const borderStrength = clamp(params.borderStrength != null ? params.borderStrength : currentBorderStrength, 0, 100);
       const glowStrength = clamp(params.glowStrength != null ? params.glowStrength : currentGlowStrength, 0, 100);
       const overlayDarkness = clamp(params.overlayDarkness != null ? params.overlayDarkness : currentOverlayDarkness, 0, 100);
+      // New: Foreground brightness (0..100) where 50 = baseline (factor 1.0)
+      let currentFgBrightness = NaN;
+      try { currentFgBrightness = parseFloat(localStorage.getItem('ui_fg_brightness')); } catch (_) {}
+      const fgBrightness = clamp(params.fgBrightness != null ? Number(params.fgBrightness) : (Number.isFinite(currentFgBrightness) ? currentFgBrightness : 50), 0, 100);
       // Debug: entry point (verify sliders call into here)
       try { console.debug('[theme] applyDynamicTheme(start)', { params, hue, intensity, fontScale, gradient, milkiness, borderStrength, glowStrength, overlayDarkness }); } catch (_) {}
 
@@ -319,6 +323,8 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
       try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
       try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
+      // Persist foreground brightness
+      try { localStorage.setItem('ui_fg_brightness', String(fgBrightness)); } catch (_) {}
       // Reflect new controls as CSS variables for other components to read if needed
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
       try { root.style.setProperty('--ui-backdrop-blur', `${toFixed(milkiness, 2)}px`); } catch (_) {}
@@ -441,6 +447,23 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       root.style.setProperty('--ui-highlight', bright);
       // Back-compat alias used in some components
       root.style.setProperty('--ui-bright', bright);
+
+      // Foreground brightness application (override locked defaults at runtime)
+      // Map 0..100 -> factor 0.6..1.4 (baseline 50 -> 1.0)
+      try {
+        const f = 0.6 + (fgBrightness / 100) * 0.8;
+        const clamp255 = (x) => Math.max(0, Math.min(255, Math.round(x)));
+        // Base grayscale anchors from LockedThemeDefaults
+        const baseMain = 220, baseMuted = 200, baseQuip = 176, baseWeak = 144;
+        const cMain = clamp255(baseMain * f);
+        const cMuted = clamp255(baseMuted * f);
+        const cQuip = clamp255(baseQuip * f);
+        const cWeak = clamp255(baseWeak * f);
+        root.style.setProperty('--ui-fg', `rgba(${cMain},${cMain},${cMain},1.0)`);
+        root.style.setProperty('--ui-fg-muted', `rgba(${cMuted},${cMuted},${cMuted},1.0)`);
+        root.style.setProperty('--ui-fg-quip', `rgba(${cQuip},${cQuip},${cQuip},1.0)`);
+        root.style.setProperty('--ui-fg-weak', `rgba(${cWeak},${cWeak},${cWeak},1.0)`);
+      } catch (_) {}
       
       // Compute solid (non-alpha) knob face colors: neutral/dark, slightly darker than surfaces.
       // Controlled by locked --ui-knob-darken (0..~0.5). At intensity=0, force true black.
@@ -616,6 +639,10 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       try {
         const op = parseFloat(localStorage.getItem('ui_opacity_mult'));
         if (Number.isFinite(op)) params.opacityMult = op;
+      } catch (_) {}
+      try {
+        const fgb = parseFloat(localStorage.getItem('ui_fg_brightness'));
+        if (Number.isFinite(fgb)) params.fgBrightness = fgb;
       } catch (_) {}
       applyDynamicTheme(params);
     } else if (resolvedPreset) {

@@ -8,6 +8,7 @@ import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
+import { createKnob } from '../../../core/ui/knob.js';
 
 export function renderThemeTab(container) {
   // Theme tab is overlay-only; remove variant checks
@@ -126,9 +127,9 @@ export function renderThemeTab(container) {
     } catch (_) {}
   }
 
-  // Optional color knobs (Hue / Saturation / Intensity) for overlay if available
+  // Optional color knobs (Hue / Saturation / Intensity) + Text Brightness for overlay if available
   // Mirrors previous inline overlay implementation and initializes from storage
-  let hueKn = null, satKn = null, briKn = null;
+  let hueKn = null, satKn = null, briKn = null, txtKn = null;
   try {
     // Insert "Overall UI" section header before the color knobs
     try {
@@ -246,6 +247,40 @@ export function renderThemeTab(container) {
         knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
         knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
 
+        // New foreground Text Brightness knob (0..100, default 50)
+        // Uses the generic knob with a grayscale spectrum ring for consistency
+        txtKn = createKnob({
+          min: 0,
+          max: 100,
+          value: 50,
+          step: 5,
+          wheelFineStep: 1,
+          size: knobSizePx,
+          label: 'Text Brightness',
+          segments: -1,
+          angleMin: -135,
+          angleMax: 135,
+          ringOffset: ringOffsetPx,
+          // Grayscale ring: dark -> light across the sweep
+          ringColorForAngle: (_angDeg, t) => {
+            const c = Math.round(96 + t * (255 - 96));
+            return `rgb(${c}, ${c}, ${c})`;
+          },
+          onInput: (v) => {
+            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: Math.round(v) }); } catch (_) {}
+            try { selectCustomPreset(); } catch (_) {}
+          },
+          onChange: (v) => {
+            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: Math.round(v) }); } catch (_) {}
+          }
+        });
+
+        // Match other knobs' hover/focus glow
+        try { txtKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+        try { txtKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
+
+        knobRow.appendChild(makeCol(txtKn.el, 'Text Brightness'));
+
         container.appendChild(knobRow);
 
         // Initialize knob values from persisted state (silent)
@@ -264,6 +299,12 @@ export function renderThemeTab(container) {
           if (!Number.isFinite(briInit)) briInit = 60;
           briInit = Math.max(0, Math.min(100, Math.round(briInit)));
           try { if (briKn && briKn.setValue) briKn.setValue(briInit, { silent: true }); } catch (_) {}
+
+          // Foreground brightness init (default 50)
+          let fgInit = parseFloat(localStorage.getItem('ui_fg_brightness'));
+          if (!Number.isFinite(fgInit)) fgInit = 50;
+          fgInit = Math.max(0, Math.min(100, Math.round(fgInit)));
+          try { if (txtKn && txtKn.setValue) txtKn.setValue(fgInit, { silent: true }); } catch (_) {}
         } catch (_) {}
       }
   } catch (_) {}
@@ -297,19 +338,7 @@ export function renderThemeTab(container) {
   // Unify value styling with label template
   try { styleAsLabel(mkVal); } catch (_) {}
 
-  // Insert Transparency section header
-  try {
-      const subtleQuips = [
-        'Big movements, subtle changes.',
-        'If you do not look closely, you may miss it.',
-        'Subtle shifts shape the mood.',
-        "It's the little things that matter",
-        'It whispers, not shouts.'
-      ];
-      // Gap before the new section
-      container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
-      container.appendChild(makeSection('Transparency', getQuip('settings.overlay.transparencyTag', subtleQuips), 'afterTitle', true));
-  } catch (_) {}
+  // Transparency slider now grouped under the "Base UI Color" section (no extra header)
 
   // Transparency slider (reversed: 100% = clear, 0% = opaque)
   const MMAX = 2.5;
@@ -485,6 +514,12 @@ export function renderThemeTab(container) {
           try { if (hueKn && hueKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { hue: 207, intensity: 60 }; hueKn.setValue(p.hue, { silent: true }); } } catch (_) {}
           try { if (satKn && satKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; const satEff = Math.max(0, Math.min(85, Math.round((Number(p.intensity) || 60) * 0.8))); satKn.setValue(satEff, { silent: true }); } } catch (_) {}
           try { if (briKn && briKn.setValue) { const p = (window.UITheme && window.UITheme.presets && window.UITheme.presets['Steel Blue']) || { intensity: 60 }; briKn.setValue(Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60))), { silent: true }); } } catch (_) {}
+          try {
+            // Reset Text Brightness to neutral 50 and apply
+            if (txtKn && txtKn.setValue) txtKn.setValue(50, { silent: true });
+            try { localStorage.setItem('ui_fg_brightness', '50'); } catch (_) {}
+            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: 50 }); } catch (_) {}
+          } catch (_) {}
         } catch (_) {}
         isApplyingPreset = false;
       };
@@ -506,6 +541,15 @@ export function renderThemeTab(container) {
       try { let m = parseFloat(localStorage.getItem('ui_milkiness')); if (!Number.isFinite(m)) m = 3; m = Math.max(0, Math.min(10, m)); mkSet && mkSet(m); } catch (_) {}
       try { const od = Math.max(0, Math.min(100, Math.round(parseFloat(localStorage.getItem('ui_overlay_darkness')) || 60))); odSet && odSet(od); } catch (_) {}
       try { const MMAX = 2.5; const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim(); const mult = parseFloat(css); const t = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100; opSet && opSet(t); } catch (_) {}
+      // Keep Gradient helper visibility consistent with current transparency
+      try {
+        const MMAX = 2.5;
+        const css = getComputedStyle(document.documentElement).getPropertyValue('--ui-opacity-mult').trim();
+        const mult = parseFloat(css);
+        const t = Number.isFinite(mult) ? Math.max(0, Math.min(100, Math.round(100 - (mult / MMAX) * 100))) : 100;
+        if (t < 100) { grLbl.title = 'Surface gradient amount (more noticeable when not fully transparent)'; grLbl.style.opacity = '1'; }
+        else { grLbl.title = ''; grLbl.style.opacity = '0.8'; }
+      } catch (_) {}
 
       // Silently sync knobs to the preset hue/intensity if available
       try {
@@ -517,6 +561,13 @@ export function renderThemeTab(container) {
           if (satKn && satKn.setValue) satKn.setValue(satEff, { silent: true });
           const br = Math.max(0, Math.min(100, Math.round(Number(p.intensity) || 60)));
           if (briKn && briKn.setValue) briKn.setValue(br, { silent: true });
+          // Keep foreground brightness as user-defined; reflect current persisted value
+          try {
+            let fgb = parseFloat(localStorage.getItem('ui_fg_brightness'));
+            if (!Number.isFinite(fgb)) fgb = 50;
+            fgb = Math.max(0, Math.min(100, Math.round(fgb)));
+            if (txtKn && txtKn.setValue) txtKn.setValue(fgb, { silent: true });
+          } catch (_) {}
         }
       } catch (_) {}
     } catch (_) {}
