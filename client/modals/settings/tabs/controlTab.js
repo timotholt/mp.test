@@ -120,12 +120,8 @@ export function renderControlTab(container) {
   // Toolbar: Preset dropdown + Reset button (templated)
   const toolbar = createUiElement(basicSection);
   toolbar.className = 'sf-kb-toolbar';
-  // Layout: left group (label+dropdown), right-aligned Reset
-  try {
-    toolbar.style.display = 'flex';
-    toolbar.style.alignItems = 'center';
-    toolbar.style.gap = '0.5rem';
-  } catch (_) {}
+  // Layout: left group (label+dropdown), right-aligned Reset (styles via .sf-kb-toolbar)
+  try { toolbar.style.display = 'flex'; } catch (_) {}
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,

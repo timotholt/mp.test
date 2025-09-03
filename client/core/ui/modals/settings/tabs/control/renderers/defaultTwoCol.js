@@ -6,9 +6,7 @@ import { createUiElement, basicFormLabel } from '../../../../../theme/themeManag
 export function renderDefaultTwoColGroup({ g, gSec, attachKeyForAction }) {
   if (!g || !gSec) return;
   const wrap = document.createElement('div');
-  const useTwoCol = (
-    g.id === 'magic' || g.id === 'spiritual' || g.id === 'lists' || g.id === 'movementAdvanced'
-  ) || (g.actions && g.actions.length >= 4);
+  const useTwoCol = (g.actions && g.actions.length >= 4);
   if (useTwoCol) wrap.className = 'sf-kb-two-col';
   gSec.appendChild(wrap);
 
