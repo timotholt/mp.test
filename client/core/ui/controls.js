@@ -412,10 +412,12 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
       btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
       btn.style.outline = 'var(--ui-surface-border-css)';
       btn.style.outlineOffset = '1px';
+      btn.style.border = '1px solid var(--ui-bright)';
     };
     const hoverOff = () => {
       btn.style.boxShadow = 'none';
       btn.style.outline = 'none';
+      btn.style.border = 'var(--ui-surface-border-css)';
     };
     btn.addEventListener('mouseenter', hoverOn);
     btn.addEventListener('mouseleave', hoverOff);

@@ -17,6 +17,8 @@ import { ensureControlsKbStyle } from '../../../core/ui/modals/settings/tabs/con
 import { normalizeKey, prettyKey, isMovementActionId, keyFromEvent, splitChord } from '../../../core/ui/modals/settings/tabs/control/ui.js';
 import { makeSection } from '../uiHelpers.js';
 import { getQuip } from '../../../core/ui/quip.js';
+import { createUiElement, basicButton, basicFormLabel } from '../../../core/ui/theme/themeManager.js';
+import { basicSection, basicGapBetweenSections } from '../../../core/ui/theme/templates.js';
 
 // Storage keys (namespaced via LS helper)
 const STORAGE_KEY = 'keybinds.map';
@@ -115,10 +117,9 @@ export function renderControlTab(container) {
   const sec = makeSection(headerTitle, headerDesc, 'afterTitle', true);
   container.appendChild(sec);
 
-  // Toolbar: Preset dropdown + Reset button
-  const toolbar = document.createElement('div');
+  // Toolbar: Preset dropdown + Reset button (templated)
+  const toolbar = createUiElement(basicSection);
   toolbar.className = 'sf-kb-toolbar';
-  toolbar.style.margin = '0.375rem 0 0.75rem 0';
 
   const presetDD = createDropdown({
     items: PRESET_ITEMS,
@@ -143,16 +144,13 @@ export function renderControlTab(container) {
     width: '13.75rem',
     placeholder: 'Layout Preset'
   });
-  const presetLabel = document.createElement('div');
-  presetLabel.className = 'sf-kb-label';
-  presetLabel.textContent = 'Layout Style:';
+  const presetLabel = createUiElement(basicFormLabel, 'Layout Style:');
+  try { presetLabel.classList.add('sf-kb-label'); } catch (_) {}
   toolbar.appendChild(presetLabel);
   toolbar.appendChild(presetDD.el);
 
-  const resetBtn = document.createElement('button');
-  resetBtn.type = 'button';
-  resetBtn.className = 'sf-btn';
-  resetBtn.textContent = 'Reset All';
+  const resetBtn = createUiElement(basicButton, 'button', 'Reset All');
+  try { resetBtn.setAttribute('aria-label', 'Reset all keybindings'); } catch (_) {}
   resetBtn.onclick = () => {
     let targetPreset = state.preset;
     if (state.preset === 'custom') {
@@ -265,7 +263,7 @@ export function renderControlTab(container) {
 
     // Match previous look: rule directly after the title (before any quip)
     const gSec = makeSection(g.title, g.quip, 'afterTitle');
-    try { gSec.style.margin = '1rem 0'; } catch (_) {}
+    // try { gSec.style.margin = '1rem 0'; } catch (_) {}
     container.appendChild(gSec);
 
     // Special layout for Movement: circular arrows with themed keycaps
@@ -316,6 +314,8 @@ export function renderControlTab(container) {
         appendPair(acts[i]);
         appendPair(acts[i + 1]);
       }
+      // Gap after Combat section
+      try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
       return; // done with combat
     }
 
@@ -332,13 +332,16 @@ export function renderControlTab(container) {
         startListening,
         extMirrorEls,
       });
+      // Gap after Extended section
+      try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
       return; // done with extended group
     }
 
-    // movementSecondary is already skipped above; no need to guard again
-
     // Default layout: labeled rows with key on the right (two-column when applicable)
     renderDefaultTwoColGroup({ g, gSec, attachKeyForAction });
+    
+    // Gap between sections
+    try { container.appendChild(createUiElement(basicGapBetweenSections)); } catch (_) {}
   });
 
   // Apply initial binding visuals after creating all buttons

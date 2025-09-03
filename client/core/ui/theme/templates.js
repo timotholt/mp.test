@@ -78,7 +78,8 @@ export const basicStyles = Object.freeze({
     pointer: true,
     hover: {
       boxShadow: 'var(--ui-surface-glow-outer)',
-      outline: 'var(--ui-surface-border-css)'
+      outline: 'var(--ui-surface-border-css)',
+      border: '1px solid var(--ui-bright)'
     },
     userSelect: 'none'
   },
@@ -171,7 +172,11 @@ export const basicStyles = Object.freeze({
     borderRadius: '0.5rem',
     px: '0.5rem',
     flex: '1',
-    width: '100%'
+    width: '100%',
+    hover: {
+      boxShadow: 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))',
+      border: '1px solid var(--ui-bright)'
+    }
   },
 
   // Overlay input row scaffold

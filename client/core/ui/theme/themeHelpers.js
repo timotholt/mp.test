@@ -156,7 +156,22 @@ export function applyControlsStyle(options = {}) {
         border: 1px solid var(--ui-surface-border);
         border-radius: 0.5rem;
       }
-      select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); }
+      select:focus { outline: none; box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright); }
+      select:hover { box-shadow: var(--ui-surface-glow-outer); border-color: var(--ui-bright); }
+      /* Bright border on hover/focus for common buttons and text inputs */
+      button:hover, button:focus-visible,
+      .sf-btn:hover, .sf-btn:focus-visible {
+        border-color: var(--ui-bright);
+        box-shadow: var(--ui-surface-glow-outer);
+        outline: none;
+      }
+      input[type="text"]:hover, input[type="text"]:focus,
+      input[type="number"]:hover, input[type="number"]:focus,
+      textarea:hover, textarea:focus {
+        border-color: var(--ui-bright);
+        box-shadow: var(--ui-surface-glow-outer);
+        outline: none;
+      }
       select option { background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom)); color: var(--ui-fg); }
       select option:checked, select option:hover { background: var(--ui-accent); color: var(--ui-fg); }
       /* Make form sliders reflect the current theme hue */
