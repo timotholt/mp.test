@@ -3,7 +3,6 @@
 // but removes cross-tab DOM references (fsRng/fsVal) to avoid coupling.
 // Minimal, human-readable, and commented per project conventions.
 
-import * as LS from '../../../core/localStorage.js';
 import { getQuip } from '../../../core/ui/quip.js';
 import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
@@ -75,19 +74,9 @@ export function renderThemeTab(container) {
       const presets = themePresets;
 
         try {
-          // Use unified key 'grimDark.theme'; migrate from legacy 'ui_preset' if present
+          // Use unified key 'grimDark.theme' only (no compatibility fallback)
           let savedPreset = null;
           try { savedPreset = (localStorage.getItem('grimDark.theme') || '').trim(); } catch (_) {}
-          if (!savedPreset) {
-            try {
-              const legacy = LS.getItem('ui_preset', null);
-              if (legacy) {
-                const mig = (legacy === 'Custom') ? 'custom' : legacy;
-                try { localStorage.setItem('grimDark.theme', mig); } catch (_) {}
-                savedPreset = mig;
-              }
-            } catch (_) {}
-          }
           const names = Object.keys(presets);
           const items = [{ label: 'Custom', value: 'Custom' }].concat(names.map(n => ({ label: n, value: n })));
           let ddValue = 'Steel Blue';
