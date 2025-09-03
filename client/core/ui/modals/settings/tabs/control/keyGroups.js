@@ -159,7 +159,7 @@ export const KEY_GROUPS = [
   {
     id: 'extended',
     title: 'Extended Commands',
-    quip: 'Two-keystroke commands: [prefix] + [key] (e.g., # + r = Ride).',
+    quip: 'Two-keystroke commands: [prefix] + [key]',
     actions: [
       { id: 'extendedPrefix', label: 'Extended Prefix' },
       { id: 'extHelp', label: 'Help' },
