@@ -820,14 +820,9 @@ export function createKnobButton({ label = 'Knob Button', onClick, minWidth = ''
 // -------------------------------------------------
 // Neon Outline Button (JS-only; pill outline + glow)
 // -------------------------------------------------
-export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-red, #ff3b2f)' } = {}) {
+export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-accent, #9fd0ff)' } = {}) {
   if (!btn) return btn;
-  // Core glow colors (fallbacks) near #ff3b2f
-  const g1 = 'rgba(255,59,47,0.55)';
-  const g2 = 'rgba(255,59,47,0.35)';
-  const g3 = 'rgba(255,59,47,0.18)';
-  const gInner = 'rgba(255,80,60,0.22)';
-  const gInner2 = 'rgba(255,120,80,0.10)';
+  // Theme-driven: use CSS vars for glow strength/size; fall back to reasonable blue hues
 
   btn.style.display = 'inline-flex';
   btn.style.alignItems = 'center';
@@ -837,16 +832,17 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-r
   if (minWidth) btn.style.minWidth = minWidth;
   btn.style.border = '1px solid transparent';
   btn.style.borderRadius = '9999px';
+  // Keep a subtle neutral specular highlight; avoid hardcoded hue tints
   btn.style.background = [
-    `linear-gradient(180deg, ${gInner}, ${gInner2})`,
     'radial-gradient(120% 200% at 50% -40%, rgba(255,255,255,0.06), rgba(255,255,255,0))'
   ].join(', ');
-  btn.style.color = '#ffffff';
+  btn.style.color = 'var(--ui-fg, #eee)';
   btn.style.textTransform = 'uppercase';
   btn.style.letterSpacing = '0.28em';
   btn.style.fontWeight = '800';
   btn.style.fontSize = '0.95rem';
-  btn.style.textShadow = '0 0 8px rgba(255,80,60,0.55), 0 0 20px rgba(255,80,60,0.25)';
+  // Match app-wide themed text glow
+  btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
   btn.style.userSelect = 'none';
   btn.style.cursor = 'pointer';
   btn.style.position = 'relative';
@@ -855,11 +851,8 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-r
 
   const baseRings = [
     `0 0 0 2px ${color}`,
-    `0 0 14px ${g1}`,
-    `0 0 30px ${g2}`,
-    `0 0 60px ${g3}`,
-    `inset 0 0 12px ${g1}`,
-    `inset 0 0 24px ${g2}`
+    'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40), 0 0 9px rgba(120,170,255,0.55))',
+    'var(--ui-surface-glow-inset, inset 0 0 10px rgba(120,170,255,0.25))'
   ].join(', ');
   btn.style.boxShadow = baseRings;
 
@@ -867,19 +860,17 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-r
     try {
       btn.style.boxShadow = [
         `0 0 0 2px ${color}`,
-        `0 0 18px ${g1}`,
-        `0 0 42px ${g2}`,
-        `0 0 84px ${g3}`,
-        `inset 0 0 16px ${g1}`,
-        `inset 0 0 30px ${g2}`
+        'var(--ui-glow-strong, 0 0 36px rgba(120,170,255,0.72), 0 0 10px rgba(120,170,255,0.98))',
+        'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40))',
+        'var(--ui-surface-glow-inset, inset 0 0 12px rgba(120,170,255,0.30))'
       ].join(', ');
-      btn.style.textShadow = '0 0 10px rgba(255,80,60,0.70), 0 0 26px rgba(255,80,60,0.35)';
+      btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
     } catch (_) {}
   };
   const hoverOff = () => {
     try {
       btn.style.boxShadow = baseRings;
-      btn.style.textShadow = '0 0 8px rgba(255,80,60,0.55), 0 0 20px rgba(255,80,60,0.25)';
+      btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
     } catch (_) {}
   };
   try {
@@ -894,11 +885,8 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-r
       btn.style.transform = 'translateY(0.5px)';
       btn.style.boxShadow = [
         `0 0 0 2px ${color}`,
-        `0 0 12px ${g1}`,
-        `0 0 26px ${g2}`,
-        `0 0 54px ${g3}`,
-        `inset 0 0 10px ${g1}`,
-        `inset 0 0 22px ${g2}`
+        'var(--ui-surface-glow-inset, inset 0 0 14px rgba(120,170,255,0.32))',
+        'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.30))'
       ].join(', ');
     } catch (_) {}
   };
