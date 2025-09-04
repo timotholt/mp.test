@@ -105,8 +105,25 @@ export function renderThemeTab(container) {
     try {
       const ring = kn.el.querySelector('.k-ring');
       if (!ring) return;
-      // const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.375rem var(--ui-bright-border)) drop-shadow(0 0 0.875rem var(--ui-bright-border))'; } catch (_) {} };
-      const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.20rem var(--ui-bright-border)) drop-shadow(0 0 0.50rem var(--ui-bright-border))'; } catch (_) {} };
+      // Baseline (stronger) for quick rollback:
+      // 'drop-shadow(0 0 0.375rem var(--ui-bright-border)) drop-shadow(0 0 0.875rem var(--ui-bright-border))'
+      // Subtle default previously used at ~60% glow strength: 0.20rem / 0.50rem
+      // Now scale radii with Glow Strength (0..100) for consistency with global glow.
+      const readGlowStrength = () => {
+        try {
+          const n = parseFloat(localStorage.getItem('ui_glow_strength'));
+          if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
+        } catch (_) {}
+        return 60; // sane default matches prior visual tuning
+      };
+      const computeHalo = () => {
+        // Map strength -> subtle radii in rem. At 0%: 0.10/0.25, at 60%: ~0.20/0.50, at 100%: ~0.27/0.67
+        const s = readGlowStrength() / 100;
+        const rSmall = (0.10 + 0.167 * s).toFixed(3);
+        const rLarge = (0.25 + 0.417 * s).toFixed(3);
+        return `drop-shadow(0 0 ${rSmall}rem var(--ui-bright-border)) drop-shadow(0 0 ${rLarge}rem var(--ui-bright-border))`;
+      };
+      const on = () => { try { ring.style.filter = computeHalo(); } catch (_) {} };
       const off = () => { try { ring.style.filter = ''; } catch (_) {} };
       kn.el.addEventListener('mouseenter', on);
       kn.el.addEventListener('mouseleave', off);
