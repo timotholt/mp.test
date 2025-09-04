@@ -17,7 +17,7 @@ import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
-import { createUiElement } from '../core/ui/theme/elements.js';
+import { createUiElement, basicOverlayBackdrop, basicOverlayContentClear } from '../core/ui/theme/elements.js';
 import { makeCard, makeTitleBlock } from '../core/ui/blocks.js';
 import { makeSection, makeRow } from './settings/uiHelpers.js';
 
@@ -83,18 +83,10 @@ export function presentLoginModal() {
   // Apply deep blue translucent backdrop to overlay and make content transparent; center our card
   // Use theme-driven surface variables so hue/intensity affect the backdrop
   try {
-    overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, '
-      + 'var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, '
-      + 'var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, '
-      + 'var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)';
+    Object.assign(overlay.style, basicOverlayBackdrop);
   } catch (_) {}
   try {
-    content.style.background = 'transparent';
-    content.style.border = 'none';
-    content.style.boxShadow = 'none';
-    content.style.padding = '0';
-    content.style.maxWidth = 'unset';
-    content.style.margin = '0';
+    Object.assign(content.style, basicOverlayContentClear);
   } catch (_) {}
   // Ensure shared glass form styles are present (buttons/inputs/icons)
   try { ensureGlassFormStyles(); } catch (_) {}
@@ -141,9 +133,11 @@ export function presentLoginModal() {
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';
 
-  const mkBtn = (label, onClick) => {
+  // Standard icon-capable button using stock .btn styles. Font size inherits from root.
+  const makeIconButton = (label, onClick, iconName = null) => {
     const b = document.createElement('button');
     b.className = 'btn btn-outline-glass';
+    if (iconName) { b.appendChild(icon(iconName)); }
     const txt = document.createElement('span');
     txt.textContent = label;
     b.appendChild(txt);
@@ -161,22 +155,14 @@ export function presentLoginModal() {
     return b;
   };
 
-  const googleBtn = mkBtn('Google', () => signInWithProvider('google'));
-  try { googleBtn.insertBefore(icon('google'), googleBtn.firstChild); } catch (_) {}
-  // Provider label size bump
-  try { const gTxt = googleBtn.lastElementChild; if (gTxt && gTxt.style) gTxt.style.fontSize = '16px'; } catch (_) {}
-  const discordBtn = mkBtn('Discord', () => signInWithProvider('discord'));
-  try { discordBtn.insertBefore(icon('discord'), discordBtn.firstChild); } catch (_) {}
-  // Provider label size bump
-  try { const dTxt = discordBtn.lastElementChild; if (dTxt && dTxt.style) dTxt.style.fontSize = '16px'; } catch (_) {}
-  const facebookBtn = mkBtn('Facebook', () => signInWithProvider('facebook'));
-  try { facebookBtn.insertBefore(icon('facebook'), facebookBtn.firstChild); } catch (_) {}
-  // Facebook size is good; just bump provider label size slightly for consistency
-  try { const fTxt = facebookBtn.lastElementChild; if (fTxt && fTxt.style) fTxt.style.fontSize = '16px'; } catch (_) {}
+  // Make Provider buttons and attach tooltiops
+  const googleBtn = makeIconButton('Google', () => signInWithProvider('google'), 'google');
+  const discordBtn = makeIconButton('Discord', () => signInWithProvider('discord'), 'discord');
+  const facebookBtn = makeIconButton('Facebook', () => signInWithProvider('facebook'), 'facebook');
   // Far-mode tooltips for providers
-  try { attachTooltip(googleBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(googleBtn, 'Continue with Google'); } catch (_) {}
-  try { attachTooltip(discordBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(discordBtn, 'Continue with Discord'); } catch (_) {}
-  try { attachTooltip(facebookBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(facebookBtn, 'Continue with Facebook'); } catch (_) {}
+  attachTooltip(googleBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(googleBtn, 'Continue with Google');
+  attachTooltip(discordBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(discordBtn, 'Continue with Discord');
+  attachTooltip(facebookBtn, { mode: 'far', placement: 'r,rc,tr,br,t,b' }); updateTooltip(facebookBtn, 'Continue with Facebook');
 
   buttons.appendChild(googleBtn);
   buttons.appendChild(discordBtn);
@@ -249,7 +235,7 @@ export function presentLoginModal() {
   const actions = document.createElement('div');
   actions.className = 'login-actions';
 
-  const signInBtn = mkBtn('Sign In', async () => {
+  const signInBtn = makeIconButton('Sign In', async () => {
     await signInWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
     await afterAuthSuccess(id);
   });

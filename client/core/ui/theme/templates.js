@@ -55,6 +55,21 @@ export const basicStyles = Object.freeze({
     padding: 'var(--ui-modal-padding)'
   },
 
+  // Overlay/backdrop surface helpers
+  // Backdrop uses themed surface gradient stops to preserve depth while respecting hue/intensity tokens.
+  overlayBackdrop: {
+    background: 'radial-gradient(1200px 600px at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)'
+  },
+  // Clear content container used inside overlay so modals supply their own surface (e.g., cards)
+  overlayContentClear: {
+    background: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
+    padding: '0',
+    maxWidth: 'unset',
+    margin: '0'
+  },
+
   // States
   disabled: {
     color: 'var(--ui-button-disabled-fg)',
@@ -225,6 +240,8 @@ export const basicQuip = basicStyles.quip;
 export const basicCard = basicStyles.card;
 export const basicDisabled = basicStyles.disabled;
 export const basicButton = basicStyles.button;
+export const basicOverlayBackdrop = basicStyles.overlayBackdrop;
+export const basicOverlayContentClear = basicStyles.overlayContentClear;
 export const basicFormRow = basicStyles.formRow;
 export const basicFormLabel = basicStyles.formLabel;
 export const basicFormValue = basicStyles.formValue;

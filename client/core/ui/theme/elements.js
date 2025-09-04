@@ -19,6 +19,8 @@ export {
   basicCard,
   basicDisabled,
   basicButton,
+  basicOverlayBackdrop,
+  basicOverlayContentClear,
   basicFormRow,
   basicFormLabel,
   basicFormValue,
