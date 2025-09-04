@@ -861,9 +861,9 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
   // Text at 0.8 opacity while staying theme-aware
   btn.style.color = 'color-mix(in srgb, var(--ui-fg, #eee) 80%, transparent)';
   btn.style.textTransform = 'uppercase';
-  btn.style.letterSpacing = '0.28em';
+  btn.style.letterSpacing = 'var(--ui-letter-spacing, 0rem)';
   btn.style.fontWeight = '800';
-  btn.style.fontSize = '0.95rem';
+  btn.style.fontSize = 'var(--ui-fontsize-small)';
   // Match app-wide themed text glow
   btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
   btn.style.userSelect = 'none';

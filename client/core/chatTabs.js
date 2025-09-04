@@ -16,11 +16,11 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
 
   // Root container (glassmorphism via theme variables with fallbacks)
   const el = document.createElement('div');
-  el.style.marginTop = '12px';
+  el.style.marginTop = '0.75rem';
   // el.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-  el.style.borderRadius = '6px';
+  el.style.borderRadius = '0.375rem';
   // el.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33)), var(--ui-surface-glow-inset, inset 0 0 18px rgba(40,100,200,0.18))';
-  el.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
+  el.style.backdropFilter = 'var(--sf-tip-backdrop, blur(0.1875rem) saturate(1.2))';
   el.style.color = 'var(--ui-bright, rgba(190,230,255,0.98))';
   // Let the chat fill its container's fixed height (e.g., lobby grid's chat row)
   el.style.display = 'flex';
@@ -31,7 +31,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // el.style.borderTop = '0';
   // el.style.borderLeft = '0';
   // el.style.borderRight = '0';
-  el.style.border = '0px';
+  el.style.border = '0';
   // Debug labels for DOM inspection
   try { el.setAttribute('data-name', 'chat-root'); el.setAttribute('data-mode', String(mode)); } catch (_) {}
 
@@ -51,14 +51,14 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   list.style.maxHeight = '100%';
   list.style.overflowY = 'auto';
   list.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-  list.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  list.style.borderRadius = '0px 4px 0px 0px';
+  list.style.border = '0.0625rem solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  list.style.borderRadius = '0 0.25rem 0 0';
   // List: glow on left, top, right only; omit bottom for seamless join with input row
   list.style.borderBottom = '0';
   // Keep crisp borders on glow sides for clear edge definition
   // Unified glow via theme variable
-  list.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
-  list.style.padding = '6px';
+  list.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 1.125rem rgba(120,170,255,0.33))';
+  list.style.padding = '0.375rem';
   try { list.classList.add('ui-glass-scrollbar'); } catch (_) {}
   // Assign ID expected by theme styles for chat glow
   try { list.id = 'ui-glass-scrollbar'; } catch (_) {}
@@ -74,8 +74,8 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   // Ensure the input row has a surface for inset glow and add side-specific glows
   try {
     inputRow.style.background = 'linear-gradient(var(--ui-surface-bg-top, rgba(10,18,26,0.41)), var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)))';
-    inputRow.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
-    inputRow.style.borderTop = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+    inputRow.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 1.125rem rgba(120,170,255,0.33))';
+    inputRow.style.borderTop = '0.0625rem solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   } catch (_) {}
 
   // Message input: use shared left-icon input but hide the icon to reuse styles
@@ -87,15 +87,15 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   try { inputWrap.setAttribute('data-name', 'chat-input-wrap'); } catch (_) {}
   // Hide the built-in icon button and reset padding to plain input
   hiddenIconBtn.style.display = 'none';
-  input.style.padding = '0 10px';
+  input.style.padding = '0 0.625rem';
   // Preserve chat sizing and font
   // Fill the full row height so the left border (divider) touches top/bottom
   input.style.height = '100%';
-  input.style.lineHeight = '46px';
-  input.style.borderRadius = '0px 10px 0px 0px';
-  input.style.borderLeft = '1px solid var(--ui-surface-border)';
+  input.style.lineHeight = '2.875rem';
+  input.style.borderRadius = '0 0.625rem 0 0';
+  input.style.borderLeft = '0.0625rem solid var(--ui-surface-border)';
   input.style.boxSizing = 'border-box';
-  input.style.fontSize = '16px';
+  input.style.fontSize = '1rem';
 
   // Stretch the input row's children to eliminate tiny vertical gaps
   try { inputRow.style.alignItems = 'stretch'; } catch (_) {}
@@ -105,12 +105,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   sendBtn.textContent = 'Send';
   // Softer look: fewer borders; keep subtle glass background
   // Add a clear border per request
-  sendBtn.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
+  sendBtn.style.border = '0.0625rem solid var(--ui-surface-border, rgba(120,170,255,0.70))';
   sendBtn.style.background = 'transparent';
   sendBtn.style.color = 'var(--ui-fg, #eee)';
-  sendBtn.style.borderRadius = '8px';
-  sendBtn.style.height = '40px';
-  sendBtn.style.padding = '0 14px';
+  sendBtn.style.borderRadius = '0.5rem';
+  sendBtn.style.height = '2.5rem';
+  sendBtn.style.padding = '0 0.875rem';
   // Horizontal margin only (no vertical) to keep row height tight
   sendBtn.style.margin = '0.3rem';
 
@@ -134,7 +134,7 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
     searchBtn.style.background = 'transparent';
     searchBtn.style.cursor = 'default';
     searchBtn.style.pointerEvents = 'none';
-    searchBtn.style.left = '6px';
+    searchBtn.style.left = '0.375rem';
     searchBtn.tabIndex = -1;
     searchBtn.setAttribute('aria-hidden', 'true');
     // Remove any box shadow/border artifacts
@@ -153,9 +153,9 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
   } catch (_) {}
   searchWrap.appendChild(clearBtn);
   // Slightly smaller search input
-  searchInput.style.height = '40px';
-  searchInput.style.lineHeight = '40px';
-  searchInput.style.borderRadius = '8px';
+  searchInput.style.height = '2.5rem';
+  searchInput.style.lineHeight = '2.5rem';
+  searchInput.style.borderRadius = '0.5rem';
   // Ensure width transitions apply; do not let flex sizing override
   searchInput.style.flex = '0 0 auto';
   // Let CSS drive width/padding transitions: clear inline values set by shared helper
@@ -175,12 +175,12 @@ export function createChatTabs({ mode = 'lobby', onJoinGame, onOpenLink } = {}) 
       const style = document.createElement('style');
       style.id = STYLE_ID;
       style.textContent = `
-        .chat-search-collapsible{ position:relative; display:flex; align-items:center; width:32px; overflow:hidden; transition: width 160ms ease; }
+        .chat-search-collapsible{ position:relative; display:flex; align-items:center; width:2rem; overflow:hidden; transition: width 160ms ease; }
         .chat-search-collapsible input{ width:0; opacity:0; padding:0; pointer-events:none; transition: width 160ms ease, opacity 140ms ease, padding 160ms ease; }
-        .chat-search-collapsible:hover, .chat-search-collapsible:focus-within, .chat-search-collapsible.has-text{ width:240px; }
-        .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:200px; opacity:1; padding: 0 64px 0 calc(32px + 0.5rem); pointer-events:auto; }
+        .chat-search-collapsible:hover, .chat-search-collapsible:focus-within, .chat-search-collapsible.has-text{ width:15rem; }
+        .chat-search-collapsible:hover input, .chat-search-collapsible:focus-within input, .chat-search-collapsible.has-text input{ width:12.5rem; opacity:1; padding: 0 4rem 0 calc(2rem + 0.5rem); pointer-events:auto; }
         .chat-search-collapsible > button:not(.chat-search-clear){ left:0; }
-        .chat-search-collapsible .chat-search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); font-size:12px; line-height:18px; padding:0 6px; border-radius:6px; border:1px solid var(--ui-surface-border, rgba(120,170,255,0.70)); cursor:pointer; opacity:0; pointer-events:none; transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease; }
+        .chat-search-collapsible .chat-search-clear{ position:absolute; right:0.375rem; top:50%; transform:translateY(-50%); background:transparent; color: var(--ui-bright, rgba(190,230,255,0.90)); font-size:0.75rem; line-height:1.125rem; padding:0 0.375rem; border-radius:0.375rem; border:0.0625rem solid var(--ui-surface-border, rgba(120,170,255,0.70)); cursor:pointer; opacity:0; pointer-events:none; transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease; }
         .chat-search-collapsible:hover .chat-search-clear, .chat-search-collapsible:focus-within .chat-search-clear, .chat-search-collapsible.has-text .chat-search-clear{ opacity:1; pointer-events:auto; }
         .chat-search-collapsible .chat-search-clear:hover{ background: rgba(120,170,255,0.10); border-color: var(--ui-surface-border-strong, rgba(120,170,255,0.95)); }
       `;
