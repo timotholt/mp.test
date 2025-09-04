@@ -4,7 +4,7 @@
 // Minimal, human-readable, and commented per project conventions.
 
 import { getQuip } from '../../../core/ui/quip.js';
-import { createDropdown } from '../../../core/ui/controls.js';
+import { createDropdown, createButton } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
@@ -217,6 +217,14 @@ export function renderThemeTab(container) {
         }
         if (dd) hdrRow.appendChild(dd.el);
         if (resetBtn) hdrRow.appendChild(resetBtn);
+        // Add a small demo Basic Button to showcase the new chrome
+        try {
+          const demoBtn = createButton({ label: 'Basic Button', onClick: () => { try { console.log('[ThemeTab] Basic Button clicked'); } catch (_) {} }, minWidth: '8rem' });
+          if (demoBtn && demoBtn.el) {
+            demoBtn.el.style.marginLeft = '0.5rem';
+            hdrRow.appendChild(demoBtn.el);
+          }
+        } catch (_) {}
     } catch (_) {
       // Fallback: no-op if header cannot be built
     }

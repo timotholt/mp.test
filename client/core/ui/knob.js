@@ -422,17 +422,18 @@ function ensureStyle() {
   st.textContent = `
   .knob { position: relative; width: var(--kn-size, 64px); height: var(--kn-size, 64px);
     border-radius: 50%; outline: none; cursor: ns-resize; user-select: none; touch-action: none; overflow: visible;
-    background: linear-gradient(to bottom,
-      var(--ui-knob-bg-top, var(--kn-bg-top, #202020)) 0%,
-      var(--ui-knob-bg-bottom, var(--kn-bg-bottom, #1a1a1a)) 100%);
+    /* Lighting: brighter on the RIGHT, darker on the LEFT */
+    background: linear-gradient(90deg,
+      var(--ui-knob-bg-left, var(--ui-knob-bg-bottom, var(--kn-bg-bottom, #1a1a1a))) 0%,
+      var(--ui-knob-bg-right, var(--ui-knob-bg-top, var(--kn-bg-top, #202020))) 100%);
     box-shadow:
-      -2px -2px 3px rgba(255,255,255,0.28),
-       2px  2px  7px rgba(0,0,0,1.0),
-      inset -2px -2px 3px rgba(0,0,0,0.40),
-      inset  2px  2px 2px rgba(255,255,255,0.14);
+       2px -2px 3px rgba(255,255,255,0.32),
+      -2px  2px  7px rgba(0,0,0,1.0),
+      inset  2px -2px 2px rgba(255,255,255,0.18),
+      inset -2px  2px 3px rgba(0,0,0,0.46);
   }
-  .knob:focus { box-shadow: var(--kn-focus-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), var(--kn-focus-ring, 0 0 0 2px rgba(100,160,255,0.5)), -2px -2px 3px rgba(255,255,255,0.28), 2px 2px 7px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0,0.40), inset 2px 2px 2px rgba(255,255,255,0.14); }
-  .knob:hover { box-shadow: var(--kn-hover-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), -2px -2px 3px rgba(255,255,255, calc(0.28 + 0.06 * var(--kn-hover-strength, 1))), 2px 2px 8px rgba(0,0,0,1.0), inset -2px -2px 3px rgba(0,0,0, calc(0.40 + 0.06 * var(--kn-hover-strength, 1))), inset 2px 2px 2px rgba(255,255,255, calc(0.14 + 0.04 * var(--kn-hover-strength, 1))); }
+  .knob:focus { box-shadow: var(--kn-focus-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), var(--kn-focus-ring, 0 0 0 2px rgba(100,160,255,0.5)), 2px -2px 3px rgba(255,255,255,0.32), -2px 2px 7px rgba(0,0,0,1.0), inset 2px -2px 2px rgba(255,255,255,0.18), inset -2px 2px 3px rgba(0,0,0,0.46); }
+  .knob:hover { box-shadow: var(--kn-hover-glow, var(--ui-glow-strong, var(--sf-tip-glow-outer, 0 0 18px rgba(120,170,255,0.33)))), 2px -2px 3px rgba(255,255,255, calc(0.32 + 0.06 * var(--kn-hover-strength, 1))), -2px 2px 8px rgba(0,0,0,1.0), inset 2px -2px 2px rgba(255,255,255, calc(0.18 + 0.04 * var(--kn-hover-strength, 1))), inset -2px 2px 3px rgba(0,0,0, calc(0.46 + 0.06 * var(--kn-hover-strength, 1))); }
 
   /* Centered theme ring painted on the knob surface (hidden by default) */
   .knob::before { content: '';

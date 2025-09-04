@@ -245,6 +245,16 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   caret.style.opacity = '0.9';
   btn.appendChild(caret);
 
+  // Apply high-tech button chrome with scaled halo, then re-assert dropdown layout needs
+  try {
+    wireButtonChrome(btn);
+    // Dropdown trigger uses full width and space-between to hold label and caret
+    btn.style.width = '100%';
+    btn.style.justifyContent = 'space-between';
+    btn.style.padding = '0.375rem 0.625rem';
+    btn.style.gap = '0.5rem';
+  } catch (_) {}
+
   const menu = document.createElement('div');
   menu.style.position = 'absolute';
   menu.style.left = '0';
@@ -423,22 +433,10 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   wrap.appendChild(btn);
   wrap.appendChild(menu);
 
-  // Hover/focus glow behavior aligned with basicButton template
-  try {
-    const hoverOn = () => {
-      btn.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))';
-      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
-    };
-    const hoverOff = () => {
-      btn.style.boxShadow = 'none';
-      btn.style.outline = 'none';
-      btn.style.border = 'var(--ui-surface-border-css)';
-    };
-    btn.addEventListener('mouseenter', hoverOn);
-    btn.addEventListener('mouseleave', hoverOff);
-    btn.addEventListener('focus', hoverOn);
-    btn.addEventListener('blur', hoverOff);
-  } catch (_) {}
+  // Scaled halo on the menu container as well (hover/focus)
+  try { applyRectHalo(menu); } catch (_) {}
+
+  // Button chrome/halo handled by wireButtonChrome(); no extra hover handlers needed here.
 
   // Menu hover/focus: use brightBorder on the menu container while hovered or focused
   try {
@@ -543,4 +541,125 @@ function ensureCheckboxStyle() {
   .sf-check-text { font-size: var(--ui-fontsize-small); line-height: 1.2; }
   `;
   try { if (!st.parentNode) document.head.appendChild(st); } catch (_) {}
+}
+
+// ------------------------------
+// Basic high-tech button chrome (JS-only, knob parity)
+// ------------------------------
+// Reuses the same glow scaling approach as knob halos: at Glow=0 -> no halo,
+// smooth ramp-in with a subtle maximum. No CSS/HTML changes required.
+
+function readGlowStrength() {
+  try {
+    const n = parseFloat(localStorage.getItem('ui_glow_strength'));
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
+  } catch (_) {}
+  return 60; // sensible default matching prior visual tuning
+}
+
+function computeRectHalo() {
+  // Smoothstep easing for gentle low-end ramp; returns CSS filter string.
+  const s = Math.max(0, Math.min(1, readGlowStrength() / 100));
+  if (s <= 0) return '';
+  const t = s * s * (3 - 2 * s);
+  const rSmall = (0.27 * t).toFixed(3);
+  const rLarge = (0.67 * t).toFixed(3);
+  return `drop-shadow(0 0 ${rSmall}rem var(--ui-bright-border)) drop-shadow(0 0 ${rLarge}rem var(--ui-bright-border))`;
+}
+
+export function applyRectHalo(el) {
+  if (!el) return;
+  const on = () => { try { el.style.filter = computeRectHalo(); } catch (_) {} };
+  const off = () => { try { el.style.filter = ''; } catch (_) {} };
+  try {
+    el.addEventListener('mouseenter', on);
+    el.addEventListener('mouseleave', off);
+    el.addEventListener('focus', on);
+    el.addEventListener('blur', off);
+  } catch (_) {}
+}
+
+export function wireButtonChrome(btn, { minWidth = '', variant = 'default' } = {}) {
+  if (!btn) return btn;
+  // Base glass surface with gentle vignette and diagonal specular sheen
+  // Right-lit: darker on the LEFT, brighter on the RIGHT
+  const bgGlass = 'linear-gradient(90deg, var(--ui-surface-bg-left, var(--ui-surface-bg-bottom, rgba(10,16,22,0.40))) 0%, var(--ui-surface-bg-right, var(--ui-surface-bg-top, rgba(10,18,26,0.41))) 100%)';
+  // Subtle vignette biased to the right to enhance the light direction
+  const bgVignette = 'radial-gradient(140% 120% at 100% 50%, rgba(255,255,255,0.06) 0%, transparent 55%)';
+  // Stronger specular sheen along the right edge
+  const bgSheen = 'linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.16) 78%, transparent 100%)';
+  btn.style.display = 'inline-flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+  btn.style.gap = '0.5rem';
+  btn.style.padding = '0.5rem 0.75rem';
+  if (minWidth) btn.style.minWidth = minWidth;
+  btn.style.background = `${bgSheen}, ${bgVignette}, ${bgGlass}`;
+  btn.style.color = 'var(--ui-fg, #eee)';
+  btn.style.border = 'var(--ui-surface-border-css)';
+  btn.style.borderRadius = 'var(--ui-card-radius)';
+  btn.style.userSelect = 'none';
+  btn.style.cursor = 'pointer';
+  btn.style.fontSize = 'var(--ui-fontsize-small)';
+  btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18))';
+  btn.style.outline = 'none';
+
+  // Hover/focus: bright rim and scaled halo (no double outline)
+  const hoverOn = () => {
+    try {
+      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      btn.style.boxShadow = [
+        'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.22))'
+      ].join(', ');
+      btn.style.filter = computeRectHalo();
+    } catch (_) {}
+  };
+  const hoverOff = () => {
+    try {
+      btn.style.border = 'var(--ui-surface-border-css)';
+      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18))';
+      btn.style.filter = '';
+    } catch (_) {}
+  };
+  try {
+    btn.addEventListener('mouseenter', hoverOn);
+    btn.addEventListener('mouseleave', hoverOff);
+    btn.addEventListener('focus', hoverOn);
+    btn.addEventListener('blur', hoverOff);
+  } catch (_) {}
+
+  // Pressed: slightly deeper inset and tiny depress
+  const pressOn = () => {
+    try {
+      btn.style.transform = 'translateY(0.5px)';
+      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.24))';
+    } catch (_) {}
+  };
+  const pressOff = () => {
+    try {
+      btn.style.transform = 'none';
+      // Keep current hover state if still hovered/focused
+      // We won't touch border/filter here to avoid flicker.
+    } catch (_) {}
+  };
+  try {
+    btn.addEventListener('mousedown', pressOn);
+    window.addEventListener('mouseup', pressOff, { passive: true });
+    btn.addEventListener('keydown', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOn(); });
+    btn.addEventListener('keyup', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOff(); });
+  } catch (_) {}
+
+  // Also expose the halo behavior as a reusable helper when needed
+  try { applyRectHalo(btn); } catch (_) {}
+  return btn;
+}
+
+// Create a ready-to-use button with the chrome applied.
+export function createButton({ label = 'Button', onClick, minWidth = '' } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  wireButtonChrome(btn, { minWidth });
+  if (typeof onClick === 'function') btn.onclick = onClick;
+  return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t); } catch (_) {} } };
 }
