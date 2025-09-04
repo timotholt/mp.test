@@ -681,7 +681,7 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   btn.style.color = 'var(--ui-fg, #eee)';
   // Match app-wide themed text glow
   btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
-  btn.style.border = 'var(--ui-surface-border-css)';
+  btn.style.border = '1px solid transparent';
   btn.style.borderRadius = 'var(--ui-card-radius)';
   btn.style.userSelect = 'none';
   btn.style.cursor = 'pointer';
@@ -709,7 +709,7 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   };
   const hoverOff = () => {
     try {
-      btn.style.border = 'var(--ui-surface-border-css)';
+      btn.style.border = '1px solid transparent';
       btn.style.boxShadow = [
         '2px -2px 3px rgba(255,255,255,0.28)',
         '-2px 2px 7px rgba(0,0,0,1.0)',
@@ -721,8 +721,6 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   try {
     btn.addEventListener('mouseenter', hoverOn);
     btn.addEventListener('mouseleave', hoverOff);
-    btn.addEventListener('focus', hoverOn);
-    btn.addEventListener('blur', hoverOff);
   } catch (_) {}
 
   const pressOn = () => {
@@ -752,15 +750,14 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
 export function createKnobButton({ label = 'Knob Button', onClick, minWidth = '' } = {}) {
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.textContent = label;
+  btn.textContent = '';
   wireKnobButtonChrome(btn, { minWidth });
-  // Add a subtle white specular dot at top-right to reinforce 3D cue
+  // Add a subtle white specular dot BEFORE the label to reinforce 3D cue
+  let lab = null;
   try {
     const dot = document.createElement('span');
     dot.setAttribute('aria-hidden', 'true');
-    dot.style.position = 'absolute';
-    dot.style.top = '0.35rem';
-    dot.style.right = '0.4rem';
+    dot.style.display = 'inline-block';
     dot.style.width = '6px';
     dot.style.height = '6px';
     dot.style.borderRadius = '50%';
@@ -768,7 +765,12 @@ export function createKnobButton({ label = 'Knob Button', onClick, minWidth = ''
     dot.style.background = 'radial-gradient(circle at 45% 45%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.75) 45%, rgba(255,255,255,0.15) 75%, rgba(255,255,255,0) 100%)';
     dot.style.boxShadow = '0 0 8px rgba(255,255,255,0.25)';
     btn.appendChild(dot);
-  } catch (_) {}
+    lab = document.createElement('span');
+    lab.textContent = label;
+    btn.appendChild(lab);
+  } catch (_) { /* fallback below */ }
+  // Fallback if dot/label creation failed
+  if (!lab) { try { btn.textContent = label; } catch (_) {} }
   if (typeof onClick === 'function') btn.onclick = onClick;
-  return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t); } catch (_) {} } };
+  return { el: btn, button: btn, setLabel: (t) => { try { if (lab) lab.textContent = String(t); else btn.textContent = String(t); } catch (_) {} } };
 }
