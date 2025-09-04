@@ -5,6 +5,7 @@
 import { makeSection, attachWheel } from '../uiHelpers.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
 import { createDropdown } from '../../../core/ui/controls.js';
+import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
@@ -49,6 +50,68 @@ export function renderDisplayTab(container) {
   const sec = makeSection('Display', quip, 'afterTitle', true);
   container.appendChild(sec);
 
+  // UI Font dropdown (applies global UI font-family via CSS var) — placed at top of section
+  // Options: System Default + registered fonts from /styles/fonts.css
+  // Persist selection and apply immediately by updating --ui-font-family.
+  let uiFontDdRef = null;
+  try {
+    const defStack = LockedThemeDefaults['--ui-font-family'];
+    const mkFamily = (key) => (key === 'system' ? defStack : `'${key}', ${defStack}`);
+
+    // Fonts registered in fonts.css (font-family names)
+    const fontNames = [
+      'Hyperjump',
+      'Ultramarines',
+      'A Space Heavy',
+      'Boltruin',
+      'Gardion',
+      'Nebula',
+      'Netron',
+      'Rikos',
+      'Spotnik',
+      'TechnoCharm',
+      'Warpen',
+      'Moonhouse',
+      'Neo Latina',
+      'Orbitron',
+    ];
+
+    // Determine initial selection from localStorage (extract first quoted family)
+    let initKey = 'system';
+    try {
+      const saved = localStorage.getItem('ui_font_family');
+      if (saved && typeof saved === 'string') {
+        // Parse leading quoted family name: 'Name', then fallback to system
+        let lead = null;
+        const t = saved.trim();
+        if (t.startsWith("'")) {
+          const idx = t.indexOf("'", 1);
+          if (idx > 1) lead = t.slice(1, idx);
+        }
+        if (lead && fontNames.includes(lead)) initKey = lead; else initKey = 'system';
+      }
+    } catch (_) {}
+
+    const items = [
+      { label: 'System Default', value: 'system' },
+      ...fontNames.map(name => ({ label: name, value: name }))
+    ];
+    const uiFontRow = createUiElement(basicFormRow, 'div');
+    const uiFontLbl = createUiElement(basicFormLabel, 'UI Font:');
+    const uiFontDd = createDropdown({ items, value: initKey, width: '16rem', onChange: (val) => {
+      try {
+        const fam = mkFamily(val);
+        document.documentElement && document.documentElement.style.setProperty('--ui-font-family', fam);
+        localStorage.setItem('ui_font_family', fam);
+      } catch (_) {}
+    }});
+    uiFontDdRef = uiFontDd;
+    try { uiFontDd.el.style.marginTop = '0.5rem'; } catch (_) {}
+    uiFontRow.appendChild(uiFontLbl);
+    uiFontRow.appendChild(uiFontDd.el);
+    container.appendChild(uiFontRow);
+  } catch (_) {}
+
   // Font Size slider (root rem scale) shown in pixels
   const { row: fsRow, input: fsRng, value: fsVal, reset: fsReset } = createRangeElement(
     80, 120, 1, 100, 'Font Size:', {
@@ -64,6 +127,30 @@ export function renderDisplayTab(container) {
   fsRng.id = `settings-ui-fontscale-ovl`;
   fsVal.id = `settings-ui-fontscale-ovl-val`;
   container.appendChild(fsRow);
+
+  // Font Spacing slider (UI-only letter-spacing in rem; 0.00 .. 0.30)
+  const { row: lsRow, input: lsRng, value: lsVal, reset: lsReset } = createRangeElement(
+    0, 0.3, 0.01, 0, 'Font Spacing:', {
+      storageKey: 'ui_letter_spacing',
+      attachWheel,
+      debugLabel: 'display',
+      toDisplay: (v) => { const vv = Number(v); const txt = `${vv.toFixed(2)}rem`; return { text: txt, title: txt, derived: { v: vv } }; },
+      fromStorage: (s) => { let v = parseFloat(s); if (!Number.isFinite(v)) v = 0; if (v < 0) v = 0; if (v > 0.3) v = 0.3; return v; },
+      onChange: (v) => {
+        try {
+          const root = document.documentElement;
+          if (root) {
+            root.style.setProperty('--ui-letter-spacing', `${v}rem`);
+            // Ensure inheritance across the app; components can override if needed
+            root.style.letterSpacing = 'var(--ui-letter-spacing, 0rem)';
+          }
+        } catch (_) {}
+      }
+    }
+  );
+  lsRng.id = 'settings-ui-letterspacing-ovl';
+  lsVal.id = 'settings-ui-letterspacing-ovl-val';
+  container.appendChild(lsRow);
 
   // Spacer between sections (1rem)
   container.appendChild(createUiElement(basicGapBetweenSections, 'div'));
@@ -107,9 +194,17 @@ export function renderDisplayTab(container) {
   const resetBtn = createUiElement(basicButton, 'Reset');
   resetBtn.onclick = () => {
     try { fsReset && fsReset(); } catch (_) {}
+    try { lsReset && lsReset(); } catch (_) {}
     try {
       localStorage.setItem('ui_dungeon_font', 'A');
       dfDdRef && dfDdRef.setValue && dfDdRef.setValue('A', true);
+    } catch (_) {}
+    // Reset UI font to system default
+    try {
+      const defStack = LockedThemeDefaults['--ui-font-family'];
+      document.documentElement && document.documentElement.style.setProperty('--ui-font-family', defStack);
+      localStorage.setItem('ui_font_family', defStack);
+      uiFontDdRef && uiFontDdRef.setValue && uiFontDdRef.setValue('system', true);
     } catch (_) {}
   };
   footer.appendChild(resetBtn);

@@ -1,0 +1,142 @@
+/* Global font registrations for app-wide use.
+   Place font files in `client/fonts/` and reference them here. */
+
+/* Ultramarines Regular */
+@font-face {
+  font-family: 'Ultramarines';
+  src: url('/fonts/Ultramarines-0vg2P.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Ultramarines Italic */
+@font-face {
+  font-family: 'Ultramarines';
+  src: url('/fonts/UltramarinesItalic-ARmnM.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Hyperjump Regular */
+@font-face {
+  font-family: 'Hyperjump';
+  src: url('/fonts/hyperjump.regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* A Space Heavy Demo */
+@font-face {
+  font-family: 'A Space Heavy';
+  src: url('/fonts/A-Space Heavy Demo.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Boltruin Demo */
+@font-face {
+  font-family: 'Boltruin';
+  src: url('/fonts/Boltruin Demo.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Gardion Demo */
+@font-face {
+  font-family: 'Gardion';
+  src: url('/fonts/Gardion-Demo.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Nebula Regular */
+@font-face {
+  font-family: 'Nebula';
+  src: url('/fonts/Nebula-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Netron (file name contains a space) */
+@font-face {
+  font-family: 'Netron';
+  src: url('/fonts/Netron .otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* RIKOS Regular */
+@font-face {
+  font-family: 'Rikos';
+  src: url('/fonts/RIKOS___.TTF') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Spotnik Demo */
+@font-face {
+  font-family: 'Spotnik';
+  src: url('/fonts/SPOTNIK demo.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* TechnoCharm Regular */
+@font-face {
+  font-family: 'TechnoCharm';
+  src: url('/fonts/TechnoCharm-DemoVersion-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Warpen */
+@font-face {
+  font-family: 'Warpen';
+  src: url('/fonts/Warpen.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Moonhouse */
+@font-face {
+  font-family: 'Moonhouse';
+  src: url('/fonts/moonhouse.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Neo Latina Regular */
+@font-face {
+  font-family: 'Neo Latina';
+  src: url('/fonts/neo-latina.regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Orbitron Medium */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/fonts/orbitron.medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Tip: To apply globally via CSS (static), you can set the CSS variable like:
+   :root { --ui-font-family: 'Ultramarines', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Noto Sans', 'Liberation Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+   Or set it dynamically in JS via: window.UITheme.applyDynamicTheme({ fontFamily: 'Ultramarines, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif' })
+*/

@@ -247,6 +247,21 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
   // Apply default theme immediately
   // First ensure locked variable defaults are applied
   applyThemeVars(LockedThemeDefaults, true);
+  // Apply persisted UI font family early so it is in effect for initial render
+  try {
+    const savedFam = localStorage.getItem('ui_font_family');
+    if (savedFam && typeof savedFam === 'string') {
+      root.style.setProperty('--ui-font-family', savedFam);
+    }
+  } catch (_) {}
+  // Apply persisted UI letter spacing (UI-only) early
+  try {
+    const savedLS = parseFloat(localStorage.getItem('ui_letter_spacing'));
+    const v = Number.isFinite(savedLS) ? Math.max(0, Math.min(0.3, savedLS)) : 0;
+    root.style.setProperty('--ui-letter-spacing', `${v}rem`);
+    // Inherit across UI; components may override locally
+    root.style.letterSpacing = 'var(--ui-letter-spacing, 0rem)';
+  } catch (_) {}
   // Initialize dynamic theme tokens right away (will be refined by boot-time persisted pass below)
   // Do NOT pre-seed dynamic theme values here; it would persist fallback 210/48/49
   // and prevent the boot block from applying the intended preset on true first-run.

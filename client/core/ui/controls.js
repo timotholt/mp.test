@@ -132,7 +132,9 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       try { lab.setAttribute('data-tab-label', '1'); } catch (_) {}
       const cnt = document.createElement('span');
       try { cnt.setAttribute('data-tab-count', '1'); } catch (_) {}
-      cnt.style.marginLeft = '6px';
+      // Do not add static margin when empty; count text from callers begins with a space
+      // (e.g., " (3)") so titles remain visually centered without phantom right padding.
+      cnt.style.marginLeft = '0';
       b.appendChild(lab);
       b.appendChild(cnt);
       // Expose the tab key for callers that want to update labels (e.g., counts)
@@ -681,7 +683,8 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   btn.style.color = 'var(--ui-fg, #eee)';
   // Match app-wide themed text glow
   btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
-  btn.style.border = '1px solid transparent';
+  // Use a themed 1px border matching the brighter overlay to avoid a seam between outer and inset rings
+  btn.style.border = '1px solid color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)';
   btn.style.borderRadius = 'var(--ui-card-radius)';
   btn.style.userSelect = 'none';
   btn.style.cursor = 'pointer';
@@ -742,6 +745,8 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   const pressOn = () => {
     try {
       btn.style.transform = 'translateY(0.5px)';
+      // sync border color to pressed overlay
+      btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)';
       btn.style.boxShadow = [
         '2px -2px 3px rgba(255,255,255,0.30)',
         '-2px 2px 9px rgba(0,0,0,1.0)',
@@ -750,7 +755,7 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
       ].join(', ');
     } catch (_) {}
   };
-  const pressOff = () => { try { btn.style.transform = 'none'; } catch (_) {} };
+  const pressOff = () => { try { btn.style.transform = 'none'; btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)'; } catch (_) {} };
   try {
     btn.addEventListener('mousedown', pressOn);
     window.addEventListener('mouseup', pressOff, { passive: true });
@@ -833,10 +838,28 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
   btn.style.border = '1px solid transparent';
   btn.style.borderRadius = '9999px';
   // Keep a subtle neutral specular highlight; avoid hardcoded hue tints
+  // Editable gradient band settings (dark-left -> center glow -> dark-right)
+  // Tweak these in-place when you want to change the look
+  const bandLeftShade = 'rgba(0,0,0,0.55)';
+  const bandRightShade = 'rgba(0,0,0,0.55)';
+  const bandGlowHue = `var(--ui-bright-border, ${color || '#9fd0ff'})`;
+  const bandGlowMix = 20; // percent of hue in the band glow (0-100)
+  const bandStart = 5;   // where the glow ramp-in begins (percent)
+  const bandPeak = 50;    // where the glow peaks (percent)
+  const bandEnd = 95;     // where the glow ramp-out ends (percent)
+  const band = `linear-gradient(90deg,
+    ${bandLeftShade} 0%,
+    ${bandLeftShade} ${bandStart}%,
+    color-mix(in srgb, ${bandGlowHue} ${bandGlowMix}%, transparent) ${bandPeak}%,
+    ${bandRightShade} ${bandEnd}%,
+    ${bandRightShade} 100%
+  )`;
   btn.style.background = [
+    band,
     'radial-gradient(120% 200% at 50% -40%, rgba(255,255,255,0.06), rgba(255,255,255,0))'
   ].join(', ');
-  btn.style.color = 'var(--ui-fg, #eee)';
+  // Text at 0.8 opacity while staying theme-aware
+  btn.style.color = 'color-mix(in srgb, var(--ui-fg, #eee) 80%, transparent)';
   btn.style.textTransform = 'uppercase';
   btn.style.letterSpacing = '0.28em';
   btn.style.fontWeight = '800';
@@ -850,7 +873,15 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
   try { btn.style.backdropFilter = 'saturate(120%) blur(0.4px)'; } catch (_) {}
 
   const baseRings = [
-    `0 0 0 2px ${color}`,
+    // 2px brighter oval overlay exactly matching the outer ring size (fully opaque)
+    '0 0 0 1px color-mix(in srgb, var(--ui-border, var(--ui-accent, #9fd0ff)) 35%, white 15%)',
+    // Outer color ring (2px) — match overlay color to avoid any seam
+    // '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)',
+    // Inner 1px highlight
+    // 'inset 0 0 0 1px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)',
+    // 3px darker inner shade
+    // 'inset 0 0 0 3px rgba(0,0,0,0.18)',
+    // Theme glows
     'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40), 0 0 9px rgba(120,170,255,0.55))',
     'var(--ui-surface-glow-inset, inset 0 0 10px rgba(120,170,255,0.25))'
   ].join(', ');
@@ -858,8 +889,17 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
 
   const hoverOn = () => {
     try {
+      // sync border color to hover overlay
+      btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)';
       btn.style.boxShadow = [
-        `0 0 0 2px ${color}`,
+        // 2px brighter oval overlay (hover: stronger; fully opaque)
+        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        // Match base ring to overlay color to ensure perfect coverage
+        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        // Inner 1px highlight (slightly stronger mix on hover)
+        'inset 0 0 0 1px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        // 3px darker inner shade (a bit lighter on hover)
+        'inset 0 0 0 3px rgba(0,0,0,0.16)',
         'var(--ui-glow-strong, 0 0 36px rgba(120,170,255,0.72), 0 0 10px rgba(120,170,255,0.98))',
         'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40))',
         'var(--ui-surface-glow-inset, inset 0 0 12px rgba(120,170,255,0.30))'
@@ -870,6 +910,8 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
   const hoverOff = () => {
     try {
       btn.style.boxShadow = baseRings;
+      // restore base border color
+      btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)';
       btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
     } catch (_) {}
   };
@@ -884,7 +926,13 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
     try {
       btn.style.transform = 'translateY(0.5px)';
       btn.style.boxShadow = [
-        `0 0 0 2px ${color}`,
+        // 2px brighter oval overlay (pressed: between base and hover; fully opaque)
+        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        // Match base ring to overlay color to ensure perfect coverage
+        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        'inset 0 0 0 1px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        // 3px darker inner shade (slightly stronger on press)
+        'inset 0 0 0 3px rgba(0,0,0,0.20)',
         'var(--ui-surface-glow-inset, inset 0 0 14px rgba(120,170,255,0.32))',
         'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.30))'
       ].join(', ');
@@ -907,6 +955,61 @@ export function createNeonButton({ label = 'Subscribe', onClick, minWidth = '', 
   btn.type = 'button';
   try { btn.textContent = String(label).toUpperCase(); } catch (_) { btn.textContent = 'SUBSCRIBE'; }
   wireNeonButtonChrome(btn, { minWidth, color });
+  if (typeof onClick === 'function') btn.onclick = onClick;
+  return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t).toUpperCase(); } catch (_) {} } };
+}
+
+// -------------------------------------------------------------
+// Neon Outline-Text Button (variation of the blue subscribe)
+// Reuses wireNeonButtonChrome, then applies transparent fill + stroke
+// -------------------------------------------------------------
+export function wireNeonButtonChromeOutlineText(btn, { minWidth = '', color } = {}) {
+  if (!btn) return btn;
+  // First apply the standard neon chrome so visuals stay in sync
+  wireNeonButtonChrome(btn, { minWidth, color });
+
+  // Tweakable outline text variables (kept next to the button for quick edits)
+  const outlineWidth = '1px';
+  const outlineColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 88%, white 12%)';
+  const outlineGlow = 'var(--neon-outline-glow, 0 0 8px rgba(120,170,255,0.65))';
+
+  try {
+    // Make the fill transparent, keep strong tracking/weight from neon chrome
+    btn.style.color = 'transparent';
+    // WebKit stroke (Chromium/Safari)
+    btn.style.webkitTextStroke = `${outlineWidth} ${outlineColor}`;
+    btn.style.webkitTextFillColor = 'transparent';
+    // Keep a subtle glow on the outline; hover handlers will still adjust this
+    btn.style.textShadow = outlineGlow;
+  } catch (_) {}
+
+  // Fallback for browsers lacking text stroke: multi-direction shadow outline
+  try {
+    const test = document.createElement('span').style;
+    if (!('webkitTextStroke' in test)) {
+      const s = 1; // px offset per shadow step
+      const oc = outlineColor;
+      btn.style.textShadow = [
+        `${s}px 0 0 ${oc}`,
+        `-${s}px 0 0 ${oc}`,
+        `0 ${s}px 0 ${oc}`,
+        `0 -${s}px 0 ${oc}`,
+        `${s}px ${s}px 0 ${oc}`,
+        `-${s}px ${s}px 0 ${oc}`,
+        `${s}px -${s}px 0 ${oc}`,
+        `-${s}px -${s}px 0 ${oc}`
+      ].join(', ');
+    }
+  } catch (_) {}
+
+  return btn;
+}
+
+export function createNeonOutlineTextButton({ label = 'Subscribe', onClick, minWidth = '', color } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  try { btn.textContent = String(label).toUpperCase(); } catch (_) { btn.textContent = 'SUBSCRIBE'; }
+  wireNeonButtonChromeOutlineText(btn, { minWidth, color });
   if (typeof onClick === 'function') btn.onclick = onClick;
   return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t).toUpperCase(); } catch (_) {} } };
 }

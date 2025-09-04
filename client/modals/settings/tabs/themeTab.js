@@ -4,7 +4,7 @@
 // Minimal, human-readable, and commented per project conventions.
 
 import { getQuip } from '../../../core/ui/quip.js';
-import { createDropdown, createButton, createKnobButton, createKnobButtonV2, createNeonButton } from '../../../core/ui/controls.js';
+import { createDropdown, createButton, createKnobButton, createKnobButtonV2, createNeonButton, createNeonOutlineTextButton } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
@@ -245,6 +245,14 @@ export function renderThemeTab(container) {
           if (neonBtn && neonBtn.el) {
             try { neonBtn.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
             sec.appendChild(neonBtn.el);
+          }
+          // Neon Outline-Text variant: sits next to the neon demo button
+          const neonOutlineBtn = (typeof createNeonOutlineTextButton === 'function')
+            ? createNeonOutlineTextButton({ label: 'Subscribe', onClick: () => { try { console.log('[ThemeTab] Neon Outline Subscribe clicked'); } catch (_) {} }, minWidth: '10.25rem' })
+            : null;
+          if (neonOutlineBtn && neonOutlineBtn.el) {
+            try { neonOutlineBtn.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
+            sec.appendChild(neonOutlineBtn.el);
           }
         } catch (_) {}
     } catch (_) {
