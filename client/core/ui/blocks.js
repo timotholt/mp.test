@@ -92,8 +92,10 @@ export function makeContentPane() {
   pane.style.overflow = 'auto';
   pane.style.padding = '1.0rem';
   pane.style.marginTop = '0px';
-  pane.style.minHeight = '15rem';
-  pane.style.maxHeight = 'calc(min(80vh, 50rem) - 7.5rem)';
+  // Let this pane flex to fill remaining card height and scroll internally
+  pane.style.flex = '1 1 auto';
+  pane.style.minHeight = '0';
+  pane.style.maxHeight = 'none';
   // Width constraints are managed by CSS vars used elsewhere
   pane.style.maxWidth = 'var(--ui-glass-scrollbar-max-width)';
   pane.style.minWidth = 'var(--ui-glass-scrollbar-min-width)';
