@@ -98,6 +98,22 @@ export function renderThemeTab(container) {
     try { kn.el.style.setProperty('--kn-focus-ring', '0 0 0 1px var(--ui-bright-border)'); } catch (_) {}
     try { kn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
   };
+  // Apply a subtle halo that sits under/around the outer ring using drop-shadow on the ring element.
+  // JS-only, reversible; tuned down for subtlety. Baseline (stronger) values kept commented for quick comparison.
+  const applyRingHalo = (kn) => {
+    if (!kn || !kn.el) return;
+    try {
+      const ring = kn.el.querySelector('.k-ring');
+      if (!ring) return;
+      // const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.375rem var(--ui-bright-border)) drop-shadow(0 0 0.875rem var(--ui-bright-border))'; } catch (_) {} };
+      const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.25rem var(--ui-bright-border)) drop-shadow(0 0 0.625rem var(--ui-bright-border))'; } catch (_) {} };
+      const off = () => { try { ring.style.filter = ''; } catch (_) {} };
+      kn.el.addEventListener('mouseenter', on);
+      kn.el.addEventListener('mouseleave', off);
+      kn.el.addEventListener('focus', on);
+      kn.el.addEventListener('blur', off);
+    } catch (_) {}
+  };
   const syncGradientHelper = (percent) => {
     try {
       if (percent < 100) {
@@ -304,6 +320,10 @@ export function renderThemeTab(container) {
         applyKnobChrome(hueKn);
         applyKnobChrome(satKn);
         applyKnobChrome(briKn);
+        // Apply ring halo on hover/focus for all three color knobs
+        applyRingHalo(hueKn);
+        applyRingHalo(satKn);
+        applyRingHalo(briKn);
 
         knobRow.appendChild(makeCol(hueKn.el, 'Hue'));
         knobRow.appendChild(makeCol(briKn.el, 'Intensity'));
@@ -347,6 +367,8 @@ export function renderThemeTab(container) {
         try { txtKn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
         // Centering fudge: align spectrum ring vertically like other knobs
         try { txtKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
+        // Apply ring halo for Text Brightness knob as well
+        try { applyRingHalo(txtKn); } catch (_) {}
 
         knobRow.appendChild(makeCol(txtKn.el, 'Text Brightness'));
 
