@@ -18,6 +18,10 @@ export const themePresets = Object.freeze({
   'Steel Blue':     { hue: 207, intensity:  60, saturation: 35, fgBrightness:  50, border: 80, glow: 40, transparency: 65, gradient: 0, overlayDarkness: 72, blur: 5 },
   "Orange Crush":   { hue:  50, intensity: 100, saturation: 56, fgBrightness: 66, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
   "Strawberry Crush":   { hue:  354, intensity: 100, saturation: 56, fgBrightness: 66, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
+  "Grape Crush":    { hue:  297, intensity: 84, saturation: 56, fgBrightness: 66, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
+  "Mint Crush":     { hue:  144, intensity: 84, saturation: 56, fgBrightness: 50, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
+  "Lavender Crush": { hue:  260, intensity: 84, saturation: 56, fgBrightness: 66, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
+  "Lilac Crush":    { hue:  260, intensity: 84, saturation: 56, fgBrightness: 66, border: 80, glow: 40, transparency: 70, gradient: 0, overlayDarkness: 80, blur: 6 },
 
 
   '*Azure Storm':    { hue: 210, intensity: 60, saturation: 60, fgBrightness: 50, border: 80, glow: 18, transparency: 0, gradient: 20, overlayDarkness: 60, blur: 3 },

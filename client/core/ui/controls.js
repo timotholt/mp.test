@@ -254,7 +254,11 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   menu.style.maxHeight = '15rem';
   menu.style.overflowY = 'auto';
   menu.style.display = 'none';
-  menu.style.background = 'linear-gradient(180deg, var(--sf-tip-bg-top), var(--sf-tip-bg-bottom))';
+  // Darken while keeping theme tint: stack a neutral overlay above the theme-
+  // tinted tooltip gradient. Use multiply blending so the tint stays visible.
+  // Overlay respects --ui-opacity-mult (Transparency control).
+  menu.style.background = 'linear-gradient(180deg, rgba(12,12,12, calc(0.12 * var(--ui-opacity-mult, 1))) 0%, rgba(10,10,10, calc(0.10 * var(--ui-opacity-mult, 1))) 100%), linear-gradient(180deg, var(--sf-tip-bg-top), var(--sf-tip-bg-bottom))';
+  menu.style.backgroundBlendMode = 'multiply, normal';
   menu.style.color = 'var(--ui-fg, #eee)';
   menu.style.fontSize = 'var(--ui-fontsize-small)';
   menu.style.border = 'var(--ui-surface-border-css)';
