@@ -241,10 +241,24 @@ export async function setupAsciiRenderer() {
       lastY = e.clientY;
     });
 
+    // Defensive: if the pointer leaves the canvas mid-drag, reset state/cursor
+    canvas.addEventListener('mouseleave', () => {
+      if (!dragging) return;
+      dragging = false;
+      try { canvas.style.cursor = 'default'; } catch (_) {}
+    });
+
     window.addEventListener('mouseup', () => {
       if (!dragging) return;
       dragging = false;
-      canvas.style.cursor = 'grab';
+      canvas.style.cursor = 'default';
+    });
+
+    // Defensive: if the window loses focus while dragging, ensure we reset state/cursor
+    window.addEventListener('blur', () => {
+      if (!dragging) return;
+      dragging = false;
+      try { canvas.style.cursor = 'default'; } catch (_) {}
     });
 
     canvas.addEventListener('wheel', (e) => {
