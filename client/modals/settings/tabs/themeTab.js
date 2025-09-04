@@ -93,8 +93,10 @@ export function renderThemeTab(container) {
   const applyKnobChrome = (kn) => {
     if (!kn || !kn.el) return;
     try { kn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
-    try { kn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
     try { kn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-focus-ring', '0 0 0 1px var(--ui-bright-border)'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
   };
   const syncGradientHelper = (percent) => {
     try {
@@ -338,9 +340,11 @@ export function renderThemeTab(container) {
         // Place Text Brightness tooltip to the right of the knob
         try { if (txtKn && txtKn.el) { txtKn.el.__sfTipMode = 'far'; txtKn.el.__sfTipPlacementPriority = 'rc,r'; } } catch (_) {}
 
-        // Match other knobs' hover/focus glow
-        try { txtKn.el.style.setProperty('--kn-hover-glow', 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+        // Match other knobs' hover/focus glow and apply bright border
+        try { txtKn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
+        try { txtKn.el.style.setProperty('--kn-focus-ring', '0 0 0 1px var(--ui-bright-border)'); } catch (_) {}
+        try { txtKn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
         // Centering fudge: align spectrum ring vertically like other knobs
         try { txtKn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
 
