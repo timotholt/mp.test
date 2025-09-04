@@ -283,11 +283,13 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
       row.style.cursor = 'pointer';
       row.style.userSelect = 'none';
       const isSel = (it.value === _value);
-      row.style.color = isSel ? 'var(--sf-tip-fg, #fff)' : 'var(--ui-bright, rgba(190,230,255,0.95))';
-      row.style.background = isSel ? 'rgba(255,255,255,0.08)' : 'transparent';
+      // Use UI foreground for all rows and the preferred active-tab background for selection
+      row.style.color = 'var(--ui-fg)';
+      row.style.background = isSel ? 'var(--ui-surface-border, rgba(190,230,255,0.98))' : 'transparent';
       try { row.setAttribute('role', 'option'); row.setAttribute('aria-selected', isSel ? 'true' : 'false'); row.id = `dd-opt-${idx}`; } catch (_) {}
-      row.onmouseenter = () => { row.style.background = 'rgba(255,255,255,0.10)'; };
-      row.onmouseleave = () => { row.style.background = (it.value === _value) ? 'rgba(255,255,255,0.08)' : 'transparent'; };
+      // Hover highlight matches the active-tab background to keep parity with tab visuals
+      row.onmouseenter = () => { row.style.background = 'var(--ui-surface-border, rgba(190,230,255,0.98))'; };
+      row.onmouseleave = () => { row.style.background = (it.value === _value) ? 'var(--ui-surface-border, rgba(190,230,255,0.98))' : 'transparent'; };
       row.onclick = () => {
         setValue(it.value, true);
         close();
