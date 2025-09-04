@@ -151,6 +151,12 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       b.style.alignItems = 'center';
       b.style.justifyContent = 'center';
       b.style.textAlign = 'center';
+      // Ensure tab buttons track global font settings (Display tab)
+      // Use theme tokens so changes to --ui-font-family / font scale / weight apply live
+      b.style.fontFamily = 'var(--ui-font-family)';
+      b.style.fontSize = 'var(--ui-fontsize-small)';
+      b.style.fontWeight = 'var(--ui-fontweight-normal)';
+      try { b.style.letterSpacing = 'var(--ui-letter-spacing, 0rem)'; } catch (_) {}
       const isActive = (key === activeKey);
 
       // This controls the background color of the active tab
