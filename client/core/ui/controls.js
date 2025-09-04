@@ -260,6 +260,14 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   menu.style.border = 'var(--ui-surface-border-css)';
   menu.style.borderRadius = 'var(--ui-card-radius)';
   menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.35))';
+  // Apply theme-controlled backdrop blur for readability over busy backgrounds
+  try {
+    // Match tooltip semantics: prefer --sf-tip-backdrop; fallback to blur(var(--ui-backdrop-blur))
+    const bf = 'var(--sf-tip-backdrop, blur(var(--ui-backdrop-blur, 4px)) saturate(1.2))';
+    menu.style.backdropFilter = bf;
+    // Safari/WebKit prefix
+    menu.style.webkitBackdropFilter = bf;
+  } catch (_) {}
   try { menu.classList.add('ui-glass-scrollbar'); } catch (_) {}
   try { menu.setAttribute('role', 'listbox'); menu.tabIndex = -1; } catch (_) {}
 
@@ -426,6 +434,23 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
     btn.addEventListener('mouseleave', hoverOff);
     btn.addEventListener('focus', hoverOn);
     btn.addEventListener('blur', hoverOff);
+  } catch (_) {}
+
+  // Menu hover/focus: use brightBorder on the menu container while hovered or focused
+  try {
+    let _menuHover = false;
+    let _menuFocus = false;
+    const applyMenuBorder = () => {
+      if (_menuHover || _menuFocus) {
+        menu.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      } else {
+        menu.style.border = 'var(--ui-surface-border-css)';
+      }
+    };
+    menu.addEventListener('mouseenter', () => { _menuHover = true; applyMenuBorder(); });
+    menu.addEventListener('mouseleave', () => { _menuHover = false; applyMenuBorder(); });
+    menu.addEventListener('focus', () => { _menuFocus = true; applyMenuBorder(); });
+    menu.addEventListener('blur', () => { _menuFocus = false; applyMenuBorder(); });
   } catch (_) {}
 
   // Initialize
