@@ -78,17 +78,17 @@ export function createKnob(opts = {}) {
   if (typeof rawSize === 'string') el.style.setProperty('--kn-size', String(rawSize));
   else el.style.setProperty('--kn-size', size + 'px');
   el.style.setProperty('--kn-segments', segments);
-  el.style.setProperty('--kn-ring-offset', ringOffset + 'px');
-  if (segThickness != null) el.style.setProperty('--kn-seg-w', segThickness + 'px');
-  if (segLength != null) el.style.setProperty('--kn-seg-h', segLength + 'px');
-  if (dotSize != null) el.style.setProperty('--kn-dot-size', dotSize + 'px');
+  el.style.setProperty('--kn-ring-offset', pxToMinRem(ringOffset));
+  if (segThickness != null) el.style.setProperty('--kn-seg-w', pxToMinRem(segThickness));
+  if (segLength != null) el.style.setProperty('--kn-seg-h', pxToMinRem(segLength));
+  if (dotSize != null) el.style.setProperty('--kn-dot-size', pxToMinRem(dotSize));
   // Size-aware vertical micro-adjust for the outer ring: combats subpixel rounding from segment geometry.
   // Small knobs look best at 0px; medium benefit from ~1px; large regain the prior ~2px compensation.
   try {
     let ringAutoY = 0;
     if (size >= 64) ringAutoY = 2;
     else if (size >= 52) ringAutoY = 1;
-    el.style.setProperty('--kn-ring-global-y', ringAutoY + 'px');
+    el.style.setProperty('--kn-ring-global-y', pxToMinRem(ringAutoY));
   } catch (_) {}
 
   el.setAttribute('role', 'slider');
@@ -402,6 +402,24 @@ export const themes = {
 };
 
 // ---- helpers ----
+// Convert a pixel length to a CSS length that scales with root font-size below a 19px baseline
+// while clamping to the original pixel size at >=19px. Example: 18 -> 'min(18px, 0.947rem)'
+// Keeps the "perfect at 19px" look and preserves proportions as font-size shrinks.
+function pxToMinRem(px) {
+  try {
+    const n = Math.max(0, Math.round(Number(px)));
+    if (n === 0) return '0px';
+    const rem = (n / 19);
+    // Limit decimals for readability; CSS will parse fine
+    const remStr = rem.toFixed(5).replace(/0+$/,'').replace(/\.$/, '');
+    return `min(${n}px, ${remStr}rem)`;
+  } catch (_) {
+    // Fallback to px if anything goes wrong
+    const nn = Math.round(Number(px)) || 0;
+    return nn + 'px';
+  }
+}
+
 function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
 function clamp(min, max, v) { if (!Number.isFinite(v)) return min; if (v < min) return min; if (v > max) return max; return v; }
 function clamp01(x) { x = Number(x); if (!Number.isFinite(x)) return 0; if (x < 0) return 0; if (x > 1) return 1; return x; }

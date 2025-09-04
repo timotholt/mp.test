@@ -402,6 +402,11 @@ export function renderThemeTab(container) {
           angleMin: -135,
           angleMax: 135,
           ringOffset: ringOffsetPx,
+          // Match band geometry with Hue/Saturation/Intensity knobs
+          // Keep units numeric (px) so createKnob applies pxToMinRem scaling
+          segThickness: 2,
+          segLength: 10,
+          dotSize: 6,
           // Grayscale ring: dark -> light across the sweep
           ringColorForAngle: (_angDeg, t) => {
             const c = Math.round(96 + t * (255 - 96));
