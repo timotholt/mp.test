@@ -117,10 +117,14 @@ export function renderThemeTab(container) {
         return 60; // sane default matches prior visual tuning
       };
       const computeHalo = () => {
-        // Map strength -> subtle radii in rem. At 0%: 0.10/0.25, at 60%: ~0.20/0.50, at 100%: ~0.27/0.67
-        const s = readGlowStrength() / 100;
-        const rSmall = (0.10 + 0.167 * s).toFixed(3);
-        const rLarge = (0.25 + 0.417 * s).toFixed(3);
+        // Smoothly scale from 0 glow at 0% to subtle glow at 100%.
+        // Use smoothstep easing to make the low-end ramp gentle.
+        const s = Math.max(0, Math.min(1, readGlowStrength() / 100));
+        if (s <= 0) return '';
+        const t = s * s * (3 - 2 * s); // smoothstep(0..1)
+        // Radii chosen to remain subtle at max while matching prior ~0.20/0.50 around 60%.
+        const rSmall = (0.27 * t).toFixed(3);
+        const rLarge = (0.67 * t).toFixed(3);
         return `drop-shadow(0 0 ${rSmall}rem var(--ui-bright-border)) drop-shadow(0 0 ${rLarge}rem var(--ui-bright-border))`;
       };
       const on = () => { try { ring.style.filter = computeHalo(); } catch (_) {} };
