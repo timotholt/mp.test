@@ -349,7 +349,9 @@ export function renderThemeTab(container) {
         let remPx = 16;
         try { remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; } catch (_) {}
         const knobSizePx = 3.5 * remPx;      // 56px -> 3.5rem
-        const ringOffsetPx = 1.125 * remPx;  // 18px -> 1.125rem
+        // Use a fixed baseline pixel offset (perfect at 19px) and let pxToMinRem scale below 19px.
+        // Avoid computing from current rem, which would double-scale when combined with pxToMinRem.
+        const ringOffsetPx = 18;             // baseline 18px
 
         hueKn = CK.createHueKnob({
           size: knobSizePx,
