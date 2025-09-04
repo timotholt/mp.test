@@ -42,4 +42,11 @@ export {
   basicQuarterGap,
   basicGap,
   basicGapBetweenSections,
+  // New layout/link templates
+  twoColumn14,
+  autoFitGridButtons,
+  linkInline,
+  linkRowCentered,
+  artDashedPanel,
+  centerViewport,
 } from './templates.js';

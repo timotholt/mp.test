@@ -17,38 +17,9 @@ import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
-import { createUiElement, basicOverlayBackdrop, basicOverlayContentClear } from '../core/ui/theme/elements.js';
-import { makeCard, makeTitleBlock } from '../core/ui/blocks.js';
+import { createUiElement, basicOverlayBackdrop, basicOverlayContentClear, twoColumn14, autoFitGridButtons, linkInline, linkRowCentered, artDashedPanel, centerViewport, basicCard } from '../core/ui/theme/elements.js';
+import { makeTitleBlock } from '../core/ui/blocks.js';
 import { makeSection, makeRow } from './settings/uiHelpers.js';
-
-// Nuclear-green fallback for any missing CSS variable in this file.
-// If you see this color, a theme token is missing or failed to apply.
-const FALLBACK_FG_COLOR = '#39ff14';
-
-function ensureLoginStyles() {
-  if (document.getElementById('login-modal-style')) return;
-  const st = document.createElement('style');
-  st.id = 'login-modal-style';
-  st.textContent = `
-  /* Login-specific layout rules only. Shared styles come from ensureGlassFormStyles(). */
-  .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
-  /* Provider buttons fixed height */
-  .login-providers .btn { height: 46px; padding-top: 0; padding-bottom: 0; }
-
-  .login-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
-  .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
-  .login-link { color: var(--ui-fg, ${FALLBACK_FG_COLOR}); text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
-  .login-link:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
-  .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, ${FALLBACK_FG_COLOR}); user-select: none; }
-
-  /* Two-column layout inside the modal */
-  .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
-  .login-art { border-radius: 10px; border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-style: dashed; min-height: 240px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
-  .login-main { display: flex; flex-direction: column; min-width: 0; }
-  @media (max-width: 700px) { .login-grid { grid-template-columns: 1fr; } }
-  `;
-  document.head.appendChild(st);
-}
 
 function icon(name) {
   const wrap = document.createElement('div');
@@ -90,7 +61,6 @@ export function presentLoginModal() {
   } catch (_) {}
   // Ensure shared glass form styles are present (buttons/inputs/icons)
   try { ensureGlassFormStyles(); } catch (_) {}
-  ensureLoginStyles();
 
   // Only auto-continue when the page load was a reload/back-forward to avoid
   // surprising fresh tabs instantly skipping the login UI.
@@ -100,16 +70,9 @@ export function presentLoginModal() {
     }
   } catch (_) {}
 
-  // Build centered card using standard UI blocks
-  const center = createUiElement({
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 'var(--ui-page-padding, 24px)',
-    transform: 'translateY(-2vh)'
-  });
-  const card = makeCard();
+  // Build centered card using standardized theme templates
+  const center = createUiElement(centerViewport);
+  const card = createUiElement(basicCard);
   // Constrain width similarly to the legacy style for consistency
   try { card.style.width = 'min(720px, calc(100vw - 32px))'; } catch (_) {}
 
@@ -130,8 +93,8 @@ export function presentLoginModal() {
   // Section header above provider buttons
   const providersHeader = makeSection('Sign in with a provider', '', 'afterTitle', false, false);
 
-  const buttons = document.createElement('div');
-  buttons.className = 'login-providers';
+  // Auto-fit provider buttons grid via template
+  const buttons = createUiElement(autoFitGridButtons);
 
   // Standard icon-capable button using stock .btn styles. Font size inherits from root.
   const makeIconButton = (label, onClick, iconName = null) => {
@@ -155,7 +118,7 @@ export function presentLoginModal() {
     return b;
   };
 
-  // Make Provider buttons and attach tooltiops
+  // Make Provider buttons and attach tooltips
   const googleBtn = makeIconButton('Google', () => signInWithProvider('google'), 'google');
   const discordBtn = makeIconButton('Discord', () => signInWithProvider('discord'), 'discord');
   const facebookBtn = makeIconButton('Facebook', () => signInWithProvider('facebook'), 'facebook');
@@ -174,10 +137,8 @@ export function presentLoginModal() {
   // Form rows using settings helpers + shared glass inputs
   const form = document.createElement('div');
   form.className = 'login-form';
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email';
   const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'Enter email address'; emailInput.className = 'input-glass';
   try { emailInput.id = 'login-email'; } catch (_) {}
-  const passLabel = document.createElement('label'); passLabel.textContent = 'Password';
   const passInput = document.createElement('input'); passInput.type = 'password'; passInput.placeholder = 'Enter password'; passInput.className = 'input-glass';
   try { passInput.id = 'login-password'; } catch (_) {}
 
@@ -232,8 +193,8 @@ export function presentLoginModal() {
   form.appendChild(emailRow);
   form.appendChild(passRow);
 
-  const actions = document.createElement('div');
-  actions.className = 'login-actions';
+  // Actions column: vertically stacked and centered
+  const actions = createUiElement({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '16px' });
 
   const signInBtn = makeIconButton('Sign In', async () => {
     await signInWithPassword(String(emailInput.value || '').trim(), String(passInput.value || ''));
@@ -249,10 +210,9 @@ export function presentLoginModal() {
   }
   try { emailInput.addEventListener('input', updateSignInState); passInput.addEventListener('input', updateSignInState); } catch (_) {}
   updateSignInState();
-  // Inline link-style actions
-  const signUpLink = document.createElement('button');
+  // Inline link-style actions (templatized)
+  const signUpLink = createUiElement(linkInline);
   signUpLink.type = 'button';
-  signUpLink.className = 'login-link';
   signUpLink.textContent = 'Create Account';
   signUpLink.onclick = () => {
     try {
@@ -263,9 +223,8 @@ export function presentLoginModal() {
     } catch (_) {}
     try { presentCreateAccountModal(); } catch (_) {}
   };
-  const resetLink = document.createElement('button');
+  const resetLink = createUiElement(linkInline);
   resetLink.type = 'button';
-  resetLink.className = 'login-link';
   resetLink.textContent = 'Forgot password?';
   resetLink.onclick = () => { try { presentForgotPasswordModal(); } catch (_) {} };
   // Tooltips on actions (favor bottom-right)
@@ -274,26 +233,25 @@ export function presentLoginModal() {
   try { attachTooltip(signUpLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(signUpLink, 'Create Account'); } catch (_) {}
   try { attachTooltip(resetLink, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(resetLink, 'Reset Password'); } catch (_) {}
   // Centered primary button
-  const linksWrap = document.createElement('div');
-  linksWrap.className = 'login-links';
+  const linksWrap = createUiElement(linkRowCentered);
   // Keep links in the right column, pinned to the bottom of that column
   try { linksWrap.style.marginTop = 'auto'; linksWrap.style.alignSelf = 'center'; } catch (_) {}
   linksWrap.appendChild(signUpLink);
   linksWrap.appendChild(resetLink);
   actions.appendChild(signInBtn);
 
-  const status = document.createElement('div');
-  status.id = 'login-status';
-  status.className = 'login-status';
+  const status = createUiElement({ marginTop: '10px', minHeight: '1.2em', color: 'var(--sf-tip-fg)', userSelect: 'none' });
+  try { status.id = 'login-status'; } catch (_) {}
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disableAll(disabled) {
     [googleBtn, discordBtn, facebookBtn, signInBtn, signUpLink, resetLink, emailInput, passInput].forEach(el => { try { el.disabled = !!disabled; } catch (_) {} });
   }
 
-  const grid = document.createElement('div'); grid.className = 'login-grid';
-  const art = document.createElement('div'); art.className = 'login-art';
-  const main = document.createElement('div'); main.className = 'login-main';
+  // Two-column layout and supporting panels
+  const grid = createUiElement(twoColumn14);
+  const art = createUiElement(artDashedPanel);
+  const main = createUiElement({ display: 'flex', flexDirection: 'column', minWidth: '0' });
 
   // Assemble with standardized blocks/sections
   main.appendChild(titleBlock.el);

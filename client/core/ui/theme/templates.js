@@ -69,6 +69,15 @@ export const basicStyles = Object.freeze({
     maxWidth: 'unset',
     margin: '0'
   },
+  // Centered viewport container for modals (card is centered within)
+  centerViewport: {
+    __tag: 'div',
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'var(--ui-page-padding)'
+  },
 
   // States
   disabled: {
@@ -154,6 +163,60 @@ export const basicStyles = Object.freeze({
     __tag: 'div',
     borderTop: '1px solid var(--ui-surface-border, rgba(120,170,255,0.30))',
     m: '0.25rem 0 0.5rem 0'
+  },
+
+  // Layout utilities
+  // Generic two-column grid used by auth/login screens and other modals
+  twoColumn14: {
+    __tag: 'div',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1.4fr',
+    alignItems: 'stretch',
+    gap: '1rem'
+  },
+  // Auto-fit grid for provider-style button groups
+  autoFitGridButtons: {
+    __tag: 'div',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '10px',
+    m: '12px 0 10px 0'
+  },
+
+  // Inline link-styled button and a centered link row container
+  linkInline: {
+    __tag: 'button',
+    background: 'none',
+    border: '0',
+    padding: '0',
+    color: 'var(--ui-fg)',
+    textDecoration: 'underline',
+    font: 'inherit',
+    cursor: 'pointer',
+    opacity: '0.9',
+    hover: {
+      color: 'var(--ui-bright)',
+      opacity: '1'
+    }
+  },
+  linkRowCentered: {
+    __tag: 'div',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px'
+  },
+
+  // Artwork viewport panel: dashed border, rounded corners, rem sizing.
+  // Background is transparent because artwork is expected to fill this area.
+  artDashedPanel: {
+    __tag: 'div',
+    border: 'var(--ui-surface-border-css)',
+    borderStyle: 'dashed',
+    borderRadius: 'var(--ui-card-radius)',
+    minHeight: '15rem', // ~240px at 16px root; scales with --ui-font-scale
+    background: 'transparent',
+    overflow: 'hidden'
   },
 
   // Misc text blocks
@@ -266,3 +329,11 @@ export const basicQuarterGap = Object.freeze({ height: '0.25rem' });
 export const basicGap = Object.freeze({ height: '0.5rem' });
 // Larger gap specifically for separating major sections
 export const basicGapBetweenSections = Object.freeze({ height: '1rem' });
+
+// Layout/link aliases for external import
+export const twoColumn14 = basicStyles.twoColumn14;
+export const autoFitGridButtons = basicStyles.autoFitGridButtons;
+export const linkInline = basicStyles.linkInline;
+export const linkRowCentered = basicStyles.linkRowCentered;
+export const artDashedPanel = basicStyles.artDashedPanel;
+export const centerViewport = basicStyles.centerViewport;
