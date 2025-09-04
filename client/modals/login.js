@@ -17,6 +17,9 @@ import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
+import { createUiElement } from '../core/ui/theme/elements.js';
+import { makeCard, makeTitleBlock } from '../core/ui/blocks.js';
+import { makeSection, makeRow } from './settings/uiHelpers.js';
 
 // Nuclear-green fallback for any missing CSS variable in this file.
 // If you see this color, a theme token is missing or failed to apply.
@@ -27,108 +30,17 @@ function ensureLoginStyles() {
   const st = document.createElement('style');
   st.id = 'login-modal-style';
   st.textContent = `
-  /* Page backdrop tint (deep blue) applied to #overlay by presentLoginModal */
-  .login-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--ui-page-padding, 24px); transform: translateY(-2vh); }
-  .login-card {
-    width: min(720px, calc(100vw - 32px));
-    color: var(--ui-fg, ${FALLBACK_FG_COLOR});
-    border-radius: var(--ui-card-radius, 0.875rem);
-    background: linear-gradient(180deg,
-      var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%,
-      var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%
-    );
-    /* Fallback first, then variable override for broad browser support */
-    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
-    box-shadow: 0 0 22px rgba(80,140,255,0.33);
-    box-shadow: var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33));
-    backdrop-filter: var(--sf-tip-backdrop, blur(3px) saturate(1.2));
-    padding: var(--ui-modal-padding, 1rem); /* Ensure inner padding so nothing touches edges */
-  }
+  /* Login-specific layout rules only. Shared styles come from ensureGlassFormStyles(). */
   .login-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 10px 0; }
-  .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
-  .btn:disabled { opacity: var(--ui-opacity-disabled-button, 0.6); cursor: default; }
-  .btn-outline-glass {
-    background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
-    color: var(--ui-fg, ${FALLBACK_FG_COLOR});
-    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
-    box-shadow: inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22);
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22));
-  }
-  .btn-outline-glass:hover {
-    border-color: #dff1ff;
-    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
-    box-shadow: inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30);
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
-  }
-  .btn svg { width: 18px; height: 18px; }
   /* Provider buttons fixed height */
   .login-providers .btn { height: 46px; padding-top: 0; padding-bottom: 0; }
-  /* Universal icon wrapper for consistent sizing */
-  .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
-  .icon-wrap svg { width: 100%; height: 100%; display: block; }
-  /* Icon tweaks */
-  .icon-wrap.icon-google { transform: translateY(-4px); }
-  .icon-wrap.icon-discord svg { transform: scale(1.28); transform-origin: 50% 50%; }
-  .icon-wrap.icon-eye svg { transform: scale(1.35); transform-origin: 50% 50%; }
-  .login-sep { text-align: center; opacity: 0.9; margin: 10px 0; user-select: none; }
-  .login-form { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 10px 10px; margin-top: 8px; }
-  .login-form label { opacity: 0.95; text-align: right; user-select: none; }
-  .input-glass { 
-    width: 100%; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
-    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-radius: 10px; padding: 0 10px; height: 46px;
-    outline: none; box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18);
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10)), var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.18));
-    backdrop-filter: blur(6px) saturate(1.2);
-    box-sizing: border-box; max-width: 100%; /* Prevent overflow so it never touches card edge */
-  }
-  /* Make browser autofill match our glass style */
-  .input-glass:-webkit-autofill,
-  .input-glass:-webkit-autofill:focus,
-  #overlay input:-webkit-autofill,
-  #overlay input:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--ui-fg, ${FALLBACK_FG_COLOR}) !important;
-    caret-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
-    transition: background-color 9999s ease-in-out 0s; /* suppress yellow */
-    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
-    background-clip: content-box;
-  }
-  /* Allow hover color to win over autofill styles */
-  .input-glass:-webkit-autofill:hover,
-  #overlay input:-webkit-autofill:hover {
-    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
-  }
-  /* Firefox */
-  .input-glass:-moz-autofill,
-  #overlay input:-moz-autofill {
-    box-shadow: inset 0 0 12px rgba(40,100,200,0.10), 0 0 12px rgba(120,170,255,0.18), 0 0 0px 1000px rgba(10,16,22,0.16) inset;
-    -moz-text-fill-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
-    caret-color: var(--ui-fg, ${FALLBACK_FG_COLOR});
-  }
-  .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-  .input-glass:hover { border-color: #dff1ff; border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR}); }
-  .input-glass:focus {
-    border-color: #dff1ff;
-    border-color: var(--ui-surface-border, ${FALLBACK_FG_COLOR});
-    box-shadow: inset 0 0 16px rgba(60,140,240,0.18), 0 0 18px rgba(140,190,255,0.30);
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
-  }
-  /* Input wrapper with optional left/right icon buttons */
-  .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
-  .input-wrap.has-left .input-glass { padding-left: 34px; }
-  .input-wrap.has-right .input-glass { padding-right: 34px; }
-  .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); opacity: 0.9; cursor: pointer; }
-  .input-icon-btn.left { left: 8px; }
-  .input-icon-btn.right { right: 8px; }
-  .input-icon-btn:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
-  /* Icon sizes inside input buttons rely on .icon-wrap */
+
   .login-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
-  .login-footer { display: flex; justify-content: flex-start; margin-top: 6px; }
   .login-links { display: flex; gap: 12px; font-size: 12.5px; align-items: center; justify-content: center; }
   .login-link { color: var(--ui-fg, ${FALLBACK_FG_COLOR}); text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; opacity: 0.9; }
   .login-link:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
   .login-status { margin-top: 10px; min-height: 1.2em; color: var(--sf-tip-fg, ${FALLBACK_FG_COLOR}); user-select: none; }
+
   /* Two-column layout inside the modal */
   .login-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: stretch; }
   .login-art { border-radius: 10px; border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-style: dashed; min-height: 240px; background: linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16)); }
@@ -196,32 +108,38 @@ export function presentLoginModal() {
     }
   } catch (_) {}
 
-  // Build centered card
-  const center = document.createElement('div');
-  center.className = 'login-center';
-  const card = document.createElement('div');
-  card.className = 'login-card';
+  // Build centered card using standard UI blocks
+  const center = createUiElement({
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'var(--ui-page-padding, 24px)',
+    transform: 'translateY(-2vh)'
+  });
+  const card = makeCard();
+  // Constrain width similarly to the legacy style for consistency
+  try { card.style.width = 'min(720px, calc(100vw - 32px))'; } catch (_) {}
 
-  const title = document.createElement('div');
-  title.className = 'modal-title';
-  title.textContent = "Welcome to Grimdark";
+  // Title and quip via reusable block
+  const titleBlock = makeTitleBlock({
+    title: 'Welcome to Grimdark',
+    desc: getQuip('auth.login.tagline', LOGIN_PHRASES)
+  });
+  // Preserve previous behavior: do not show a close button in the Login modal
+  try {
+    if (titleBlock && titleBlock.closeBtn && titleBlock.closeBtn.style) {
+      titleBlock.closeBtn.style.display = 'none';
+      titleBlock.closeBtn.setAttribute('aria-hidden', 'true');
+      titleBlock.closeBtn.tabIndex = -1;
+    }
+  } catch (_) {}
 
-  // Quip line directly under the title
-  const quip = document.createElement('div');
-  quip.className = 'modal-title-quip';
-  quip.textContent = getQuip('auth.login.tagline', LOGIN_PHRASES);
-
-  // Hint line sits below the quip and above the auth buttons
-  const hint = document.createElement('div');
-  hint.className = 'modal-subtitle';
-  hint.textContent = 'Sign in with a provider';
-  // Match separator size; left-align and pull closer to buttons
-  try { hint.style.textAlign = 'left'; hint.style.fontSize = 'var(--ui-title-quip-size)'; hint.style.marginTop = '8px'; hint.style.marginBottom = '6px'; } catch (_) {}
+  // Section header above provider buttons
+  const providersHeader = makeSection('Sign in with a provider', '', 'afterTitle', false, false);
 
   const buttons = document.createElement('div');
   buttons.className = 'login-providers';
-  // Pull buttons closer to the hint (override class top margin)
-  try { buttons.style.marginTop = '4px'; } catch (_) {}
 
   const mkBtn = (label, onClick) => {
     const b = document.createElement('button');
@@ -264,15 +182,12 @@ export function presentLoginModal() {
   buttons.appendChild(discordBtn);
   buttons.appendChild(facebookBtn);
 
-  const sep = document.createElement('div');
-  sep.className = 'modal-subtitle';
-  sep.textContent = 'Or email and password';
-  try { sep.style.textAlign = 'left'; sep.style.marginTop = '20px'; } catch (_) {}
+  // Email/password section header
+  const emailHeader = makeSection('Or email and password', '', 'afterTitle', false, false);
 
+  // Form rows using settings helpers + shared glass inputs
   const form = document.createElement('div');
   form.className = 'login-form';
-  // Labels on the left, inputs on the right
-  try { form.style.gridTemplateColumns = 'max-content 1fr'; } catch (_) {}
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email';
   const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'Enter email address'; emailInput.className = 'input-glass';
   try { emailInput.id = 'login-email'; } catch (_) {}
@@ -325,9 +240,11 @@ export function presentLoginModal() {
     }
   } catch (_) {}
 
-  // Add to form (labels left, inputs right)
-  form.appendChild(emailLabel); form.appendChild(emailWrap);
-  form.appendChild(passLabel); form.appendChild(passWrap);
+  // Add rows to form using standardized row builder
+  const emailRow = makeRow('Email', emailWrap);
+  const passRow = makeRow('Password', passWrap);
+  form.appendChild(emailRow);
+  form.appendChild(passRow);
 
   const actions = document.createElement('div');
   actions.className = 'login-actions';
@@ -392,11 +309,11 @@ export function presentLoginModal() {
   const art = document.createElement('div'); art.className = 'login-art';
   const main = document.createElement('div'); main.className = 'login-main';
 
-  main.appendChild(title);
-  main.appendChild(quip);
-  main.appendChild(hint);
+  // Assemble with standardized blocks/sections
+  main.appendChild(titleBlock.el);
+  main.appendChild(providersHeader);
   main.appendChild(buttons);
-  main.appendChild(sep);
+  main.appendChild(emailHeader);
   main.appendChild(form);
   main.appendChild(actions);
   main.appendChild(status);
