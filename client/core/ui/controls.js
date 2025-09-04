@@ -3,10 +3,10 @@
 
 export const UI = {
   border: 'var(--ui-surface-border-css)',
-  rowMinHeight: '46px',
+  rowMinHeight: '2.875rem',
   iconSize: 32,
   leftGap: '0.5rem',
-  insetShadow: 'inset 0 0 12px rgba(40,100,200,0.10)',
+  insetShadow: 'inset 0 0 0.75rem rgba(40,100,200,0.10)',
 };
 
 // Create a bottom input row with consistent glass/border look
@@ -14,12 +14,12 @@ export function createInputRow({ dataName } = {}) {
   const row = document.createElement('div');
   row.style.display = 'flex';
   row.style.alignItems = 'center';
-  row.style.gap = '8px';
+  row.style.gap = '0.5rem';
   row.style.minHeight = UI.rowMinHeight;
   row.style.borderBottom = UI.border;
   row.style.borderLeft = UI.border;
   row.style.borderRight = UI.border;
-  row.style.borderRadius = '0px 0px 6px 6px';
+  row.style.borderRadius = '0 0 0.375rem 0.375rem';
   if (dataName) { try { row.setAttribute('data-name', dataName); } catch (_) {} }
   return row;
 }
@@ -37,14 +37,14 @@ export function createLeftIconInput({ placeholder = '', iconSvg, marginLeft = '0
   input.type = 'text';
   input.placeholder = placeholder;
   input.style.display = 'inline-block';
-  input.style.height = '40px';
-  input.style.lineHeight = '40px';
+  input.style.height = '2.5rem';
+  input.style.lineHeight = '2.5rem';
   input.style.background = 'transparent';
   input.style.outline = 'none';
   input.style.color = 'var(--sf-tip-fg, #fff)';
   input.style.border = '0';
-  input.style.borderRadius = '8px';
-  input.style.padding = `0 10px 0 calc(${UI.iconSize}px + ${UI.leftGap})`;
+  input.style.borderRadius = '0.5rem';
+  input.style.padding = `0 0.625rem 0 calc(${(UI.iconSize/16)}rem + ${UI.leftGap})`;
   input.style.boxShadow = UI.insetShadow;
   input.style.flex = '1';
   input.style.width = '100%';
@@ -55,14 +55,14 @@ export function createLeftIconInput({ placeholder = '', iconSvg, marginLeft = '0
   btn.style.left = '0';
   btn.style.top = '50%';
   btn.style.transform = 'translateY(-50%)';
-  btn.style.width = `${UI.iconSize}px`;
-  btn.style.height = `${UI.iconSize}px`;
+  btn.style.width = `${(UI.iconSize/16)}rem`;
+  btn.style.height = `${(UI.iconSize/16)}rem`;
   btn.style.display = 'inline-flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
   btn.style.background = 'transparent';
   btn.style.border = UI.border;
-  btn.style.borderRadius = '8px';
+  btn.style.borderRadius = '0.5rem';
   btn.style.boxSizing = 'border-box';
   btn.style.color = 'var(--ui-bright, rgba(190,230,255,0.90))';
   btn.style.cursor = 'pointer';
@@ -93,7 +93,7 @@ export function wireFocusHighlight(inputEl, rowEl) {
         rowEl.setAttribute('data-saved-boxshadow', rowEl.style.boxShadow || '');
       }
       const prev = rowEl.getAttribute('data-saved-boxshadow') || '';
-      rowEl.style.boxShadow = [prev, 'inset 0 0 0 1px var(--ui-bright-border, var(--ui-bright, #fff))'].filter(Boolean).join(', ');
+      rowEl.style.boxShadow = [prev, 'inset 0 0 0 0.0625rem var(--ui-bright-border, var(--ui-bright, #fff))'].filter(Boolean).join(', ');
       rowEl.style.borderColor = 'var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.70)))';
     } catch (_) {}
   });
@@ -114,7 +114,7 @@ export function wireFocusHighlight(inputEl, rowEl) {
 export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
   const el = document.createElement('div');
   el.style.display = 'flex';
-  el.style.gap = '6px';
+  el.style.gap = '0.375rem';
   el.style.flex = '0 0 auto';
   el.style.marginBottom = '0';
   el.style.borderTop = '0';
@@ -140,12 +140,12 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
       // Expose the tab key for callers that want to update labels (e.g., counts)
       try { b.setAttribute('data-tab-key', String(key)); } catch (_) {}
       try { b.setAttribute('role', 'tab'); } catch (_) {}
-      b.style.padding = '6px 10px';
+      b.style.padding = '0.375rem 0.625rem';
       b.style.border = UI.border;
       b.style.borderBottom = '0';
       b.style.borderRadius = '0';
-      b.style.borderTopLeftRadius = '6px';
-      b.style.borderTopRightRadius = '6px';
+      b.style.borderTopLeftRadius = '0.375rem';
+      b.style.borderTopRightRadius = '0.375rem';
       // Center the tab label content
       b.style.display = 'inline-flex';
       b.style.alignItems = 'center';
@@ -159,7 +159,7 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
         : 'rgba(255,255,255,0.06)';
       // Unify text color so inactive tabs match active tab text color
       b.style.color = 'var(--ui-fg-quip)';
-      b.style.textShadow = isActive ? 'var(--sf-tip-text-glow, 0 0 6px rgba(140,190,255,0.75))' : '';
+      b.style.textShadow = isActive ? 'var(--sf-tip-text-glow, 0 0 0.375rem rgba(140,190,255,0.75))' : '';
       try { b.setAttribute('aria-selected', isActive ? 'true' : 'false'); } catch (_) {}
       try { b.tabIndex = isActive ? 0 : -1; } catch (_) {}
       b.onclick = () => { if (typeof onSelect === 'function') onSelect(key); };
@@ -207,7 +207,7 @@ export function createTabsBar({ getKey, getLabel, onSelect } = {}) {
 //     width: '240px'
 //   });
 //   parent.appendChild(dd.el);
-export function createDropdown({ items = [], value = null, onChange, width = '220px', placeholder = 'Select' } = {}) {
+export function createDropdown({ items = [], value = null, onChange, width = '13.75rem', placeholder = 'Select' } = {}) {
   const wrap = document.createElement('div');
   wrap.style.position = 'relative';
   wrap.style.display = 'inline-block';
@@ -275,11 +275,11 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
   menu.style.fontSize = 'var(--ui-fontsize-small)';
   menu.style.border = 'var(--ui-surface-border-css)';
   menu.style.borderRadius = 'var(--ui-card-radius)';
-  menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.35))';
+  menu.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 1rem rgba(120,170,255,0.35))';
   // Apply theme-controlled backdrop blur for readability over busy backgrounds
   try {
     // Match tooltip semantics: prefer --sf-tip-backdrop; fallback to blur(var(--ui-backdrop-blur))
-    const bf = 'var(--sf-tip-backdrop, blur(var(--ui-backdrop-blur, 4px)) saturate(1.2))';
+    const bf = 'var(--sf-tip-backdrop, blur(var(--ui-backdrop-blur, 0.25rem)) saturate(1.2))';
     menu.style.backdropFilter = bf;
     // Safari/WebKit prefix
     menu.style.webkitBackdropFilter = bf;
@@ -446,7 +446,7 @@ export function createDropdown({ items = [], value = null, onChange, width = '22
     let _menuFocus = false;
     const applyMenuBorder = () => {
       if (_menuHover || _menuFocus) {
-        menu.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+        menu.style.border = '0.0625rem solid var(--ui-bright-border, var(--ui-surface-border))';
       } else {
         menu.style.border = 'var(--ui-surface-border-css)';
       }
@@ -506,21 +506,21 @@ function ensureCheckboxStyle() {
   if (!st) { st = document.createElement('style'); st.id = 'sf-checkbox-style'; }
   st.textContent = `
   /* Minimal tooltip-like checkbox visuals; only the box uses glass/glow */
-  .sf-check { display: inline-flex; align-items: center; gap: 8px; color: var(--ui-fg, #eee); }
-  .sf-check-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .sf-check { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--ui-fg, #eee); }
+  .sf-check-input { position: absolute; opacity: 0; width: 0.0625rem; height: 0.0625rem; }
   .sf-check-box {
-    position: relative; width: 14px; height: 14px; flex: 0 0 14px; display: inline-block;
-    border-radius: 3px;
-    border: 1px solid var(--ui-surface-border, rgba(120,170,255,0.70));
+    position: relative; width: 0.875rem; height: 0.875rem; flex: 0 0 0.875rem; display: inline-block;
+    border-radius: 0.1875rem;
+    border: 0.0625rem solid var(--ui-surface-border, rgba(120,170,255,0.70));
     background: linear-gradient(180deg,
       var(--ui-surface-bg-top, rgba(10,18,26, calc(0.41 * var(--ui-opacity-mult, 1)))) 0%,
       var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
     );
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18));
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.18));
   }
   .sf-check:hover .sf-check-box,
   .sf-check-input:focus-visible + .sf-check-box {
-    box-shadow: var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35)), var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.22));
+    box-shadow: var(--ui-surface-glow-outer, 0 0 0.625rem rgba(120,170,255,0.35)), var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.22));
     border-color: var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.70)));
     outline: none;
   }
@@ -531,12 +531,12 @@ function ensureCheckboxStyle() {
       var(--ui-surface-bg-bottom, rgba(10,16,22, calc(0.40 * var(--ui-opacity-mult, 1)))) 100%
     );
     border-color: var(--ui-surface-border, rgba(120,170,255,0.70));
-    box-shadow: var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18));
+    box-shadow: var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.18));
   }
   .sf-check-input:checked + .sf-check-box::after {
     content: '✓';
     position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-    font-weight: 900; font-size: 12px; line-height: 14px; text-align: center;
+    font-weight: 900; font-size: 0.75rem; line-height: 0.875rem; text-align: center;
     color: #fff;
   }
   /* Scale checkbox label text with UI font size template */
@@ -605,15 +605,15 @@ export function wireButtonChrome(btn, { minWidth = '', variant = 'default' } = {
   btn.style.userSelect = 'none';
   btn.style.cursor = 'pointer';
   btn.style.fontSize = 'var(--ui-fontsize-small)';
-  btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18))';
+  btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.18))';
   btn.style.outline = 'none';
 
   // Hover/focus: bright rim and scaled halo (no double outline)
   const hoverOn = () => {
     try {
-      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      btn.style.border = '0.0625rem solid var(--ui-bright-border, var(--ui-surface-border))';
       btn.style.boxShadow = [
-        'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.22))'
+        'var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.22))'
       ].join(', ');
       btn.style.filter = computeRectHalo();
     } catch (_) {}
@@ -621,7 +621,7 @@ export function wireButtonChrome(btn, { minWidth = '', variant = 'default' } = {
   const hoverOff = () => {
     try {
       btn.style.border = 'var(--ui-surface-border-css)';
-      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 9px rgba(40,100,200,0.18))';
+      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 0.5625rem rgba(40,100,200,0.18))';
       btn.style.filter = '';
     } catch (_) {}
   };
@@ -635,8 +635,8 @@ export function wireButtonChrome(btn, { minWidth = '', variant = 'default' } = {
   // Pressed: slightly deeper inset and tiny depress
   const pressOn = () => {
     try {
-      btn.style.transform = 'translateY(0.5px)';
-      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.24))';
+      btn.style.transform = 'translateY(0.03125rem)';
+      btn.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 0.75rem rgba(40,100,200,0.24))';
     } catch (_) {}
   };
   const pressOff = () => {
@@ -684,7 +684,7 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   // Match app-wide themed text glow
   btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
   // Use a themed 1px border matching the brighter overlay to avoid a seam between outer and inset rings
-  btn.style.border = '1px solid color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)';
+  btn.style.border = '0.0625rem solid color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)';
   btn.style.borderRadius = 'var(--ui-card-radius)';
   btn.style.userSelect = 'none';
   btn.style.cursor = 'pointer';
@@ -692,48 +692,48 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   btn.style.position = 'relative';
   // Base highlights/shadows emulate `.knob` from knob.js (right side lit)
   btn.style.boxShadow = [
-    '2px -2px 3px rgba(255,255,255,0.28)',
-    '-2px 2px 7px rgba(0,0,0,1.0)',
-    'inset 2px -2px 2px rgba(255,255,255,0.16)',
-    'inset -2px 2px 3px rgba(0,0,0,0.44)'
+    '0.125rem -0.125rem 0.1875rem rgba(255,255,255,0.28)',
+    '-0.125rem 0.125rem 0.4375rem rgba(0,0,0,1.0)',
+    'inset 0.125rem -0.125rem 0.125rem rgba(255,255,255,0.16)',
+    'inset -0.125rem 0.125rem 0.1875rem rgba(0,0,0,0.44)'
   ].join(', ');
   btn.style.outline = 'none';
 
   const hoverOn = () => {
     try {
-      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      btn.style.border = '0.0625rem solid var(--ui-bright-border, var(--ui-surface-border))';
       btn.style.boxShadow = [
-        '2px -2px 3px rgba(255,255,255,0.34)',
-        '-2px 2px 8px rgba(0,0,0,1.0)',
-        'inset 2px -2px 2px rgba(255,255,255,0.20)',
-        'inset -2px 2px 3px rgba(0,0,0,0.52)'
+        '0.125rem -0.125rem 0.1875rem rgba(255,255,255,0.34)',
+        '-0.125rem 0.125rem 0.5rem rgba(0,0,0,1.0)',
+        'inset 0.125rem -0.125rem 0.125rem rgba(255,255,255,0.20)',
+        'inset -0.125rem 0.125rem 0.1875rem rgba(0,0,0,0.52)'
       ].join(', ');
       btn.style.background = bgHover;
       // Brighten any inline knob-LEDs inside the button
       const leds = btn.querySelectorAll('[data-knob-led="1"]');
       leds.forEach((led) => {
         led.style.background = 'var(--kn-seg-on-bright, var(--ui-bright, #dff1ff))';
-        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
-        led.style.boxShadow = inset + ', var(--kn-seg-glow-strong, var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95)))';
+        const inset = 'inset 0.0625rem -0.0625rem 0.125rem rgba(255,255,255,0.35), inset -0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow-strong, var(--ui-glow-strong, 0 0 0.875rem rgba(120,170,255,0.95)))';
       });
     } catch (_) {}
   };
   const hoverOff = () => {
     try {
-      btn.style.border = '1px solid transparent';
+      btn.style.border = '0.0625rem solid transparent';
       btn.style.boxShadow = [
-        '2px -2px 3px rgba(255,255,255,0.28)',
-        '-2px 2px 7px rgba(0,0,0,1.0)',
-        'inset 2px -2px 2px rgba(255,255,255,0.16)',
-        'inset -2px 2px 3px rgba(0,0,0,0.44)'
+        '0.125rem -0.125rem 0.1875rem rgba(255,255,255,0.28)',
+        '-0.125rem 0.125rem 0.4375rem rgba(0,0,0,1.0)',
+        'inset 0.125rem -0.125rem 0.125rem rgba(255,255,255,0.16)',
+        'inset -0.125rem 0.125rem 0.1875rem rgba(0,0,0,0.44)'
       ].join(', ');
       btn.style.background = bgNormal;
       // Restore LED normal glow/colors
       const leds = btn.querySelectorAll('[data-knob-led="1"]');
       leds.forEach((led) => {
         led.style.background = 'var(--kn-seg-on, var(--ui-accent, #9fd0ff))';
-        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
-        led.style.boxShadow = inset + ', var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9)))';
+        const inset = 'inset 0.0625rem -0.0625rem 0.125rem rgba(255,255,255,0.35), inset -0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 0.375rem rgba(120,170,255,0.9)))';
       });
     } catch (_) {}
   };
@@ -744,14 +744,14 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
 
   const pressOn = () => {
     try {
-      btn.style.transform = 'translateY(0.5px)';
+      btn.style.transform = 'translateY(0.03125rem)';
       // sync border color to pressed overlay
       btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)';
       btn.style.boxShadow = [
-        '2px -2px 3px rgba(255,255,255,0.30)',
-        '-2px 2px 9px rgba(0,0,0,1.0)',
-        'inset 2px -2px 3px rgba(255,255,255,0.22)',
-        'inset -2px 2px 4px rgba(0,0,0,0.56)'
+        '0.125rem -0.125rem 0.1875rem rgba(255,255,255,0.30)',
+        '-0.125rem 0.125rem 0.5625rem rgba(0,0,0,1.0)',
+        'inset 0.125rem -0.125rem 0.1875rem rgba(255,255,255,0.22)',
+        'inset -0.125rem 0.125rem 0.25rem rgba(0,0,0,0.56)'
       ].join(', ');
     } catch (_) {}
   };
@@ -870,11 +870,11 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
   btn.style.cursor = 'pointer';
   btn.style.position = 'relative';
   btn.style.outline = 'none';
-  try { btn.style.backdropFilter = 'saturate(120%) blur(0.4px)'; } catch (_) {}
+  try { btn.style.backdropFilter = 'saturate(120%) blur(0.025rem)'; } catch (_) {}
 
   const baseRings = [
     // 2px brighter oval overlay exactly matching the outer ring size (fully opaque)
-    '0 0 0 1px color-mix(in srgb, var(--ui-border, var(--ui-accent, #9fd0ff)) 35%, white 15%)',
+    '0 0 0 0.0625rem color-mix(in srgb, var(--ui-border, var(--ui-accent, #9fd0ff)) 35%, white 15%)',
     // Outer color ring (2px) — match overlay color to avoid any seam
     // '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 85%, white 15%)',
     // Inner 1px highlight
@@ -882,8 +882,8 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
     // 3px darker inner shade
     // 'inset 0 0 0 3px rgba(0,0,0,0.18)',
     // Theme glows
-    'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40), 0 0 9px rgba(120,170,255,0.55))',
-    'var(--ui-surface-glow-inset, inset 0 0 10px rgba(120,170,255,0.25))'
+    'var(--ui-surface-glow-outer, 0 0 1.125rem rgba(120,170,255,0.40), 0 0 0.5625rem rgba(120,170,255,0.55))',
+    'var(--ui-surface-glow-inset, inset 0 0 0.625rem rgba(120,170,255,0.25))'
   ].join(', ');
   btn.style.boxShadow = baseRings;
 
@@ -893,16 +893,16 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
       btn.style.borderColor = 'color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)';
       btn.style.boxShadow = [
         // 2px brighter oval overlay (hover: stronger; fully opaque)
-        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        '0 0 0 0.125rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
         // Match base ring to overlay color to ensure perfect coverage
-        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        '0 0 0 0.125rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
         // Inner 1px highlight (slightly stronger mix on hover)
-        'inset 0 0 0 1px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
+        'inset 0 0 0 0.0625rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 82%, white 18%)',
         // 3px darker inner shade (a bit lighter on hover)
-        'inset 0 0 0 3px rgba(0,0,0,0.16)',
-        'var(--ui-glow-strong, 0 0 36px rgba(120,170,255,0.72), 0 0 10px rgba(120,170,255,0.98))',
-        'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.40))',
-        'var(--ui-surface-glow-inset, inset 0 0 12px rgba(120,170,255,0.30))'
+        'inset 0 0 0 0.1875rem rgba(0,0,0,0.16)',
+        'var(--ui-glow-strong, 0 0 2.25rem rgba(120,170,255,0.72), 0 0 0.625rem rgba(120,170,255,0.98))',
+        'var(--ui-surface-glow-outer, 0 0 1.125rem rgba(120,170,255,0.40))',
+        'var(--ui-surface-glow-inset, inset 0 0 0.75rem rgba(120,170,255,0.30))'
       ].join(', ');
       btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
     } catch (_) {}
@@ -924,17 +924,17 @@ export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--ui-acc
 
   const pressOn = () => {
     try {
-      btn.style.transform = 'translateY(0.5px)';
+      btn.style.transform = 'translateY(0.03125rem)';
       btn.style.boxShadow = [
         // 2px brighter oval overlay (pressed: between base and hover; fully opaque)
-        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        '0 0 0 0.125rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
         // Match base ring to overlay color to ensure perfect coverage
-        '0 0 0 2px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
-        'inset 0 0 0 1px color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        '0 0 0 0.125rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
+        'inset 0 0 0 0.0625rem color-mix(in srgb, var(--ui-bright-border, var(--ui-accent, #9fd0ff)) 84%, white 16%)',
         // 3px darker inner shade (slightly stronger on press)
-        'inset 0 0 0 3px rgba(0,0,0,0.20)',
-        'var(--ui-surface-glow-inset, inset 0 0 14px rgba(120,170,255,0.32))',
-        'var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.30))'
+        'inset 0 0 0 0.1875rem rgba(0,0,0,0.20)',
+        'var(--ui-surface-glow-inset, inset 0 0 0.875rem rgba(120,170,255,0.32))',
+        'var(--ui-surface-glow-outer, 0 0 0.75rem rgba(120,170,255,0.30))'
       ].join(', ');
     } catch (_) {}
   };
