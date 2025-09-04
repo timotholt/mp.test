@@ -4,7 +4,7 @@
 // Minimal, human-readable, and commented per project conventions.
 
 import { getQuip } from '../../../core/ui/quip.js';
-import { createDropdown, createButton, createKnobButton, createKnobButtonV2 } from '../../../core/ui/controls.js';
+import { createDropdown, createButton, createKnobButton, createKnobButtonV2, createNeonButton } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
@@ -237,6 +237,14 @@ export function renderThemeTab(container) {
             try { knobStyleBtnV2.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
             // Append to the same section, after the header row, so it appears under the original
             sec.appendChild(knobStyleBtnV2.el);
+          }
+          // Neon demo: pill-shaped red neon outline button
+          const neonBtn = (typeof createNeonButton === 'function')
+            ? createNeonButton({ label: 'Subscribe', onClick: () => { try { console.log('[ThemeTab] Neon Subscribe clicked'); } catch (_) {} }, minWidth: '10.25rem' })
+            : null;
+          if (neonBtn && neonBtn.el) {
+            try { neonBtn.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
+            sec.appendChild(neonBtn.el);
           }
         } catch (_) {}
     } catch (_) {

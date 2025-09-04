@@ -817,6 +817,112 @@ export function createKnobButton({ label = 'Knob Button', onClick, minWidth = ''
   return { el: btn, button: btn, setLabel: (t) => { try { if (lab) lab.textContent = String(t); else btn.textContent = String(t); } catch (_) {} } };
 }
 
+// -------------------------------------------------
+// Neon Outline Button (JS-only; pill outline + glow)
+// -------------------------------------------------
+export function wireNeonButtonChrome(btn, { minWidth = '', color = 'var(--neon-red, #ff3b2f)' } = {}) {
+  if (!btn) return btn;
+  // Core glow colors (fallbacks) near #ff3b2f
+  const g1 = 'rgba(255,59,47,0.55)';
+  const g2 = 'rgba(255,59,47,0.35)';
+  const g3 = 'rgba(255,59,47,0.18)';
+  const gInner = 'rgba(255,80,60,0.22)';
+  const gInner2 = 'rgba(255,120,80,0.10)';
+
+  btn.style.display = 'inline-flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+  btn.style.padding = '0.95rem 2.75rem';
+  btn.style.gap = '0.5rem';
+  if (minWidth) btn.style.minWidth = minWidth;
+  btn.style.border = '1px solid transparent';
+  btn.style.borderRadius = '9999px';
+  btn.style.background = [
+    `linear-gradient(180deg, ${gInner}, ${gInner2})`,
+    'radial-gradient(120% 200% at 50% -40%, rgba(255,255,255,0.06), rgba(255,255,255,0))'
+  ].join(', ');
+  btn.style.color = '#ffffff';
+  btn.style.textTransform = 'uppercase';
+  btn.style.letterSpacing = '0.28em';
+  btn.style.fontWeight = '800';
+  btn.style.fontSize = '0.95rem';
+  btn.style.textShadow = '0 0 8px rgba(255,80,60,0.55), 0 0 20px rgba(255,80,60,0.25)';
+  btn.style.userSelect = 'none';
+  btn.style.cursor = 'pointer';
+  btn.style.position = 'relative';
+  btn.style.outline = 'none';
+  try { btn.style.backdropFilter = 'saturate(120%) blur(0.4px)'; } catch (_) {}
+
+  const baseRings = [
+    `0 0 0 2px ${color}`,
+    `0 0 14px ${g1}`,
+    `0 0 30px ${g2}`,
+    `0 0 60px ${g3}`,
+    `inset 0 0 12px ${g1}`,
+    `inset 0 0 24px ${g2}`
+  ].join(', ');
+  btn.style.boxShadow = baseRings;
+
+  const hoverOn = () => {
+    try {
+      btn.style.boxShadow = [
+        `0 0 0 2px ${color}`,
+        `0 0 18px ${g1}`,
+        `0 0 42px ${g2}`,
+        `0 0 84px ${g3}`,
+        `inset 0 0 16px ${g1}`,
+        `inset 0 0 30px ${g2}`
+      ].join(', ');
+      btn.style.textShadow = '0 0 10px rgba(255,80,60,0.70), 0 0 26px rgba(255,80,60,0.35)';
+    } catch (_) {}
+  };
+  const hoverOff = () => {
+    try {
+      btn.style.boxShadow = baseRings;
+      btn.style.textShadow = '0 0 8px rgba(255,80,60,0.55), 0 0 20px rgba(255,80,60,0.25)';
+    } catch (_) {}
+  };
+  try {
+    btn.addEventListener('mouseenter', hoverOn);
+    btn.addEventListener('mouseleave', hoverOff);
+    btn.addEventListener('focus', hoverOn);
+    btn.addEventListener('blur', hoverOff);
+  } catch (_) {}
+
+  const pressOn = () => {
+    try {
+      btn.style.transform = 'translateY(0.5px)';
+      btn.style.boxShadow = [
+        `0 0 0 2px ${color}`,
+        `0 0 12px ${g1}`,
+        `0 0 26px ${g2}`,
+        `0 0 54px ${g3}`,
+        `inset 0 0 10px ${g1}`,
+        `inset 0 0 22px ${g2}`
+      ].join(', ');
+    } catch (_) {}
+  };
+  const pressOff = () => { try { btn.style.transform = 'none'; } catch (_) {} };
+  try {
+    btn.addEventListener('mousedown', pressOn);
+    window.addEventListener('mouseup', pressOff, { passive: true });
+    btn.addEventListener('keydown', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOn(); });
+    btn.addEventListener('keyup',   (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOff(); });
+  } catch (_) {}
+
+  try { applyRectHalo(btn); } catch (_) {}
+  return btn;
+}
+
+export function createNeonButton({ label = 'Subscribe', onClick, minWidth = '', color } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  try { btn.textContent = String(label).toUpperCase(); } catch (_) { btn.textContent = 'SUBSCRIBE'; }
+  wireNeonButtonChrome(btn, { minWidth, color });
+  if (typeof onClick === 'function') btn.onclick = onClick;
+  return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t).toUpperCase(); } catch (_) {} } };
+}
+
 // ---------------------------------------------
 // V2: Identical copy of knob button and chrome
 // ---------------------------------------------
