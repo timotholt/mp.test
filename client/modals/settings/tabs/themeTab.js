@@ -4,7 +4,7 @@
 // Minimal, human-readable, and commented per project conventions.
 
 import { getQuip } from '../../../core/ui/quip.js';
-import { createDropdown, createButton, createKnobButton } from '../../../core/ui/controls.js';
+import { createDropdown, createButton, createKnobButton, createKnobButtonV2 } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
@@ -228,6 +228,15 @@ export function renderThemeTab(container) {
           if (knobStyleBtn && knobStyleBtn.el) {
             knobStyleBtn.el.style.marginLeft = '0.5rem';
             hdrRow.appendChild(knobStyleBtn.el);
+          }
+          // V2 demo button: place it somewhere under the original, not aligned, for design iteration
+          const knobStyleBtnV2 = (typeof createKnobButtonV2 === 'function')
+            ? createKnobButtonV2({ label: 'Knob Button V2', onClick: () => { try { console.log('[ThemeTab] Knob Button V2 clicked'); } catch (_) {} }, minWidth: '8rem' })
+            : null;
+          if (knobStyleBtnV2 && knobStyleBtnV2.el) {
+            try { knobStyleBtnV2.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
+            // Append to the same section, after the header row, so it appears under the original
+            sec.appendChild(knobStyleBtnV2.el);
           }
         } catch (_) {}
     } catch (_) {

@@ -705,6 +705,175 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
         'inset 2px -2px 2px rgba(255,255,255,0.20)',
         'inset -2px 2px 3px rgba(0,0,0,0.52)'
       ].join(', ');
+      btn.style.background = bgHover;
+      // Brighten any inline knob-LEDs inside the button
+      const leds = btn.querySelectorAll('[data-knob-led="1"]');
+      leds.forEach((led) => {
+        led.style.background = 'var(--kn-seg-on-bright, var(--ui-bright, #dff1ff))';
+        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow-strong, var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95)))';
+      });
+    } catch (_) {}
+  };
+  const hoverOff = () => {
+    try {
+      btn.style.border = '1px solid transparent';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.28)',
+        '-2px 2px 7px rgba(0,0,0,1.0)',
+        'inset 2px -2px 2px rgba(255,255,255,0.16)',
+        'inset -2px 2px 3px rgba(0,0,0,0.44)'
+      ].join(', ');
+      btn.style.background = bgNormal;
+      // Restore LED normal glow/colors
+      const leds = btn.querySelectorAll('[data-knob-led="1"]');
+      leds.forEach((led) => {
+        led.style.background = 'var(--kn-seg-on, var(--ui-accent, #9fd0ff))';
+        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9)))';
+      });
+    } catch (_) {}
+  };
+  try {
+    btn.addEventListener('mouseenter', hoverOn);
+    btn.addEventListener('mouseleave', hoverOff);
+  } catch (_) {}
+
+  const pressOn = () => {
+    try {
+      btn.style.transform = 'translateY(0.5px)';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.30)',
+        '-2px 2px 9px rgba(0,0,0,1.0)',
+        'inset 2px -2px 3px rgba(255,255,255,0.22)',
+        'inset -2px 2px 4px rgba(0,0,0,0.56)'
+      ].join(', ');
+    } catch (_) {}
+  };
+  const pressOff = () => { try { btn.style.transform = 'none'; } catch (_) {} };
+  try {
+    btn.addEventListener('mousedown', pressOn);
+    window.addEventListener('mouseup', pressOff, { passive: true });
+    btn.addEventListener('keydown', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOn(); });
+    btn.addEventListener('keyup', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOff(); });
+  } catch (_) {}
+
+  // Also wire halo for consistency
+  try { applyRectHalo(btn); } catch (_) {}
+  return btn;
+}
+
+export function createKnobButton({ label = 'Knob Button', onClick, minWidth = '' } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '';
+  wireKnobButtonChrome(btn, { minWidth });
+  // Add a subtle white specular dot BEFORE the label to reinforce 3D cue
+  let lab = null;
+  try {
+    const dot = document.createElement('span');
+    dot.setAttribute('aria-hidden', 'true');
+    dot.style.display = 'inline-block';
+    dot.style.width = '6px';
+    dot.style.height = '6px';
+    dot.style.borderRadius = '50%';
+    dot.style.pointerEvents = 'none';
+    dot.style.background = 'radial-gradient(circle at 45% 45%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.75) 45%, rgba(255,255,255,0.15) 75%, rgba(255,255,255,0) 100%)';
+    dot.style.boxShadow = '0 0 8px rgba(255,255,255,0.25)';
+    btn.appendChild(dot);
+    lab = document.createElement('span');
+    lab.textContent = label;
+    btn.appendChild(lab);
+    // Add 3 vertical LEDs to the right of the label (match knob LED colors/glow)
+    const col = document.createElement('span');
+    col.style.display = 'inline-flex';
+    col.style.flexDirection = 'column';
+    col.style.gap = '6px';
+    col.style.marginLeft = '0.5rem';
+    col.style.alignSelf = 'center';
+    const makeLed = () => {
+      const led = document.createElement('span');
+      led.setAttribute('aria-hidden', 'true');
+      led.setAttribute('data-knob-led', '1');
+      led.style.display = 'inline-block';
+      led.style.width = '8px';
+      led.style.height = '8px';
+      led.style.borderRadius = '50%';
+      // Inset 3D look + theme glow matching knob segments
+      led.style.background = 'var(--kn-seg-on, var(--ui-accent, #9fd0ff))';
+      led.style.boxShadow = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70), var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9)))';
+      led.style.border = '1px solid rgba(255,255,255,0.10)';
+      led.style.opacity = '0.95';
+      return led;
+    };
+    col.appendChild(makeLed());
+    col.appendChild(makeLed());
+    col.appendChild(makeLed());
+    btn.appendChild(col);
+  } catch (_) { /* fallback below */ }
+  // Fallback if dot/label creation failed
+  if (!lab) { try { btn.textContent = label; } catch (_) {} }
+  if (typeof onClick === 'function') btn.onclick = onClick;
+  return { el: btn, button: btn, setLabel: (t) => { try { if (lab) lab.textContent = String(t); else btn.textContent = String(t); } catch (_) {} } };
+}
+
+// ---------------------------------------------
+// V2: Identical copy of knob button and chrome
+// ---------------------------------------------
+export function wireKnobButtonChromeV2(btn, { minWidth = '' } = {}) {
+  if (!btn) return btn;
+  // Glassy-black look: deep translucent blacks with a right-lit blue tint overlay.
+  // Normal state background (layered gradients, topmost first)
+  const bgNormal = [
+    // Right-edge blue tint (fallback rgba to avoid relying on color-mix)
+    'linear-gradient(90deg, rgba(120,170,255,0.14) 0%, rgba(120,170,255,0.18) 18%, rgba(120,170,255,0.08) 46%, rgba(120,170,255,0.00) 100%)',
+    // Soft vertical specular sweep
+    'linear-gradient(0deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 35%, rgba(255,255,255,0.00) 60%)',
+    // Base body (translucent black, roughly matching original left/right ends)
+    'linear-gradient(90deg, rgba(15,15,15,0.90) 0%, rgba(31,31,31,0.78) 100%)'
+  ].join(', ');
+  // Hover/focus background: amplify blue tint and specular slightly
+  const bgHover = [
+    'linear-gradient(90deg, rgba(120,170,255,0.20) 0%, rgba(120,170,255,0.26) 18%, rgba(120,170,255,0.12) 46%, rgba(120,170,255,0.00) 100%)',
+    'linear-gradient(0deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.00) 60%)',
+    'linear-gradient(90deg, rgba(15,15,15,0.92) 0%, rgba(31,31,31,0.80) 100%)'
+  ].join(', ');
+  btn.style.display = 'inline-flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+  btn.style.gap = '0.5rem';
+  btn.style.padding = '0.5rem 0.9rem';
+  if (minWidth) btn.style.minWidth = minWidth;
+  btn.style.background = bgNormal;
+  btn.style.color = 'var(--ui-fg, #eee)';
+  // Match app-wide themed text glow
+  btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
+  btn.style.border = '1px solid transparent';
+  btn.style.borderRadius = 'var(--ui-card-radius)';
+  btn.style.userSelect = 'none';
+  btn.style.cursor = 'pointer';
+  btn.style.fontSize = 'var(--ui-fontsize-small)';
+  btn.style.position = 'relative';
+  // Subtle glassiness. If unsupported, harmlessly ignored.
+  try { btn.style.backdropFilter = 'saturate(120%) blur(0.6px)'; } catch (_) {}
+  // Base highlights/shadows emulate `.knob` from knob.js (right side lit)
+  btn.style.boxShadow = [
+    '2px -2px 3px rgba(255,255,255,0.28)',
+    '-2px 2px 7px rgba(0,0,0,1.0)',
+    'inset 2px -2px 2px rgba(255,255,255,0.16)',
+    'inset -2px 2px 3px rgba(0,0,0,0.44)'
+  ].join(', ');
+  btn.style.outline = 'none';
+
+  const hoverOn = () => {
+    try {
+      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.34)',
+        '-2px 2px 8px rgba(0,0,0,1.0)',
+        'inset 2px -2px 2px rgba(255,255,255,0.20)',
+        'inset -2px 2px 3px rgba(0,0,0,0.52)'
+      ].join(', ');
       // Brighten any inline knob-LEDs inside the button
       const leds = btn.querySelectorAll('[data-knob-led="1"]');
       leds.forEach((led) => {
@@ -761,11 +930,11 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
   return btn;
 }
 
-export function createKnobButton({ label = 'Knob Button', onClick, minWidth = '' } = {}) {
+export function createKnobButtonV2({ label = 'Knob Button', onClick, minWidth = '' } = {}) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.textContent = '';
-  wireKnobButtonChrome(btn, { minWidth });
+  wireKnobButtonChromeV2(btn, { minWidth });
   // Add a subtle white specular dot BEFORE the label to reinforce 3D cue
   let lab = null;
   try {
