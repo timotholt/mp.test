@@ -153,6 +153,8 @@ export function applyControlsStyle(options = {}) {
   try {
     const existing = document.getElementById(styleId);
     const css = `
+      /* Ensure native form controls inherit global font (family/size/weight/line-height) */
+      button, input, select, textarea { font: inherit; }
       select, .ui-select {
         background: linear-gradient(var(--ui-surface-bg-top), var(--ui-surface-bg-bottom));
         color: var(--ui-fg);
