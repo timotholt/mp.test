@@ -93,7 +93,7 @@ export function renderThemeTab(container) {
   const applyKnobChrome = (kn) => {
     if (!kn || !kn.el) return;
     try { kn.el.style.setProperty('--kn-ring-global-y', '0.25rem'); } catch (_) {}
-    try { kn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+    try { kn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 8px rgba(120,170,255,0.25))'); } catch (_) {}
     try { kn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
     try { kn.el.style.setProperty('--kn-focus-ring', '0 0 0 1px var(--ui-bright-border)'); } catch (_) {}
     try { kn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
@@ -106,7 +106,7 @@ export function renderThemeTab(container) {
       const ring = kn.el.querySelector('.k-ring');
       if (!ring) return;
       // const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.375rem var(--ui-bright-border)) drop-shadow(0 0 0.875rem var(--ui-bright-border))'; } catch (_) {} };
-      const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.25rem var(--ui-bright-border)) drop-shadow(0 0 0.625rem var(--ui-bright-border))'; } catch (_) {} };
+      const on = () => { try { ring.style.filter = 'drop-shadow(0 0 0.20rem var(--ui-bright-border)) drop-shadow(0 0 0.50rem var(--ui-bright-border))'; } catch (_) {} };
       const off = () => { try { ring.style.filter = ''; } catch (_) {} };
       kn.el.addEventListener('mouseenter', on);
       kn.el.addEventListener('mouseleave', off);
@@ -361,7 +361,7 @@ export function renderThemeTab(container) {
         try { if (txtKn && txtKn.el) { txtKn.el.__sfTipMode = 'far'; txtKn.el.__sfTipPlacementPriority = 'rc,r'; } } catch (_) {}
 
         // Match other knobs' hover/focus glow and apply bright border
-        try { txtKn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.35))'); } catch (_) {}
+        try { txtKn.el.style.setProperty('--kn-hover-glow', '0 0 0 1px var(--ui-bright-border), var(--ui-glow-strong), var(--ui-surface-glow-outer, 0 0 8px rgba(120,170,255,0.25))'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-focus-glow', 'var(--ui-glow-strong), var(--ui-surface-glow-outer)'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-focus-ring', '0 0 0 1px var(--ui-bright-border)'); } catch (_) {}
         try { txtKn.el.style.setProperty('--kn-center-ring-color-hover', 'var(--ui-bright-border)'); } catch (_) {}
