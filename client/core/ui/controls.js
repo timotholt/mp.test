@@ -596,6 +596,8 @@ export function wireButtonChrome(btn, { minWidth = '', variant = 'default' } = {
   if (minWidth) btn.style.minWidth = minWidth;
   btn.style.background = `${bgSheen}, ${bgVignette}, ${bgGlass}`;
   btn.style.color = 'var(--ui-fg, #eee)';
+  // Match app-wide themed text glow
+  btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
   btn.style.border = 'var(--ui-surface-border-css)';
   btn.style.borderRadius = 'var(--ui-card-radius)';
   btn.style.userSelect = 'none';
@@ -660,6 +662,113 @@ export function createButton({ label = 'Button', onClick, minWidth = '' } = {}) 
   btn.type = 'button';
   btn.textContent = label;
   wireButtonChrome(btn, { minWidth });
+  if (typeof onClick === 'function') btn.onclick = onClick;
+  return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t); } catch (_) {} } };
+}
+
+// Rectangular button that visually matches the glossy black knob look
+export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
+  if (!btn) return btn;
+  // Right-lit glossy black, borrowing the knob lighting model
+  const bg = 'linear-gradient(90deg, var(--knbtn-left, var(--ui-knob-bg-bottom, #0f0f0f)) 0%, var(--knbtn-right, var(--ui-knob-bg-top, #1f1f1f)) 100%)';
+  btn.style.display = 'inline-flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+  btn.style.gap = '0.5rem';
+  btn.style.padding = '0.5rem 0.9rem';
+  if (minWidth) btn.style.minWidth = minWidth;
+  btn.style.background = bg;
+  btn.style.color = 'var(--ui-fg, #eee)';
+  // Match app-wide themed text glow
+  btn.style.textShadow = 'var(--ui-text-glow, var(--sf-tip-text-glow, none))';
+  btn.style.border = 'var(--ui-surface-border-css)';
+  btn.style.borderRadius = 'var(--ui-card-radius)';
+  btn.style.userSelect = 'none';
+  btn.style.cursor = 'pointer';
+  btn.style.fontSize = 'var(--ui-fontsize-small)';
+  btn.style.position = 'relative';
+  // Base highlights/shadows emulate `.knob` from knob.js (right side lit)
+  btn.style.boxShadow = [
+    '2px -2px 3px rgba(255,255,255,0.28)',
+    '-2px 2px 7px rgba(0,0,0,1.0)',
+    'inset 2px -2px 2px rgba(255,255,255,0.16)',
+    'inset -2px 2px 3px rgba(0,0,0,0.44)'
+  ].join(', ');
+  btn.style.outline = 'none';
+
+  const hoverOn = () => {
+    try {
+      btn.style.border = '1px solid var(--ui-bright-border, var(--ui-surface-border))';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.34)',
+        '-2px 2px 8px rgba(0,0,0,1.0)',
+        'inset 2px -2px 2px rgba(255,255,255,0.20)',
+        'inset -2px 2px 3px rgba(0,0,0,0.52)'
+      ].join(', ');
+    } catch (_) {}
+  };
+  const hoverOff = () => {
+    try {
+      btn.style.border = 'var(--ui-surface-border-css)';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.28)',
+        '-2px 2px 7px rgba(0,0,0,1.0)',
+        'inset 2px -2px 2px rgba(255,255,255,0.16)',
+        'inset -2px 2px 3px rgba(0,0,0,0.44)'
+      ].join(', ');
+    } catch (_) {}
+  };
+  try {
+    btn.addEventListener('mouseenter', hoverOn);
+    btn.addEventListener('mouseleave', hoverOff);
+    btn.addEventListener('focus', hoverOn);
+    btn.addEventListener('blur', hoverOff);
+  } catch (_) {}
+
+  const pressOn = () => {
+    try {
+      btn.style.transform = 'translateY(0.5px)';
+      btn.style.boxShadow = [
+        '2px -2px 3px rgba(255,255,255,0.30)',
+        '-2px 2px 9px rgba(0,0,0,1.0)',
+        'inset 2px -2px 3px rgba(255,255,255,0.22)',
+        'inset -2px 2px 4px rgba(0,0,0,0.56)'
+      ].join(', ');
+    } catch (_) {}
+  };
+  const pressOff = () => { try { btn.style.transform = 'none'; } catch (_) {} };
+  try {
+    btn.addEventListener('mousedown', pressOn);
+    window.addEventListener('mouseup', pressOff, { passive: true });
+    btn.addEventListener('keydown', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOn(); });
+    btn.addEventListener('keyup', (ev) => { if (ev.key === ' ' || ev.key === 'Enter') pressOff(); });
+  } catch (_) {}
+
+  // Also wire halo for consistency
+  try { applyRectHalo(btn); } catch (_) {}
+  return btn;
+}
+
+export function createKnobButton({ label = 'Knob Button', onClick, minWidth = '' } = {}) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  wireKnobButtonChrome(btn, { minWidth });
+  // Add a subtle white specular dot at top-right to reinforce 3D cue
+  try {
+    const dot = document.createElement('span');
+    dot.setAttribute('aria-hidden', 'true');
+    dot.style.position = 'absolute';
+    dot.style.top = '0.35rem';
+    dot.style.right = '0.4rem';
+    dot.style.width = '6px';
+    dot.style.height = '6px';
+    dot.style.borderRadius = '50%';
+    dot.style.pointerEvents = 'none';
+    dot.style.background = 'radial-gradient(circle at 45% 45%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.75) 45%, rgba(255,255,255,0.15) 75%, rgba(255,255,255,0) 100%)';
+    dot.style.boxShadow = '0 0 8px rgba(255,255,255,0.25)';
+    btn.appendChild(dot);
+  } catch (_) {}
   if (typeof onClick === 'function') btn.onclick = onClick;
   return { el: btn, button: btn, setLabel: (t) => { try { btn.textContent = String(t); } catch (_) {} } };
 }

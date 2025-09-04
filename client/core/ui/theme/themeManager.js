@@ -553,7 +553,18 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       root.style.setProperty('--sf-tip-glow-outer', glowOuter);
       root.style.setProperty('--sf-tip-glow-inset', glowInset);
       // Tooltip text glow: scale alpha by glow strength and intensity so tooltips respect glow slider
-      const tipTextGlow = `0 0 6px ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: Math.min(0.9, glowAlphaEff * Math.min(1, intensity / 20)) })}`;
+      // const tipTextGlow = `0 0 0.375rem ${colorFromHSLC({ h: hue, s: Math.min(90, sat + 30), l: Math.min(95, light + 35), alpha: Math.min(0.9, glowAlphaEff * Math.min(1, intensity / 20)) })}`;
+
+
+      const tipTextGlow = `0 0 0.55rem ${colorFromHSLC({
+        h: hue,
+        s: Math.min(90, sat + 30),
+        l: Math.min(95, light + 35),
+        // Boost alpha by ~25% and allow it to reach 1.0 (was capped at 0.9)
+        alpha: Math.min(1, 1.25 * glowAlphaEff * Math.min(1, intensity / 20))
+      })}`;
+
+
       root.style.setProperty('--sf-tip-text-glow', tipTextGlow);
       // Expose same glow for general UI text usage
       root.style.setProperty('--ui-text-glow', tipTextGlow);
