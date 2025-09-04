@@ -705,6 +705,13 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
         'inset 2px -2px 2px rgba(255,255,255,0.20)',
         'inset -2px 2px 3px rgba(0,0,0,0.52)'
       ].join(', ');
+      // Brighten any inline knob-LEDs inside the button
+      const leds = btn.querySelectorAll('[data-knob-led="1"]');
+      leds.forEach((led) => {
+        led.style.background = 'var(--kn-seg-on-bright, var(--ui-bright, #dff1ff))';
+        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow-strong, var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95)))';
+      });
     } catch (_) {}
   };
   const hoverOff = () => {
@@ -716,6 +723,13 @@ export function wireKnobButtonChrome(btn, { minWidth = '' } = {}) {
         'inset 2px -2px 2px rgba(255,255,255,0.16)',
         'inset -2px 2px 3px rgba(0,0,0,0.44)'
       ].join(', ');
+      // Restore LED normal glow/colors
+      const leds = btn.querySelectorAll('[data-knob-led="1"]');
+      leds.forEach((led) => {
+        led.style.background = 'var(--kn-seg-on, var(--ui-accent, #9fd0ff))';
+        const inset = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70)';
+        led.style.boxShadow = inset + ', var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9)))';
+      });
     } catch (_) {}
   };
   try {
@@ -768,6 +782,32 @@ export function createKnobButton({ label = 'Knob Button', onClick, minWidth = ''
     lab = document.createElement('span');
     lab.textContent = label;
     btn.appendChild(lab);
+    // Add 3 vertical LEDs to the right of the label (match knob LED colors/glow)
+    const col = document.createElement('span');
+    col.style.display = 'inline-flex';
+    col.style.flexDirection = 'column';
+    col.style.gap = '6px';
+    col.style.marginLeft = '0.5rem';
+    col.style.alignSelf = 'center';
+    const makeLed = () => {
+      const led = document.createElement('span');
+      led.setAttribute('aria-hidden', 'true');
+      led.setAttribute('data-knob-led', '1');
+      led.style.display = 'inline-block';
+      led.style.width = '8px';
+      led.style.height = '8px';
+      led.style.borderRadius = '50%';
+      // Inset 3D look + theme glow matching knob segments
+      led.style.background = 'var(--kn-seg-on, var(--ui-accent, #9fd0ff))';
+      led.style.boxShadow = 'inset 1px -1px 2px rgba(255,255,255,0.35), inset -1px 1px 2px rgba(0,0,0,0.70), var(--kn-seg-glow, var(--ui-surface-glow-outer, 0 0 6px rgba(120,170,255,0.9)))';
+      led.style.border = '1px solid rgba(255,255,255,0.10)';
+      led.style.opacity = '0.95';
+      return led;
+    };
+    col.appendChild(makeLed());
+    col.appendChild(makeLed());
+    col.appendChild(makeLed());
+    btn.appendChild(col);
   } catch (_) { /* fallback below */ }
   // Fallback if dot/label creation failed
   if (!lab) { try { btn.textContent = label; } catch (_) {} }
