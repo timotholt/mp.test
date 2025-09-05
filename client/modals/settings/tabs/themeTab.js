@@ -79,6 +79,39 @@ export function renderThemeTab(container) {
         return Number.isFinite(v) ? v : fb;
       } catch (_) { return fb; }
     };
+
+  // ThemeScheduler: high-fidelity, RAF-throttled, batched theme updates
+  // - schedule(patch): merges incremental patches and applies them once per animation frame
+  // - beginDrag()/endDrag(finalPatch): marks a drag session and commits the final state on pointerup
+  //   We optionally add a 'perf-drag' CSS class you can style to disable heavy paints during drags.
+  const ThemeScheduler = (() => {
+    let pending = null;
+    let rafId = 0;
+    let dragDepth = 0;
+    const root = document.documentElement;
+    function flush() {
+      const patch = pending; pending = null; rafId = 0;
+      if (!patch) return;
+      try { window.UITheme && window.UITheme.applyDynamicTheme(patch); } catch (_) {}
+    }
+    return {
+      schedule(patch) {
+        // Merge patches and coalesce into a single apply this frame
+        pending = Object.assign(pending || {}, patch || {});
+        if (!rafId) rafId = requestAnimationFrame(flush);
+      },
+      beginDrag() {
+        try { if (dragDepth++ === 0 && root) root.classList.add('perf-drag'); } catch (_) {}
+      },
+      endDrag(finalPatch) {
+        try { if (dragDepth > 0 && --dragDepth === 0 && root) root.classList.remove('perf-drag'); } catch (_) {}
+        // Commit the last value synchronously and cancel any pending RAF
+        try { if (finalPatch) { window.UITheme && window.UITheme.applyDynamicTheme(finalPatch); } } catch (_) {}
+        if (rafId) { try { cancelAnimationFrame(rafId); } catch (_) {} rafId = 0; }
+        pending = null;
+      }
+    };
+  })();
     return {
       get hue() { return Math.round(parseCssNum('--ui-hue', 210)); },
       get intensity() { return Math.round(parseCssNum('--ui-intensity', 60)); },
@@ -376,12 +409,14 @@ export function renderThemeTab(container) {
             const c = Math.round(96 + t * (255 - 96));
             return `rgb(${c}, ${c}, ${c})`;
           },
+          // RAF-throttle while dragging (input), commit once on release (change)
           onInput: (v) => {
-            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: Math.round(v) }); } catch (_) {}
+            try { ThemeScheduler.beginDrag(); } catch (_) {}
+            try { ThemeScheduler.schedule({ fgBrightness: Math.round(v) }); } catch (_) {}
             try { selectCustomPreset(); } catch (_) {}
           },
           onChange: (v) => {
-            try { window.UITheme && window.UITheme.applyDynamicTheme({ fgBrightness: Math.round(v) }); } catch (_) {}
+            try { ThemeScheduler.endDrag({ fgBrightness: Math.round(v) }); } catch (_) {}
           }
         });
 
@@ -438,7 +473,8 @@ export function renderThemeTab(container) {
       attachWheel,
       debugLabel: 'display',
       toDisplay: fmtPct,
-      onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ gradient: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
+      // RAF-throttle gradient updates; commit on pointerup
+      onChange: (p) => { try { ThemeScheduler.schedule({ gradient: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   // Attach Sci-Fi tooltip to Gradient label and initialize text
@@ -458,7 +494,7 @@ export function renderThemeTab(container) {
       debugLabel: 'display',
       // Display as percentage (0..10px -> 0..100%)
       toDisplay: (v) => fmtPct(Number(v) * 10),
-      onChange: (v) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ milkiness: v }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
+      onChange: (v) => { try { ThemeScheduler.schedule({ milkiness: v }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try {
@@ -494,7 +530,7 @@ export function renderThemeTab(container) {
       },
       onChange: (p) => {
         const mult = ((100 - p) / 100) * DEFAULTS.opacityMMAX;
-        try { window.UITheme && window.UITheme.applyDynamicTheme({ opacityMult: mult }); } catch (_) {}
+        try { ThemeScheduler.schedule({ opacityMult: mult }); } catch (_) {}
         // Gradient tooltip visible only when panels aren’t fully clear
         try { opLbl.removeAttribute('title'); } catch (_) {}
         try { updateTooltip(opLbl, 'Higher = clearer panels; lower = more solid'); } catch (_) {}
@@ -545,7 +581,7 @@ export function renderThemeTab(container) {
       attachWheel,
       debugLabel: 'display',
       toDisplay: fmtPct,
-      onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ overlayDarkness: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
+      onChange: (p) => { try { ThemeScheduler.schedule({ overlayDarkness: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try {
@@ -594,7 +630,7 @@ export function renderThemeTab(container) {
       attachWheel,
       debugLabel: 'display',
       toDisplay: fmtPct,
-      onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ borderStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
+      onChange: (p) => { try { ThemeScheduler.schedule({ borderStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try { biLbl && biLbl.removeAttribute && biLbl.removeAttribute('title'); } catch (_) {}
@@ -612,7 +648,7 @@ export function renderThemeTab(container) {
       debugLabel: 'display',
       // Show as simple percentage to unify all displays
       toDisplay: fmtPct,
-      onChange: (p) => { try { window.UITheme && window.UITheme.applyDynamicTheme({ glowStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
+      onChange: (p) => { try { ThemeScheduler.schedule({ glowStrength: p }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} }
     }
   );
   try { gsLbl && gsLbl.removeAttribute && gsLbl.removeAttribute('title'); } catch (_) {}
@@ -621,6 +657,28 @@ export function renderThemeTab(container) {
   attachHover && attachHover(gsRng, gsLbl);
   attachHover && attachHover(gsRng, gsVal);
   container.appendChild(gsRow);
+
+  // Drag lifecycle hooks for controls to toggle perf mode and commit values on release
+  try {
+    const onPD = () => ThemeScheduler.beginDrag();
+    const onPU_gr = () => { try { ThemeScheduler.endDrag({ gradient: clamp(Math.round(parseFloat(grRng.value) || 0), 0, 100) }); } catch (_) {} };
+    const onPU_mk = () => { try { ThemeScheduler.endDrag({ milkiness: parseFloat(mkRng.value) }); } catch (_) {} };
+    const onPU_op = () => { try { const p = clamp(Math.round(parseFloat(opRng.value) || 0), 0, 100); const mult = ((100 - p) / 100) * DEFAULTS.opacityMMAX; ThemeScheduler.endDrag({ opacityMult: mult }); } catch (_) {} };
+    const onPU_od = () => { try { ThemeScheduler.endDrag({ overlayDarkness: clamp(Math.round(parseFloat(odRng.value) || 0), 0, 100) }); } catch (_) {} };
+    const onPU_bi = () => { try { ThemeScheduler.endDrag({ borderStrength: clamp(Math.round(parseFloat(biRng.value) || 0), 0, 100) }); } catch (_) {} };
+    const onPU_gs = () => { try { ThemeScheduler.endDrag({ glowStrength: clamp(Math.round(parseFloat(gsRng.value) || 0), 0, 100) }); } catch (_) {} };
+    grRng.addEventListener('pointerdown', onPD); grRng.addEventListener('pointerup', onPU_gr);
+    mkRng.addEventListener('pointerdown', onPD); mkRng.addEventListener('pointerup', onPU_mk);
+    opRng.addEventListener('pointerdown', onPD); opRng.addEventListener('pointerup', onPU_op);
+    odRng.addEventListener('pointerdown', onPD); odRng.addEventListener('pointerup', onPU_od);
+    biRng.addEventListener('pointerdown', onPD); biRng.addEventListener('pointerup', onPU_bi);
+    gsRng.addEventListener('pointerdown', onPD); gsRng.addEventListener('pointerup', onPU_gs);
+    // Also toggle perf mode for color knobs; they apply base vars directly, we just mark drag state
+    if (hueKn && hueKn.el) { hueKn.el.addEventListener('pointerdown', onPD); hueKn.el.addEventListener('pointerup', () => ThemeScheduler.endDrag()); }
+    if (satKn && satKn.el) { satKn.el.addEventListener('pointerdown', onPD); satKn.el.addEventListener('pointerup', () => ThemeScheduler.endDrag()); }
+    if (briKn && briKn.el) { briKn.el.addEventListener('pointerdown', onPD); briKn.el.addEventListener('pointerup', () => ThemeScheduler.endDrag()); }
+    if (txtKn && txtKn.el) { txtKn.el.addEventListener('pointerdown', onPD); /* onChange already ends drag */ }
+  } catch (_) {}
 
   // Now that all controls exist, wire the Reset to also update their UI values instantly
   try {
