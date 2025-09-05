@@ -257,13 +257,14 @@ export function createKnob(opts = {}) {
       const norm = normalizeWheelDelta(e);
       const dir = norm < 0 ? 1 : -1; // up = higher
       const mag = Math.abs(norm);
-      // Small motions (<= 1 notch): use fine step if provided; larger motions: scale by rounded magnitude
-      const unitStep = (wheelFineStep != null && mag <= 1) ? wheelFineStep : step;
-      const repeats = Math.max(1, Math.min(50, Math.round(mag)));
+      // Compute rounded notch count so Windows' common 120px (-> 1.2) still counts as a single notch
+      const notches = Math.max(1, Math.min(50, Math.round(mag)));
+      // Use fine step for a single-notch spin; use base step when multiple notches are detected
+      const unitStep = (wheelFineStep != null && notches === 1) ? wheelFineStep : step;
 
       beginAdjust();
       // Apply in one update to avoid spamming onInput listeners
-      const totalDelta = dir * unitStep * repeats;
+      const totalDelta = dir * unitStep * notches;
       let next = value + totalDelta;
       if (fullSweep) {
         const width = range;
