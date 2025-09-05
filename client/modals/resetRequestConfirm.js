@@ -4,6 +4,7 @@
 import { presentLoginModal } from './login.js';
 import { getQuip } from '../core/ui/quip.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
+import { createUiElement, centerViewport, basicCard, basicButton } from '../core/ui/theme/elements.js';
 
 export function presentResetPasswordRequestModal(emailValue) {
   // Ensure shared glass form styles (buttons/inputs/icons) are injected once
@@ -26,7 +27,7 @@ export function presentResetPasswordRequestModal(emailValue) {
 
   // Backdrop + content container styles consistent with other modals
   try {
-    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(1200px 600px at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
+    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(75rem 37.5rem at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
   } catch (_) {}
   try {
     content.style.background = 'transparent';
@@ -37,31 +38,25 @@ export function presentResetPasswordRequestModal(emailValue) {
     content.style.margin = '0';
   } catch (_) {}
 
-  const center = document.createElement('div');
-  center.style.minHeight = '100vh';
-  center.style.display = 'flex';
-  center.style.alignItems = 'center';
-  center.style.justifyContent = 'center';
-  center.style.padding = '24px';
+  // Build centered card using standardized theme templates (same as Login)
+  const center = createUiElement(centerViewport);
   // Slight upward nudge for visual parity
   center.style.transform = 'translateY(-2vh)';
 
-  const card = document.createElement('div');
-  card.style.width = 'min(420px, calc(100vw - 32px))';
-  card.style.color = 'var(--ui-fg, #eee)';
-  card.style.borderRadius = '14px';
-  card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
-  card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-  card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
-  card.style.padding = '16px';
+  const card = createUiElement(basicCard);
+  // Narrow width variant for Reset Request Confirm
+  card.style.width = 'min(26.25rem, calc(100vw - 2rem))';
+  // Match Login hover behavior (no glow by default; glow on hover/focus-within)
+  try { card.classList.add('login-card'); } catch (_) {}
   card.style.display = 'flex';
   card.style.flexDirection = 'column';
+  // Allow internal scroll if content exceeds viewport
+  try { card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))'; card.style.overflowY = 'auto'; } catch (_) {}
 
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = 'Reset Password Request Received';
-  try { title.style.marginBottom = '2px'; } catch (_) {}
+  try { title.style.marginBottom = '0.125rem'; } catch (_) {}
 
   // Subtitle with a short grimdark quips
   const quips = [
@@ -74,26 +69,24 @@ export function presentResetPasswordRequestModal(emailValue) {
   // Centralized rotating quip for consistency
   subtitle.textContent = getQuip('auth.resetConfirm.tagline', quips);
   subtitle.className = 'modal-title-quip';
-  try { subtitle.style.margin = '0 0 20px 0'; } catch (_) {}
+  try { subtitle.style.margin = '0 0 1.25rem 0'; } catch (_) {}
 
   const message = document.createElement('div');
   message.style.userSelect = 'none';
   message.style.minHeight = '1.2em';
-  message.style.marginTop = '4px';
+  message.style.marginTop = '0.25rem';
   // UX: do not confirm existence; phrase conditionally
   const shown = String(emailValue || '').trim();
   message.textContent = `If an account exists for email address ${shown}, a reset email has been sent.`;
 
   const actions = document.createElement('div');
   actions.style.display = 'flex';
-  actions.style.gap = '10px';
+  actions.style.gap = '0.625rem';
   actions.style.justifyContent = 'flex-end';
   // Ensure readable whitespace between message and the button
-  actions.style.marginTop = '16px';
+  actions.style.marginTop = '1rem';
 
-  const goLogin = makeBtn('Go To Login');
-  // Simple hover states to match other modals
-  wireBtnHover(goLogin);
+  const goLogin = createUiElement(basicButton, 'button', 'Go To Login');
   goLogin.onclick = () => {
     try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     try { presentLoginModal(); } catch (_) {}
@@ -120,35 +113,3 @@ export function presentResetPasswordRequestModal(emailValue) {
   } catch (_) {}
 }
 
-function makeBtn(label) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.style.cursor = 'pointer';
-  b.style.userSelect = 'none';
-  b.style.borderRadius = '10px';
-  b.style.padding = '10px 12px';
-  b.style.fontWeight = '600';
-  b.style.fontSize = '14px';
-  b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
-  b.style.color = 'var(--ui-fg, #eee)';
-  b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  b.style.boxShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
-  return b;
-}
-
-function wireBtnHover(b) {
-  try {
-    const baseBorder = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-    const baseShadow = 'inset 0 0 14px rgba(40,100,200,0.12), 0 0 16px rgba(120,170,255,0.22)';
-    const hoverShadow = 'inset 0 0 18px rgba(60,140,240,0.18), 0 0 20px rgba(140,190,255,0.30)';
-    const applyBase = () => {
-      b.style.opacity = '1'; b.style.cursor = 'pointer'; b.style.color = 'var(--ui-fg, #eee)';
-      b.style.border = baseBorder; b.style.boxShadow = baseShadow;
-    };
-    b.addEventListener('mouseenter', () => { b.style.borderColor = 'var(--ui-bright, #dff1ff)'; b.style.boxShadow = hoverShadow; });
-    b.addEventListener('mouseleave', applyBase);
-    b.addEventListener('focus', () => { b.style.borderColor = 'var(--ui-bright, #dff1ff)'; b.style.boxShadow = hoverShadow; });
-    b.addEventListener('blur', applyBase);
-    applyBase();
-  } catch (_) {}
-}

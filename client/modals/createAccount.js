@@ -7,6 +7,8 @@ import { presentLoginModal } from './login.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { getQuip } from '../core/ui/quip.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
+import { makeRow } from './settings/uiHelpers.js';
+import { createUiElement, centerViewport, basicCard, basicButton } from '../core/ui/theme/elements.js';
 
 function ensureCreateAccountStyles() {
   if (document.getElementById('create-account-autofill-style')) return;
@@ -68,24 +70,18 @@ export function presentCreateAccountModal() {
     content.style.margin = '0';
   } catch (_) {}
 
-  const center = document.createElement('div');
-  center.style.minHeight = '100vh';
-  center.style.display = 'flex';
-  center.style.alignItems = 'center';
-  center.style.justifyContent = 'center';
-  center.style.padding = '24px';
+  // Build centered card using standardized theme templates (same as Login)
+  const center = createUiElement(centerViewport);
   // Slight upward nudge for visual centering parity with Login/Reset
   center.style.transform = 'translateY(-2vh)';
 
-  const card = document.createElement('div');
+  const card = createUiElement(basicCard);
+  // Width sizing consistent with Login (wide form)
   card.style.width = 'min(720px, calc(100vw - 32px))';
-  card.style.color = 'var(--ui-fg, #eee)';
-  card.style.borderRadius = '14px';
-  card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
-  card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-  card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
-  card.style.padding = '16px';
+  // Match Login hover behavior (no glow by default; glow on hover/focus-within)
+  try { card.classList.add('login-card'); } catch (_) {}
+  // Allow internal scroll if content exceeds viewport
+  try { card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))'; card.style.overflowY = 'auto'; } catch (_) {}
 
   const title = document.createElement('div');
   title.className = 'modal-title';
@@ -131,22 +127,15 @@ export function presentCreateAccountModal() {
   try { main.style.display = 'flex'; main.style.flexDirection = 'column'; main.style.minWidth = '0'; } catch (_) {}
 
   const form = document.createElement('div');
+  // Use same class as Login for consistent layout/styling
   form.className = 'login-form';
-  // Inline grid style kept as fallback if login styles were not injected yet
-  form.style.display = 'grid';
-  form.style.gridTemplateColumns = 'max-content 1fr';
-  form.style.gap = '10px 10px';
-  form.style.alignItems = 'center';
 
   const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.textAlign = 'right'; emailLabel.style.opacity = '0.95'; emailLabel.style.userSelect = 'none'; } catch (_) {}
   const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address'; try { email.className = 'input-glass'; } catch (_) {}
-  styleInput(email);
   const pwLabel = document.createElement('label'); pwLabel.textContent = 'Password:'; try { pwLabel.style.textAlign = 'right'; pwLabel.style.opacity = '0.95'; pwLabel.style.userSelect = 'none'; } catch (_) {}
   const pw = document.createElement('input'); pw.type = 'password'; pw.placeholder = 'Enter password'; try { pw.className = 'input-glass'; } catch (_) {}
-  styleInput(pw);
   const pw2Label = document.createElement('label'); pw2Label.textContent = 'Confirm:'; try { pw2Label.style.textAlign = 'right'; pw2Label.style.opacity = '0.95'; pw2Label.style.userSelect = 'none'; } catch (_) {}
   const pw2 = document.createElement('input'); pw2.type = 'password'; pw2.placeholder = 'Repeat password'; try { pw2.className = 'input-glass'; } catch (_) {}
-  styleInput(pw2);
 
   // Wrap inputs to support right-side eye buttons like on login modal
   const emailWrap = document.createElement('div'); emailWrap.className = 'input-wrap';
@@ -174,9 +163,10 @@ export function presentCreateAccountModal() {
   pwWrap.appendChild(pw); pwWrap.appendChild(eyeBtn1);
   pw2Wrap.appendChild(pw2); pw2Wrap.appendChild(eyeBtn2);
 
-  form.appendChild(emailLabel); form.appendChild(emailWrap);
-  form.appendChild(pwLabel); form.appendChild(pwWrap);
-  form.appendChild(pw2Label); form.appendChild(pw2Wrap);
+  // Use the same row builder as Login for consistent spacing/labels
+  form.appendChild(makeRow('Email', emailWrap));
+  form.appendChild(makeRow('Password', pwWrap));
+  form.appendChild(makeRow('Confirm', pw2Wrap));
 
   // Status row under Confirm (hidden by default)
   const matchStatus = document.createElement('div');
@@ -221,8 +211,9 @@ export function presentCreateAccountModal() {
   actions.style.gap = '10px';
   actions.style.marginTop = 'auto';
 
-  const createBtn = makeBtn('Create');
-  const cancelBtn = makeBtn('Cancel');
+  // Use templated buttons so glow appears only on hover and sizes follow theme
+  const createBtn = createUiElement(basicButton, 'button', 'Create');
+  const cancelBtn = createUiElement(basicButton, 'button', 'Cancel');
   // Far tooltips for primary actions (bottom-first for bottom action row)
   try { attachTooltip(createBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); } catch (_) {}
   try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
@@ -317,7 +308,7 @@ export function presentCreateAccountModal() {
       applyBase();
     } catch (_) {}
   }
-  wireBtnHover(createBtn); wireBtnHover(cancelBtn);
+  // Templated buttons already define hover/focus via theme tokens; no extra wiring needed
 
   // Input hover/focus highlight similar to login
   function wireInputHoverFocus(input) {
@@ -331,7 +322,7 @@ export function presentCreateAccountModal() {
       input.addEventListener('blur', () => { input.style.border = baseBorder; input.style.boxShadow = baseShadow; });
     } catch (_) {}
   }
-  wireInputHoverFocus(email); wireInputHoverFocus(pw); wireInputHoverFocus(pw2);
+  // Inputs already styled via shared glass styles; use same path as Login
 
   // Validation + status row + enable rules
   function updateState() {

@@ -7,6 +7,8 @@ import { presentLoginModal } from './login.js';
 import { presentResetPasswordRequestModal } from './resetRequestConfirm.js';
 import { getQuip } from '../core/ui/quip.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
+import { createUiElement, centerViewport, basicCard, basicButton } from '../core/ui/theme/elements.js';
+import { makeRow } from './settings/uiHelpers.js';
 
 export function presentForgotPasswordModal() {
   // Ensure shared glass form styles (buttons/inputs/icons) are injected once
@@ -29,7 +31,7 @@ export function presentForgotPasswordModal() {
 
   // Deep blue translucent backdrop using theme variables; transparent content
   try {
-    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(1200px 600px at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
+    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(75rem 37.5rem at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
   } catch (_) {}
   try {
     content.style.background = 'transparent';
@@ -40,32 +42,26 @@ export function presentForgotPasswordModal() {
     content.style.margin = '0';
   } catch (_) {}
 
-  const center = document.createElement('div');
-  center.style.minHeight = '100vh';
-  center.style.display = 'flex';
-  center.style.alignItems = 'center';
-  center.style.justifyContent = 'center';
-  center.style.padding = '24px';
+  // Build centered card using standardized theme templates (same as Login)
+  const center = createUiElement(centerViewport);
   // Slight upward nudge to match Login/Create
   center.style.transform = 'translateY(-2vh)';
 
-  const card = document.createElement('div');
-  card.style.width = 'min(420px, calc(100vw - 32px))';
-  card.style.color = 'var(--ui-fg, #eee)';
-  card.style.borderRadius = '14px';
-  card.style.background = 'linear-gradient(180deg, var(--ui-surface-bg-top, rgba(10,18,36,0.48)) 0%, var(--ui-surface-bg-bottom, rgba(8,14,28,0.44)) 100%)';
-  card.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  card.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 22px rgba(80,140,255,0.33))';
-  card.style.backdropFilter = 'var(--sf-tip-backdrop, blur(3px) saturate(1.2))';
-  card.style.padding = '16px';
+  const card = createUiElement(basicCard);
+  // Narrow width variant for Forgot Password
+  card.style.width = 'min(26.25rem, calc(100vw - 2rem))';
+  // Match Login hover behavior (no glow by default; glow on hover/focus-within)
+  try { card.classList.add('login-card'); } catch (_) {}
   // Make the card a column so actions can pin to the bottom
   card.style.display = 'flex';
   card.style.flexDirection = 'column';
+  // Allow internal scroll if content exceeds viewport
+  try { card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))'; card.style.overflowY = 'auto'; } catch (_) {}
 
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = 'Reset Password';
-  try { title.style.marginBottom = '2px'; } catch (_) {}
+  try { title.style.marginBottom = '0.125rem'; } catch (_) {}
 
   // Subtitle with random grimdark quips (20), styled per uiStandards
   const quips = [
@@ -94,36 +90,37 @@ export function presentForgotPasswordModal() {
   // Centralized rotating quip for consistency
   subtitle.textContent = getQuip('auth.forgot.tagline', quips);
   subtitle.className = 'modal-title-quip';
-  try { subtitle.style.margin = '0 0 20px 0'; } catch (_) {}
+  try { subtitle.style.margin = '0 0 1.25rem 0'; } catch (_) {}
 
   const form = document.createElement('div');
-  form.style.display = 'grid';
-  form.style.gridTemplateColumns = 'max-content 1fr';
-  form.style.gap = '10px';
-  form.style.alignItems = 'center';
+  // Match Login form layout for consistent spacing/labels
+  form.className = 'login-form';
 
-  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email:'; try { emailLabel.style.userSelect = 'none'; } catch (_) {}
-  const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Enter email address';
+  const email = document.createElement('input');
+  email.type = 'email';
+  email.placeholder = 'Enter email address';
   try { email.className = 'input-glass'; } catch (_) {}
-  styleInput(email);
-
-  form.appendChild(emailLabel); form.appendChild(email);
+  // Wrap like Login to support consistent icon/spacing if added later
+  const emailWrap = document.createElement('div');
+  emailWrap.className = 'input-wrap';
+  emailWrap.appendChild(email);
+  form.appendChild(makeRow('Email:', emailWrap));
 
   const actions = document.createElement('div');
   actions.style.display = 'flex';
-  actions.style.gap = '10px';
+  actions.style.gap = '0.625rem';
   actions.style.justifyContent = 'flex-end';
   // Pin actions to modal bottom
   actions.style.marginTop = 'auto';
 
-  const sendBtn = makeBtn('Send Reset Link');
-  const cancelBtn = makeBtn('Cancel');
+  const sendBtn = createUiElement(basicButton, 'button', 'Send Reset Link');
+  const cancelBtn = createUiElement(basicButton, 'button', 'Cancel');
   // Bottom action row tooltips should prefer bottom placement
   try { attachTooltip(sendBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(sendBtn, 'Enter a valid email to send reset link'); } catch (_) {}
   try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
 
   const status = document.createElement('div');
-  status.style.marginTop = '8px';
+  status.style.marginTop = '0.5rem';
   status.style.minHeight = '1.2em';
   status.style.userSelect = 'none';
 
@@ -162,8 +159,7 @@ export function presentForgotPasswordModal() {
   }
   // Start with Send disabled until valid email
   try { sendBtn.disabled = true; } catch (_) {}
-  wireBtnHover(sendBtn); wireBtnHover(cancelBtn);
-  wireInputHoverFocus(email);
+  // Templated buttons already define hover/focus via theme tokens; no extra wiring needed
 
   // Email validation + dynamic Send button state/tooltip
   const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val || '').trim());
