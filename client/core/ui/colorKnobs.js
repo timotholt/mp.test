@@ -20,9 +20,10 @@ export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 // ---------------------------------------------------------------
 export const HUE_RING_THICKNESS_REM = 0.3;  // ring thickness in rem (0.625rem ≈ 10px @16px)
 export const HUE_RING_EDGE_INSET_REM = 0.0;   // inset from knob edge in rem (0 = flush)
-export const HUE_RING_SCALE = 1.55;           // overall ring scale (unitless)
+export const HUE_RING_SCALE = 1.60;           // overall ring scale (unitless)
 export const HUE_RING_OFFSET_Y_REM = 0;    // vertical offset in rem (negative = up)
 export const HUE_DOT_DIAM_REM = 0.3;         // dot diameter in rem (0.5rem ≈ 8px @16px)
+export const HUE_RING_FEATHER_REM = 0.01;    // soft edge width for AA (rem). ~1.28px @16px
 
 function remBasePx() {
   try { return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; } catch (_) { return 16; }
@@ -178,9 +179,18 @@ export function createHueKnob(opts = {}) {
       const innerBase = Math.max(1, outerR - thicknessOpt);
       // Simple, predictable donut: no dynamic rem math; inner radius = outer - thickness
       const innerR = innerBase;
-      const mask = `radial-gradient(circle at 50% 50%, transparent ${innerR}px, white ${innerR}px, white ${outerR}px, transparent ${outerR}px)`;
+      // Feather edges to improve anti-aliasing on both inner and outer rims
+      const feather = Math.max(0.5, HUE_RING_FEATHER_REM * remBasePx());
+      const i0 = Math.max(0, innerR - feather);
+      const i1 = innerR;
+      const o0 = outerR;
+      const o1 = outerR + feather;
+      const mask = `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
       try { ring.style.webkitMaskImage = mask; } catch (_) {}
       try { ring.style.maskImage = mask; } catch (_) {}
+      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+      // Hint the browser for smoother animation/rendering
+      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image'; } catch (_) {}
       try { ring.style.opacity = '1'; } catch (_) {}
       // Apply tuning constants for scale and vertical offset (offset via root CSS var for live updates)
       try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
@@ -206,9 +216,16 @@ export function applyHueConstantsTo(el) {
     const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
     const outerR = Math.max(10, Math.floor(sizePx / 2) - edgeInsetPx);
     const innerR = Math.max(1, outerR - thickness);
-    const mask = `radial-gradient(circle at 50% 50%, transparent ${innerR}px, white ${innerR}px, white ${outerR}px, transparent ${outerR}px)`;
+    const feather = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
+    const i0 = Math.max(0, innerR - feather);
+    const i1 = innerR;
+    const o0 = outerR;
+    const o1 = outerR + feather;
+    const mask = `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
     try { ring.style.webkitMaskImage = mask; } catch (_) {}
     try { ring.style.maskImage = mask; } catch (_) {}
+    try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+    try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image'; } catch (_) {}
     try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
     // Update the root var so offset takes effect on all rings without recreation
     applyHueRootVars();
