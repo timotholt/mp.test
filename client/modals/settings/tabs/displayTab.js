@@ -8,7 +8,6 @@ import { createDropdown } from '../../../core/ui/controls.js';
 import { listFonts, getFont, resolveImageSrc, computeGlyphCount } from '../../../core/ui/dungeon/fontCatalog.js';
 import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
-import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
 const DISPLAY_QUIPS = [
@@ -254,6 +253,15 @@ export function renderDisplayTab(container) {
     });
     controlsRow.appendChild(zoomOutBtn);
     controlsRow.appendChild(zoomInBtn);
+    // Zoom label (xN) lives next to the +/- buttons; small text
+    const zoomLbl = document.createElement('div');
+    try {
+      zoomLbl.style.fontSize = 'var(--ui-fontsize-xsmall, 0.75rem)';
+      zoomLbl.style.opacity = '0.9';
+      zoomLbl.style.minWidth = '2.5rem';
+    } catch (_) {}
+    zoomLbl.textContent = 'x1';
+    controlsRow.appendChild(zoomLbl);
     labelCol.appendChild(labelTop);
     labelCol.appendChild(controlsRow);
     // Fix label column width to align with other form rows
@@ -299,18 +307,24 @@ export function renderDisplayTab(container) {
 
     prevBox.appendChild(scrollWrap);
 
-    // Reuse centralized sci-fi tooltip: far mode with bottom placement
-    try { attachTooltip(canvas, { mode: 'far', placement: ['bc', 'b', 'br', 'bl'] }); } catch (_) {}
-
-    // Info row under preview
+    // Info block under preview (two lines)
     const infoRow = createUiElement(basicFormRow, 'div');
     const infoLbl = createUiElement(basicFormLabel, 'Info:');
-    const infoText = document.createElement('div');
-    infoText.style.opacity = '0.85';
-    infoText.style.fontSize = '0.92rem';
-    try { infoText.style.paddingTop = '0.25rem'; } catch (_) {}
+    const infoCol = document.createElement('div');
+    infoCol.style.display = 'flex';
+    infoCol.style.flexDirection = 'column';
+    infoCol.style.gap = '0.125rem';
+    const infoTextTop = document.createElement('div');
+    const infoTextBottom = document.createElement('div');
+    infoTextTop.style.opacity = '0.9';
+    infoTextBottom.style.opacity = '0.9';
+    // Bottom line uses smaller text per request
+    infoTextBottom.style.fontSize = 'var(--ui-fontsize-xsmall, 0.75rem)';
+    try { infoTextTop.style.paddingTop = '0.25rem'; } catch (_) {}
+    infoCol.appendChild(infoTextTop);
+    infoCol.appendChild(infoTextBottom);
     infoRow.appendChild(infoLbl);
-    infoRow.appendChild(infoText);
+    infoRow.appendChild(infoCol);
     dsec.appendChild(infoRow);
 
     let zoomLevel = 1;          // integer zoom multiplier (>=1)
@@ -344,8 +358,9 @@ export function renderDisplayTab(container) {
       const availW = prevBox.clientWidth || scrollWrap.clientWidth || (cols * cellW);
       const availH = (prevBox.clientHeight || scrollWrap.clientHeight || 160); // ~10rem default
       const scaleW = availW / (cols * cellW);
-      // Width-first integer fit. Favor readability with a minimum 2x when space allows.
-      zoomLevel = Math.max(2, Math.floor(scaleW));
+      // Width-first integer fit. Use actual integer without forcing 2x minimum.
+      zoomLevel = Math.max(1, Math.floor(scaleW));
+      try { updateZoomLabel(); } catch (_) {}
     }
 
     let lastGrid = { cols: 0, rows: 0, start: 32, glyphCount: 0, cellW: 0, cellH: 0, tileW: 0, tileH: 0 };
@@ -459,16 +474,32 @@ export function renderDisplayTab(container) {
     }
 
     updatePreview = () => { const f = currentFont(); loadAndRender(f); };
+    function updateZoomLabel() { try { zoomLbl.textContent = `x${zoomLevel}`; } catch (_) {} }
     updateInfo = () => {
       const f = currentFont();
-      if (!f) { infoText.textContent = 'No font selected'; return; }
+      if (!f) { infoTextTop.textContent = 'No font selected'; infoTextBottom.textContent = ''; return; }
       const count = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(f);
-      infoText.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32} • zoom x${zoomLevel}`;
+      // Line 1: base font/atlas info (no zoom indicator here)
+      infoTextTop.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32}`;
+      // Line 2: hovered glyph details
+      let hoverLine = '';
+      try {
+        if (lastGrid && lastHover.col >= 0 && lastHover.row >= 0) {
+          const idx = lastHover.row * lastGrid.cols + lastHover.col;
+          const code = lastGrid.start + idx;
+          const ch = String.fromCharCode(code);
+          const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+          hoverLine = `hover ${code} '${ch}' (${hex})`;
+        }
+      } catch (_) {}
+      infoTextBottom.textContent = hoverLine;
+      // Keep zoom label next to +/-
+      updateZoomLabel();
     };
 
     function handleHover(ev) {
       try {
-        if (!lastGrid || !currentImg) { updateTooltip(canvas, ''); return; }
+        if (!lastGrid || !currentImg) { updateInfo(); return; }
         const rect = canvas.getBoundingClientRect();
         const x = ev.clientX - rect.left;
         const y = ev.clientY - rect.top;
@@ -478,22 +509,18 @@ export function renderDisplayTab(container) {
             const f = currentFont();
             try { drawPreview(f, currentImg); } catch (_) {}
           }
-          updateTooltip(canvas, '');
+          updateInfo();
           return;
         }
         const col = Math.floor(x / lastGrid.cellW);
         const row = Math.floor(y / lastGrid.cellH);
         if (col !== lastHover.col || row !== lastHover.row) {
           lastHover = { col, row };
-          const idx = row * lastGrid.cols + col;
-          const code = lastGrid.start + idx;
-          const ch = String.fromCharCode(code);
-          const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
-          const text = `ASCII ${code} '${ch}' (${hex})`;
-          updateTooltip(canvas, text);
           const f = currentFont();
           try { drawPreview(f, currentImg); } catch (_) {}
         }
+        // Always refresh Info line during hover
+        updateInfo();
       } catch (_) { /* no-op */ }
     }
 
