@@ -38,6 +38,8 @@ function icon(name) {
 export function presentLoginModal() {
   const id = 'LOGIN_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
+  // Broadcast current UI mode before presenting so shade picks correct darkness immediately
+  try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'login' } })); } catch (_) {}
   try {
     if (window.OverlayManager) {
       // Mark as external so OverlayManager.renderTop() will not clear/replace our DOM
@@ -327,6 +329,8 @@ async function afterAuthSuccess(modalId) {
   } catch (_) {}
 
   try { if (window.OverlayManager) window.OverlayManager.dismiss(modalId); } catch (_) {}
+  // Inform listeners that we're back to gameplay UI mode
+  try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'game' } })); } catch (_) {}
   if (typeof window.startLobby === 'function') {
     window.startLobby();
   } else {

@@ -41,6 +41,8 @@ export function presentCreateAccountModal() {
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
     if (window.OverlayManager) {
+      // Broadcast UI mode first so shade darkness uses the correct mode when blocking event fires
+      try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'login' } })); } catch (_) {}
       // Treat as external so OverlayManager will preserve #overlay-content and we render into #modal-root
       window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
@@ -263,6 +265,8 @@ export function presentCreateAccountModal() {
   cancelBtn.onclick = () => {
     // Prefill login with current entries for convenience
     try { window.__loginPrefill = { email: String(email.value || ''), password: String(pw.value || '') }; } catch (_) {}
+    // Ensure shade uses Login darkness when the blocking state updates on dismiss
+    try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'login' } })); } catch (_) {}
     try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
     try { presentLoginModal(); } catch (_) {}
   };
@@ -454,11 +458,15 @@ export function presentCreateAccountModal() {
       if (resetBtn) { try { wireBtnHover(resetBtn); } catch (_) {} }
 
     goLogin.onclick = () => {
+      // Flip mode first so the following dismiss recalculates shade darkness for Login
+      try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'login' } })); } catch (_) {}
       try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
       try { presentLoginModal(); } catch (_) {}
     };
     if (resetBtn) {
       resetBtn.onclick = () => {
+        // Keep auth flow visuals consistent with Login while switching modals
+        try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'login' } })); } catch (_) {}
         try { window.OverlayManager && window.OverlayManager.dismiss(id); } catch (_) {}
         try { presentForgotPasswordModal(); } catch (_) {}
       };

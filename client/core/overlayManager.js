@@ -66,10 +66,10 @@ function ensureScreenShade() {
     // Prefer shared implementation if available to avoid duplicate creators
     if (typeof window.ensureScreenShade === 'function') return window.ensureScreenShade();
   } catch (_) {}
-  let shade = document.getElementById('screen-shade');
+  let shade = document.getElementById('dungeon-scrim');
   if (!shade) {
     shade = document.createElement('div');
-    shade.id = 'screen-shade';
+    shade.id = 'dungeon-scrim';
     shade.style.position = 'fixed';
     shade.style.inset = '0';
     // Background: use themed overlay tint if available, else fallback to black with darkness alpha.
@@ -111,18 +111,24 @@ const OverlayManager = (() => {
       const route = getRoute();
       // Recompute input gate when overlays change
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE);
-      // Hide screen shade only if current route does not require it (keep separation with router)
+      // Hide dungeon scrim only if current route does not require it (keep separation with router)
       try {
-        const shade = document.getElementById('screen-shade');
+        const shade = document.getElementById('dungeon-scrim');
         const route = getRoute();
         const needsShade = route !== getStates().GAMEPLAY_ACTIVE;
         if (shade && !needsShade) shade.style.display = 'none';
+      } catch (_) {}
+      // Broadcast changes: no top modal
+      try {
+        const detail = { blocking: false, topId: null, external: false, stackDepth: 0 };
+        window.dispatchEvent(new CustomEvent('ui:blocking-changed', { detail }));
+        window.dispatchEvent(new CustomEvent('ui:modal-top-changed', { detail }));
       } catch (_) {}
       return;
     }
     const top = stack[stack.length - 1];
     el.style.display = '';
-    // Ensure dimming shade is visible while any modal is shown
+    // Ensure dimming shade is visible while any modal is shown (dungeon scrim ON during modals)
     try { const shade = ensureScreenShade(); shade.style.display = ''; } catch (_) {}
     const content = el.querySelector('#overlay-content');
     // If this modal uses external content management (e.g., Login), clear any
@@ -148,6 +154,12 @@ const OverlayManager = (() => {
       } catch (_) {}
       const route = getRoute();
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE) && !top.blockInput;
+      // Broadcast changes for external modal path
+      try {
+        const detail = { blocking: !!top.blockInput, topId: top.id || null, external: true, stackDepth: stack.length };
+        window.dispatchEvent(new CustomEvent('ui:blocking-changed', { detail }));
+        window.dispatchEvent(new CustomEvent('ui:modal-top-changed', { detail }));
+      } catch (_) {}
       return;
     }
     if (content) content.innerHTML = '';
@@ -167,6 +179,12 @@ const OverlayManager = (() => {
     // Disable gameplay input if blocking
     const route = getRoute();
     window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE) && !top.blockInput;
+    // Broadcast changes for normal (non-external) modal path
+    try {
+      const detail = { blocking: !!top.blockInput, topId: top.id || null, external: false, stackDepth: stack.length };
+      window.dispatchEvent(new CustomEvent('ui:blocking-changed', { detail }));
+      window.dispatchEvent(new CustomEvent('ui:modal-top-changed', { detail }));
+    } catch (_) {}
   }
 
   function selectAction(modal, action) {

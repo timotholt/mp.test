@@ -49,6 +49,14 @@ export function presentSettingsPanel() {
     const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
     const layer = presentExternalOverlayLayer({ id, priority: PRIORITY.MEDIUM, rootId: 'settings-overlay-root' });
     if (!layer) return false;
+    // Name the settings scrim explicitly for clarity and tooling
+    try { if (layer.scrim) layer.scrim.id = 'settings-scrim'; } catch (_) {}
+    // Detect previous UI mode so we can restore it on close (e.g., Login under Settings)
+    let __prevMode = (function(){
+      try { return document.querySelector('.login-card') ? 'login' : 'game'; } catch (_) { return 'game'; }
+    })();
+    // Broadcast that the UI has entered the settings mode
+    try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: 'settings' } })); } catch (_) {}
 
     // Centered container
     const center = layer.center;
@@ -63,6 +71,8 @@ export function presentSettingsPanel() {
       try { if (typeof volAdjustHandler === 'function') volAdjustHandler(); } catch (_) {}
       try { if (typeof controlsCleanup === 'function') controlsCleanup(); } catch (_) {}
       try { if (typeof removeTrap === 'function') removeTrap(); } catch (_) {}
+      // Restore previous UI mode (e.g., Login) BEFORE dismiss so shade darkness recalculates correctly
+      try { window.dispatchEvent(new CustomEvent('ui:mode-changed', { detail: { mode: __prevMode || 'game' } })); } catch (_) {}
       try { layer.dismiss && layer.dismiss(); } catch (_) {}
     };
     const titleBlock = makeTitleBlock({ title: 'Settings', quips: SETTINGS_TAGLINES, onClose: handleClose });
