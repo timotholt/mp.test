@@ -3,7 +3,7 @@
 // Minimal, commented, and human-readable per project conventions.
 
 import { makeSection, attachWheel } from '../uiHelpers.js';
-import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicGapBetweenSections } from '../../../core/ui/theme/elements.js';
+import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
 import { createDropdown } from '../../../core/ui/controls.js';
 import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
@@ -55,6 +55,8 @@ export function renderDisplayTab(container) {
   // Persist selection and apply immediately by updating --ui-font-family.
   let uiFontDdRef = null;
   try {
+    // Add a quarter-gap after the section header to mirror Theme tab spacing
+    try { sec.appendChild(createUiElement(basicQuarterGap)); } catch (_) {}
     const defStack = LockedThemeDefaults['--ui-font-family'];
     const mkFamily = (key) => (key === 'system' ? defStack : `'${key}', ${defStack}`);
 
@@ -96,7 +98,8 @@ export function renderDisplayTab(container) {
       { label: 'System Default', value: 'system' },
       ...fontNames.map(name => ({ label: name, value: name }))
     ];
-    const uiFontRow = createUiElement(basicFormRow, 'div');
+    // Use a toolbar row, matching Theme tab structure exactly
+    const uiFontRow = createUiElement(basicToolbarRow);
     const uiFontLbl = createUiElement(basicFormLabel, 'UI Font:');
     const uiFontDd = createDropdown({ items, value: initKey, width: '16rem', onChange: (val) => {
       try {
@@ -106,10 +109,27 @@ export function renderDisplayTab(container) {
       } catch (_) {}
     }});
     uiFontDdRef = uiFontDd;
-    try { uiFontDd.el.style.marginTop = '0.5rem'; } catch (_) {}
+    // Align dropdown vertically with label like Theme tab toolbar rows
+    try { uiFontDd.el.style.marginTop = '0'; } catch (_) {}
+    // Section-local Reset for Display settings
+    const uiResetBtn = createUiElement(basicButton, 'Reset');
+    uiResetBtn.onclick = () => {
+      // Reset font size and letter spacing sliders
+      try { fsReset && fsReset(); } catch (_) {}
+      try { lsReset && lsReset(); } catch (_) {}
+      // Reset UI font to system default and sync dropdown
+      try {
+        const defStack = LockedThemeDefaults['--ui-font-family'];
+        document.documentElement && document.documentElement.style.setProperty('--ui-font-family', defStack);
+        localStorage.setItem('ui_font_family', defStack);
+        uiFontDdRef && uiFontDdRef.setValue && uiFontDdRef.setValue('system', true);
+      } catch (_) {}
+    };
     uiFontRow.appendChild(uiFontLbl);
     uiFontRow.appendChild(uiFontDd.el);
-    container.appendChild(uiFontRow);
+    uiFontRow.appendChild(uiResetBtn);
+    // Append inside the section to keep spacing consistent with header
+    sec.appendChild(uiFontRow);
   } catch (_) {}
 
   // Font Size slider (root rem scale) shown in pixels
@@ -183,30 +203,17 @@ export function renderDisplayTab(container) {
     dfDdRef = dfDd;
     // Top margin belongs to the dropdown element (not the row)
     try { dfDd.el.style.marginTop = '0.5rem'; } catch (_) {}
-
+    // Section-local Reset for Dungeon Settings
+    const dfResetBtn = createUiElement(basicButton, 'Reset');
+    dfResetBtn.onclick = () => {
+      try { localStorage.setItem('ui_dungeon_font', 'A'); } catch (_) {}
+      try { dfDdRef && dfDdRef.setValue && dfDdRef.setValue('A', true); } catch (_) {}
+    };
+    try { dfResetBtn.style.marginLeft = '0.5rem'; } catch (_) {}
     dfRow.appendChild(dfLbl);
     dfRow.appendChild(dfDd.el);
+    dfRow.appendChild(dfResetBtn);
     dsec.appendChild(dfRow);
   } catch (_) {}
 
-  // Create footer row with Reset button aligned bottom-right
-  const footer = createUiElement({ display: 'flex', justifyContent: 'flex-end', mt: '0.5rem' }, 'div');
-  const resetBtn = createUiElement(basicButton, 'Reset');
-  resetBtn.onclick = () => {
-    try { fsReset && fsReset(); } catch (_) {}
-    try { lsReset && lsReset(); } catch (_) {}
-    try {
-      localStorage.setItem('ui_dungeon_font', 'A');
-      dfDdRef && dfDdRef.setValue && dfDdRef.setValue('A', true);
-    } catch (_) {}
-    // Reset UI font to system default
-    try {
-      const defStack = LockedThemeDefaults['--ui-font-family'];
-      document.documentElement && document.documentElement.style.setProperty('--ui-font-family', defStack);
-      localStorage.setItem('ui_font_family', defStack);
-      uiFontDdRef && uiFontDdRef.setValue && uiFontDdRef.setValue('system', true);
-    } catch (_) {}
-  };
-  footer.appendChild(resetBtn);
-  container.appendChild(footer);
 }
