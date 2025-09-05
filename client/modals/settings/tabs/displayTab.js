@@ -188,7 +188,8 @@ export function renderDisplayTab(container) {
 
   // Dungeon Font dropdown driven by fontCatalog. Persists by id.
   try {
-    const dfRow = createUiElement(basicFormRow, 'div');
+    // Use toolbarRow (CSS grid: label | control | action) for clean alignment
+    const dfRow = createUiElement(basicToolbarRow, 'div');
     const dfLbl = createUiElement(basicFormLabel, 'Dungeon Font:');
 
     const fonts = listFonts();
@@ -202,7 +203,6 @@ export function renderDisplayTab(container) {
       updateInfo();
     }});
     dfDdRef = dfDd;
-    try { dfDd.el.style.marginTop = '0.5rem'; } catch (_) {}
     // Section-local Reset for Dungeon Settings (reset to first catalog font)
     const dfResetBtn = createUiElement(basicButton, 'Reset');
     dfResetBtn.onclick = () => {
@@ -212,7 +212,7 @@ export function renderDisplayTab(container) {
       updatePreview();
       updateInfo();
     };
-    try { dfResetBtn.style.marginLeft = '0.5rem'; } catch (_) {}
+    // Rely on grid gap for spacing; no manual margins needed
     dfRow.appendChild(dfLbl);
     dfRow.appendChild(dfDd.el);
     dfRow.appendChild(dfResetBtn);
@@ -223,6 +223,8 @@ export function renderDisplayTab(container) {
   try {
     // Preview row
     const prevRow = createUiElement(basicFormRow, 'div');
+    // Align the multi-line label/controls with the top of the preview box
+    try { prevRow.style.alignItems = 'flex-start'; } catch (_) {}
     const prevLbl = createUiElement(basicFormLabel, 'Glyph Preview:');
     // Create a label column to place zoom controls UNDER the label
     const labelCol = document.createElement('div');
@@ -235,16 +237,26 @@ export function renderDisplayTab(container) {
     controlsRow.style.display = 'flex';
     controlsRow.style.gap = '0.375rem';
     controlsRow.style.alignItems = 'center';
-    const zoomOutBtn = createUiElement(basicButton, 'button', '−');
-    const zoomInBtn = createUiElement(basicButton, 'button', '+');
+    try { controlsRow.style.marginTop = '0.25rem'; } catch (_) {}
+    const zoomOutBtn = createUiElement(basicButton, '-');
+    const zoomInBtn = createUiElement(basicButton, '+');
+    try { zoomOutBtn.type = 'button'; zoomInBtn.type = 'button'; } catch (_) {}
     // Fixed size buttons as requested
     [zoomOutBtn, zoomInBtn].forEach((b) => {
-      try { b.style.width = '1.5rem'; b.style.height = '1.5rem'; b.style.padding = '0'; } catch (_) {}
+      try {
+        b.style.width = '1.5rem';
+        b.style.height = '1.5rem';
+        b.style.padding = '0';
+        b.style.lineHeight = '1.5rem';
+        b.style.textAlign = 'center';
+      } catch (_) {}
     });
     controlsRow.appendChild(zoomOutBtn);
     controlsRow.appendChild(zoomInBtn);
     labelCol.appendChild(labelTop);
     labelCol.appendChild(controlsRow);
+    // Fix label column width to align with other form rows
+    try { labelCol.style.minWidth = '8.75rem'; labelCol.style.maxWidth = '8.75rem'; labelCol.style.flex = '0 0 8.75rem'; } catch (_) {}
     const prevBox = document.createElement('div');
     prevBox.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.45))';
     prevBox.style.borderRadius = '0.5rem';
@@ -255,6 +267,7 @@ export function renderDisplayTab(container) {
     prevBox.style.gap = '0.5rem';
 
     const scrollWrap = document.createElement('div');
+    scrollWrap.style.width = '100%';
     scrollWrap.style.height = '10rem';
     scrollWrap.style.overflow = 'auto';
     scrollWrap.style.borderRadius = '0.375rem';
@@ -283,47 +296,55 @@ export function renderDisplayTab(container) {
     infoRow.appendChild(infoText);
     dsec.appendChild(infoRow);
 
-    let scale = 1.0;            // zoom multiplier (fractional allowed)
-    const step = 0.25;          // finer granularity
+    let zoomLevel = 1;          // integer zoom multiplier (>=1)
     let currentImg = null;      // loaded Image for current font
     let derived = { cols: null, rows: null, count: null }; // computed from image when available
 
     function currentFont() {
-      const id = (dfDdRef && dfDdRef.getValue && dfDdRef.getValue()) || localStorage.getItem('ui_dungeon_font_id');
-      return getFont(id) || getFont('vendor-8x8');
+      try {
+        let id = null;
+        try { id = (dfDdRef && dfDdRef.getValue && dfDdRef.getValue()) || null; } catch (_) {}
+        if (!id) { try { id = localStorage.getItem('ui_dungeon_font_id'); } catch (_) { id = null; } }
+        return getFont(id) || getFont('vendor-8x8');
+      } catch (_) {
+        return getFont('vendor-8x8');
+      }
     }
 
     function fitToBox(font, img) {
       if (!font || !img) return;
       const start = Number.isFinite(font.startCode) ? font.startCode : 32;
-      const glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
-      const atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
-      const cols = Math.min(atlasCols, 16); // cap preview grid cols at 16 for readability
-      const rows = Math.ceil(glyphCount / cols);
+      let glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
+      glyphCount = Math.max(1, Number.isFinite(glyphCount) ? glyphCount : 1);
+      let atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
+      atlasCols = Math.max(1, Number.isFinite(atlasCols) ? atlasCols : 16);
+      const cols = Math.max(1, Math.min(atlasCols, 16)); // cap preview grid cols at 16 for readability
+      const rows = Math.max(1, Math.ceil(glyphCount / cols));
       const cellW = font.tile.w;
       const cellH = font.tile.h;
       const availW = scrollWrap.clientWidth || (cols * cellW);
       const availH = (scrollWrap.clientHeight || 160); // ~10rem default
       const scaleW = availW / (cols * cellW);
       const scaleH = availH / (rows * cellH);
-      // Choose the largest scale that fits in both dimensions
-      scale = Math.max(0.25, Math.min(scaleW, scaleH));
-      // Snap to nearest quarter step for crispness
-      scale = Math.max(0.25, Math.min(16, Math.round(scale / step) * step));
+      // Choose largest integer zoom that fits
+      const fit = Math.min(scaleW, scaleH);
+      zoomLevel = Math.max(1, Math.floor(fit));
     }
 
     let lastGrid = { cols: 0, rows: 0, start: 32, glyphCount: 0, cellW: 0, cellH: 0, tileW: 0, tileH: 0 };
     function drawPreview(font, img) {
       if (!font) return;
       const start = Number.isFinite(font.startCode) ? font.startCode : 32;
-      const glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
-      const atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
-      const cols = Math.min(atlasCols, 16);
-      const rows = Math.ceil(glyphCount / cols);
+      let glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
+      glyphCount = Math.max(1, Number.isFinite(glyphCount) ? glyphCount : 1);
+      let atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
+      atlasCols = Math.max(1, Number.isFinite(atlasCols) ? atlasCols : 16);
+      const cols = Math.max(1, Math.min(atlasCols, 16));
+      const rows = Math.max(1, Math.ceil(glyphCount / cols));
       const TILE_W = font.tile.w;
       const TILE_H = font.tile.h;
-      const cellW = Math.max(1, TILE_W * scale);
-      const cellH = Math.max(1, TILE_H * scale);
+      const cellW = Math.max(1, TILE_W * zoomLevel);
+      const cellH = Math.max(1, TILE_H * zoomLevel);
       canvas.width = cols * cellW;
       canvas.height = rows * cellH;
       ctx.imageSmoothingEnabled = false;
@@ -387,6 +408,7 @@ export function renderDisplayTab(container) {
         } catch (_) { derived = { cols: null, rows: null, count: null }; }
         fitToBox(font, img);
         drawPreview(font, img);
+        try { updateInfo(); } catch (_) {}
       };
       img.onerror = () => renderFallbackText(font);
       img.src = src;
@@ -397,11 +419,39 @@ export function renderDisplayTab(container) {
       const f = currentFont();
       if (!f) { infoText.textContent = 'No font selected'; return; }
       const count = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(f);
-      infoText.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32}`;
+      infoText.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32} • zoom x${zoomLevel}`;
     };
 
-    zoomInBtn.onclick = () => { scale = Math.min(16, scale + step); if (currentImg) drawPreview(currentFont(), currentImg); };
-    zoomOutBtn.onclick = () => { scale = Math.max(0.25, scale - step); if (currentImg) drawPreview(currentFont(), currentImg); };
+    const handleZoomIn = (ev) => {
+      try {
+        try { console.debug('[GlyphPreview] + clicked'); } catch (_) {}
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+        if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (!Number.isFinite(zoomLevel) || zoomLevel < 1) zoomLevel = 1;
+        zoomLevel = Math.min(64, zoomLevel + 1);
+        const f = currentFont();
+        if (currentImg) { try { drawPreview(f, currentImg); } catch (e) { try { console.error('[GlyphPreview] drawPreview (zoom in) failed', e); } catch (_) {} } }
+        try { updateInfo(); } catch (_) {}
+      } catch (err) {
+        try { console.error('[GlyphPreview] zoomIn failed:', err); } catch (_) {}
+      }
+    };
+    const handleZoomOut = (ev) => {
+      try {
+        try { console.debug('[GlyphPreview] - clicked'); } catch (_) {}
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+        if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (!Number.isFinite(zoomLevel) || zoomLevel < 1) zoomLevel = 1;
+        zoomLevel = Math.max(1, zoomLevel - 1);
+        const f = currentFont();
+        if (currentImg) { try { drawPreview(f, currentImg); } catch (e) { try { console.error('[GlyphPreview] drawPreview (zoom out) failed', e); } catch (_) {} } }
+        try { updateInfo(); } catch (_) {}
+      } catch (err) {
+        try { console.error('[GlyphPreview] zoomOut failed:', err); } catch (_) {}
+      }
+    };
+    zoomInBtn.onclick = handleZoomIn;
+    zoomOutBtn.onclick = handleZoomOut;
 
     // Hover tooltip for ASCII code under mouse
     function updateHoverTitle(ev) {
@@ -426,11 +476,6 @@ export function renderDisplayTab(container) {
     // Initial render
     updatePreview();
     updateInfo();
-    // Re-fit on container resize: cheap observer
-    try {
-      const ro = new ResizeObserver(() => { if (currentImg) { fitToBox(currentFont(), currentImg); drawPreview(currentFont(), currentImg); } });
-      ro.observe(scrollWrap);
-    } catch (_) {}
   } catch (_) {}
 
 }
