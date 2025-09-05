@@ -66,8 +66,8 @@ export function createKnob(opts = {}) {
     angleMin = -180;
     angleMax = 180;
   }
-  // Special-case: allow wrap-around when using a continuous spectrum ring over a full 360° sweep
-  const fullSweep = (segMode === 'spectrum') && (Math.abs(angleMax - angleMin) >= 359.5);
+  // Allow wrap-around for any control spanning ~360° (not only spectrum mode)
+  const fullSweep = (Math.abs(angleMax - angleMin) >= 359.5);
 
   const ringOffset = (opts.ringOffset != null)
     ? Math.max(0, Math.round(Number(opts.ringOffset)))

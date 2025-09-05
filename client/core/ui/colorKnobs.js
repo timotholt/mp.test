@@ -18,12 +18,13 @@ export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 // Hue Knob Visual Tuning (single source of truth; easy to tweak)
 // All distances are in rem unless otherwise noted; 1rem is relative to root font-size
 // ---------------------------------------------------------------
-export const HUE_RING_THICKNESS_REM = 0.3;  // ring thickness in rem (0.625rem ≈ 10px @16px)
+export const HUE_RING_THICKNESS_REM = 0.30;  // ring thickness in rem (0.625rem ≈ 10px @16px)
 export const HUE_RING_EDGE_INSET_REM = 0.0;   // inset from knob edge in rem (0 = flush)
-export const HUE_RING_SCALE = 1.60;           // overall ring scale (unitless)
+export const HUE_RING_SCALE = 1.50;           // overall ring scale (unitless)
 export const HUE_RING_OFFSET_Y_REM = 0;    // vertical offset in rem (negative = up)
 export const HUE_DOT_DIAM_REM = 0.3;         // dot diameter in rem (0.5rem ≈ 8px @16px)
 export const HUE_RING_FEATHER_REM = 0.01;    // soft edge width for AA (rem). ~1.28px @16px
+export const HUE_RING_ROTATE_DEG = 215;      // conic-gradient start angle in degrees (rotates the wheel)
 
 function remBasePx() {
   try { return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; } catch (_) { return 16; }
@@ -169,7 +170,20 @@ export function createHueKnob(opts = {}) {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
       // Build a full-spectrum conic gradient
-      ring.style.background = 'conic-gradient(from -90deg, hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%))';
+      // Align gradient with knob value/angle mapping:
+      // - hue 0/360 -> ang -180/180 -> dot at 6 o'clock -> red at bottom
+      // - hue 180    -> ang 0       -> dot at 12 o'clock -> cyan at top
+      // Use pinned stops every 45° for 8 equal slices; rotation via constant
+      ring.style.background = `conic-gradient(from ${HUE_RING_ROTATE_DEG}deg,
+        hsl(0 100% 50%) 0deg,
+        hsl(45 100% 50%) 45deg,
+        hsl(90 100% 50%) 90deg,
+        hsl(135 100% 50%) 135deg,
+        hsl(180 100% 50%) 180deg,
+        hsl(225 100% 50%) 225deg,
+        hsl(270 100% 50%) 270deg,
+        hsl(315 100% 50%) 315deg,
+        hsl(360 100% 50%) 360deg)`;
       // Compute ring geometry based on provided options or sensible defaults
       const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
       // Band thickness and edge inset from tuning constants (convert rem -> px)
@@ -186,6 +200,19 @@ export function createHueKnob(opts = {}) {
       const o0 = outerR;
       const o1 = outerR + feather;
       const mask = `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
+    // Align gradient with knob angle mapping and pin 45° stops (live); rotation via constant
+    try {
+      ring.style.background = `conic-gradient(from ${HUE_RING_ROTATE_DEG}deg,
+        hsl(0 100% 50%) 0deg,
+        hsl(45 100% 50%) 45deg,
+        hsl(90 100% 50%) 90deg,
+        hsl(135 100% 50%) 135deg,
+        hsl(180 100% 50%) 180deg,
+        hsl(225 100% 50%) 225deg,
+        hsl(270 100% 50%) 270deg,
+        hsl(315 100% 50%) 315deg,
+        hsl(360 100% 50%) 360deg)`;
+    } catch (_) {}
       try { ring.style.webkitMaskImage = mask; } catch (_) {}
       try { ring.style.maskImage = mask; } catch (_) {}
       try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
