@@ -17,7 +17,7 @@ import { ensureBanner } from './core/ui/banner.js';
 import { registerGameplayMovement } from './core/input/gameplayInput.js';
 import { registerLoginRoute } from './routes/login.js';
 import { registerLobbyRoute, stopLobbyPolling as stopLobbyPollingExport } from './routes/lobby.js';
-import { ensureDungeonScrim } from './core/ui/dungeonScrim.js';
+import { ensureDungeonScrim } from './core/ui/dungeon/dungeonScrim.js';
 import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js';
 import * as LS from './core/localStorage.js';
 import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEventsOnce, renderRoomPlayers, getPlayersSnapshot, refreshRoomChat, appendChatLine, setRoomReadyBtn, setRoomPlayersEl, setRoomChat } from './core/ui/roomUi.js';
@@ -26,7 +26,7 @@ import { startHeartbeat } from './core/net/heartbeat.js';
 import { initSupabase } from './core/auth/supabaseAuth.js';
 
 import './core/ui/colorKnobs.js';
-import './core/ui/dungeonDisplayManager.js';
+import './core/ui/dungeon/dungeonDisplayManager.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
@@ -97,7 +97,7 @@ makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paus
 
 
 // -------------------- Always-on Canvas Dimming Shade & UI Chrome --------------------
-// moved to './core/ui/dungeonScrim.js'
+// moved to './core/ui/dungeon/dungeonScrim.js'
 
 // Expose for router to use on initial navigation
 window.ensureDungeonScrim = ensureDungeonScrim;
