@@ -5,6 +5,7 @@
 import { makeSection, attachWheel } from '../uiHelpers.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
 import { createDropdown } from '../../../core/ui/controls.js';
+import { listFonts, getFont, resolveImageSrc, computeGlyphCount } from '../../../core/ui/dungeon/fontCatalog.js';
 import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
 
@@ -180,40 +181,256 @@ export function renderDisplayTab(container) {
   const dsec = makeSection('Dungeon Settings', dquip, 'afterTitle', true);
   container.appendChild(dsec);
 
-  // Keep a reference to the Dungeon Font dropdown for Reset wiring
+  // Keep references for updates triggered by dropdown/zoom
   let dfDdRef = null;
+  let updatePreview = () => {};
+  let updateInfo = () => {};
 
-  // Dungeon Font dropdown (placeholder for ASCII font control)
-  // Uses shared dropdown factory for consistent visuals; persists selection.
+  // Dungeon Font dropdown driven by fontCatalog. Persists by id.
   try {
     const dfRow = createUiElement(basicFormRow, 'div');
     const dfLbl = createUiElement(basicFormLabel, 'Dungeon Font:');
 
-    let savedFont = 'A';
-    try { const s = localStorage.getItem('ui_dungeon_font'); if (s) savedFont = s; } catch (_) {}
-    const items = [
-      { label: 'Font A', value: 'A' },
-      { label: 'Font B', value: 'B' },
-    ];
-    // Use rem width so the control scales with UI font size
-    const dfDd = createDropdown({ items, value: savedFont, width: '14rem', onChange: (val) => {
-      try { localStorage.setItem('ui_dungeon_font', String(val)); } catch (_) {}
-      // Placeholder: future hook to update dungeon canvas font
+    const fonts = listFonts();
+    let initialId = (fonts[0] && fonts[0].id) || 'vendor-8x8';
+    try { const s = localStorage.getItem('ui_dungeon_font_id'); if (s) initialId = s; } catch (_) {}
+
+    const items = fonts.map(f => ({ label: f.name, value: f.id }));
+    const dfDd = createDropdown({ items, value: initialId, width: '16rem', onChange: (id) => {
+      try { localStorage.setItem('ui_dungeon_font_id', String(id)); } catch (_) {}
+      updatePreview();
+      updateInfo();
     }});
     dfDdRef = dfDd;
-    // Top margin belongs to the dropdown element (not the row)
     try { dfDd.el.style.marginTop = '0.5rem'; } catch (_) {}
-    // Section-local Reset for Dungeon Settings
+    // Section-local Reset for Dungeon Settings (reset to first catalog font)
     const dfResetBtn = createUiElement(basicButton, 'Reset');
     dfResetBtn.onclick = () => {
-      try { localStorage.setItem('ui_dungeon_font', 'A'); } catch (_) {}
-      try { dfDdRef && dfDdRef.setValue && dfDdRef.setValue('A', true); } catch (_) {}
+      const first = (listFonts()[0] && listFonts()[0].id) || 'vendor-8x8';
+      try { localStorage.setItem('ui_dungeon_font_id', first); } catch (_) {}
+      try { dfDdRef && dfDdRef.setValue && dfDdRef.setValue(first, true); } catch (_) {}
+      updatePreview();
+      updateInfo();
     };
     try { dfResetBtn.style.marginLeft = '0.5rem'; } catch (_) {}
     dfRow.appendChild(dfLbl);
     dfRow.appendChild(dfDd.el);
     dfRow.appendChild(dfResetBtn);
     dsec.appendChild(dfRow);
+  } catch (_) {}
+
+  // Bitmap Glyph Preview (no vendor runtime). Uses fontCatalog metadata.
+  try {
+    // Preview row
+    const prevRow = createUiElement(basicFormRow, 'div');
+    const prevLbl = createUiElement(basicFormLabel, 'Glyph Preview:');
+    // Create a label column to place zoom controls UNDER the label
+    const labelCol = document.createElement('div');
+    labelCol.style.display = 'flex';
+    labelCol.style.flexDirection = 'column';
+    labelCol.style.gap = '0.25rem';
+    const labelTop = document.createElement('div');
+    labelTop.appendChild(prevLbl);
+    const controlsRow = document.createElement('div');
+    controlsRow.style.display = 'flex';
+    controlsRow.style.gap = '0.375rem';
+    controlsRow.style.alignItems = 'center';
+    const zoomOutBtn = createUiElement(basicButton, 'button', '−');
+    const zoomInBtn = createUiElement(basicButton, 'button', '+');
+    // Fixed size buttons as requested
+    [zoomOutBtn, zoomInBtn].forEach((b) => {
+      try { b.style.width = '1.5rem'; b.style.height = '1.5rem'; b.style.padding = '0'; } catch (_) {}
+    });
+    controlsRow.appendChild(zoomOutBtn);
+    controlsRow.appendChild(zoomInBtn);
+    labelCol.appendChild(labelTop);
+    labelCol.appendChild(controlsRow);
+    const prevBox = document.createElement('div');
+    prevBox.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.45))';
+    prevBox.style.borderRadius = '0.5rem';
+    prevBox.style.padding = '0.5rem';
+    prevBox.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.08), rgba(8,14,28,0.06))';
+    prevBox.style.display = 'flex';
+    prevBox.style.flexDirection = 'column';
+    prevBox.style.gap = '0.5rem';
+
+    const scrollWrap = document.createElement('div');
+    scrollWrap.style.height = '10rem';
+    scrollWrap.style.overflow = 'auto';
+    scrollWrap.style.borderRadius = '0.375rem';
+    scrollWrap.style.background = 'transparent';
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.style.imageRendering = 'pixelated';
+    canvas.style.display = 'block';
+    scrollWrap.appendChild(canvas);
+
+    try { prevBox.style.flex = '1'; } catch (_) {}
+    prevRow.appendChild(labelCol);
+    prevRow.appendChild(prevBox);
+    dsec.appendChild(prevRow);
+
+    prevBox.appendChild(scrollWrap);
+
+    // Info row under preview
+    const infoRow = createUiElement(basicFormRow, 'div');
+    const infoLbl = createUiElement(basicFormLabel, 'Info:');
+    const infoText = document.createElement('div');
+    infoText.style.opacity = '0.85';
+    infoText.style.fontSize = '0.92rem';
+    try { infoText.style.paddingTop = '0.25rem'; } catch (_) {}
+    infoRow.appendChild(infoLbl);
+    infoRow.appendChild(infoText);
+    dsec.appendChild(infoRow);
+
+    let scale = 1.0;            // zoom multiplier (fractional allowed)
+    const step = 0.25;          // finer granularity
+    let currentImg = null;      // loaded Image for current font
+    let derived = { cols: null, rows: null, count: null }; // computed from image when available
+
+    function currentFont() {
+      const id = (dfDdRef && dfDdRef.getValue && dfDdRef.getValue()) || localStorage.getItem('ui_dungeon_font_id');
+      return getFont(id) || getFont('vendor-8x8');
+    }
+
+    function fitToBox(font, img) {
+      if (!font || !img) return;
+      const start = Number.isFinite(font.startCode) ? font.startCode : 32;
+      const glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
+      const atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
+      const cols = Math.min(atlasCols, 16); // cap preview grid cols at 16 for readability
+      const rows = Math.ceil(glyphCount / cols);
+      const cellW = font.tile.w;
+      const cellH = font.tile.h;
+      const availW = scrollWrap.clientWidth || (cols * cellW);
+      const availH = (scrollWrap.clientHeight || 160); // ~10rem default
+      const scaleW = availW / (cols * cellW);
+      const scaleH = availH / (rows * cellH);
+      // Choose the largest scale that fits in both dimensions
+      scale = Math.max(0.25, Math.min(scaleW, scaleH));
+      // Snap to nearest quarter step for crispness
+      scale = Math.max(0.25, Math.min(16, Math.round(scale / step) * step));
+    }
+
+    let lastGrid = { cols: 0, rows: 0, start: 32, glyphCount: 0, cellW: 0, cellH: 0, tileW: 0, tileH: 0 };
+    function drawPreview(font, img) {
+      if (!font) return;
+      const start = Number.isFinite(font.startCode) ? font.startCode : 32;
+      const glyphCount = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(font);
+      const atlasCols = (derived.cols && Number.isFinite(derived.cols)) ? derived.cols : (font.atlas?.cols || 16);
+      const cols = Math.min(atlasCols, 16);
+      const rows = Math.ceil(glyphCount / cols);
+      const TILE_W = font.tile.w;
+      const TILE_H = font.tile.h;
+      const cellW = Math.max(1, TILE_W * scale);
+      const cellH = Math.max(1, TILE_H * scale);
+      canvas.width = cols * cellW;
+      canvas.height = rows * cellH;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw glyphs sequentially starting at startCode
+      for (let i = 0; i < glyphCount; i++) {
+        const code = start + i;
+        // Map to atlas index starting at 0 for startCode-based atlases
+        const atlasIndex = code - start;
+        const sx = (atlasIndex % atlasCols) * TILE_W;
+        const sy = Math.floor(atlasIndex / atlasCols) * TILE_H; // top-to-bottom rows
+        const dx = (i % cols) * cellW;
+        const dy = Math.floor(i / cols) * cellH;
+        try { ctx.drawImage(img, sx, sy, TILE_W, TILE_H, dx, dy, cellW, cellH); } catch (_) {}
+      }
+      // Save grid info for hover hit-testing
+      lastGrid = { cols, rows, start, glyphCount, cellW, cellH, tileW: TILE_W, tileH: TILE_H };
+    }
+
+    function renderFallbackText(font) {
+      const start = Number.isFinite(font?.startCode) ? font.startCode : 32;
+      const glyphCount = computeGlyphCount(font);
+      const cols = 16;
+      const rows = Math.ceil(glyphCount / cols);
+      const pre = document.createElement('pre');
+      pre.style.margin = '0';
+      pre.style.fontFamily = 'monospace, ui-monospace, SFMono-Regular, Menlo, Consolas';
+      pre.style.lineHeight = '1.2';
+      pre.style.userSelect = 'text';
+      pre.style.whiteSpace = 'pre';
+      let grid = '';
+      let row = '';
+      for (let i = 0; i < glyphCount; i++) {
+        row += String.fromCharCode(start + i) + ' ';
+        if (((i + 1) % cols) === 0) { grid += row + '\n'; row = ''; }
+      }
+      if (row) grid += row + '\n';
+      // Swap in fallback
+      try { scrollWrap.innerHTML = ''; } catch (_) {}
+      scrollWrap.appendChild(pre);
+      pre.textContent = grid;
+    }
+
+    function loadAndRender(font) {
+      if (!font) return;
+      // Ensure scrollWrap contains the canvas for drawing mode
+      try { scrollWrap.innerHTML = ''; } catch (_) {}
+      scrollWrap.appendChild(canvas);
+      const src = resolveImageSrc(font);
+      if (!src) { renderFallbackText(font); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // allow remote previews without tainting concerns for draw only
+      img.onload = () => {
+        currentImg = img;
+        // Derive atlas layout and glyph count from image dimensions if possible
+        try {
+          const TILE_W = font.tile.w; const TILE_H = font.tile.h;
+          const colsEff = Math.max(1, Math.floor(img.width / TILE_W));
+          const rowsEff = Math.max(1, Math.floor(img.height / TILE_H));
+          derived.cols = colsEff; derived.rows = rowsEff; derived.count = colsEff * rowsEff;
+        } catch (_) { derived = { cols: null, rows: null, count: null }; }
+        fitToBox(font, img);
+        drawPreview(font, img);
+      };
+      img.onerror = () => renderFallbackText(font);
+      img.src = src;
+    }
+
+    updatePreview = () => { const f = currentFont(); loadAndRender(f); };
+    updateInfo = () => {
+      const f = currentFont();
+      if (!f) { infoText.textContent = 'No font selected'; return; }
+      const count = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(f);
+      infoText.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32}`;
+    };
+
+    zoomInBtn.onclick = () => { scale = Math.min(16, scale + step); if (currentImg) drawPreview(currentFont(), currentImg); };
+    zoomOutBtn.onclick = () => { scale = Math.max(0.25, scale - step); if (currentImg) drawPreview(currentFont(), currentImg); };
+
+    // Hover tooltip for ASCII code under mouse
+    function updateHoverTitle(ev) {
+      if (!lastGrid || !currentImg) { canvas.title = ''; return; }
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) { canvas.title = ''; return; }
+      const col = Math.floor(x / lastGrid.cellW);
+      const row = Math.floor(y / lastGrid.cellH);
+      if (col < 0 || row < 0 || col >= lastGrid.cols || row >= lastGrid.rows) { canvas.title = ''; return; }
+      const idx = row * lastGrid.cols + col;
+      if (idx < 0 || idx >= lastGrid.glyphCount) { canvas.title = ''; return; }
+      const code = lastGrid.start + idx;
+      const ch = String.fromCharCode(code);
+      const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+      canvas.title = `ASCII ${code} '${ch}' (${hex})`;
+    }
+    canvas.addEventListener('mousemove', updateHoverTitle);
+    canvas.addEventListener('mouseleave', () => { canvas.title = ''; });
+
+    // Initial render
+    updatePreview();
+    updateInfo();
+    // Re-fit on container resize: cheap observer
+    try {
+      const ro = new ResizeObserver(() => { if (currentImg) { fitToBox(currentFont(), currentImg); drawPreview(currentFont(), currentImg); } });
+      ro.observe(scrollWrap);
+    } catch (_) {}
   } catch (_) {}
 
 }
