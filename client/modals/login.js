@@ -80,8 +80,12 @@ export function presentLoginModal() {
   // Build centered card using standardized theme templates
   const center = createUiElement(centerViewport);
   const card = createUiElement(basicCard);
-  // Constrain width similarly to the legacy style for consistency
-  try { card.style.width = 'min(720px, calc(100vw - 32px))'; } catch (_) {}
+  // Robust width sizing: full width up to a max, include padding/border in width calc
+  try {
+    card.style.width = '100%';
+    card.style.maxWidth = '720px';
+    card.style.boxSizing = 'border-box';
+  } catch (_) {}
   // Ensure the card never exceeds the viewport height (account for center padding) and scrolls internally if needed
   try {
     card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))';
