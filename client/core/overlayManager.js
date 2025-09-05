@@ -30,15 +30,16 @@ function ensureOverlay() {
     overlayEl.style.zIndex = '20000';
     const inner = document.createElement('div');
     inner.id = 'overlay-content';
-    // Keep modal content interactive
+    // Keep modal content interactive; make this a neutral, full-size container
     inner.style.pointerEvents = 'auto';
-    inner.style.maxWidth = '640px';
-    inner.style.margin = '40px auto';
-    inner.style.background = 'linear-gradient(to bottom, var(--ui-surface-bg-top, rgba(10,18,26,0.41)) 0%, var(--ui-surface-bg-bottom, rgba(10,16,22,0.40)) 100%)';
-    inner.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-    inner.style.padding = '16px';
-    inner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
-    inner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(4px) saturate(1.2))';
+    inner.style.width = '100%';
+    inner.style.height = '100%';
+    inner.style.margin = '0';
+    inner.style.padding = '0';
+    inner.style.background = 'transparent';
+    inner.style.border = 'none';
+    inner.style.boxShadow = 'none';
+    inner.style.backdropFilter = 'none';
     // Provide a stable, clearly-named child root for external modals to target
     // without breaking existing '#overlay-content' behavior.
     const modalRoot = document.createElement('div');

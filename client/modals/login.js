@@ -44,28 +44,10 @@ export function presentLoginModal() {
       window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
   } catch (_) {}
-
-  const overlay = document.getElementById('overlay');
-  // Prefer the clearer '#modal-root' if present; fall back to '#overlay-content'
-  const contentRoot = overlay ? (overlay.querySelector('#modal-root') || overlay.querySelector('#overlay-content')) : null;
+  // Target the standardized modal container
+  const contentRoot = document.querySelector('#modal-root');
   if (!contentRoot) return;
   contentRoot.innerHTML = '';
-  // Reset overlay container styles so our templatized layout can fully control sizing
-  try {
-    const content = overlay ? overlay.querySelector('#overlay-content') : null;
-    if (content) {
-      content.style.margin = '0';
-      content.style.padding = '0';
-      content.style.maxWidth = 'none';
-      content.style.width = '100%';
-      content.style.height = '100%';
-      content.style.background = 'transparent';
-      content.style.border = 'none';
-      content.style.boxShadow = 'none';
-      content.style.backdropFilter = 'none';
-      content.style.display = 'block';
-    }
-  } catch (_) {}
   // Ensure shared glass form styles are present (buttons/inputs/icons)
   try { ensureGlassFormStyles(); } catch (_) {}
 
