@@ -216,6 +216,8 @@ export function renderDisplayTab(container) {
     dfRow.appendChild(dfLbl);
     dfRow.appendChild(dfDd.el);
     dfRow.appendChild(dfResetBtn);
+    // Add a quarter-space before the Dungeon Font row per request
+    try { dsec.appendChild(createUiElement(basicQuarterGap)); } catch (_) {}
     dsec.appendChild(dfRow);
   } catch (_) {}
 
@@ -276,6 +278,19 @@ export function renderDisplayTab(container) {
     prevBox.style.gap = '0.5rem';
     // Make the parent the scroller so padding is inside the scrollbars (theme standard)
     try { prevBox.style.overflow = 'auto'; prevBox.style.position = 'relative'; prevBox.style.height = '10rem'; } catch (_) {}
+    // Remember base styles so we can toggle hover glow cleanly
+    const prevBoxBase = { border: prevBox.style.border, boxShadow: prevBox.style.boxShadow || '' };
+    function setGlyphContainerHover(on) {
+      try {
+        if (on) {
+          prevBox.style.border = '1px solid var(--ui-bright-border, rgba(120,170,255,0.85))';
+          prevBox.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 10px rgba(120,170,255,0.30))';
+        } else {
+          prevBox.style.border = prevBoxBase.border;
+          prevBox.style.boxShadow = prevBoxBase.boxShadow;
+        }
+      } catch (_) {}
+    }
     // Critical for flex children to allow shrinking instead of forcing the row wider
     try {
       prevBox.style.flex = '1 1 auto';
@@ -306,6 +321,11 @@ export function renderDisplayTab(container) {
     dsec.appendChild(prevRow);
 
     prevBox.appendChild(scrollWrap);
+    // Glow and borderBright when mouse is over the glyph container area
+    try {
+      prevBox.addEventListener('mouseenter', () => setGlyphContainerHover(true));
+      prevBox.addEventListener('mouseleave', () => setGlyphContainerHover(false));
+    } catch (_) {}
 
     // Info block under preview (two lines)
     const infoRow = createUiElement(basicFormRow, 'div');
@@ -318,8 +338,9 @@ export function renderDisplayTab(container) {
     const infoTextBottom = document.createElement('div');
     infoTextTop.style.opacity = '0.9';
     infoTextBottom.style.opacity = '0.9';
-    // Bottom line uses smaller text per request
-    infoTextBottom.style.fontSize = 'var(--ui-fontsize-xsmall, 0.75rem)';
+    // Top line shows hovered glyph info (normal). Bottom shows font info (small).
+    infoTextTop.style.fontSize = 'var(--ui-fontsize-normal, 1rem)';
+    infoTextBottom.style.fontSize = 'var(--ui-fontsize-small, 0.875rem)';
     try { infoTextTop.style.paddingTop = '0.25rem'; } catch (_) {}
     infoCol.appendChild(infoTextTop);
     infoCol.appendChild(infoTextBottom);
@@ -408,8 +429,8 @@ export function renderDisplayTab(container) {
         const w = lastGrid.cellW;
         const h = lastGrid.cellH;
         ctx.save();
-        // Soft fill using theme hue
-        ctx.globalAlpha = 0.12;
+        // Soft fill using theme hue (slightly stronger for visibility)
+        ctx.globalAlpha = 0.16;
         ctx.fillStyle = color;
         ctx.fillRect(dx, dy, w, h);
         // Outline with glow
@@ -417,7 +438,7 @@ export function renderDisplayTab(container) {
         ctx.strokeStyle = color;
         ctx.lineWidth = Math.max(1, Math.floor(zoomLevel / 2));
         ctx.shadowColor = (cs.getPropertyValue('--ui-bright') || color || 'rgba(120,170,255,1)').trim();
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.strokeRect(dx + 0.5, dy + 0.5, w - 1, h - 1);
         ctx.restore();
       } catch (_) {}
@@ -479,10 +500,10 @@ export function renderDisplayTab(container) {
       const f = currentFont();
       if (!f) { infoTextTop.textContent = 'No font selected'; infoTextBottom.textContent = ''; return; }
       const count = (derived.count && Number.isFinite(derived.count)) ? derived.count : computeGlyphCount(f);
-      // Line 1: base font/atlas info (no zoom indicator here)
-      infoTextTop.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32}`;
-      // Line 2: hovered glyph details
-      let hoverLine = '';
+      // Bottom line: base font/atlas info (no zoom indicator here)
+      infoTextBottom.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32}`;
+      // Top line: hovered glyph details
+      let hoverLine = 'No glyph selected';
       try {
         if (lastGrid && lastHover.col >= 0 && lastHover.row >= 0) {
           const idx = lastHover.row * lastGrid.cols + lastHover.col;
@@ -492,7 +513,7 @@ export function renderDisplayTab(container) {
           hoverLine = `hover ${code} '${ch}' (${hex})`;
         }
       } catch (_) {}
-      infoTextBottom.textContent = hoverLine;
+      infoTextTop.textContent = hoverLine;
       // Keep zoom label next to +/-
       updateZoomLabel();
     };
