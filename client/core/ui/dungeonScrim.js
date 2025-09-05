@@ -8,8 +8,8 @@ export function ensureDungeonScrim() {
     dungeonScrim.style.position = 'fixed';
     dungeonScrim.style.inset = '0';
     // Use themed overlay tint if available; fallback to black with darkness alpha.
-    // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Default 0.5
-    dungeonScrim.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.5)))';
+    // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Safe fallback 0.0 to avoid unintended boot dim.
+    dungeonScrim.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.0)))';
     dungeonScrim.style.zIndex = '2000'; // below overlay (20000), above canvas (1)
     dungeonScrim.style.display = 'none';
     dungeonScrim.style.pointerEvents = 'none';
@@ -63,7 +63,9 @@ try {
     }
     else
     {
-      rootStyle.removeProperty('--ui-overlay-darkness');
+      // Do not clear the CSS var. Honor the theme-managed value so the scrim
+      // darkness remains consistent with Settings → Theme. We only force 0
+      // when unblocked gameplay is active.
       logScrimStyle('Dungeon scrim turned on');
     }
   };
