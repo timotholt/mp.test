@@ -18,11 +18,14 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
       background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
       color: var(--ui-fg, ${FALLBACK_FG_COLOR});
       border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR});
-      box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22));
+      /* Default: no outer glow; keep only subtle inset so glow appears only on hover/focus */
+      box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12));
     }
-    .btn-outline-glass:hover {
+    .btn-outline-glass:hover,
+    .btn-outline-glass:focus-visible {
       border-color: var(--ui-bright-border, var(--ui-surface-border, ${FALLBACK_FG_COLOR}));
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
+      outline: none;
     }
     .btn svg { width: 18px; height: 18px; }
 
@@ -44,12 +47,16 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     .input-glass { 
       width: 100%; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); background: linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%);
       border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}); border-radius: 10px; padding: 0 10px; height: 46px;
-      outline: none; box-shadow: var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10)), var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.18));
+      /* Default: no outer glow so it appears only on hover/focus */
+      outline: none; box-shadow: var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10));
       backdrop-filter: blur(6px) saturate(1.2);
       box-sizing: border-box; max-width: 100%;
     }
     .input-glass::placeholder { color: rgba(220,235,255,0.65); }
-    .input-glass:hover { border-color: var(--ui-bright-border, var(--ui-surface-border, ${FALLBACK_FG_COLOR})); }
+    .input-glass:hover {
+      border-color: var(--ui-bright-border, var(--ui-surface-border, ${FALLBACK_FG_COLOR}));
+      box-shadow: var(--ui-surface-glow-inset, inset 0 0 14px rgba(60,140,240,0.14)), var(--ui-surface-glow-outer, 0 0 16px rgba(140,190,255,0.24));
+    }
     .input-glass:focus {
       border-color: var(--ui-bright-border, var(--ui-surface-border, ${FALLBACK_FG_COLOR}));
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 16px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 18px rgba(140,190,255,0.30));
@@ -88,6 +95,22 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     .input-icon-btn.left { left: 8px; }
     .input-icon-btn.right { right: 8px; }
     .input-icon-btn:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
+
+    /* Login container: respond on hover and when any child has focus */
+    .login-card {
+      /* Override inline template glow so default is clean; re-enable on hover/focus */
+      box-shadow: none !important;
+      border: var(--ui-surface-border-css, 0.0625rem solid ${FALLBACK_FG_COLOR}) !important;
+      transition: box-shadow 120ms ease, border-color 120ms ease;
+    }
+    .login-card:hover,
+    .login-card:focus-within {
+      border-color: var(--ui-bright-border, var(--ui-surface-border, ${FALLBACK_FG_COLOR})) !important;
+      box-shadow: var(--ui-surface-glow-outer, 0 0 22px rgba(140,190,255,0.30)) !important;
+      outline: none;
+    }
+
+
     `;
     document.head.appendChild(st);
   } catch (_) {}

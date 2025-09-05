@@ -62,6 +62,7 @@ export function presentLoginModal() {
   // Build centered card using standardized theme templates
   const center = createUiElement(centerViewport);
   const card = createUiElement(basicCard);
+  try { card.classList.add('login-card'); } catch (_) {}
   // Robust width sizing: full width up to a max, include padding/border in width calc
   try {
     card.style.width = '100%';
