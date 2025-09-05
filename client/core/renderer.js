@@ -193,7 +193,7 @@ export async function setupAsciiRenderer() {
     // Disable center debug knob while keeping audio wiring; floating panel also off for now
     try { initAudio({ floatingVolume: false, centerDebugKnob: false }); } catch (_) {}
     try { if (window.ensureBanner) window.ensureBanner(); } catch (_) {}
-    try { if (window.ensureScreenShade) window.ensureScreenShade(); } catch (_) {}
+    try { if (window.ensureDungeonScrim) window.ensureDungeonScrim(); } catch (_) {}
 
     // Apply any pending assets received before renderer was ready
     if (window.__pendingDungeonMap && typeof rc.setDungeonMap === 'function') {

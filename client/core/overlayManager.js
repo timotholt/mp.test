@@ -61,10 +61,10 @@ function ensureOverlay() {
   return overlayEl;
 }
 
-function ensureScreenShade() {
+function ensureDungeonScrim() {
   try {
     // Prefer shared implementation if available to avoid duplicate creators
-    if (typeof window.ensureScreenShade === 'function') return window.ensureScreenShade();
+    if (typeof window.ensureDungeonScrim === 'function') return window.ensureDungeonScrim();
   } catch (_) {}
   let shade = document.getElementById('dungeon-scrim');
   if (!shade) {
@@ -129,7 +129,7 @@ const OverlayManager = (() => {
     const top = stack[stack.length - 1];
     el.style.display = '';
     // Ensure dimming shade is visible while any modal is shown (dungeon scrim ON during modals)
-    try { const shade = ensureScreenShade(); shade.style.display = ''; } catch (_) {}
+    try { const shade = ensureDungeonScrim(); shade.style.display = ''; } catch (_) {}
     const content = el.querySelector('#overlay-content');
     // If this modal uses external content management (e.g., Login), clear any
     // leftover content from prior non-external modals and recreate a clean

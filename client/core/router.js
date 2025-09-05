@@ -61,7 +61,7 @@ export function setRoute(route, payload = {}) {
   toggleRenderer(true);
 
   try {
-    const shade = (window.ensureScreenShade && window.ensureScreenShade()) || null;
+    const shade = (window.ensureDungeonScrim && window.ensureDungeonScrim()) || null;
     if (shade) {
       const needsShade = route !== APP_STATES.GAMEPLAY_ACTIVE;
       shade.style.display = needsShade ? '' : 'none';

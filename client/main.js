@@ -17,7 +17,7 @@ import { ensureBanner } from './core/ui/banner.js';
 import { registerGameplayMovement } from './core/input/gameplayInput.js';
 import { registerLoginRoute } from './routes/login.js';
 import { registerLobbyRoute, stopLobbyPolling as stopLobbyPollingExport } from './routes/lobby.js';
-import { ensureScreenShade } from './core/ui/screenShade.js';
+import { ensureDungeonScrim } from './core/ui/dungeonScrim.js';
 import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js';
 import * as LS from './core/localStorage.js';
 import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEventsOnce, renderRoomPlayers, getPlayersSnapshot, refreshRoomChat, appendChatLine, setRoomReadyBtn, setRoomPlayersEl, setRoomChat } from './core/ui/roomUi.js';
@@ -96,10 +96,10 @@ makeScreen(APP_STATES.GAMEPLAY_PAUSED, (el) => { el.textContent = 'Gameplay Paus
 
 
 // -------------------- Always-on Canvas Dimming Shade & UI Chrome --------------------
-// moved to './core/ui/screenShade.js'
+// moved to './core/ui/dungeonScrim.js'
 
 // Expose for router to use on initial navigation
-window.ensureScreenShade = ensureScreenShade;
+window.ensureDungeonScrim = ensureDungeonScrim;
 
 // Default route until server tells us otherwise (after shade is attached)
 setRoute(APP_STATES.LOGIN);
