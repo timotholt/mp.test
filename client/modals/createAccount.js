@@ -41,14 +41,17 @@ export function presentCreateAccountModal() {
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
     if (window.OverlayManager) {
-      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM });
+      // Treat as external so OverlayManager will preserve #overlay-content and we render into #modal-root
+      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
   } catch (_) {}
 
   const overlay = document.getElementById('overlay');
   const content = overlay ? overlay.querySelector('#overlay-content') : null;
-  if (!content) return;
-  content.innerHTML = '';
+  // Render into the stable external modal root to avoid losing Login DOM
+  const contentRoot = document.querySelector('#modal-root');
+  if (!contentRoot) return;
+  contentRoot.innerHTML = '';
 
   // Keep the login backdrop vibe if present
   try {
@@ -278,7 +281,7 @@ export function presentCreateAccountModal() {
   grid.appendChild(main);
   card.appendChild(grid);
   center.appendChild(card);
-  content.appendChild(center);
+  contentRoot.appendChild(center);
 
   function setStatus(msg) { status.textContent = msg || ''; }
   function disable(d) { [email, pw, pw2, createBtn, cancelBtn].forEach(el => { try { el.disabled = !!d; } catch (_) {} }); }

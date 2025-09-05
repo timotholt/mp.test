@@ -15,14 +15,17 @@ export function presentForgotPasswordModal() {
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
     if (window.OverlayManager) {
-      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM });
+      // Treat as external so OverlayManager won't wipe #overlay-content; we manage #modal-root ourselves
+      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
   } catch (_) {}
 
   const overlay = document.getElementById('overlay');
   const content = overlay ? overlay.querySelector('#overlay-content') : null;
-  if (!content) return;
-  content.innerHTML = '';
+  // Render into the stable external modal root
+  const contentRoot = document.querySelector('#modal-root');
+  if (!contentRoot) return;
+  contentRoot.innerHTML = '';
 
   // Deep blue translucent backdrop using theme variables; transparent content
   try {
@@ -207,7 +210,7 @@ export function presentForgotPasswordModal() {
   card.appendChild(status);
   card.appendChild(actions);
   center.appendChild(card);
-  content.appendChild(center);
+  contentRoot.appendChild(center);
 
   // Focus trap: Email → Cancel → Send (if enabled) → back to Email
   try {

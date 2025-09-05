@@ -131,13 +131,19 @@ const OverlayManager = (() => {
     if (top && top.external) {
       try {
         if (content) {
-          content.innerHTML = '';
-          const root = document.createElement('div');
-          root.id = 'modal-root';
-          root.style.display = 'block';
-          root.style.width = '100%';
-          root.style.height = '100%';
-          content.appendChild(root);
+          // Minimal fix: do NOT clear overlay-content when an external modal is on top.
+          // Doing so would destroy underlying external modals (e.g., Login) when
+          // opening another external layer (e.g., Settings). Instead, ensure a
+          // stable '#modal-root' exists for external modals that target it.
+          let root = content.querySelector('#modal-root');
+          if (!root) {
+            root = document.createElement('div');
+            root.id = 'modal-root';
+            root.style.display = 'block';
+            root.style.width = '100%';
+            root.style.height = '100%';
+            content.appendChild(root);
+          }
         }
       } catch (_) {}
       const route = getRoute();

@@ -12,14 +12,17 @@ export function presentResetPasswordRequestModal(emailValue) {
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
     if (window.OverlayManager) {
-      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM });
+      // Treat as external so OverlayManager won't wipe #overlay-content; we manage #modal-root
+      window.OverlayManager.present({ id, text: '', actions: [], blockInput: true, priority: PRIORITY.MEDIUM, external: true });
     }
   } catch (_) {}
 
   const overlay = document.getElementById('overlay');
   const content = overlay ? overlay.querySelector('#overlay-content') : null;
-  if (!content) return;
-  content.innerHTML = '';
+  // Render into the stable external modal root
+  const contentRoot = document.querySelector('#modal-root');
+  if (!contentRoot) return;
+  contentRoot.innerHTML = '';
 
   // Backdrop + content container styles consistent with other modals
   try {
@@ -103,7 +106,7 @@ export function presentResetPasswordRequestModal(emailValue) {
   card.appendChild(message);
   card.appendChild(actions);
   center.appendChild(card);
-  content.appendChild(center);
+  contentRoot.appendChild(center);
 
   // Focus trap: only the Go To Login button is focusable
   try {
