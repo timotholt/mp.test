@@ -11,7 +11,62 @@ import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFo
 import { createKnob } from '../../../core/ui/knob.js';
 import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 
+// Tuning: apply theme at most once every N animation frames while dragging
+// 1 = every frame, 2 = every other frame, etc. You can override at runtime by setting window.THEME_APPLY_EVERY_N_FRAMES
+const THEME_APPLY_EVERY_N_FRAMES = 1;
+
 export function renderThemeTab(container) {
+  // High-fidelity ThemeScheduler: RAF-throttled + frame-skipping + batched patches
+  // - schedule(patch): merges partial patches and applies them at most once per N frames
+  // - beginDrag()/endDrag(finalPatch): toggles a temporary 'perf-drag' class and commits on release
+  const ThemeScheduler = (() => {
+    let pending = null;       // merged patch waiting to apply
+    let rafId = 0;            // current rAF id
+    let dragDepth = 0;        // nested drags supported
+    let frameGate = 0;        // frame counter for N-frame step
+    const root = document.documentElement;
+    // Read step dynamically so devs can tune window.THEME_APPLY_EVERY_N_FRAMES at runtime
+    function readStep() {
+      try {
+        const raw = (typeof window !== 'undefined' && window.THEME_APPLY_EVERY_N_FRAMES != null)
+          ? Number(window.THEME_APPLY_EVERY_N_FRAMES)
+          : THEME_APPLY_EVERY_N_FRAMES;
+        const n = Number.isFinite(raw) ? raw : THEME_APPLY_EVERY_N_FRAMES;
+        return Math.max(1, n | 0);
+      } catch (_) {
+        return Math.max(1, THEME_APPLY_EVERY_N_FRAMES);
+      }
+    }
+    let step = readStep();
+    function tick() {
+      // Only apply on every Nth frame; always keep the loop alive while we have pending updates
+      const desired = readStep();
+      if (desired !== step) { step = desired; frameGate = 0; }
+      frameGate = (frameGate + 1) % step;
+      if (frameGate === 0 && pending) {
+        const patch = pending; pending = null;
+        try { window.UITheme && window.UITheme.applyDynamicTheme(patch); } catch (_) {}
+      }
+      if (pending) { rafId = requestAnimationFrame(tick); } else { rafId = 0; }
+    }
+    return {
+      schedule(patch) {
+        pending = Object.assign(pending || {}, patch || {});
+        if (!rafId) rafId = requestAnimationFrame(tick);
+      },
+      beginDrag() {
+        try { if (dragDepth++ === 0 && root) root.classList.add('perf-drag'); } catch (_) {}
+      },
+      endDrag(finalPatch) {
+        try { if (dragDepth > 0 && --dragDepth === 0 && root) root.classList.remove('perf-drag'); } catch (_) {}
+        // Commit final patch synchronously
+        try { if (finalPatch) { window.UITheme && window.UITheme.applyDynamicTheme(finalPatch); } } catch (_) {}
+        // Cancel any leftover RAF and clear pending
+        if (rafId) { try { cancelAnimationFrame(rafId); } catch (_) {} rafId = 0; }
+        pending = null; frameGate = 0;
+      }
+    };
+  })();
   // Theme tab is overlay-only; remove variant checks
   // const variant = 'overlay';
   const headerTitle = 'UI Presets';
@@ -79,39 +134,6 @@ export function renderThemeTab(container) {
         return Number.isFinite(v) ? v : fb;
       } catch (_) { return fb; }
     };
-
-  // ThemeScheduler: high-fidelity, RAF-throttled, batched theme updates
-  // - schedule(patch): merges incremental patches and applies them once per animation frame
-  // - beginDrag()/endDrag(finalPatch): marks a drag session and commits the final state on pointerup
-  //   We optionally add a 'perf-drag' CSS class you can style to disable heavy paints during drags.
-  const ThemeScheduler = (() => {
-    let pending = null;
-    let rafId = 0;
-    let dragDepth = 0;
-    const root = document.documentElement;
-    function flush() {
-      const patch = pending; pending = null; rafId = 0;
-      if (!patch) return;
-      try { window.UITheme && window.UITheme.applyDynamicTheme(patch); } catch (_) {}
-    }
-    return {
-      schedule(patch) {
-        // Merge patches and coalesce into a single apply this frame
-        pending = Object.assign(pending || {}, patch || {});
-        if (!rafId) rafId = requestAnimationFrame(flush);
-      },
-      beginDrag() {
-        try { if (dragDepth++ === 0 && root) root.classList.add('perf-drag'); } catch (_) {}
-      },
-      endDrag(finalPatch) {
-        try { if (dragDepth > 0 && --dragDepth === 0 && root) root.classList.remove('perf-drag'); } catch (_) {}
-        // Commit the last value synchronously and cancel any pending RAF
-        try { if (finalPatch) { window.UITheme && window.UITheme.applyDynamicTheme(finalPatch); } } catch (_) {}
-        if (rafId) { try { cancelAnimationFrame(rafId); } catch (_) {} rafId = 0; }
-        pending = null;
-      }
-    };
-  })();
     return {
       get hue() { return Math.round(parseCssNum('--ui-hue', 210)); },
       get intensity() { return Math.round(parseCssNum('--ui-intensity', 60)); },
@@ -352,6 +374,8 @@ export function renderThemeTab(container) {
           size: knobSizePx,
           label: 'Hue',
           ringOffset: ringOffsetPx,
+          // Fine wheel increments: 1 degree per slow wheel notch
+          wheelFineStep: 1,
           // ColorKnobs already applies hue on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
@@ -361,6 +385,8 @@ export function renderThemeTab(container) {
           size: knobSizePx,
           label: 'Saturation',
           ringOffset: ringOffsetPx,
+          // Fine wheel increments: 1% per slow wheel notch
+          wheelFineStep: 1,
           // ColorKnobs already applies saturation on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
@@ -368,6 +394,8 @@ export function renderThemeTab(container) {
           size: knobSizePx,
           label: 'Intensity',
           ringOffset: ringOffsetPx,
+          // Fine wheel increments: 1% per slow wheel notch
+          wheelFineStep: 1,
           // ColorKnobs already applies intensity on input; only mark Custom here
           onInput: () => { try { selectCustomPreset(); } catch (_) {} }
         });
@@ -391,6 +419,7 @@ export function renderThemeTab(container) {
           min: 0,
           max: 100,
           value: 50,
+          // Keep coarse step at 5 for drag; wheelFineStep below ensures 1% for slow wheel moves
           step: 5,
           wheelFineStep: 1,
           size: knobSizePx,
