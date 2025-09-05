@@ -98,6 +98,8 @@ const OverlayManager = (() => {
       const content = el.querySelector('#overlay-content');
       if (content) {
         content.innerHTML = '';
+        // Reset to default interactive behavior when no modals are shown
+        try { content.style.pointerEvents = 'auto'; } catch (_) {}
         // Recreate modal-root to keep external modals targeting consistent
         try {
           const root = document.createElement('div');
@@ -141,6 +143,8 @@ const OverlayManager = (() => {
           // Doing so would destroy underlying external modals (e.g., Login) when
           // opening another external layer (e.g., Settings). Instead, ensure a
           // stable '#modal-root' exists for external modals that target it.
+          // Also: Allow pointer events to pass through empty overlay areas so canvas remains interactive
+          try { content.style.pointerEvents = 'none'; } catch (_) {}
           let root = content.querySelector('#modal-root');
           if (!root) {
             root = document.createElement('div');
@@ -163,6 +167,8 @@ const OverlayManager = (() => {
       return;
     }
     if (content) content.innerHTML = '';
+    // Normal (non-external) modals should be interactive over the overlay
+    try { if (content) content.style.pointerEvents = 'auto'; } catch (_) {}
     const p = document.createElement('div');
     p.textContent = top.text || '[modal]';
     content.appendChild(p);

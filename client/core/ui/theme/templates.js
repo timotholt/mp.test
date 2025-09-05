@@ -52,7 +52,9 @@ export const basicStyles = Object.freeze({
     border: 'var(--ui-surface-border-css)',
     boxShadow: 'var(--ui-surface-glow-outer)',
     borderRadius: 'var(--ui-card-radius)',
-    padding: 'var(--ui-modal-padding)'
+    padding: 'var(--ui-modal-padding)',
+    // Cards are interactive by default (needed when overlay content allows pass-through)
+    pointerEvents: 'auto'
   },
 
   // Overlay/backdrop surface helpers
@@ -67,7 +69,9 @@ export const basicStyles = Object.freeze({
     boxShadow: 'none',
     padding: '0',
     maxWidth: 'unset',
-    margin: '0'
+    margin: '0',
+    // Allow clicks to pass through empty overlay space (canvas interactions under modals)
+    pointerEvents: 'none'
   },
   // Centered viewport container for modals (card is centered within)
   centerViewport: {

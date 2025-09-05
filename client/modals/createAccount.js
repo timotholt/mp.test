@@ -82,8 +82,6 @@ export function presentCreateAccountModal() {
   card.style.width = 'min(45rem, calc(100vw - 2rem))';
   // Match Login hover behavior (no glow by default; glow on hover/focus-within)
   try { card.classList.add('login-card'); } catch (_) {}
-  // Keep the card fully interactive even when overlay-content uses pointer-events: none
-  try { card.style.pointerEvents = 'auto'; } catch (_) {}
   // Allow internal scroll if content exceeds viewport
   try { card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))'; card.style.overflowY = 'auto'; } catch (_) {}
 

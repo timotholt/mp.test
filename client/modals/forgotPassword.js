@@ -54,8 +54,6 @@ export function presentForgotPasswordModal() {
   card.style.width = 'min(26.25rem, calc(100vw - 2rem))';
   // Match Login hover behavior (no glow by default; glow on hover/focus-within)
   try { card.classList.add('login-card'); } catch (_) {}
-  // Keep the card fully interactive even when overlay-content uses pointer-events: none
-  try { card.style.pointerEvents = 'auto'; } catch (_) {}
   // Make the card a column so actions can pin to the bottom
   card.style.display = 'flex';
   card.style.flexDirection = 'column';

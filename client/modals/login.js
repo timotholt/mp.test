@@ -50,17 +50,7 @@ export function presentLoginModal() {
   const contentRoot = document.querySelector('#modal-root');
   if (!contentRoot) return;
   contentRoot.innerHTML = '';
-  // Let empty overlay areas pass pointer events through to the canvas
-  try {
-    const overlay = document.getElementById('overlay');
-    const content = overlay ? overlay.querySelector('#overlay-content') : null;
-    if (content) {
-      content.style.background = 'transparent';
-      content.style.border = 'none';
-      content.style.boxShadow = 'none';
-      content.style.pointerEvents = 'none';
-    }
-  } catch (_) {}
+  // OverlayManager now configures overlay-content pass-through for external modals
   // Ensure shared glass form styles are present (buttons/inputs/icons)
   try { ensureGlassFormStyles(); } catch (_) {}
 
@@ -76,8 +66,6 @@ export function presentLoginModal() {
   const center = createUiElement(centerViewport);
   const card = createUiElement(basicCard);
   try { card.classList.add('login-card'); } catch (_) {}
-  // Keep the card fully interactive even when overlay-content is pointerEvents:none
-  try { card.style.pointerEvents = 'auto'; } catch (_) {}
   // Robust width sizing: full width up to a max, include padding/border in width calc
   try {
     card.style.width = '100%';
