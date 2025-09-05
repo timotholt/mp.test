@@ -224,7 +224,7 @@ export function renderDisplayTab(container) {
     // Preview row
     const prevRow = createUiElement(basicFormRow, 'div');
     // Align the multi-line label/controls with the top of the preview box
-    try { prevRow.style.alignItems = 'flex-start'; } catch (_) {}
+    try { prevRow.style.alignItems = 'flex-start'; prevRow.style.width = '100%'; } catch (_) {}
     const prevLbl = createUiElement(basicFormLabel, 'Glyph Preview:');
     // Create a label column to place zoom controls UNDER the label
     const labelCol = document.createElement('div');
@@ -265,9 +265,17 @@ export function renderDisplayTab(container) {
     prevBox.style.display = 'flex';
     prevBox.style.flexDirection = 'column';
     prevBox.style.gap = '0.5rem';
+    // Critical for flex children to allow shrinking instead of forcing the row wider
+    try {
+      prevBox.style.flex = '1 1 auto';
+      prevBox.style.minWidth = '0';
+      prevBox.style.maxWidth = '100%';
+    } catch (_) {}
 
     const scrollWrap = document.createElement('div');
     scrollWrap.style.width = '100%';
+    scrollWrap.style.maxWidth = '100%';
+    scrollWrap.style.minWidth = '0';
     scrollWrap.style.height = '10rem';
     scrollWrap.style.overflow = 'auto';
     scrollWrap.style.borderRadius = '0.375rem';
@@ -276,6 +284,8 @@ export function renderDisplayTab(container) {
     const ctx = canvas.getContext('2d');
     canvas.style.imageRendering = 'pixelated';
     canvas.style.display = 'block';
+    // Do not allow canvas to impose its own max-width on parents
+    canvas.style.maxWidth = 'none';
     scrollWrap.appendChild(canvas);
 
     try { prevBox.style.flex = '1'; } catch (_) {}
