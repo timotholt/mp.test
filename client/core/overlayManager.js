@@ -62,6 +62,10 @@ function ensureOverlay() {
 }
 
 function ensureScreenShade() {
+  try {
+    // Prefer shared implementation if available to avoid duplicate creators
+    if (typeof window.ensureScreenShade === 'function') return window.ensureScreenShade();
+  } catch (_) {}
   let shade = document.getElementById('screen-shade');
   if (!shade) {
     shade = document.createElement('div');
@@ -107,10 +111,12 @@ const OverlayManager = (() => {
       const route = getRoute();
       // Recompute input gate when overlays change
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE);
-      // Hide screen shade when no modal is present (prevents lingering black tint)
+      // Hide screen shade only if current route does not require it (keep separation with router)
       try {
         const shade = document.getElementById('screen-shade');
-        if (shade) shade.style.display = 'none';
+        const route = getRoute();
+        const needsShade = route !== getStates().GAMEPLAY_ACTIVE;
+        if (shade && !needsShade) shade.style.display = 'none';
       } catch (_) {}
       return;
     }
@@ -119,8 +125,21 @@ const OverlayManager = (() => {
     // Ensure dimming shade is visible while any modal is shown
     try { const shade = ensureScreenShade(); shade.style.display = ''; } catch (_) {}
     const content = el.querySelector('#overlay-content');
-    // If this modal uses external content management, do not touch the content area
+    // If this modal uses external content management (e.g., Login), clear any
+    // leftover content from prior non-external modals and recreate a clean
+    // '#modal-root' container for external modals to target.
     if (top && top.external) {
+      try {
+        if (content) {
+          content.innerHTML = '';
+          const root = document.createElement('div');
+          root.id = 'modal-root';
+          root.style.display = 'block';
+          root.style.width = '100%';
+          root.style.height = '100%';
+          content.appendChild(root);
+        }
+      } catch (_) {}
       const route = getRoute();
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE) && !top.blockInput;
       return;

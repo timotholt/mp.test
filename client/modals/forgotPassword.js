@@ -26,10 +26,7 @@ export function presentForgotPasswordModal() {
 
   // Deep blue translucent backdrop using theme variables; transparent content
   try {
-    overlay.style.background = 'radial-gradient(1200px 600px at 50% 10%, '
-      + 'var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, '
-      + 'var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, '
-      + 'var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)';
+    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(1200px 600px at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
   } catch (_) {}
   try {
     content.style.background = 'transparent';
