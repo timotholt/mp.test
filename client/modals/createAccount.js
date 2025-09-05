@@ -59,7 +59,7 @@ export function presentCreateAccountModal() {
 
   // Keep the login backdrop vibe if present
   try {
-    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(1200px 600px at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
+    overlay.style.setProperty('--ui-overlay-bg', 'radial-gradient(75rem 37.5rem at 50% 10%, var(--ui-surface-bg-top, rgba(12,24,48,0.65)) 0%, var(--ui-surface-bg-bottom, rgba(4,8,18,0.75)) 60%, var(--ui-surface-bg-bottom, rgba(2,4,10,0.85)) 100%)');
   } catch (_) {}
   try {
     content.style.background = 'transparent';
@@ -77,7 +77,7 @@ export function presentCreateAccountModal() {
 
   const card = createUiElement(basicCard);
   // Width sizing consistent with Login (wide form)
-  card.style.width = 'min(720px, calc(100vw - 32px))';
+  card.style.width = 'min(45rem, calc(100vw - 2rem))';
   // Match Login hover behavior (no glow by default; glow on hover/focus-within)
   try { card.classList.add('login-card'); } catch (_) {}
   // Allow internal scroll if content exceeds viewport
@@ -86,7 +86,7 @@ export function presentCreateAccountModal() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = 'Create Grimdark Account';
-  try { title.style.marginBottom = '2px'; } catch (_) {}
+  try { title.style.marginBottom = '0.125rem'; } catch (_) {}
 
   // Fun quips shown under the title. Easy to edit.
   const quips = [
@@ -115,14 +115,14 @@ export function presentCreateAccountModal() {
   // Centralized rotating quip for consistency
   subtitle.textContent = getQuip('auth.create.tagline', quips);
   subtitle.className = 'modal-title-quip';
-  try { subtitle.style.margin = '0 0 16px 0'; } catch (_) {}
+  try { subtitle.style.margin = '0 0 1rem 0'; } catch (_) {}
 
   // Use same grid layout as login; art on the left, main content on the right
   const grid = document.createElement('div'); grid.className = 'login-grid';
   // Fallback inline styles if login styles are not present
   try { grid.style.display = 'grid'; grid.style.gridTemplateColumns = '1fr 1.4fr'; grid.style.gap = '1rem'; grid.style.alignItems = 'stretch'; } catch (_) {}
   const art = document.createElement('div'); art.className = 'login-art';
-  try { art.style.borderRadius = '10px'; art.style.border = '1px dashed var(--ui-surface-border, rgba(120,170,255,0.45))'; art.style.minHeight = '220px'; art.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16))'; } catch (_) {}
+  try { art.style.borderRadius = '0.625rem'; art.style.border = '0.0625rem dashed var(--ui-surface-border, rgba(120,170,255,0.45))'; art.style.minHeight = '13.75rem'; art.style.background = 'linear-gradient(180deg, rgba(10,18,36,0.20), rgba(8,14,28,0.16))'; } catch (_) {}
   const main = document.createElement('div'); main.className = 'login-main';
   try { main.style.display = 'flex'; main.style.flexDirection = 'column'; main.style.minWidth = '0'; } catch (_) {}
 
@@ -163,10 +163,10 @@ export function presentCreateAccountModal() {
   pwWrap.appendChild(pw); pwWrap.appendChild(eyeBtn1);
   pw2Wrap.appendChild(pw2); pw2Wrap.appendChild(eyeBtn2);
 
-  // Use the same row builder as Login for consistent spacing/labels
-  form.appendChild(makeRow('Email', emailWrap));
-  form.appendChild(makeRow('Password', pwWrap));
-  form.appendChild(makeRow('Confirm', pw2Wrap));
+  // Use the same row builder as Login for consistent spacing/labels (include trailing colons)
+  form.appendChild(makeRow('Email:', emailWrap));
+  form.appendChild(makeRow('Password:', pwWrap));
+  form.appendChild(makeRow('Confirm:', pw2Wrap));
 
   // Status row under Confirm (hidden by default)
   const matchStatus = document.createElement('div');
@@ -175,9 +175,9 @@ export function presentCreateAccountModal() {
     matchStatus.style.minHeight = '1.2em';
     matchStatus.style.visibility = 'hidden';
     matchStatus.style.gridColumn = '2 / 3';
-    matchStatus.style.fontSize = '12.5px';
+    matchStatus.style.fontSize = '0.78125rem';
     matchStatus.style.opacity = '0.95';
-    matchStatus.style.marginTop = '-4px';
+    matchStatus.style.marginTop = '-0.25rem';
     matchStatus.style.userSelect = 'none';
   } catch (_) {}
   form.appendChild(matchStatus);
@@ -208,7 +208,7 @@ export function presentCreateAccountModal() {
   actions.style.flexDirection = 'row';
   actions.style.justifyContent = 'flex-end';
   actions.style.alignItems = 'center';
-  actions.style.gap = '10px';
+  actions.style.gap = '0.625rem';
   actions.style.marginTop = 'auto';
 
   // Use templated buttons so glow appears only on hover and sizes follow theme
@@ -219,7 +219,7 @@ export function presentCreateAccountModal() {
   try { attachTooltip(cancelBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(cancelBtn, 'Return to the login page'); } catch (_) {}
 
   const status = document.createElement('div');
-  status.style.marginTop = '8px';
+  status.style.marginTop = '0.5rem';
   status.style.minHeight = '1.2em';
   status.style.userSelect = 'none';
 
@@ -388,7 +388,7 @@ export function presentCreateAccountModal() {
       // Compact width for the result (similar to reset confirmation)
       if (kind === 'success' || kind === 'exists') {
         try {
-          const narrow = 'min(420px, calc(100vw - 32px))';
+          const narrow = 'min(26.25rem, calc(100vw - 2rem))';
           card.style.width = narrow; card.style.maxWidth = narrow;
         } catch (_) {}
       }
@@ -400,12 +400,12 @@ export function presentCreateAccountModal() {
 
       const resTitle = document.createElement('div');
       resTitle.className = 'modal-title';
-      try { resTitle.style.marginBottom = '2px'; } catch (_) {}
+      try { resTitle.style.marginBottom = '0.125rem'; } catch (_) {}
       resTitle.textContent = kind === 'success' ? 'Grimdark Account Created' : 'Account Already Exists';
 
       const resSub = document.createElement('div');
       resSub.className = 'modal-title-quip';
-      try { resSub.style.margin = '0 0 20px 0'; } catch (_) {}
+      try { resSub.style.margin = '0 0 1.25rem 0'; } catch (_) {}
       // Use centralized rotating quip in result view as well
       try { resSub.textContent = getQuip('auth.create.tagline.result', quips); } catch (_) { resSub.textContent = kind === 'success' ? 'Welcome, brave soul.' : 'A familiar echo in the dark.'; }
 
@@ -413,9 +413,9 @@ export function presentCreateAccountModal() {
       resStatus.style.minHeight = '1.2em';
       resStatus.style.userSelect = 'none';
       // Clearer whitespace between tagline and message
-      resStatus.style.marginTop = '8px';
+      resStatus.style.marginTop = '0.5rem';
       // Extra whitespace after message for the 'exists' view
-      resStatus.style.marginBottom = (kind === 'exists') ? '10px' : '0';
+      resStatus.style.marginBottom = (kind === 'exists') ? '0.625rem' : '0';
       // Success: explicit verification instruction with email; Exists: show email only
       if (kind === 'success') {
         const shown = String(emailValue || '').trim();
@@ -436,17 +436,15 @@ export function presentCreateAccountModal() {
       resActions.style.flexDirection = 'row';
       resActions.style.justifyContent = 'flex-end';
       resActions.style.alignItems = 'center';
-      resActions.style.gap = '10px';
+      resActions.style.gap = '0.625rem';
       // Keep a comfortable gap above the buttons; exists needs a bit more space
-      resActions.style.marginTop = (kind === 'exists') ? '28px' : '16px';
+      resActions.style.marginTop = (kind === 'exists') ? '1.75rem' : '1rem';
 
-      const goLogin = makeBtn('Go To Login');
-      const resetBtn = kind === 'exists' ? makeBtn('Forgot Password') : null;
+      const goLogin = createUiElement(basicButton, 'button', 'Go To Login');
+      const resetBtn = kind === 'exists' ? createUiElement(basicButton, 'button', 'Forgot Password') : null;
       try { attachTooltip(goLogin, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(goLogin, 'Return to the login page'); } catch (_) {}
       if (resetBtn) { try { attachTooltip(resetBtn, { mode: 'far', placement: 'b,bc,br,bl,t' }); updateTooltip(resetBtn, 'Reset your password'); } catch (_) {} }
-      // Match hover/focus visuals used elsewhere
-      try { wireBtnHover(goLogin); } catch (_) {}
-      if (resetBtn) { try { wireBtnHover(resetBtn); } catch (_) {} }
+      // Templated buttons include hover/focus via theme tokens
 
     goLogin.onclick = () => {
       // Flip mode first so the following dismiss recalculates shade darkness for Login
