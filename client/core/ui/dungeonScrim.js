@@ -33,18 +33,38 @@ try {
   // Two states only:
   // - Gameplay with no blocking modal -> force 0 darkness
   // - Otherwise -> remove inline override so theme controls darkness
+  function logScrimStyle(state) {
+    try {
+      const scrim = ensureDungeonScrim();
+      const cs = window.getComputedStyle(scrim);
+      const root = document.documentElement;
+      const rootInlineDark = (root.style.getPropertyValue('--ui-overlay-darkness') || '').trim() || '(unset)';
+      const rootComputed = window.getComputedStyle(root);
+      const rootComputedDark = (rootComputed.getPropertyValue('--ui-overlay-darkness') || '').trim() || '(unset)';
+      const rootOverlayBg = (rootComputed.getPropertyValue('--ui-overlay-bg') || '').trim() || '(unset)';
+      console.groupCollapsed(`[scrim] ${state}`);
+      console.log('display:', cs.display, 'pointer-events:', cs.pointerEvents);
+      console.log('background:', cs.background);
+      console.log('backgroundColor:', cs.backgroundColor);
+      console.log('opacity:', cs.opacity);
+      console.log('--ui-overlay-darkness (inline):', rootInlineDark);
+      console.log('--ui-overlay-darkness (computed):', rootComputedDark);
+      console.log('--ui-overlay-bg (computed):', rootOverlayBg);
+      console.groupEnd();
+    } catch (_) {}
+  }
   const applyDarkness = () => {
     const blocking = !!window.OverlayManager?.isBlockingInput?.();
     const inGameplay = (window.__getCurrentRoute?.() === window.APP_STATES?.GAMEPLAY_ACTIVE);
     const rootStyle = document.documentElement.style;
     if (!blocking && inGameplay) {
       rootStyle.setProperty('--ui-overlay-darkness', '0');
-      console.log('Dungeon scrim turned off');
+      logScrimStyle('Dungeon scrim turned off');
     }
     else
     {
       rootStyle.removeProperty('--ui-overlay-darkness');
-      console.log('Dungeon scrim turned on');
+      logScrimStyle('Dungeon scrim turned on');
     }
   };
   window.addEventListener('ui:mode-changed', applyDarkness);

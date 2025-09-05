@@ -22,9 +22,9 @@ function ensureOverlay() {
     overlayEl.style.display = 'none';
     // Allow dragging/clicks to pass through dim background
     overlayEl.style.pointerEvents = 'none';
-    // Background: use themed overlay tint if available, else fallback to black with darkness alpha.
-    // Alpha controlled by CSS var --ui-overlay-darkness (0..1). Default 0.5
-    overlayEl.style.background = 'var(--ui-overlay-bg, rgba(0,0,0, var(--ui-overlay-darkness, 0.5)))';
+    // Single source of truth: do NOT dim at the overlay layer.
+    // Fullscreen dimming is handled by dungeon scrim and settings scrim only.
+    overlayEl.style.background = 'transparent';
     overlayEl.style.color = 'var(--ui-fg, #eee)';
     overlayEl.style.padding = '0px';
     overlayEl.style.zIndex = '20000';
