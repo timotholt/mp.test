@@ -14,6 +14,26 @@ export const HUE_EVENT_MIN_INTERVAL_MS = 200;
 // Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
 export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 
+// ---------------------------------------------------------------
+// Hue Knob Visual Tuning (single source of truth; easy to tweak)
+// All distances are in rem unless otherwise noted; 1rem is relative to root font-size
+// ---------------------------------------------------------------
+export const HUE_RING_THICKNESS_REM = 0.3;  // ring thickness in rem (0.625rem ≈ 10px @16px)
+export const HUE_RING_EDGE_INSET_REM = 0.0;   // inset from knob edge in rem (0 = flush)
+export const HUE_RING_SCALE = 1.55;           // overall ring scale (unitless)
+export const HUE_RING_OFFSET_Y_REM = 0;    // vertical offset in rem (negative = up)
+export const HUE_DOT_DIAM_REM = 0.3;         // dot diameter in rem (0.5rem ≈ 8px @16px)
+
+function remBasePx() {
+  try { return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; } catch (_) { return 16; }
+}
+
+// Keep vertical offset reactive without recreating the knob: use a root CSS var.
+function applyHueRootVars() {
+  try { document.documentElement.style.setProperty('--hue-ring-offset', `${HUE_RING_OFFSET_Y_REM}rem`); } catch (_) {}
+}
+applyHueRootVars();
+
 // ---- Color utilities (OKLCH with HSL fallback) ----
 function supportsOKLCH() {
   try {
@@ -88,21 +108,17 @@ export function createHueKnob(opts = {}) {
     wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Hue',
-    segments: -1, // continuous spectrum ring
+    // Use CSS conic-gradient for the hue ring (no micro-segments)
+    segments: 0,
     // Full 360° sweep for Hue
     angleMin: -180,
     angleMax: 180,
-    ringColorForAngle: (_angDeg, t) => {
-      const h = t * 360; // full wheel along the 270° arc
-      // Keep constant lightness and moderate chroma for pleasing preview
-      return colorFromHSLC({ h, s: 85, l: 65, alpha: 1 });
-    },
     titleFormatter: tfHue,
     onInput: (v) => {
       try {
         const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
-        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ hue: v }); } catch (_) {} }
-        else { try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {} }
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ hue: v, transient: true }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ hue: v, transient: true }); } catch (_) {} }
       } catch (_) {}
       // Notify other knobs so they can recolor their spectrum rings (throttled)
       try {
@@ -128,12 +144,14 @@ export function createHueKnob(opts = {}) {
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
-    className: opts.className,
+    // Tag for live updates (used by applyHueConstantsToAll)
+    className: (opts.className ? 'hue-knob ' + opts.className : 'hue-knob'),
     // Default ring offset creates a small gap between knob face and color ring
     ringOffset: (opts.ringOffset ?? 18),
-    segThickness: 2,
-    segLength: 10,
-    dotSize: 6,
+    segThickness: 16,
+    // Use tuning constants for band and dot (convert rem -> px here for the generic knob API)
+    segLength: Math.round(HUE_RING_THICKNESS_REM * remBasePx()),
+    dotSize: Math.round(HUE_DOT_DIAM_REM * remBasePx()),
   });
 
   // Tooltips: show below knob with connector line (far mode, bottom-center placement)
@@ -144,10 +162,63 @@ export function createHueKnob(opts = {}) {
     }
   } catch (_) {}
 
+  // Paint the hue ring using a CSS conic-gradient + radial mask (donut)
+  try {
+    // Find the ring element created by the generic knob
+    const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
+    if (ring) {
+      // Build a full-spectrum conic gradient
+      ring.style.background = 'conic-gradient(from -90deg, hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%))';
+      // Compute ring geometry based on provided options or sensible defaults
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      // Band thickness and edge inset from tuning constants (convert rem -> px)
+      const thicknessOpt = (opts.segLength != null) ? Number(opts.segLength) : (HUE_RING_THICKNESS_REM * remBasePx());
+      const edgeInset = (HUE_RING_EDGE_INSET_REM * remBasePx()); // px
+      const outerR = Math.max(10, Math.floor(size / 2) - edgeInset);
+      const innerBase = Math.max(1, outerR - thicknessOpt);
+      // Simple, predictable donut: no dynamic rem math; inner radius = outer - thickness
+      const innerR = innerBase;
+      const mask = `radial-gradient(circle at 50% 50%, transparent ${innerR}px, white ${innerR}px, white ${outerR}px, transparent ${outerR}px)`;
+      try { ring.style.webkitMaskImage = mask; } catch (_) {}
+      try { ring.style.maskImage = mask; } catch (_) {}
+      try { ring.style.opacity = '1'; } catch (_) {}
+      // Apply tuning constants for scale and vertical offset (offset via root CSS var for live updates)
+      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+    }
+  } catch (_) {}
+
   // Hue ring colors are static (full spectrum); no need to recolor on hue changes
   
 
   return kn;
+}
+
+// --- Live reapply utilities (so constant tweaks take effect without recreating the modal) ---
+export function applyHueConstantsTo(el) {
+  try {
+    if (!el || !el.classList || !el.classList.contains('hue-knob')) return;
+    const ring = el.querySelector('.k-ring');
+    if (!ring) return;
+    const csEl = getComputedStyle(el);
+    const sizePx = parseFloat(csEl.width) || 64;
+    const rem = remBasePx();
+    const thickness = Math.max(1, HUE_RING_THICKNESS_REM * rem);
+    const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
+    const outerR = Math.max(10, Math.floor(sizePx / 2) - edgeInsetPx);
+    const innerR = Math.max(1, outerR - thickness);
+    const mask = `radial-gradient(circle at 50% 50%, transparent ${innerR}px, white ${innerR}px, white ${outerR}px, transparent ${outerR}px)`;
+    try { ring.style.webkitMaskImage = mask; } catch (_) {}
+    try { ring.style.maskImage = mask; } catch (_) {}
+    try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+    // Update the root var so offset takes effect on all rings without recreation
+    applyHueRootVars();
+    // Override dot size via CSS var so we don't need to recreate the knob
+    try { el.style.setProperty('--kn-dot-size', `${HUE_DOT_DIAM_REM}rem`); } catch (_) {}
+  } catch (_) {}
+}
+
+export function applyHueConstantsToAll() {
+  try { document.querySelectorAll('.hue-knob').forEach((el) => applyHueConstantsTo(el)); } catch (_) {}
 }
 
 export function createSaturationKnob(opts = {}) {
@@ -188,8 +259,8 @@ export function createSaturationKnob(opts = {}) {
       kn.__userAdjusting = true;
       try {
         const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
-        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ saturation: vv }); } catch (_) {} }
-        else { try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {} }
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ saturation: vv, transient: true }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ saturation: vv, transient: true }); } catch (_) {} }
       } catch (_) {}
       kn.__userAdjusting = false;
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
@@ -286,8 +357,8 @@ export function createIntensityKnob(opts = {}) {
       const vv = Math.round(v);
       try {
         const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
-        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ intensity: vv }); } catch (_) {} }
-        else { try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {} }
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ intensity: vv, transient: true }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ intensity: vv, transient: true }); } catch (_) {} }
       } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
@@ -340,4 +411,12 @@ export function createIntensityKnob(opts = {}) {
   return kn;
 }
 
-try { window.ColorKnobs = { createHueKnob, createSaturationKnob, createIntensityKnob }; } catch (_) {}
+try {
+  window.ColorKnobs = Object.assign(window.ColorKnobs || {}, {
+    createHueKnob,
+    createSaturationKnob,
+    createIntensityKnob,
+    applyHueConstantsTo,
+    applyHueConstantsToAll,
+  });
+} catch (_) {}

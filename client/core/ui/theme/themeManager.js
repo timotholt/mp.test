@@ -275,6 +275,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
 
   function applyDynamicTheme(params = {}) {
     try {
+      const transient = !!params.transient; // do not persist while dragging; commit on settle
       // Read existing or provided values
       const cs = getComputedStyle(root);
       // Respect 0 values (avoid "|| fallback" after parseFloat which treats 0 as falsy)
@@ -326,7 +327,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
         const MMAX = 2.5; // ceiling used by Settings panel
         const m = clamp(Number(params.opacityMult), 0, MMAX);
         try { root.style.setProperty('--ui-opacity-mult', String(m)); } catch (_) {}
-        try { localStorage.setItem('ui_opacity_mult', String(m)); } catch (_) {}
+        if (!transient) { try { localStorage.setItem('ui_opacity_mult', String(m)); } catch (_) {} }
         // Debug: reflect opacity change
         try {
           const cssOp = getComputedStyle(root).getPropertyValue('--ui-opacity-mult').trim();
@@ -336,18 +337,20 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
 
       // Apply overlay darkness (0..100 -> 0..1 alpha) and persist
       try { root.style.setProperty('--ui-overlay-darkness', String(overlayDarkness / 100)); } catch (_) {}
-      try { localStorage.setItem('ui_overlay_darkness', String(overlayDarkness)); } catch (_) {}
+      if (!transient) { try { localStorage.setItem('ui_overlay_darkness', String(overlayDarkness)); } catch (_) {} }
 
       // Persist user prefs
-      try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
-      try { localStorage.setItem('ui_intensity', String(intensity)); } catch (_) {}
-      try { localStorage.setItem('ui_font_scale', toFixed(fontScale, 3)); } catch (_) {}
-      try { localStorage.setItem('ui_gradient', String(gradient)); } catch (_) {}
-      try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
-      try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
-      try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
-      // Persist foreground brightness
-      try { localStorage.setItem('ui_fg_brightness', String(fgBrightness)); } catch (_) {}
+      if (!transient) {
+        try { localStorage.setItem('ui_hue', String(hue)); } catch (_) {}
+        try { localStorage.setItem('ui_intensity', String(intensity)); } catch (_) {}
+        try { localStorage.setItem('ui_font_scale', toFixed(fontScale, 3)); } catch (_) {}
+        try { localStorage.setItem('ui_gradient', String(gradient)); } catch (_) {}
+        try { localStorage.setItem('ui_milkiness', String(milkiness)); } catch (_) {}
+        try { localStorage.setItem('ui_border_intensity', String(borderStrength)); } catch (_) {}
+        try { localStorage.setItem('ui_glow_strength', String(glowStrength)); } catch (_) {}
+        // Persist foreground brightness
+        try { localStorage.setItem('ui_fg_brightness', String(fgBrightness)); } catch (_) {}
+      }
       // Reflect new controls as CSS variables for other components to read if needed
       try { root.style.setProperty('--ui-gradient', String(gradient)); } catch (_) {}
       try { root.style.setProperty('--ui-backdrop-blur', `${toFixed(milkiness, 2)}px`); } catch (_) {}
@@ -385,7 +388,7 @@ export function createUiElement(style = {}, a = 'div', b = '', c) {
       }
 
       // Persist explicit overrides when provided (after values are computed)
-      if (params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
+      if (!transient && params.saturation != null) { try { localStorage.setItem('ui_saturation', String(sat)); } catch (_) {} }
       const borderAlpha = clamp(0.45 + intensity * 0.004, 0.45, 0.85); // 0.45..0.85
       const glowAlpha = clamp(0.18 + intensity * 0.0015, 0.12, 0.40); // 0.18..0.40
       // Low-end saturation easing for accent tokens: fade in over first ~10 intensity points
