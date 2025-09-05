@@ -144,8 +144,7 @@ export function createHueKnob(opts = {}) {
     }
   } catch (_) {}
 
-  // Recolor the spectrum ring when Hue changes elsewhere
-  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
+  // Hue ring colors are static (full spectrum); no need to recolor on hue changes
   
 
   return kn;
@@ -224,13 +223,15 @@ export function createSaturationKnob(opts = {}) {
     }
   } catch (_) {}
 
-  // Recolor the spectrum ring when Hue changes elsewhere (throttled)
+  // Recolor the spectrum ring when Hue changes elsewhere (throttled and synced with ThemeScheduler min-ms)
   try {
     let _last = 0, _timer = null;
     const onHue = () => {
       try {
         const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        const dueIn = RING_RECOLOR_MIN_INTERVAL_MS - (now - _last);
+        const minMs = (typeof window !== 'undefined' && Number.isFinite(Number(window.THEME_APPLY_MIN_MS))) ? Math.max(0, Number(window.THEME_APPLY_MIN_MS)) : 0;
+        const effInterval = Math.max(RING_RECOLOR_MIN_INTERVAL_MS, minMs);
+        const dueIn = effInterval - (now - _last);
         if (dueIn <= 0) {
           _last = now; kn.refreshRingColors?.();
         } else if (!_timer) {
@@ -317,8 +318,24 @@ export function createIntensityKnob(opts = {}) {
     }
   } catch (_) {}
 
-  // Recolor the spectrum ring when Hue changes elsewhere
-  try { window.addEventListener('ui:hue-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} }); } catch (_) {}
+  // Recolor the spectrum ring when Hue changes elsewhere (throttled and synced with ThemeScheduler min-ms)
+  try {
+    let _last = 0, _timer = null;
+    const onHue = () => {
+      try {
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const minMs = (typeof window !== 'undefined' && Number.isFinite(Number(window.THEME_APPLY_MIN_MS))) ? Math.max(0, Number(window.THEME_APPLY_MIN_MS)) : 0;
+        const effInterval = Math.max(RING_RECOLOR_MIN_INTERVAL_MS, minMs);
+        const dueIn = effInterval - (now - _last);
+        if (dueIn <= 0) {
+          _last = now; kn.refreshRingColors?.();
+        } else if (!_timer) {
+          _timer = setTimeout(() => { _timer = null; _last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); kn.refreshRingColors?.(); }, Math.max(0, dueIn));
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('ui:hue-changed', onHue);
+  } catch (_) {}
 
   return kn;
 }

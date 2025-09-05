@@ -1,4 +1,9 @@
 import { attachTooltip, updateTooltip as updateSciTip, detachTooltip } from './tooltip.js';
+// Spectrum ring density controls (for segments = -1). Adjust to tune performance/quality.
+// Default halves prior density: 1 segment per degree -> ~270 micro-segments for a 270° sweep.
+const SPECTRUM_SEGMENTS_PER_DEG = 1;     // was 2
+const SPECTRUM_MIN_SEGMENTS = 72;        // lower bound for small sweeps
+const SPECTRUM_MAX_SEGMENTS = 360;       // upper bound (was 720)
 // Generic Knob UI (plain JS)
 // Reusable control for any purpose (puzzles, mixers, etc.)
 // - Wheel, drag, and keyboard input
@@ -131,7 +136,7 @@ export function createKnob(opts = {}) {
   } else if (segMode === 'spectrum') {
     // Internally approximate continuous by many thin segments (size-aware, clamped)
     const sweep = Math.abs(angleMax - angleMin);
-    const microCount = Math.max(72, Math.min(720, Math.round(sweep * 2))); // ~540 for 270° sweep
+    const microCount = Math.max(SPECTRUM_MIN_SEGMENTS, Math.min(SPECTRUM_MAX_SEGMENTS, Math.round(sweep * SPECTRUM_SEGMENTS_PER_DEG))); // ~270 for 270° sweep
     for (let i = 0; i < microCount; i++) {
       const seg = document.createElement('div');
       seg.className = 'k-seg';
