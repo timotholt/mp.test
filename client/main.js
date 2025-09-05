@@ -23,6 +23,7 @@ import * as LS from './core/localStorage.js';
 import { configureRoomUi, resetRoomUiBinding, setReadyButtonUI, bindRoomUIEventsOnce, renderRoomPlayers, getPlayersSnapshot, refreshRoomChat, appendChatLine, setRoomReadyBtn, setRoomPlayersEl, setRoomChat } from './core/ui/roomUi.js';
 import { createSessionHandlers } from './core/net/session.js';
 import { startHeartbeat } from './core/net/heartbeat.js';
+import { initSupabase } from './core/auth/supabaseAuth.js';
 
 import './core/ui/colorKnobs.js';
 
@@ -103,6 +104,8 @@ window.ensureScreenShade = ensureScreenShade;
 // Default route until server tells us otherwise (after shade is attached)
 setRoute(APP_STATES.LOGIN);
 // Theme system initializes on import in './core/ui/theme/themeManager.js'
+// Initialize Supabase auth once at app startup (singleton)
+initSupabase();
 
 // ensureStatusBar moved to './core/ui/statusBar.js'
 // Expose for other modules

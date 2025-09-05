@@ -1,7 +1,7 @@
 // Forgot Password Modal — email input + submit, glassmorphism style
 // Lives under client/modals/. Minimal inline styles; consistent with login/create account.
 
-import { initSupabase, sendPasswordReset } from '../core/auth/supabaseAuth.js';
+import { sendPasswordReset } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentResetPasswordRequestModal } from './resetRequestConfirm.js';
@@ -9,7 +9,6 @@ import { getQuip } from '../core/ui/quip.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
 
 export function presentForgotPasswordModal() {
-  initSupabase();
   // Ensure shared glass form styles (buttons/inputs/icons) are injected once
   try { ensureGlassFormStyles(); } catch (_) {}
   const id = 'FORGOT_PASSWORD_MODAL';

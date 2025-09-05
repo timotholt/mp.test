@@ -39,6 +39,15 @@ function ensureOverlay() {
     inner.style.padding = '16px';
     inner.style.boxShadow = 'var(--ui-surface-glow-outer, 0 0 18px rgba(120,170,255,0.33))';
     inner.style.backdropFilter = 'var(--sf-tip-backdrop, blur(4px) saturate(1.2))';
+    // Provide a stable, clearly-named child root for external modals to target
+    // without breaking existing '#overlay-content' behavior.
+    const modalRoot = document.createElement('div');
+    modalRoot.id = 'modal-root';
+    // Keep neutral styling; layout is controlled by the modal itself.
+    modalRoot.style.display = 'block';
+    modalRoot.style.width = '100%';
+    modalRoot.style.height = '100%';
+    inner.appendChild(modalRoot);
     overlayEl.appendChild(inner);
     const appRoot = document.getElementById('app');
     if (appRoot) {
@@ -82,7 +91,18 @@ const OverlayManager = (() => {
     if (stack.length === 0) {
       el.style.display = 'none';
       const content = el.querySelector('#overlay-content');
-      if (content) content.innerHTML = '';
+      if (content) {
+        content.innerHTML = '';
+        // Recreate modal-root to keep external modals targeting consistent
+        try {
+          const root = document.createElement('div');
+          root.id = 'modal-root';
+          root.style.display = 'block';
+          root.style.width = '100%';
+          root.style.height = '100%';
+          content.appendChild(root);
+        } catch (_) {}
+      }
       const route = getRoute();
       // Recompute input gate when overlays change
       window.__canSendGameplayInput = (route === getStates().GAMEPLAY_ACTIVE);

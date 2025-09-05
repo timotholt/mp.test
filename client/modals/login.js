@@ -3,7 +3,6 @@
 // Depends on global OverlayManager and PRIORITY. Keeps exported names the same.
 import * as LS from '../core/localStorage.js';
 import {
-  initSupabase,
   signInWithProvider,
   signInWithPassword,
   getAccessToken,
@@ -17,7 +16,7 @@ import { presentCreateAccountModal } from './createAccount.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
 import { shouldAutoReconnect } from '../core/net/reconnect.js';
 import { ensureGlassFormStyles } from '../core/ui/formBase.js';
-import { createUiElement, basicOverlayBackdrop, basicOverlayContentClear, twoColumn14, autoFitGridButtons, linkInline, linkRowCentered, artDashedPanel, centerViewport, basicCard } from '../core/ui/theme/elements.js';
+import { createUiElement, twoColumn14, autoFitGridButtons, linkInline, linkRowCentered, artDashedPanel, centerViewport, basicCard } from '../core/ui/theme/elements.js';
 import { makeTitleBlock } from '../core/ui/blocks.js';
 import { makeSection, makeRow } from './settings/uiHelpers.js';
 
@@ -37,7 +36,6 @@ function icon(name) {
 }
 
 export function presentLoginModal() {
-  initSupabase();
   const id = 'LOGIN_MODAL';
   const PRIORITY = (window.PRIORITY || { MEDIUM: 50 });
   try {
@@ -48,16 +46,25 @@ export function presentLoginModal() {
   } catch (_) {}
 
   const overlay = document.getElementById('overlay');
-  const content = overlay ? overlay.querySelector('#overlay-content') : null;
-  if (!content) return;
-  content.innerHTML = '';
-  // Apply deep blue translucent backdrop to overlay and make content transparent; center our card
-  // Use theme-driven surface variables so hue/intensity affect the backdrop
+  // Prefer the clearer '#modal-root' if present; fall back to '#overlay-content'
+  const contentRoot = overlay ? (overlay.querySelector('#modal-root') || overlay.querySelector('#overlay-content')) : null;
+  if (!contentRoot) return;
+  contentRoot.innerHTML = '';
+  // Reset overlay container styles so our templatized layout can fully control sizing
   try {
-    Object.assign(overlay.style, basicOverlayBackdrop);
-  } catch (_) {}
-  try {
-    Object.assign(content.style, basicOverlayContentClear);
+    const content = overlay ? overlay.querySelector('#overlay-content') : null;
+    if (content) {
+      content.style.margin = '0';
+      content.style.padding = '0';
+      content.style.maxWidth = 'none';
+      content.style.width = '100%';
+      content.style.height = '100%';
+      content.style.background = 'transparent';
+      content.style.border = 'none';
+      content.style.boxShadow = 'none';
+      content.style.backdropFilter = 'none';
+      content.style.display = 'block';
+    }
   } catch (_) {}
   // Ensure shared glass form styles are present (buttons/inputs/icons)
   try { ensureGlassFormStyles(); } catch (_) {}
@@ -75,6 +82,11 @@ export function presentLoginModal() {
   const card = createUiElement(basicCard);
   // Constrain width similarly to the legacy style for consistency
   try { card.style.width = 'min(720px, calc(100vw - 32px))'; } catch (_) {}
+  // Ensure the card never exceeds the viewport height (account for center padding) and scrolls internally if needed
+  try {
+    card.style.maxHeight = 'calc(100vh - (var(--ui-page-padding, 1.5rem) * 2))';
+    card.style.overflowY = 'auto';
+  } catch (_) {}
 
   // Title and quip via reusable block
   const titleBlock = makeTitleBlock({
@@ -268,7 +280,7 @@ export function presentLoginModal() {
   grid.appendChild(main);
   card.appendChild(grid);
   center.appendChild(card);
-  content.appendChild(center);
+  contentRoot.appendChild(center);
 
   // Focus trap & tab order: Google → Discord → Facebook → Email → Password → Sign In → Create Account → Forgot password → Google
   try {

@@ -1,7 +1,7 @@
 // Create Account Modal (email + password + confirm) — glassmorphism style
 // Lives under client/modals/ per project convention. Minimal inline styles.
 
-import { initSupabase, signUpWithPassword } from '../core/auth/supabaseAuth.js';
+import { signUpWithPassword } from '../core/auth/supabaseAuth.js';
 import { attachTooltip, updateTooltip } from '../core/ui/tooltip.js';
 import { presentLoginModal } from './login.js';
 import { presentForgotPasswordModal } from './forgotPassword.js';
@@ -34,7 +34,6 @@ function ensureCreateAccountStyles() {
 }
 
 export function presentCreateAccountModal() {
-  initSupabase();
   // Ensure shared glass form styles (buttons/inputs/icons) are injected once
   try { ensureGlassFormStyles(); } catch (_) {}
   ensureCreateAccountStyles();
