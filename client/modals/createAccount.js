@@ -505,34 +505,5 @@ export function presentCreateAccountModal() {
   }
 }
 
-function makeBtn(label) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.style.cursor = 'pointer';
-  b.style.userSelect = 'none';
-  b.style.borderRadius = '10px';
-  b.style.padding = '10px 12px';
-  b.style.fontWeight = '600';
-  b.style.fontSize = '14px';
-  b.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%)';
-  b.style.color = 'var(--ui-fg, #eee)';
-  b.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  b.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 14px rgba(40,100,200,0.12)), var(--ui-surface-glow-outer, 0 0 16px rgba(120,170,255,0.22))';
-  return b;
-}
-
-function styleInput(input) {
-  input.style.width = '100%';
-  input.style.color = 'var(--ui-fg, #eee)';
-  input.style.background = 'linear-gradient(180deg, rgba(10,18,26,0.20) 0%, rgba(10,16,22,0.16) 100%)';
-  input.style.border = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))';
-  input.style.borderRadius = '10px';
-  input.style.padding = '0 10px';
-  input.style.height = '46px';
-  input.style.outline = 'none';
-  input.style.boxShadow = 'var(--ui-surface-glow-inset, inset 0 0 12px rgba(40,100,200,0.10)), var(--ui-surface-glow-outer, 0 0 12px rgba(120,170,255,0.18))';
-  input.style.backdropFilter = 'blur(6px) saturate(1.2)';
-  input.style.boxSizing = 'border-box';
-}
 
 }
