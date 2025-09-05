@@ -40,6 +40,8 @@ export function presentForgotPasswordModal() {
     content.style.padding = '0';
     content.style.maxWidth = 'unset';
     content.style.margin = '0';
+    // Let pointer events fall through outside the modal card so the dungeon can be dragged
+    content.style.pointerEvents = 'none';
   } catch (_) {}
 
   // Build centered card using standardized theme templates (same as Login)
@@ -52,6 +54,8 @@ export function presentForgotPasswordModal() {
   card.style.width = 'min(26.25rem, calc(100vw - 2rem))';
   // Match Login hover behavior (no glow by default; glow on hover/focus-within)
   try { card.classList.add('login-card'); } catch (_) {}
+  // Keep the card fully interactive even when overlay-content uses pointer-events: none
+  try { card.style.pointerEvents = 'auto'; } catch (_) {}
   // Make the card a column so actions can pin to the bottom
   card.style.display = 'flex';
   card.style.flexDirection = 'column';
