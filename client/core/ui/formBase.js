@@ -12,7 +12,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     st.id = styleId;
     st.textContent = `
     /* Buttons */
-    .btn { cursor: pointer; user-select: none; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
+    .btn { cursor: pointer; user-select: none; border-radius: 0.625rem; padding: 0.625rem 0.75rem; font-weight: 600; font-size: 1rem; display: inline-flex; align-items: center; gap: 0.625rem; justify-content: center; }
     .btn:disabled { opacity: var(--ui-opacity-disabled-button, 0.6); cursor: default; }
     .btn-outline-glass {
       background: linear-gradient(180deg, rgba(10,18,26,0.12) 0%, rgba(10,16,22,0.08) 100%);
@@ -27,7 +27,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
       box-shadow: var(--ui-surface-glow-inset, inset 0 0 18px rgba(60,140,240,0.18)), var(--ui-surface-glow-outer, 0 0 20px rgba(140,190,255,0.30));
       outline: none;
     }
-    .btn svg { width: 18px; height: 18px; }
+    .btn svg { width: 1.125rem; height: 1.125rem; }
 
     /* Modal typographic utility classes (unified across all modals) */
     .modal-title { font-size: var(--ui-title-size, 1.5rem); font-weight: var(--ui-title-weight, 700); color: var(--ui-fg, ${FALLBACK_FG_COLOR}); user-select: none; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
@@ -36,7 +36,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     .modal-subtitle-quip { font-size: var(--ui-title-quip-size, 0.9rem); color: var(--ui-fg-quip, ${FALLBACK_FG_COLOR}); user-select: none; margin: 0 0 var(--ui-padding-after-title-block, 1rem) 0 !important; text-shadow: var(--ui-text-glow, var(--sf-tip-text-glow, none)); }
 
     /* Universal icon wrapper for consistent sizing */
-    .icon-wrap { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+    .icon-wrap { width: 1.6875rem; height: 1.6875rem; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
     .icon-wrap svg { width: 100%; height: 100%; display: block; }
     /* Optional icon tweaks used by some modals */
     .icon-wrap.icon-google { transform: translateY(-4px); }
@@ -91,7 +91,7 @@ export function ensureGlassFormStyles(styleId = 'ui-glass-form-style') {
     .input-wrap { position: relative; width: 100%; display: flex; align-items: center; }
     .input-wrap.has-left .input-glass { padding-left: 34px; }
     .input-wrap.has-right .input-glass { padding-right: 34px; }
-    .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; background: none; border: 0; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); opacity: 0.9; cursor: pointer; }
+    .input-icon-btn { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 1.6875rem; height: 1.6875rem; background: none; border: 0; color: var(--ui-fg, ${FALLBACK_FG_COLOR}); opacity: 0.9; cursor: pointer; }
     .input-icon-btn.left { left: 8px; }
     .input-icon-btn.right { right: 8px; }
     .input-icon-btn:hover { color: var(--ui-bright, ${FALLBACK_FG_COLOR}); opacity: 1; }
