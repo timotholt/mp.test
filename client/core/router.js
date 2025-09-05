@@ -71,7 +71,7 @@ export function setRoute(route, payload = {}) {
   // Enable pointer interaction with renderer except on LOGIN backdrop
   try {
     const rc = document.getElementById('rc-canvas');
-    if (rc) rc.style.pointerEvents = (route === APP_STATES.LOGIN) ? 'none' : 'auto';
+    if (rc) rc.style.pointerEvents = 'auto';
   } catch (_) {}
 
   // Allow movement input only during active gameplay and without blocking modals
@@ -81,4 +81,7 @@ export function setRoute(route, payload = {}) {
   if (route !== APP_STATES.LOBBY) {
     try { if (typeof window.stopLobbyPolling === 'function') window.stopLobbyPolling(); } catch (_) {}
   }
+
+  // Broadcast route change for systems that react to global app state (e.g., dungeon display manager)
+  try { window.dispatchEvent(new CustomEvent('route:changed', { detail: { route } })); } catch (_) {}
 }

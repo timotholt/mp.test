@@ -26,6 +26,7 @@ import { startHeartbeat } from './core/net/heartbeat.js';
 import { initSupabase } from './core/auth/supabaseAuth.js';
 
 import './core/ui/colorKnobs.js';
+import './core/ui/dungeonDisplayManager.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');

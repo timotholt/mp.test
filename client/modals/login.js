@@ -350,13 +350,6 @@ export function showLoginBackdrop() {
     container.style.zIndex = '1';
     container.style.pointerEvents = 'none'; // modal handles input
   }
-  // Paint a small demo dungeon if nothing has arrived yet
-  const demo = buildDemoDungeon();
-  if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
-    window.radianceCascades.setDungeonMap(demo);
-  } else {
-    window.__pendingDungeonMap = demo;
-  }
 }
 
 function buildDemoDungeon() {

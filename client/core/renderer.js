@@ -276,12 +276,16 @@ export async function setupAsciiRenderer() {
       if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
     });
 
-    // UI overlay integration: when a blocking modal is active, disable canvas input
+    // UI overlay integration: keep canvas interactive on Login/Lobby; disable only during gameplay
     window.addEventListener('ui:blocking-changed', (e) => {
       const blocking = !!(e && e.detail && e.detail.blocking);
-      try { container.style.pointerEvents = blocking ? 'none' : ''; } catch (_) {}
-      if (blocking && dragging) {
-        // Cancel any in-flight drag so we don't keep panning under a modal
+      let route = null;
+      try { route = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null; } catch (_) {}
+      const STATES = window.APP_STATES || {};
+      const shouldDisable = !!(blocking && route === STATES.GAMEPLAY_ACTIVE);
+      try { container.style.pointerEvents = shouldDisable ? 'none' : 'auto'; } catch (_) {}
+      if (shouldDisable && dragging) {
+        // Cancel any in-flight drag so we don't keep panning under a blocking gameplay modal
         dragging = false;
         try { canvas.style.cursor = 'default'; } catch (_) {}
       }
