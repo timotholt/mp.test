@@ -8,6 +8,7 @@ import { createDropdown } from '../../../core/ui/controls.js';
 import { listFonts, getFont, resolveImageSrc, computeGlyphCount } from '../../../core/ui/dungeon/fontCatalog.js';
 import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
+import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
 const DISPLAY_QUIPS = [
@@ -265,8 +266,8 @@ export function renderDisplayTab(container) {
     prevBox.style.display = 'flex';
     prevBox.style.flexDirection = 'column';
     prevBox.style.gap = '0.5rem';
-    // Position context for any overlays; let inner wrapper handle scrolling
-    try { prevBox.style.overflow = 'visible'; prevBox.style.position = 'relative'; } catch (_) {}
+    // Make the parent the scroller so padding is inside the scrollbars (theme standard)
+    try { prevBox.style.overflow = 'auto'; prevBox.style.position = 'relative'; prevBox.style.height = '10rem'; } catch (_) {}
     // Critical for flex children to allow shrinking instead of forcing the row wider
     try {
       prevBox.style.flex = '1 1 auto';
@@ -278,9 +279,9 @@ export function renderDisplayTab(container) {
     scrollWrap.style.width = '100%';
     scrollWrap.style.maxWidth = '100%';
     scrollWrap.style.minWidth = '0';
-    scrollWrap.style.height = '10rem';
-    // Use the inner wrapper as the scroller for stability
-    scrollWrap.style.overflow = 'auto';
+    // Inner wrapper is not the scroller; keep visible so parent (prevBox) scrollbars include padding
+    scrollWrap.style.height = 'auto';
+    scrollWrap.style.overflow = 'visible';
     scrollWrap.style.borderRadius = '0.375rem';
     scrollWrap.style.background = 'transparent';
     const canvas = document.createElement('canvas');
@@ -298,58 +299,8 @@ export function renderDisplayTab(container) {
 
     prevBox.appendChild(scrollWrap);
 
-    // Sci-fi tooltip overlay (replaces default browser title)
-    const tip = document.createElement('div');
-    try {
-      tip.style.position = 'absolute';
-      tip.style.display = 'none';
-      tip.style.pointerEvents = 'none';
-      tip.style.userSelect = 'none';
-      tip.style.padding = '0.25rem 0.4rem';
-      tip.style.fontSize = '0.8rem';
-      tip.style.border = '1px solid rgba(200,120,255,0.5)';
-      tip.style.borderRadius = '0.375rem';
-      tip.style.backdropFilter = 'blur(2px)';
-      tip.style.background = 'linear-gradient(180deg, rgba(40,10,60,0.85), rgba(20,8,40,0.85))';
-      tip.style.boxShadow = '0 0 12px rgba(200,120,255,0.25), inset 0 0 8px rgba(255,255,255,0.06)';
-      tip.style.color = 'rgba(255,220,255,0.95)';
-      tip.style.zIndex = '9999';
-      tip.style.whiteSpace = 'nowrap';
-    } catch (_) {}
-    prevBox.appendChild(tip);
-
-    function showSciFiTip(text, relX, relY) {
-      try {
-        tip.textContent = text;
-        tip.style.left = `${Math.round(relX + 12)}px`;
-        tip.style.top = `${Math.round(relY + 12)}px`;
-        tip.style.display = 'block';
-      } catch (_) {}
-    }
-    function hideSciFiTip() { try { tip.style.display = 'none'; } catch (_) {} }
-
-    function updateHoverSciFi(ev) {
-      try {
-        if (!lastGrid || !currentImg) { hideSciFiTip(); return; }
-        const rect = canvas.getBoundingClientRect();
-        const boxRect = prevBox.getBoundingClientRect();
-        const x = ev.clientX - rect.left;
-        const y = ev.clientY - rect.top;
-        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) { hideSciFiTip(); return; }
-        const col = Math.floor(x / lastGrid.cellW);
-        const row = Math.floor(y / lastGrid.cellH);
-        const idx = row * lastGrid.cols + col;
-        const code = lastGrid.start + idx;
-        const ch = String.fromCharCode(code);
-        const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
-        const text = `ASCII ${code} '${ch}' (${hex})`;
-        const relX = ev.clientX - boxRect.left;
-        const relY = ev.clientY - boxRect.top;
-        showSciFiTip(text, relX, relY);
-      } catch (_) { hideSciFiTip(); }
-    }
-    canvas.addEventListener('mousemove', updateHoverSciFi);
-    canvas.addEventListener('mouseleave', hideSciFiTip);
+    // Reuse centralized sci-fi tooltip: far mode with bottom placement
+    try { attachTooltip(canvas, { mode: 'far', placement: ['bc', 'b', 'br', 'bl'] }); } catch (_) {}
 
     // Info row under preview
     const infoRow = createUiElement(basicFormRow, 'div');
@@ -365,6 +316,7 @@ export function renderDisplayTab(container) {
     let zoomLevel = 1;          // integer zoom multiplier (>=1)
     let currentImg = null;      // loaded Image for current font
     let derived = { cols: null, rows: null, count: null }; // computed from image when available
+    let lastHover = { col: -1, row: -1 }; // hovered cell for preview highlight
 
     function currentFont() {
       try {
@@ -427,6 +379,33 @@ export function renderDisplayTab(container) {
       }
       // Save grid info for hover hit-testing
       lastGrid = { cols, rows, start, glyphCount, cellW, cellH, tileW: TILE_W, tileH: TILE_H };
+      // Draw hover highlight if applicable (theme-compliant)
+      try { drawHoverHighlight(); } catch (_) {}
+    }
+
+    function drawHoverHighlight() {
+      try {
+        if (!lastGrid || lastHover.col < 0 || lastHover.row < 0) return;
+        const cs = getComputedStyle(document.documentElement);
+        const color = (cs.getPropertyValue('--ui-bright-border') || cs.getPropertyValue('--ui-surface-border') || 'rgba(120,170,255,0.85)').trim();
+        const dx = lastHover.col * lastGrid.cellW;
+        const dy = lastHover.row * lastGrid.cellH;
+        const w = lastGrid.cellW;
+        const h = lastGrid.cellH;
+        ctx.save();
+        // Soft fill using theme hue
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = color;
+        ctx.fillRect(dx, dy, w, h);
+        // Outline with glow
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1, Math.floor(zoomLevel / 2));
+        ctx.shadowColor = (cs.getPropertyValue('--ui-bright') || color || 'rgba(120,170,255,1)').trim();
+        ctx.shadowBlur = 8;
+        ctx.strokeRect(dx + 0.5, dy + 0.5, w - 1, h - 1);
+        ctx.restore();
+      } catch (_) {}
     }
 
     function renderFallbackText(font) {
@@ -487,6 +466,37 @@ export function renderDisplayTab(container) {
       infoText.textContent = `${f.tile.w}x${f.tile.h} • ${count} glyphs • start ${Number.isFinite(f.startCode)?f.startCode:32} • zoom x${zoomLevel}`;
     };
 
+    function handleHover(ev) {
+      try {
+        if (!lastGrid || !currentImg) { updateTooltip(canvas, ''); return; }
+        const rect = canvas.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) {
+          if (lastHover.col !== -1 || lastHover.row !== -1) {
+            lastHover = { col: -1, row: -1 };
+            const f = currentFont();
+            try { drawPreview(f, currentImg); } catch (_) {}
+          }
+          updateTooltip(canvas, '');
+          return;
+        }
+        const col = Math.floor(x / lastGrid.cellW);
+        const row = Math.floor(y / lastGrid.cellH);
+        if (col !== lastHover.col || row !== lastHover.row) {
+          lastHover = { col, row };
+          const idx = row * lastGrid.cols + col;
+          const code = lastGrid.start + idx;
+          const ch = String.fromCharCode(code);
+          const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+          const text = `ASCII ${code} '${ch}' (${hex})`;
+          updateTooltip(canvas, text);
+          const f = currentFont();
+          try { drawPreview(f, currentImg); } catch (_) {}
+        }
+      } catch (_) { /* no-op */ }
+    }
+
     const handleZoomIn = (ev) => {
       try {
         try { console.debug('[GlyphPreview] + clicked'); } catch (_) {}
@@ -517,6 +527,7 @@ export function renderDisplayTab(container) {
     };
     // Attach handlers
     try { zoomInBtn.onclick = handleZoomIn; zoomOutBtn.onclick = handleZoomOut; } catch (_) {}
+    try { canvas.addEventListener('mousemove', handleHover); canvas.addEventListener('mouseleave', handleHover); } catch (_) {}
     // Initial render
     try { updatePreview(); updateInfo(); } catch (_) {}
   } catch (_) {}
