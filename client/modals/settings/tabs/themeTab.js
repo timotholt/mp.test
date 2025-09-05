@@ -4,7 +4,7 @@
 // Minimal, human-readable, and commented per project conventions.
 
 import { getQuip } from '../../../core/ui/quip.js';
-import { createDropdown, createButton, createKnobButton, createKnobButtonV2, createNeonButton, createNeonOutlineTextButton } from '../../../core/ui/controls.js';
+import { createDropdown } from '../../../core/ui/controls.js';
 import { makeSection, attachWheel, attachHover } from '../uiHelpers.js';
 import { themePresets } from '../../../core/ui/theme/presets.js';
 import { createUiElement, basicButton, createRangeElement, basicFormRow, basicFormLabel, basicQuarterGap, basicGapBetweenSections, basicToolbarRow } from '../../../core/ui/theme/elements.js';
@@ -217,44 +217,6 @@ export function renderThemeTab(container) {
         }
         if (dd) hdrRow.appendChild(dd.el);
         if (resetBtn) hdrRow.appendChild(resetBtn);
-        // Add demo buttons to showcase new chrome side-by-side
-        try {
-          const demoBtn = createButton({ label: 'Basic Button', onClick: () => { try { console.log('[ThemeTab] Basic Button clicked'); } catch (_) {} }, minWidth: '8rem' });
-          if (demoBtn && demoBtn.el) {
-            demoBtn.el.style.marginLeft = '0.5rem';
-            hdrRow.appendChild(demoBtn.el);
-          }
-          const knobStyleBtn = createKnobButton({ label: 'Knob Button', onClick: () => { try { console.log('[ThemeTab] Knob Button clicked'); } catch (_) {} }, minWidth: '8rem' });
-          if (knobStyleBtn && knobStyleBtn.el) {
-            knobStyleBtn.el.style.marginLeft = '0.5rem';
-            hdrRow.appendChild(knobStyleBtn.el);
-          }
-          // V2 demo button: place it somewhere under the original, not aligned, for design iteration
-          const knobStyleBtnV2 = (typeof createKnobButtonV2 === 'function')
-            ? createKnobButtonV2({ label: 'Knob Button V2', onClick: () => { try { console.log('[ThemeTab] Knob Button V2 clicked'); } catch (_) {} }, minWidth: '8rem' })
-            : null;
-          if (knobStyleBtnV2 && knobStyleBtnV2.el) {
-            try { knobStyleBtnV2.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
-            // Append to the same section, after the header row, so it appears under the original
-            sec.appendChild(knobStyleBtnV2.el);
-          }
-          // Neon demo: pill-shaped red neon outline button
-          const neonBtn = (typeof createNeonButton === 'function')
-            ? createNeonButton({ label: 'Subscribe', onClick: () => { try { console.log('[ThemeTab] Neon Subscribe clicked'); } catch (_) {} }, minWidth: '10.25rem' })
-            : null;
-          if (neonBtn && neonBtn.el) {
-            try { neonBtn.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
-            sec.appendChild(neonBtn.el);
-          }
-          // Neon Outline-Text variant: sits next to the neon demo button
-          const neonOutlineBtn = (typeof createNeonOutlineTextButton === 'function')
-            ? createNeonOutlineTextButton({ label: 'Subscribe', onClick: () => { try { console.log('[ThemeTab] Neon Outline Subscribe clicked'); } catch (_) {} }, minWidth: '10.25rem' })
-            : null;
-          if (neonOutlineBtn && neonOutlineBtn.el) {
-            try { neonOutlineBtn.el.style.margin = '0.5rem 0 0 0.5rem'; } catch (_) {}
-            sec.appendChild(neonOutlineBtn.el);
-          }
-        } catch (_) {}
     } catch (_) {
       // Fallback: no-op if header cannot be built
     }
