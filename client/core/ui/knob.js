@@ -30,6 +30,15 @@ export function createKnob(opts = {}) {
   const wheelFineStep = (opts.wheelFineStep != null && Number.isFinite(Number(opts.wheelFineStep)))
     ? Number(opts.wheelFineStep)
     : null;
+  // Optional: middle tier for small multi-notch spins (e.g., 2–3 notches)
+  // Defaults to 3 units if not provided, matching the requested "3 degrees / 3%" middle speed
+  const wheelMediumStep = (opts.wheelMediumStep != null && Number.isFinite(Number(opts.wheelMediumStep)))
+    ? Number(opts.wheelMediumStep)
+    : 3;
+  // Optional: turbo tier for very large multi-notch spins; defaults to 2× base step
+  const wheelTurboStep = (opts.wheelTurboStep != null && Number.isFinite(Number(opts.wheelTurboStep)))
+    ? Number(opts.wheelTurboStep)
+    : (step * 2);
   const readOnly = !!opts.readOnly;
   const allowSmall = !!opts.allowSmall;
 
@@ -259,8 +268,12 @@ export function createKnob(opts = {}) {
       const mag = Math.abs(norm);
       // Compute rounded notch count so Windows' common 120px (-> 1.2) still counts as a single notch
       const notches = Math.max(1, Math.min(50, Math.round(mag)));
-      // Use fine step for a single-notch spin; use base step when multiple notches are detected
-      const unitStep = (wheelFineStep != null && notches === 1) ? wheelFineStep : step;
+      // Tiered steps: 1-notch -> fine; 2–3 -> medium; 4–6 -> base; 7+ -> turbo
+      let unitStep;
+      if (notches === 1 && wheelFineStep != null) unitStep = wheelFineStep;
+      else if (notches <= 3 && wheelMediumStep != null) unitStep = wheelMediumStep;
+      else if (notches >= 7 && wheelTurboStep != null) unitStep = wheelTurboStep;
+      else unitStep = step;
 
       beginAdjust();
       // Apply in one update to avoid spamming onInput listeners

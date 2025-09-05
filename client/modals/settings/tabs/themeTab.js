@@ -13,7 +13,7 @@ import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 
 // Tuning: apply theme at most once every N animation frames while dragging
 // 1 = every frame, 2 = every other frame, etc. You can override at runtime by setting window.THEME_APPLY_EVERY_N_FRAMES
-const THEME_APPLY_EVERY_N_FRAMES = 1;
+const THEME_APPLY_EVERY_N_FRAMES = 6;
 
 export function renderThemeTab(container) {
   // High-fidelity ThemeScheduler: RAF-throttled + frame-skipping + batched patches
@@ -24,6 +24,7 @@ export function renderThemeTab(container) {
     let rafId = 0;            // current rAF id
     let dragDepth = 0;        // nested drags supported
     let frameGate = 0;        // frame counter for N-frame step
+    let lastApplyAt = 0;      // timestamp of last apply (ms)
     const root = document.documentElement;
     // Read step dynamically so devs can tune window.THEME_APPLY_EVERY_N_FRAMES at runtime
     function readStep() {
@@ -37,6 +38,16 @@ export function renderThemeTab(container) {
         return Math.max(1, THEME_APPLY_EVERY_N_FRAMES);
       }
     }
+    // Optional: also gate by time so behavior is stable across high-refresh displays
+    function readMinMs() {
+      try {
+        const raw = (typeof window !== 'undefined' && window.THEME_APPLY_MIN_MS != null)
+          ? Number(window.THEME_APPLY_MIN_MS)
+          : 0;
+        const n = Number.isFinite(raw) ? raw : 0;
+        return Math.max(0, n | 0);
+      } catch (_) { return 0; }
+    }
     let step = readStep();
     function tick() {
       // Only apply on every Nth frame; always keep the loop alive while we have pending updates
@@ -44,8 +55,13 @@ export function renderThemeTab(container) {
       if (desired !== step) { step = desired; frameGate = 0; }
       frameGate = (frameGate + 1) % step;
       if (frameGate === 0 && pending) {
-        const patch = pending; pending = null;
-        try { window.UITheme && window.UITheme.applyDynamicTheme(patch); } catch (_) {}
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const minMs = readMinMs();
+        if ((now - lastApplyAt) >= minMs) {
+          const patch = pending; pending = null;
+          try { window.UITheme && window.UITheme.applyDynamicTheme(patch); } catch (_) {}
+          lastApplyAt = now;
+        }
       }
       if (pending) { rafId = requestAnimationFrame(tick); } else { rafId = 0; }
     }
@@ -63,10 +79,12 @@ export function renderThemeTab(container) {
         try { if (finalPatch) { window.UITheme && window.UITheme.applyDynamicTheme(finalPatch); } } catch (_) {}
         // Cancel any leftover RAF and clear pending
         if (rafId) { try { cancelAnimationFrame(rafId); } catch (_) {} rafId = 0; }
-        pending = null; frameGate = 0;
+        pending = null; frameGate = 0; lastApplyAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       }
     };
   })();
+  // Expose scheduler for external controls (e.g., ColorKnobs) to respect throttling if desired
+  try { window.ThemeScheduler = ThemeScheduler; } catch (_) {}
   // Theme tab is overlay-only; remove variant checks
   // const variant = 'overlay';
   const headerTitle = 'UI Presets';

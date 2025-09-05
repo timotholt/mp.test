@@ -99,7 +99,11 @@ export function createHueKnob(opts = {}) {
     },
     titleFormatter: tfHue,
     onInput: (v) => {
-      try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ hue: v }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {} }
+      } catch (_) {}
       // Notify other knobs so they can recolor their spectrum rings (throttled)
       try {
         const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -111,7 +115,11 @@ export function createHueKnob(opts = {}) {
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
-      try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.endDrag) { try { TS.endDrag({ hue: v }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ hue: v }); } catch (_) {} }
+      } catch (_) {}
       // Always emit a final event on change (pointer up), regardless of throttle
       try {
         window.dispatchEvent(new CustomEvent('ui:hue-changed', { detail: { hue: v } }));
@@ -177,10 +185,13 @@ export function createSaturationKnob(opts = {}) {
     onInput: (v) => {
       // Reflect on CSS var and apply to theme as explicit saturation override (0..100)
       const vv = Math.round(v);
-      try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
       // Guard to avoid reacting to our own broadcast below
       kn.__userAdjusting = true;
-      try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ saturation: vv }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {} }
+      } catch (_) {}
       kn.__userAdjusting = false;
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
@@ -188,7 +199,11 @@ export function createSaturationKnob(opts = {}) {
       const vv = Math.round(v);
       try { getRoot().style.setProperty('--ui-saturation', String(vv)); } catch (_) {}
       kn.__userAdjusting = true;
-      try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.endDrag) { try { TS.endDrag({ saturation: vv }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ saturation: vv }); } catch (_) {} }
+      } catch (_) {}
       kn.__userAdjusting = false;
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
@@ -268,14 +283,21 @@ export function createIntensityKnob(opts = {}) {
     titleFormatter: tfPct('Intensity'),
     onInput: (v) => {
       const vv = Math.round(v);
-      try { getRoot().style.setProperty('--ui-intensity', String(vv)); } catch (_) {}
-      try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ intensity: vv }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {} }
+      } catch (_) {}
       if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
     },
     onChange: (v) => {
       const vv = Math.round(v);
       try { getRoot().style.setProperty('--ui-intensity', String(vv)); } catch (_) {}
-      try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {}
+      try {
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.endDrag) { try { TS.endDrag({ intensity: vv }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ intensity: vv }); } catch (_) {} }
+      } catch (_) {}
       if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
     },
     theme: opts.theme,
