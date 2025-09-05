@@ -84,8 +84,18 @@ export function ensureStatusBar() {
         }
       }, STATUSBAR_HIDE_DELAY_MS);
     };
-    bar.addEventListener('mouseenter', () => { hoveringBar = true; clearHide(); });
-    bar.addEventListener('mouseleave', () => { hoveringBar = false; requestHide(); });
+    bar.addEventListener('mouseenter', () => {
+      hoveringBar = true;
+      clearHide();
+      // Use brighter border token while hovering for clearer affordance
+      try { bar.style.borderBottom = '1px solid var(--ui-bright-border, var(--ui-surface-border, rgba(120,170,255,0.70)))'; } catch (_) {}
+    });
+    bar.addEventListener('mouseleave', () => {
+      hoveringBar = false;
+      requestHide();
+      // Restore normal surface border when not hovering
+      try { bar.style.borderBottom = '1px solid var(--ui-surface-border, rgba(120,170,255,0.70))'; } catch (_) {}
+    });
     window.addEventListener('mousemove', (e) => {
       if (e.clientY <= 8) {
         bar.style.transform = 'translateY(0)';
