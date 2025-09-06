@@ -286,36 +286,21 @@ export function createTextBrightnessKnob(opts = {}) {
   try {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
-      const rem = remBasePx();
       const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
-      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
-      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
-      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
-      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
+      const mask = buildStandardRingMask(size);
 
-      const buildGradient = () => {
-        const arcLen = 270;        // -135..135 degrees
-        const step = 10;           // 10° samples
-        const fromDeg = 225;       // bottom-centered cutout
-        const stops = [];
-        for (let ang = 0; ang <= arcLen; ang += step) {
-          const t = Math.min(1, Math.max(0, ang / arcLen));
-          // Map to ~38%..100% lightness to match prior grayscale appearance
+      const buildGradient = () => buildArcGradient(
+        RING_ARC_FROM_DEG,
+        RING_ARC_LEN_DEG,
+        RING_SAMPLE_STEP_DEG,
+        (t) => {
           const l = Math.max(0, Math.min(100, Math.round(38 + t * (100 - 38))));
-          const col = colorFromHSLC({ h: 0, s: 0, l, alpha: 1, fixedChroma: 0 });
-          stops.push(`${col} ${ang}deg`);
+          return colorFromHSLC({ h: 0, s: 0, l, alpha: 1, fixedChroma: 0 });
         }
-        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
-        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
-      };
+      );
 
       try { ring.style.background = buildGradient(); } catch (_) {}
-      try { ring.style.webkitMaskImage = mask; } catch (_) {}
-      try { ring.style.maskImage = mask; } catch (_) {}
-      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
-      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
-      try { ring.style.opacity = '1'; } catch (_) {}
-      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+      applyStandardRingSkin(ring, mask);
     }
   } catch (_) {}
 
@@ -368,6 +353,43 @@ function buildDonutMask(sizePx, thicknessPx, edgeInsetPx, featherPx) {
   const o0 = outerR;
   const o1 = outerR + feather;
   return `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
+}
+
+// Shared ring arc constants so all arc-style knobs align visually.
+export const RING_ARC_LEN_DEG = 270;   // -135..+135 sweep
+export const RING_ARC_FROM_DEG = 225;  // start angle so the 90° cutout sits at 6 o'clock
+export const RING_SAMPLE_STEP_DEG = 10; // sampling resolution for gradient stops
+
+// Build a standard feathered donut mask using Hue geometry constants
+function buildStandardRingMask(sizePx) {
+  const rem = remBasePx();
+  const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
+  const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
+  const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
+  return buildDonutMask(sizePx, thicknessPx, edgeInsetPx, featherPx);
+}
+
+// Apply common ring chrome (mask, hints, transform/scale)
+function applyStandardRingSkin(ring, mask) {
+  try { ring.style.webkitMaskImage = mask; } catch (_) {}
+  try { ring.style.maskImage = mask; } catch (_) {}
+  try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+  try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
+  try { ring.style.opacity = '1'; } catch (_) {}
+  try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+}
+
+// Generic arc gradient builder; colorAtT receives t in [0,1] over the arc
+function buildArcGradient(fromDeg, arcLenDeg, stepDeg, colorAtT) {
+  const stops = [];
+  for (let ang = 0; ang <= arcLenDeg; ang += stepDeg) {
+    const t = Math.min(1, Math.max(0, ang / arcLenDeg));
+    let col = '#000';
+    try { col = colorAtT(t) || '#000'; } catch (_) {}
+    stops.push(`${col} ${ang}deg`);
+  }
+  stops.push(`transparent ${arcLenDeg}deg`, 'transparent 360deg');
+  return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
 }
 
 export function createSaturationKnob(opts = {}) {
@@ -436,28 +458,20 @@ export function createSaturationKnob(opts = {}) {
   try {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
-      const rem = remBasePx();
       const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
-      // Geometry from Hue constants
-      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
-      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
-      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
-      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
+      const mask = buildStandardRingMask(size);
 
       let _hueForPreview = currentHue();
       let _intensityForPreview = currentIntensity();
 
-      const buildGradient = () => {
-        const h = _hueForPreview;
-        const I = Math.round(_intensityForPreview);
-        const arcLen = 270;        // -135..135 degrees
-        const step = 10;           // 10° samples
-        const fromDeg = 225;       // bottom-centered cutout
-        const stops = [];
-        for (let ang = 0; ang <= arcLen; ang += step) {
-          const t = Math.min(1, Math.max(0, ang / arcLen));
+      const buildGradient = () => buildArcGradient(
+        RING_ARC_FROM_DEG,
+        RING_ARC_LEN_DEG,
+        RING_SAMPLE_STEP_DEG,
+        (t) => {
+          const h = _hueForPreview;
+          const I = Math.round(_intensityForPreview);
           const s = Math.round(t * 100);
-          // Match the original lightness mapping for saturation preview
           let l;
           if (I <= 0) l = 0; else {
             const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
@@ -465,20 +479,12 @@ export function createSaturationKnob(opts = {}) {
             const smooth = tEase * tEase * (3 - 2 * tEase);
             l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
           }
-          const col = colorFromHSLC({ h, s, l, alpha: 1 });
-          stops.push(`${col} ${ang}deg`);
+          return colorFromHSLC({ h, s, l, alpha: 1 });
         }
-        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
-        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
-      };
+      );
 
       try { ring.style.background = buildGradient(); } catch (_) {}
-      try { ring.style.webkitMaskImage = mask; } catch (_) {}
-      try { ring.style.maskImage = mask; } catch (_) {}
-      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
-      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
-      try { ring.style.opacity = '1'; } catch (_) {}
-      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+      applyStandardRingSkin(ring, mask);
 
       // Live recolor listeners
       try {
@@ -559,27 +565,17 @@ export function createIntensityKnob(opts = {}) {
   try {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
-      const rem = remBasePx();
       const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
-      // Use the same geometry constants as the Hue knob
-      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
-      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
-      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
-      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
+      const mask = buildStandardRingMask(size);
 
-      // Build a perceptual intensity gradient for an arc-only sweep (-135..135)
+      // Build a perceptual intensity gradient for an arc-only sweep
       let _hueForPreview = currentHue();
-      const buildGradient = () => {
-        const h = _hueForPreview;
-        const arcLen = 270;           // -135..135 degrees
-        const step = 10;              // 10° samples for smoothness
-        // Place the transparent 90° wedge centered at bottom (6 o'clock):
-        // Start the arc at 135° so the remaining 90° (45°..135°) is the bottom cutout.
-        // This aligns with the knob sweep (-135..+135) from bottom-left -> top -> top-right.
-        const fromDeg = 225;
-        const stops = [];
-        for (let ang = 0; ang <= arcLen; ang += step) {
-          const t = Math.min(1, Math.max(0, ang / arcLen));
+      const buildGradient = () => buildArcGradient(
+        RING_ARC_FROM_DEG,
+        RING_ARC_LEN_DEG,
+        RING_SAMPLE_STEP_DEG,
+        (t) => {
+          const h = _hueForPreview;
           const I = Math.round(t * 100);
           const s = satFromIntensity(I);
           let l;
@@ -589,21 +585,12 @@ export function createIntensityKnob(opts = {}) {
             const smooth = tEase * tEase * (3 - 2 * tEase);
             l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
           }
-          const col = colorFromHSLC({ h, s, l, alpha: 1 });
-          stops.push(`${col} ${ang}deg`);
+          return colorFromHSLC({ h, s, l, alpha: 1 });
         }
-        // Fill remainder of the circle with transparency so we see an arc only
-        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
-        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
-      };
+      );
 
       try { ring.style.background = buildGradient(); } catch (_) {}
-      try { ring.style.webkitMaskImage = mask; } catch (_) {}
-      try { ring.style.maskImage = mask; } catch (_) {}
-      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
-      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
-      try { ring.style.opacity = '1'; } catch (_) {}
-      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+      applyStandardRingSkin(ring, mask);
 
       // Rebuild the gradient immediately when Hue changes elsewhere
       try {
