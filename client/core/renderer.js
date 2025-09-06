@@ -2,6 +2,7 @@
 // Keeps behavior the same, but modular. Uses global UI helpers if present.
 
 import { initAudio } from './audio/audioManager.js';
+import { getFont, resolveImageSrc } from './ui/dungeon/fontCatalog.js';
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -22,6 +23,34 @@ function hideLegacyDom() {
     if (app) {
       app.querySelectorAll('h1, p, pre').forEach((el) => { el.style.display = 'none'; });
     }
+
+    // After RC is ready, apply saved dungeon font from localStorage if any
+    try {
+      const savedIdRaw = localStorage.getItem('ui_dungeon_font_id');
+      if (savedIdRaw) {
+        // Migrate legacy ids like Display tab does
+        const alias = {
+          'vendor-16x16': 'Bisasam_16x16',
+          'Bisasam 16x16': 'Bisasam_16x16',
+        };
+        const savedId = alias[savedIdRaw] || savedIdRaw;
+        const f = getFont(savedId);
+        if (f) {
+          const src = resolveImageSrc(f);
+          if (src) {
+            const detail = {
+              id: f.id,
+              name: f.name,
+              tile: f.tile,
+              atlas: f.atlas,
+              startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
+            };
+            if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
+            window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
+          }
+        }
+      }
+    } catch (_) {}
   } catch (_) {}
   // If vendor demo controls ever sneak in, hide them defensively
   try {
