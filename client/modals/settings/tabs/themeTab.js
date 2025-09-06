@@ -14,6 +14,13 @@ import { attachTooltip, updateTooltip } from '../../../core/ui/tooltip.js';
 // Tuning: apply theme at most once every N animation frames while dragging
 // 1 = every frame, 2 = every other frame, etc. You can override at runtime by setting window.THEME_APPLY_EVERY_N_FRAMES
 const THEME_APPLY_EVERY_N_FRAMES = 6;
+// Ring halo size multiplier for knob outer ring glow (applies to hover/focus halo on .k-ring)
+// Example: 2 doubles the glow radius; 1 keeps current; 0.5 halves it.
+export const RING_HALO_RADIUS_MULT = 1000;
+// Unmasked overlay (full-circle) that sits as a sibling to .k-ring and can glow beyond the mask
+export const RING_GLOW_SIZE_PCT = 100;     // percent of knob size for the overlay diameter
+export const RING_GLOW_BORDER_PX = 0;     // overlay stroke thickness
+export const RING_GLOW_SCALE = 0;       // matches the ring scale used by ColorKnobs (HUE_RING_SCALE)
 
 export function renderThemeTab(container) {
   // High-fidelity ThemeScheduler: RAF-throttled + frame-skipping + batched patches
@@ -196,12 +203,36 @@ export function renderThemeTab(container) {
         if (s <= 0) return '';
         const t = s * s * (3 - 2 * s); // smoothstep(0..1)
         // Radii chosen to remain subtle at max while matching prior ~0.20/0.50 around 60%.
-        const rSmall = (0.27 * t).toFixed(3);
-        const rLarge = (0.67 * t).toFixed(3);
+        const rSmall = (0.27 * t * RING_HALO_RADIUS_MULT).toFixed(3);
+        const rLarge = (0.67 * t * RING_HALO_RADIUS_MULT).toFixed(3);
         return `drop-shadow(0 0 ${rSmall}rem var(--ui-bright-border)) drop-shadow(0 0 ${rLarge}rem var(--ui-bright-border))`;
       };
-      const on = () => { try { ring.style.filter = computeHalo(); } catch (_) {} };
-      const off = () => { try { ring.style.filter = ''; } catch (_) {} };
+      // Build an unmasked full-circle overlay sibling so the halo can extend beyond the arc mask
+      let glow = kn.el.querySelector('.k-ring-glow');
+      if (!glow) {
+        glow = document.createElement('div');
+        glow.className = 'k-ring-glow';
+        glow.style.position = 'absolute';
+        glow.style.left = '50%';
+        glow.style.top = '50%';
+        glow.style.width = `${RING_GLOW_SIZE_PCT}%`;
+        glow.style.height = `${RING_GLOW_SIZE_PCT}%`;
+        glow.style.transform = `translate(-50%, -50%) translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${RING_GLOW_SCALE})`;
+        glow.style.borderRadius = '50%';
+        glow.style.border = `${RING_GLOW_BORDER_PX}px solid var(--ui-bright-border)`;
+        glow.style.pointerEvents = 'none';
+        glow.style.opacity = '0';
+        // Not masked because it's appended to the knob root, not inside the masked .k-ring
+        kn.el.appendChild(glow);
+      }
+      const on = () => {
+        try { ring.style.filter = computeHalo(); } catch (_) {}
+        try { glow.style.filter = computeHalo(); glow.style.opacity = '1'; } catch (_) {}
+      };
+      const off = () => {
+        try { ring.style.filter = ''; } catch (_) {}
+        try { glow.style.filter = ''; glow.style.opacity = '0'; } catch (_) {}
+      };
       kn.el.addEventListener('mouseenter', on);
       kn.el.addEventListener('mouseleave', off);
       kn.el.addEventListener('focus', on);
