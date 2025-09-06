@@ -339,28 +339,28 @@ async function afterAuthSuccess(modalId) {
   }
 }
 
-export function showLoginBackdrop() {
-  // Ensure renderer container exists and is full-screen and visible.
-  const container = document.getElementById('rc-canvas');
-  if (container) {
-    container.style.position = 'fixed';
-    container.style.inset = '0';
-    container.style.width = '100vw';
-    container.style.height = '100vh';
-    container.style.display = '';
-    container.style.zIndex = '1';
-    // Allow dragging/zooming the dungeon under the modal
-    container.style.pointerEvents = 'auto';
-  }
-}
+// export function showLoginBackdrop() {
+//   // Ensure renderer container exists and is full-screen and visible.
+//   const container = document.getElementById('rc-canvas');
+//   if (container) {
+//     container.style.position = 'fixed';
+//     container.style.inset = '0';
+//     container.style.width = '100vw';
+//     container.style.height = '100vh';
+//     container.style.display = '';
+//     container.style.zIndex = '1';
+//     // Allow dragging/zooming the dungeon under the modal
+//     container.style.pointerEvents = 'auto';
+//   }
+// }
 
-function buildDemoDungeon() {
-  // Tiny ASCII room with a door; readable even if color maps missing
-  const w = 60, h = 24;
-  const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => '#'));
-  for (let y = 2; y < h - 2; y++) {
-    for (let x = 2; x < w - 2; x++) grid[y][x] = '.';
-  }
-  grid[Math.floor(h/2)][0] = '+'; // a door on left
-  return grid.map(r => r.join('')).join('\n');
-}
+// function buildDemoDungeon() {
+//   // Tiny ASCII room with a door; readable even if color maps missing
+//   const w = 60, h = 24;
+//   const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => '#'));
+//   for (let y = 2; y < h - 2; y++) {
+//     for (let x = 2; x < w - 2; x++) grid[y][x] = '.';
+//   }
+//   grid[Math.floor(h/2)][0] = '+'; // a door on left
+//   return grid.map(r => r.join('')).join('\n');
+// }

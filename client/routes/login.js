@@ -2,7 +2,7 @@
 // Registers the LOGIN screen and shows the login modal/backdrop.
 
 import OverlayManager from '../core/overlayManager.js';
-import { presentLoginModal, showLoginBackdrop } from '../modals/login.js';
+import { presentLoginModal } from '../modals/login.js';
 import { ensureBanner } from '../core/ui/banner.js';
 
 export function registerLoginRoute({ makeScreen, APP_STATES }) {
@@ -12,7 +12,6 @@ export function registerLoginRoute({ makeScreen, APP_STATES }) {
     // Ensure any lingering lobby/room modal is dismissed when returning to login
     try { OverlayManager.dismiss('LOBBY_MODAL'); } catch (_) {}
     try { OverlayManager.dismiss('ROOM_MODAL'); } catch (_) {}
-    showLoginBackdrop();
     presentLoginModal();
     try { ensureBanner(); window.queueBanner('Login', 1); } catch (_) {}
   });
