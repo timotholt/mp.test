@@ -682,31 +682,22 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Apply subtile offset for smooth scrolling
     vec2 offsetUv = vUv - subTileOffset / gridSize;
 
-    // Calculate the grid position in viewport space
-    vec2 gridPos = vec2(
-      floor(offsetUv.x * gridSize.x),
-      floor(offsetUv.y * gridSize.y)
-    );
-
-    // Calculate the position within the character cell
-    vec2 charPos = vec2(
-      fract(offsetUv.x * gridSize.x) * tileSize.x,
-      fract(offsetUv.y * gridSize.y) * tileSize.y
-    );
-
-    // Convert viewport grid position to map grid position
-    vec2 mapGridPos = gridPos + cameraPosition / tileSize;
+    // Combine viewport position and camera offset into a single space.
+    // Integer part selects the map cell; fractional part selects the position within the tile.
+    vec2 viewFloat = offsetUv * gridSize + cameraPosition / tileSize;
+    vec2 mapCell = floor(viewFloat);
+    vec2 charPos = fract(viewFloat) * tileSize;
 
     // Check if the current position is within the map bounds
-    if (mapGridPos.x < 0.0 || mapGridPos.x >= mapSize.x ||
-        mapGridPos.y < 0.0 || mapGridPos.y >= mapSize.y) {
+    if (mapCell.x < 0.0 || mapCell.x >= mapSize.x ||
+        mapCell.y < 0.0 || mapCell.y >= mapSize.y) {
       // Outside the map bounds, render nothing (transparent)
       FragColor = vec4(0.0, 0.0, 0.0, 0.0);
       return;
     }
 
     // Normalize map grid position for texture lookup and sample at cell centers to avoid edge ambiguity
-    vec2 viewTexCoord = (mapGridPos + vec2(0.5)) / mapSize;
+    vec2 viewTexCoord = (mapCell + vec2(0.5)) / mapSize;
     viewTexCoord = clamp(viewTexCoord, vec2(0.0), vec2(1.0));
 
     // Sample the ASCII view texture to get character code and color
