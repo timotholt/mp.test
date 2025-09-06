@@ -230,6 +230,98 @@ export function createHueKnob(opts = {}) {
   return kn;
 }
 
+export function createTextBrightnessKnob(opts = {}) {
+  // 0..100 foreground text brightness; preview ring is grayscale dark -> light
+  const min = 0, max = 100;
+  const initial = Number.isFinite(opts.value) ? opts.value : 50;
+
+  const kn = createKnob({
+    min,
+    max,
+    value: initial,
+    step: (opts.step != null ? opts.step : 5),
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
+    size: opts.size || 64,
+    label: opts.label || 'Text Brightness',
+    // CSS conic-gradient (no segments)
+    segments: 0,
+    angleMin: -135,
+    angleMax: 135,
+    titleFormatter: tfPct('Text Brightness'),
+    onInput: (v) => {
+      try {
+        const vv = Math.round(v);
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.schedule) { try { TS.beginDrag(); } catch (_) {} try { TS.schedule({ fgBrightness: vv, transient: true }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ fgBrightness: vv, transient: true }); } catch (_) {} }
+      } catch (_) {}
+      if (typeof opts.onInput === 'function') { try { opts.onInput(v); } catch (_) {} }
+    },
+    onChange: (v) => {
+      try {
+        const vv = Math.round(v);
+        const TS = (typeof window !== 'undefined') ? window.ThemeScheduler : null;
+        if (TS && TS.endDrag) { try { TS.endDrag({ fgBrightness: vv }); } catch (_) {} }
+        else { try { window.UITheme?.applyDynamicTheme?.({ fgBrightness: vv }); } catch (_) {} }
+      } catch (_) {}
+      if (typeof opts.onChange === 'function') { try { opts.onChange(v); } catch (_) {} }
+    },
+    theme: opts.theme,
+    className: opts.className,
+    ringOffset: (opts.ringOffset ?? 22),
+    segThickness: 2,
+    segLength: 10,
+    dotSize: 6,
+  });
+
+  // Tooltips: show below knob with connector line (far mode, bottom-center placement)
+  try {
+    if (kn && kn.el) {
+      kn.el.__sfTipMode = 'far';
+      kn.el.__sfTipPlacementPriority = 'bc,b';
+    }
+  } catch (_) {}
+
+  // Paint the grayscale ring as an arc-only conic-gradient + donut mask
+  try {
+    const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
+    if (ring) {
+      const rem = remBasePx();
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
+      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
+      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
+      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
+
+      const buildGradient = () => {
+        const arcLen = 270;        // -135..135 degrees
+        const step = 10;           // 10° samples
+        const fromDeg = 225;       // bottom-centered cutout
+        const stops = [];
+        for (let ang = 0; ang <= arcLen; ang += step) {
+          const t = Math.min(1, Math.max(0, ang / arcLen));
+          // Map to ~38%..100% lightness to match prior grayscale appearance
+          const l = Math.max(0, Math.min(100, Math.round(38 + t * (100 - 38))));
+          const col = colorFromHSLC({ h: 0, s: 0, l, alpha: 1, fixedChroma: 0 });
+          stops.push(`${col} ${ang}deg`);
+        }
+        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
+        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
+      };
+
+      try { ring.style.background = buildGradient(); } catch (_) {}
+      try { ring.style.webkitMaskImage = mask; } catch (_) {}
+      try { ring.style.maskImage = mask; } catch (_) {}
+      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
+      try { ring.style.opacity = '1'; } catch (_) {}
+      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+    }
+  } catch (_) {}
+
+  return kn;
+}
+
 // --- Live reapply utilities (so constant tweaks take effect without recreating the modal) ---
 export function applyHueConstantsTo(el) {
   try {
@@ -532,6 +624,7 @@ try {
     createHueKnob,
     createSaturationKnob,
     createIntensityKnob,
+    createTextBrightnessKnob,
     applyHueConstantsTo,
     applyHueConstantsToAll,
   });

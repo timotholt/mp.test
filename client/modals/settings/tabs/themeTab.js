@@ -432,40 +432,27 @@ export function renderThemeTab(container) {
         knobRow.appendChild(makeCol(satKn.el, 'Saturation'));
 
         // New foreground Text Brightness knob (0..100, default 50)
-        // Uses the generic knob with a grayscale spectrum ring for consistency
-        txtKn = createKnob({
-          min: 0,
-          max: 100,
-          value: 50,
-          // Keep coarse step at 5 for drag; wheelFineStep below ensures 1% for slow wheel moves
-          step: 5,
-          wheelFineStep: 1,
-          size: knobSizePx,
-          label: 'Text Brightness',
-          segments: -1,
-          angleMin: -135,
-          angleMax: 135,
-          ringOffset: ringOffsetPx,
-          // Match band geometry with Hue/Saturation/Intensity knobs
-          // Keep units numeric (px) so createKnob applies pxToMinRem scaling
-          segThickness: 2,
-          segLength: 10,
-          dotSize: 6,
-          // Grayscale ring: dark -> light across the sweep
-          ringColorForAngle: (_angDeg, t) => {
-            const c = Math.round(96 + t * (255 - 96));
-            return `rgb(${c}, ${c}, ${c})`;
-          },
-          // RAF-throttle while dragging (input), commit once on release (change)
-          onInput: (v) => {
-            try { ThemeScheduler.beginDrag(); } catch (_) {}
-            try { ThemeScheduler.schedule({ fgBrightness: Math.round(v) }); } catch (_) {}
-            try { selectCustomPreset(); } catch (_) {}
-          },
-          onChange: (v) => {
-            try { ThemeScheduler.endDrag({ fgBrightness: Math.round(v) }); } catch (_) {}
-          }
-        });
+        // Now uses ColorKnobs with CSS conic-gradient + shared geometry
+        if (CK && CK.createTextBrightnessKnob) {
+          txtKn = CK.createTextBrightnessKnob({
+            size: knobSizePx,
+            label: 'Text Brightness',
+            ringOffset: ringOffsetPx,
+            wheelFineStep: 1,
+            onInput: () => { try { selectCustomPreset(); } catch (_) {} }
+          });
+        } else {
+          // Fallback to generic knob if ColorKnobs API unavailable
+          txtKn = createKnob({
+            min: 0, max: 100, value: 50, step: 5, wheelFineStep: 1,
+            size: knobSizePx, label: 'Text Brightness', segments: -1,
+            angleMin: -135, angleMax: 135, ringOffset: ringOffsetPx,
+            segThickness: 2, segLength: 10, dotSize: 6,
+            ringColorForAngle: (_angDeg, t) => { const c = Math.round(96 + t * (255 - 96)); return `rgb(${c}, ${c}, ${c})`; },
+            onInput: (v) => { try { ThemeScheduler.beginDrag(); } catch (_) {} try { ThemeScheduler.schedule({ fgBrightness: Math.round(v) }); } catch (_) {} try { selectCustomPreset(); } catch (_) {} },
+            onChange: (v) => { try { ThemeScheduler.endDrag({ fgBrightness: Math.round(v) }); } catch (_) {} }
+          });
+        }
 
         // Place Text Brightness tooltip to the right of the knob
         try { if (txtKn && txtKn.el) { txtKn.el.__sfTipMode = 'far'; txtKn.el.__sfTipPlacementPriority = 'rc,r'; } } catch (_) {}
