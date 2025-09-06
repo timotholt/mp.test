@@ -26,6 +26,7 @@ import bisasam24Url from '../../ui/dungeon/fonts/Bisasam_24x24.png';
 import bisasam20YobboModUrl from '../../ui/dungeon/fonts/Bisasam_20x20_Yobbo_Mod.png';
 import rogueyun16Url from '../../ui/dungeon/fonts/rogueyun_16x16.png';
 import guybrush16Url from '../../ui/dungeon/fonts/Guybrush_square_16x16.png';
+import rottingPixels from '../../ui/dungeon/fonts/rotting_pixels_sci-fi-tileset.png'
 
 
 function extractVendorDataUrl() {
@@ -92,6 +93,14 @@ const defaultFonts = [
     id: 'Rogue_Yun_16x16',
     name: 'Rogue Yun 16x16',
     url: rogueyun16Url,
+    tile: { w: 16, h: 16 },
+    atlas: { cols: 16, rows: 16 },
+    startCode: 32,
+  },
+  {
+    id: 'Rotting_Pixels_16x16',
+    name: 'Rotting Pixels 16x16',
+    url: rottingPixels,
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
