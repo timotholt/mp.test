@@ -203,6 +203,31 @@ export async function setupAsciiRenderer() {
       } catch (_) {}
       window.__pendingDungeonMap = undefined;
     }
+    if (window.__pendingDungeonFont && rc && rc.renderer) {
+      try {
+        const meta = window.__pendingDungeonFont;
+        console.log('[DEBUG client] applying pending dungeon font', meta);
+        const src = meta && (meta.dataUrl || meta.url);
+        if (src) {
+          const tex = rc.renderer.createTextureFromImage(src, () => {
+            try {
+              rc.renderer.font = tex;
+              if (rc.dungeonUniforms) {
+                rc.dungeonUniforms.asciiTexture = tex;
+                if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+                  rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+                }
+                if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+                  rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                }
+                rc.renderPass && rc.renderPass();
+              }
+            } catch (e) { console.warn('[font update] pending apply failed', e); }
+          });
+        }
+      } catch (_) {}
+      window.__pendingDungeonFont = undefined;
+    }
     if (window.__pendingCharacterColorMap && rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
       try {
         console.log('[DEBUG client] applying pending characterColorMap');
@@ -297,3 +322,41 @@ export async function setupAsciiRenderer() {
     console.error('[ASCII renderer] setup failed:', e);
   }
 }
+
+// Global listener: update dungeon font dynamically from Display tab
+try {
+  window.addEventListener('ui:dungeon-font-changed', (e) => {
+    try {
+      const meta = (e && e.detail) || null;
+      if (!meta) return;
+      const src = meta.dataUrl || meta.url;
+      if (!src) return;
+      const rc = window.radianceCascades;
+      if (!rc || !rc.renderer) {
+        // Renderer not ready yet; stash for setupAsciiRenderer to consume
+        window.__pendingDungeonFont = meta;
+        return;
+      }
+      // Create texture and swap into uniforms on load
+      const tex = rc.renderer.createTextureFromImage(src, () => {
+        try {
+          rc.renderer.font = tex;
+          if (rc.dungeonUniforms) {
+            rc.dungeonUniforms.asciiTexture = tex;
+            if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+              rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+            }
+            if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+              rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+            }
+            rc.renderPass && rc.renderPass();
+          }
+        } catch (err) {
+          console.warn('[font update] apply failed', err);
+        }
+      });
+    } catch (err) {
+      console.warn('[font update] listener error', err);
+    }
+  });
+} catch (_) {}

@@ -211,10 +211,29 @@ export function renderDisplayTab(container) {
     } catch (_) {}
 
     const items = fonts.map(f => ({ label: f.name, value: f.id }));
+    function dispatchDungeonFont(fontId) {
+      try {
+        const f = getFont(fontId);
+        if (!f) return;
+        const src = resolveImageSrc(f);
+        if (!src) return;
+        const detail = {
+          id: f.id,
+          name: f.name,
+          tile: f.tile,
+          atlas: f.atlas,
+          startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
+        };
+        if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
+        window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
+      } catch (_) {}
+    }
+
     const dfDd = createDropdown({ items, value: initialId, width: '16rem', onChange: (id) => {
       try { localStorage.setItem('ui_dungeon_font_id', String(id)); } catch (_) {}
       updatePreview();
       updateInfo();
+      dispatchDungeonFont(id);
     }});
     dfDdRef = dfDd;
     // Section-local Reset for Dungeon Settings (reset to first catalog font)
@@ -225,6 +244,7 @@ export function renderDisplayTab(container) {
       try { dfDdRef && dfDdRef.setValue && dfDdRef.setValue(first, true); } catch (_) {}
       updatePreview();
       updateInfo();
+      dispatchDungeonFont(first);
     };
     // Rely on grid gap for spacing; no manual margins needed
     dfRow.appendChild(dfLbl);
@@ -233,6 +253,8 @@ export function renderDisplayTab(container) {
     // Add a quarter-space before the Dungeon Font row per request
     try { dsec.appendChild(createUiElement(basicQuarterGap)); } catch (_) {}
     dsec.appendChild(dfRow);
+    // Sync current selection to the dungeon renderer on first render
+    try { dispatchDungeonFont(initialId); } catch (_) {}
   } catch (_) {}
 
   // Bitmap Glyph Preview (no vendor runtime). Uses fontCatalog metadata.

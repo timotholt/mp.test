@@ -21,26 +21,13 @@
 // Include the vendor atlas as a convenient default (parsed from the vendor JS as raw text)
 import asciiTextureSource from '../../../vendor/ascii-dungeon/ascii-dungeon/ascii-texture.js?raw';
 import bisasam16Url from '../../ui/dungeon/fonts/Bisasam_16x16.png';
+import bisasam24Url from '../../ui/dungeon/fonts/Bisasam_24x24.png';
+
 
 function extractVendorDataUrl() {
   try {
     const m = (asciiTextureSource || '').match(/const\s+asciiBase64\s*=\s*`([^`]+)`/s);
     return m && m[1] ? m[1] : null;
-  } catch (_) { return null; }
-}
-
-// Optional: if a 16x16 atlas is embedded in the same vendor file, pick it up too
-function extractVendor16DataUrl() {
-  try {
-    // Accept either backtick or quote definitions and flexible const name (ascii16x16Base64)
-    const src = asciiTextureSource || '';
-    // Backtick form
-    let m = src.match(/const\s+ascii16x16Base64\s*=\s*`([^`]+)`/s);
-    if (m && m[1]) return m[1];
-    // Single-quote or double-quote form
-    m = src.match(/const\s+ascii16x16Base64\s*=\s*['"]([^'\"]+)['"]/s);
-    if (m && m[1]) return m[1];
-    return null;
   } catch (_) { return null; }
 }
 
@@ -63,6 +50,15 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
   },
+  {
+    id: 'Bisasam_24x24',
+    name: 'Bisasam 24x24',
+    url: bisasam24Url,
+    tile: { w: 24, h: 24 },
+    atlas: { cols: 16, rows: 16 },
+    startCode: 32,
+  },
+
   // EXAMPLE: Internet font (8x16) — replace with your URL
   // {
   //   id: 'dos-8x16',
