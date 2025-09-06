@@ -10,9 +10,22 @@
 import { createKnob } from './knob.js';
 
 // Throttle: minimum time between hue change broadcasts while dragging (ms)
-export const HUE_EVENT_MIN_INTERVAL_MS = 100;
+export const HUE_EVENT_MIN_INTERVAL_MS = 0;
 // Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
 export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
+
+// ---------------------------------------------------------------
+// Shared knob defaults (arc-style knobs): size, steps, angles, arc sweep
+// ---------------------------------------------------------------
+export const KNOB_SIZE_PX_DEFAULT = 64;
+export const KNOB_STEP_DEFAULT = 5;                 // coarse drag step (percent)
+export const KNOB_WHEEL_FINE_STEP_DEFAULT = 1;      // fine wheel step (percent)
+export const ARC_ANGLE_MIN_DEG = -135;
+export const ARC_ANGLE_MAX_DEG = 135;
+// Arc orientation and sampling (bottom-centered cutout)
+export const RING_ARC_LEN_DEG = 270;                // -135..+135 sweep
+export const RING_ARC_FROM_DEG = 225;               // start angle -> cutout at 6 o'clock
+export const RING_SAMPLE_STEP_DEG = 10;             // sampling for gradient stops
 
 // ---------------------------------------------------------------
 // Hue Knob Visual Tuning (single source of truth; easy to tweak)
@@ -86,6 +99,18 @@ function currentIntensity() { return readCssNumber('--ui-intensity', 60); }
 // Mirror themeManager.js mapping so saturation previews align with current intensity
 function satFromIntensity(intensity) { return Math.max(0, Math.min(85, intensity * 0.8)); }
 
+// Lightness mapping mirrors themeManager with low-end compression (smoothstep over 0..10)
+function lightnessFromIntensity(I) {
+  I = Math.max(0, Math.min(100, Number(I)));
+  if (I <= 0) return 0;
+  const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
+  const tEase = Math.min(1, I / 10);
+  const smooth = tEase * tEase * (3 - 2 * tEase);
+  return Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
+}
+
+export const TEXT_BRI_MIN_L = 38;
+
 // ---- Title formatters ----
 const tfHue = (v) => `Hue: ${Math.round(v)}°`;
 const tfPct = (label) => (v, { min, max }) => {
@@ -108,7 +133,7 @@ export function createHueKnob(opts = {}) {
     step: (opts.step != null ? opts.step : 18),
     // Fine wheel increment: 1 degree for subtle wheel moves
     wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
-    size: opts.size || 64,
+    size: opts.size || KNOB_SIZE_PX_DEFAULT,
     label: opts.label || 'Hue',
     // Use CSS conic-gradient for the hue ring (no micro-segments)
     segments: 0,
@@ -185,7 +210,7 @@ export function createHueKnob(opts = {}) {
         hsl(315 100% 50%) 315deg,
         hsl(360 100% 50%) 360deg)`;
       // Compute ring geometry based on provided options or sensible defaults
-      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : KNOB_SIZE_PX_DEFAULT;
       // Band thickness and edge inset from tuning constants (convert rem -> px)
       const thicknessOpt = (opts.segLength != null) ? Number(opts.segLength) : (HUE_RING_THICKNESS_REM * remBasePx());
       const edgeInset = (HUE_RING_EDGE_INSET_REM * remBasePx()); // px
@@ -239,14 +264,14 @@ export function createTextBrightnessKnob(opts = {}) {
     min,
     max,
     value: initial,
-    step: (opts.step != null ? opts.step : 5),
-    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
-    size: opts.size || 64,
+    step: (opts.step != null ? opts.step : KNOB_STEP_DEFAULT),
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : KNOB_WHEEL_FINE_STEP_DEFAULT),
+    size: opts.size || KNOB_SIZE_PX_DEFAULT,
     label: opts.label || 'Text Brightness',
     // CSS conic-gradient (no segments)
     segments: 0,
-    angleMin: -135,
-    angleMax: 135,
+    angleMin: ARC_ANGLE_MIN_DEG,
+    angleMax: ARC_ANGLE_MAX_DEG,
     titleFormatter: tfPct('Text Brightness'),
     onInput: (v) => {
       try {
@@ -286,7 +311,7 @@ export function createTextBrightnessKnob(opts = {}) {
   try {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
-      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : KNOB_SIZE_PX_DEFAULT;
       const mask = buildStandardRingMask(size);
 
       const buildGradient = () => buildArcGradient(
@@ -355,11 +380,6 @@ function buildDonutMask(sizePx, thicknessPx, edgeInsetPx, featherPx) {
   return `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
 }
 
-// Shared ring arc constants so all arc-style knobs align visually.
-export const RING_ARC_LEN_DEG = 270;   // -135..+135 sweep
-export const RING_ARC_FROM_DEG = 225;  // start angle so the 90° cutout sits at 6 o'clock
-export const RING_SAMPLE_STEP_DEG = 10; // sampling resolution for gradient stops
-
 // Build a standard feathered donut mask using Hue geometry constants
 function buildStandardRingMask(sizePx) {
   const rem = remBasePx();
@@ -402,15 +422,15 @@ export function createSaturationKnob(opts = {}) {
     max,
     value: initial,
     // Wheel/key increment: ~5% of range for easier wheel control
-    step: (opts.step != null ? opts.step : 5),
+    step: (opts.step != null ? opts.step : KNOB_STEP_DEFAULT),
     // Fine wheel increment: 1% for subtle wheel moves
-    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
-    size: opts.size || 64,
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : KNOB_WHEEL_FINE_STEP_DEFAULT),
+    size: opts.size || KNOB_SIZE_PX_DEFAULT,
     label: opts.label || 'Saturation',
     // Use CSS conic-gradient for the saturation ring (no micro-segments)
     segments: 0,
-    angleMin: -135,
-    angleMax: 135,
+    angleMin: ARC_ANGLE_MIN_DEG,
+    angleMax: ARC_ANGLE_MAX_DEG,
     titleFormatter: tfPct('Saturation'),
     onInput: (v) => {
       // Reflect on CSS var and apply to theme as explicit saturation override (0..100)
@@ -458,7 +478,7 @@ export function createSaturationKnob(opts = {}) {
   try {
     const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
     if (ring) {
-      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : KNOB_SIZE_PX_DEFAULT;
       const mask = buildStandardRingMask(size);
 
       let _hueForPreview = currentHue();
@@ -472,13 +492,7 @@ export function createSaturationKnob(opts = {}) {
           const h = _hueForPreview;
           const I = Math.round(_intensityForPreview);
           const s = Math.round(t * 100);
-          let l;
-          if (I <= 0) l = 0; else {
-            const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
-            const tEase = Math.min(1, I / 10);
-            const smooth = tEase * tEase * (3 - 2 * tEase);
-            l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
-          }
+          const l = lightnessFromIntensity(I);
           return colorFromHSLC({ h, s, l, alpha: 1 });
         }
       );
@@ -515,15 +529,15 @@ export function createIntensityKnob(opts = {}) {
     max,
     value: initial,
     // Wheel/key increment: ~5% of range for easier wheel control
-    step: (opts.step != null ? opts.step : 5),
+    step: (opts.step != null ? opts.step : KNOB_STEP_DEFAULT),
     // Fine wheel increment: 1% for subtle wheel moves
-    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
-    size: opts.size || 64,
+    wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : KNOB_WHEEL_FINE_STEP_DEFAULT),
+    size: opts.size || KNOB_SIZE_PX_DEFAULT,
     label: opts.label || 'Intensity',
     // Use CSS conic-gradient for the intensity ring (no micro-segments)
     segments: 0,
-    angleMin: -135,
-    angleMax: 135,
+    angleMin: ARC_ANGLE_MIN_DEG,
+    angleMax: ARC_ANGLE_MAX_DEG,
     titleFormatter: tfPct('Intensity'),
     onInput: (v) => {
       const vv = Math.round(v);
@@ -578,13 +592,7 @@ export function createIntensityKnob(opts = {}) {
           const h = _hueForPreview;
           const I = Math.round(t * 100);
           const s = satFromIntensity(I);
-          let l;
-          if (I <= 0) l = 0; else {
-            const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
-            const tEase = Math.min(1, I / 10);
-            const smooth = tEase * tEase * (3 - 2 * tEase);
-            l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
-          }
+          const l = lightnessFromIntensity(I);
           return colorFromHSLC({ h, s, l, alpha: 1 });
         }
       );
