@@ -36,6 +36,15 @@ export function createVolumeKnob(opts = {}) {
     max: 1,
     value: initialValue,
     step,
+    // Mouse wheel tuning for 0..1 volume range:
+    // - fine: half the base step (min 0.005) for single-notch precision
+    // - medium: base step for small multi-notch spins
+    // - turbo: 2x base step for fast spins
+    // This avoids the generic default medium step (=3) which is appropriate for 0..100/0..360 knobs
+    // but makes 0..1 knobs feel binary (jumping straight to 0 or 1).
+    wheelFineStep: (typeof opts.wheelFineStep === 'number' ? Math.abs(opts.wheelFineStep) : Math.max(0.005, step * 0.5)),
+    wheelMediumStep: (typeof opts.wheelMediumStep === 'number' ? Math.abs(opts.wheelMediumStep) : step),
+    wheelTurboStep: (typeof opts.wheelTurboStep === 'number' ? Math.abs(opts.wheelTurboStep) : step * 2),
     size: opts.size,
     segments: Math.max(6, Math.floor(opts.segments || 24)),
     angleMin: -135,
