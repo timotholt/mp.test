@@ -21,7 +21,11 @@
 // Include the vendor atlas as a convenient default (parsed from the vendor JS as raw text)
 import asciiTextureSource from '../../../vendor/ascii-dungeon/ascii-dungeon/ascii-texture.js?raw';
 import bisasam16Url from '../../ui/dungeon/fonts/Bisasam_16x16.png';
+import bisasam20Url from '../../ui/dungeon/fonts/Bisasam_20x20.png';
 import bisasam24Url from '../../ui/dungeon/fonts/Bisasam_24x24.png';
+import bisasam20YobboModUrl from '../../ui/dungeon/fonts/Bisasam_20x20_Yobbo_Mod.png';
+import rogueyun16Url from '../../ui/dungeon/fonts/rogueyun_16x16.png';
+import guybrush16Url from '../../ui/dungeon/fonts/Guybrush_square_16x16.png';
 
 
 function extractVendorDataUrl() {
@@ -50,6 +54,23 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
   },
+  // Bundled 16x16 PNG atlas in client/fonts
+  {
+    id: 'Bisasam_20x20',
+    name: 'Bisasam 20x20',
+    url: bisasam20Url,
+    tile: { w: 20, h: 20 },
+    atlas: { cols: 16, rows: 16 },
+    startCode: 32,
+  },
+  {
+    id: 'Bisasam_20x20 Yobbo Mod',
+    name: 'Bisasam 20x20 Yobbo Mod',
+    url: bisasam20YobboModUrl,
+    tile: { w: 20, h: 20 },
+    atlas: { cols: 16, rows: 16 },
+    startCode: 32,
+  },
   {
     id: 'Bisasam_24x24',
     name: 'Bisasam 24x24',
@@ -58,6 +79,24 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
   },
+  // This font is purple when loaded by the dungeon renderer so it's commented out
+  // {
+  //   id: 'Guybrush 16x16',
+  //   name: 'Guybrush 16x16',
+  //   url: guybrush16Url,
+  //   tile: { w: 16, h: 16 },
+  //   atlas: { cols: 16, rows: 16 },
+  //   startCode: 32,
+  // },
+  {
+    id: 'Rogue_Yun_16x16',
+    name: 'Rogue Yun 16x16',
+    url: rogueyun16Url,
+    tile: { w: 16, h: 16 },
+    atlas: { cols: 16, rows: 16 },
+    startCode: 32,
+  },
+
 
   // EXAMPLE: Internet font (8x16) — replace with your URL
   // {
