@@ -203,6 +203,26 @@ export function applyControlsStyle(options = {}) {
         border: 1px solid var(--ui-surface-border);
         border-radius: 50%; box-shadow: none;
       }
+      /* Hover/focus chrome for range sliders to match other controls */
+      input[type="range"]:hover,
+      input[type="range"]:focus,
+      input[type="range"]:focus-visible {
+        outline: none;
+        border: var(--ui-surface-border-css);
+        box-shadow: var(--ui-surface-glow-outer);
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
+      }
+      /* Emphasize the thumb on hover/focus */
+      input[type="range"]:hover::-webkit-slider-thumb,
+      input[type="range"]:focus-visible::-webkit-slider-thumb {
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
+        box-shadow: var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95));
+      }
+      input[type="range"]:hover::-moz-range-thumb,
+      input[type="range"]:focus-visible::-moz-range-thumb {
+        border-color: var(--ui-bright-border, var(--ui-surface-border));
+        box-shadow: var(--ui-glow-strong, 0 0 14px rgba(120,170,255,0.95));
+      }
       /* Bright white + glow on label hover across app */
       label { transition: color 0.12s ease, text-shadow 0.12s ease; }
       label:hover { color: var(--ui-bright); text-shadow: 0 0 0.5625rem var(--ui-bright), 0 0 1.125rem var(--ui-accent); }
