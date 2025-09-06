@@ -10,7 +10,7 @@
 import { createKnob } from './knob.js';
 
 // Throttle: minimum time between hue change broadcasts while dragging (ms)
-export const HUE_EVENT_MIN_INTERVAL_MS = 200;
+export const HUE_EVENT_MIN_INTERVAL_MS = 0;
 // Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
 export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 
@@ -265,6 +265,19 @@ export function applyHueConstantsToAll() {
   try { document.querySelectorAll('.hue-knob').forEach((el) => applyHueConstantsTo(el)); } catch (_) {}
 }
 
+// --- Shared utility: build a feathered donut mask (thickness/edge/feather in px) ---
+// This matches the Hue knob geometry and keeps thickness/AA consistent across knobs.
+function buildDonutMask(sizePx, thicknessPx, edgeInsetPx, featherPx) {
+  const outerR = Math.max(10, Math.floor(sizePx / 2) - Math.max(0, edgeInsetPx || 0));
+  const innerR = Math.max(1, outerR - Math.max(1, thicknessPx || 1));
+  const feather = Math.max(0.5, featherPx || 0.5);
+  const i0 = Math.max(0, innerR - feather);
+  const i1 = innerR;
+  const o0 = outerR;
+  const o1 = outerR + feather;
+  return `radial-gradient(circle at 50% 50%, transparent ${i0}px, white ${i1}px, white ${o0}px, transparent ${o1}px)`;
+}
+
 export function createSaturationKnob(opts = {}) {
   // 0..100 logical saturation; preview uses constant lightness with increasing chroma
   const min = 0, max = 100;
@@ -381,21 +394,10 @@ export function createIntensityKnob(opts = {}) {
     wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Intensity',
-    segments: -1,
+    // Use CSS conic-gradient for the intensity ring (no micro-segments)
+    segments: 0,
     angleMin: -135,
     angleMax: 135,
-    ringColorForAngle: (_angDeg, t) => {
-      const h = currentHue();
-      const I = Math.round(t * 100);
-      const s = satFromIntensity(I);
-      // Lightness mapping mirrors themeManager with low-end compression
-      if (I <= 0) return colorFromHSLC({ h, s, l: 0, alpha: 1 });
-      const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
-      const tEase = Math.min(1, I / 10);
-      const smooth = tEase * tEase * (3 - 2 * tEase);
-      const l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
-      return colorFromHSLC({ h, s, l, alpha: 1 });
-    },
     titleFormatter: tfPct('Intensity'),
     onInput: (v) => {
       const vv = Math.round(v);
@@ -433,23 +435,65 @@ export function createIntensityKnob(opts = {}) {
     }
   } catch (_) {}
 
-  // Recolor the spectrum ring when Hue changes elsewhere (throttled and synced with ThemeScheduler min-ms)
+  // Paint the intensity ring using a CSS conic-gradient + radial mask (donut)
   try {
-    let _last = 0, _timer = null;
-    const onHue = () => {
-      try {
-        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        const minMs = (typeof window !== 'undefined' && Number.isFinite(Number(window.THEME_APPLY_MIN_MS))) ? Math.max(0, Number(window.THEME_APPLY_MIN_MS)) : 0;
-        const effInterval = Math.max(RING_RECOLOR_MIN_INTERVAL_MS, minMs);
-        const dueIn = effInterval - (now - _last);
-        if (dueIn <= 0) {
-          _last = now; kn.refreshRingColors?.();
-        } else if (!_timer) {
-          _timer = setTimeout(() => { _timer = null; _last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); kn.refreshRingColors?.(); }, Math.max(0, dueIn));
+    const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
+    if (ring) {
+      const rem = remBasePx();
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      // Use the same geometry constants as the Hue knob
+      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
+      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
+      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
+      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
+
+      // Build a perceptual intensity gradient for an arc-only sweep (-135..135)
+      let _hueForPreview = currentHue();
+      const buildGradient = () => {
+        const h = _hueForPreview;
+        const arcLen = 270;           // -135..135 degrees
+        const step = 10;              // 10° samples for smoothness
+        // Place the transparent 90° wedge centered at bottom (6 o'clock):
+        // Start the arc at 135° so the remaining 90° (45°..135°) is the bottom cutout.
+        // This aligns with the knob sweep (-135..+135) from bottom-left -> top -> top-right.
+        const fromDeg = 225;
+        const stops = [];
+        for (let ang = 0; ang <= arcLen; ang += step) {
+          const t = Math.min(1, Math.max(0, ang / arcLen));
+          const I = Math.round(t * 100);
+          const s = satFromIntensity(I);
+          let l;
+          if (I <= 0) l = 0; else {
+            const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
+            const tEase = Math.min(1, I / 10);
+            const smooth = tEase * tEase * (3 - 2 * tEase);
+            l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
+          }
+          const col = colorFromHSLC({ h, s, l, alpha: 1 });
+          stops.push(`${col} ${ang}deg`);
         }
+        // Fill remainder of the circle with transparency so we see an arc only
+        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
+        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
+      };
+
+      try { ring.style.background = buildGradient(); } catch (_) {}
+      try { ring.style.webkitMaskImage = mask; } catch (_) {}
+      try { ring.style.maskImage = mask; } catch (_) {}
+      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
+      try { ring.style.opacity = '1'; } catch (_) {}
+      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+
+      // Rebuild the gradient immediately when Hue changes elsewhere
+      try {
+        const onHue = (ev) => {
+          try { if (ev && ev.detail && Number.isFinite(ev.detail.hue)) { _hueForPreview = Number(ev.detail.hue); } else { _hueForPreview = currentHue(); } } catch (_) {}
+          try { ring.style.background = buildGradient(); } catch (_) {}
+        };
+        window.addEventListener('ui:hue-changed', onHue);
       } catch (_) {}
-    };
-    window.addEventListener('ui:hue-changed', onHue);
+    }
   } catch (_) {}
 
   return kn;
