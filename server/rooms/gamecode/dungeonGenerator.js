@@ -1,10 +1,10 @@
 // Dungeon generator entry point.
-// For now, return the default static map while the generator is being built out.
-const { getDefaultMap } = require('./defaultMap');
+// Delegate to shared generator to keep client and server identical.
+const { generateDungeon: sharedGenerateDungeon } = require('../../../shared/dungeon/generator');
 
 function generateDungeon(options = {}) {
-  // TODO: replace with real procedural generation using options (seed, size, theme, etc.)
-  return getDefaultMap();
+  // Forward to shared generator (supports options like seed, size, theme in the future)
+  return sharedGenerateDungeon(options || {});
 }
 
 module.exports = { generateDungeon };

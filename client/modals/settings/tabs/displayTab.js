@@ -194,7 +194,21 @@ export function renderDisplayTab(container) {
 
     const fonts = listFonts();
     let initialId = (fonts[0] && fonts[0].id) || 'vendor-8x8';
-    try { const s = localStorage.getItem('ui_dungeon_font_id'); if (s) initialId = s; } catch (_) {}
+    try {
+      const s = localStorage.getItem('ui_dungeon_font_id');
+      if (s) {
+        // Migrate older ids to the new stable catalog ids
+        const alias = {
+          'vendor-16x16': 'Bisasam_16x16',
+          'Bisasam 16x16': 'Bisasam_16x16',
+        };
+        const mapped = alias[s] || s;
+        initialId = mapped;
+        if (mapped !== s) {
+          try { localStorage.setItem('ui_dungeon_font_id', mapped); } catch (_) {}
+        }
+      }
+    } catch (_) {}
 
     const items = fonts.map(f => ({ label: f.name, value: f.id }));
     const dfDd = createDropdown({ items, value: initialId, width: '16rem', onChange: (id) => {
@@ -490,7 +504,10 @@ export function renderDisplayTab(container) {
         drawPreview(font, img);
         try { updateInfo(); } catch (_) {}
       };
-      img.onerror = () => renderFallbackText(font);
+      img.onerror = (err) => {
+        try { console.warn('[GlyphPreview] Image failed to load:', { src, err, font }); } catch (_) {}
+        renderFallbackText(font);
+      };
       img.src = src;
     }
 
