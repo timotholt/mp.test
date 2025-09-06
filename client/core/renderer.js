@@ -249,6 +249,8 @@ export async function setupAsciiRenderer() {
                 if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
                   rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
                 }
+                // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
+                try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
                 rc.renderPass && rc.renderPass();
               }
             } catch (e) { console.warn('[font update] pending apply failed', e); }
@@ -378,6 +380,8 @@ try {
             if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
               rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
             }
+            // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
+            try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
             rc.renderPass && rc.renderPass();
           }
         } catch (err) {
