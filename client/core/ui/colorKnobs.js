@@ -10,7 +10,7 @@
 import { createKnob } from './knob.js';
 
 // Throttle: minimum time between hue change broadcasts while dragging (ms)
-export const HUE_EVENT_MIN_INTERVAL_MS = 0;
+export const HUE_EVENT_MIN_INTERVAL_MS = 100;
 // Throttle: minimum time between spectrum recolors for Sat/Bri when hue changes
 export const RING_RECOLOR_MIN_INTERVAL_MS = 200;
 
@@ -293,21 +293,10 @@ export function createSaturationKnob(opts = {}) {
     wheelFineStep: (opts.wheelFineStep != null ? opts.wheelFineStep : 1),
     size: opts.size || 64,
     label: opts.label || 'Saturation',
-    segments: -1,
+    // Use CSS conic-gradient for the saturation ring (no micro-segments)
+    segments: 0,
     angleMin: -135,
     angleMax: 135,
-    ringColorForAngle: (_angDeg, t) => {
-      const h = currentHue();
-      const s = Math.round(t * 100);
-      // Match theme lightness mapping with low-end compression (smoothstep over 0..10)
-      const I = currentIntensity();
-      if (I <= 0) return colorFromHSLC({ h, s, l: 0, alpha: 1 });
-      const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
-      const tEase = Math.min(1, I / 10);
-      const smooth = tEase * tEase * (3 - 2 * tEase);
-      const l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
-      return colorFromHSLC({ h, s, l, alpha: 1 });
-    },
     titleFormatter: tfPct('Saturation'),
     onInput: (v) => {
       // Reflect on CSS var and apply to theme as explicit saturation override (0..100)
@@ -351,29 +340,68 @@ export function createSaturationKnob(opts = {}) {
     }
   } catch (_) {}
 
-  // Recolor the spectrum ring when Hue changes elsewhere (throttled and synced with ThemeScheduler min-ms)
+  // Paint the saturation ring using a CSS conic-gradient + radial mask (donut), arc-only
   try {
-    let _last = 0, _timer = null;
-    const onHue = () => {
-      try {
-        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        const minMs = (typeof window !== 'undefined' && Number.isFinite(Number(window.THEME_APPLY_MIN_MS))) ? Math.max(0, Number(window.THEME_APPLY_MIN_MS)) : 0;
-        const effInterval = Math.max(RING_RECOLOR_MIN_INTERVAL_MS, minMs);
-        const dueIn = effInterval - (now - _last);
-        if (dueIn <= 0) {
-          _last = now; kn.refreshRingColors?.();
-        } else if (!_timer) {
-          _timer = setTimeout(() => { _timer = null; _last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); kn.refreshRingColors?.(); }, Math.max(0, dueIn));
-        }
-      } catch (_) {}
-    };
-    window.addEventListener('ui:hue-changed', onHue);
-  } catch (_) {}
+    const ring = kn && kn.el ? kn.el.querySelector('.k-ring') : null;
+    if (ring) {
+      const rem = remBasePx();
+      const size = Number.isFinite(Number(opts.size)) ? Number(opts.size) : 64;
+      // Geometry from Hue constants
+      const thicknessPx = Math.max(1, HUE_RING_THICKNESS_REM * rem);
+      const edgeInsetPx = Math.max(0, HUE_RING_EDGE_INSET_REM * rem);
+      const featherPx = Math.max(0.5, HUE_RING_FEATHER_REM * rem);
+      const mask = buildDonutMask(size, thicknessPx, edgeInsetPx, featherPx);
 
-  // Respond to intensity/theme changes by refreshing the outer ring only (value remains user-controlled)
-  try {
-    window.addEventListener('ui:intensity-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} });
-    window.addEventListener('ui:saturation-changed', () => { try { kn.refreshRingColors?.(); } catch (_) {} });
+      let _hueForPreview = currentHue();
+      let _intensityForPreview = currentIntensity();
+
+      const buildGradient = () => {
+        const h = _hueForPreview;
+        const I = Math.round(_intensityForPreview);
+        const arcLen = 270;        // -135..135 degrees
+        const step = 10;           // 10° samples
+        const fromDeg = 225;       // bottom-centered cutout
+        const stops = [];
+        for (let ang = 0; ang <= arcLen; ang += step) {
+          const t = Math.min(1, Math.max(0, ang / arcLen));
+          const s = Math.round(t * 100);
+          // Match the original lightness mapping for saturation preview
+          let l;
+          if (I <= 0) l = 0; else {
+            const baseLight = Math.max(0, Math.min(80, 45 + (I - 60) * 0.38));
+            const tEase = Math.min(1, I / 10);
+            const smooth = tEase * tEase * (3 - 2 * tEase);
+            l = Math.max(0, Math.min(80, Math.round(baseLight * smooth)));
+          }
+          const col = colorFromHSLC({ h, s, l, alpha: 1 });
+          stops.push(`${col} ${ang}deg`);
+        }
+        stops.push(`transparent ${arcLen}deg`, 'transparent 360deg');
+        return `conic-gradient(from ${fromDeg}deg, ${stops.join(', ')})`;
+      };
+
+      try { ring.style.background = buildGradient(); } catch (_) {}
+      try { ring.style.webkitMaskImage = mask; } catch (_) {}
+      try { ring.style.maskImage = mask; } catch (_) {}
+      try { ring.style.maskMode = 'alpha'; ring.style.webkitMaskComposite = 'source-over'; } catch (_) {}
+      try { ring.style.willChange = 'transform, -webkit-mask-image, mask-image, background'; } catch (_) {}
+      try { ring.style.opacity = '1'; } catch (_) {}
+      try { ring.style.transformOrigin = '50% 50%'; ring.style.transform = `translateY(var(--hue-ring-offset, var(--kn-ring-global-y, 0px))) scale(${Number(HUE_RING_SCALE).toFixed(3)})`; } catch (_) {}
+
+      // Live recolor listeners
+      try {
+        const onHue = (ev) => {
+          try { if (ev && ev.detail && Number.isFinite(ev.detail.hue)) { _hueForPreview = Number(ev.detail.hue); } else { _hueForPreview = currentHue(); } } catch (_) {}
+          try { ring.style.background = buildGradient(); } catch (_) {}
+        };
+        const onIntensity = (ev) => {
+          try { if (ev && ev.detail && Number.isFinite(ev.detail.intensity)) { _intensityForPreview = Number(ev.detail.intensity); } else { _intensityForPreview = currentIntensity(); } } catch (_) {}
+          try { ring.style.background = buildGradient(); } catch (_) {}
+        };
+        window.addEventListener('ui:hue-changed', onHue);
+        window.addEventListener('ui:intensity-changed', onIntensity);
+      } catch (_) {}
+    }
   } catch (_) {}
 
   return kn;
