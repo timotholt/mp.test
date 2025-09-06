@@ -170,15 +170,17 @@ class WebGL2MicroLayer {
     const image = new Image();
     image.src = path;
     image.onload = function () {
-      // Create a temporary canvas to flip the image
+      // Create a temporary canvas to upload the image (no vertical flip)
+      // Use intrinsic pixel dimensions to avoid DPR/CSS scaling distortions.
+      const natW = image.naturalWidth || image.width;
+      const natH = image.naturalHeight || image.height;
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = image.width;
-      tempCanvas.height = image.height;
+      tempCanvas.width = natW;
+      tempCanvas.height = natH;
       const tempCtx = tempCanvas.getContext('2d');
 
-      // Flip the image horizontally and vertically
-      tempCtx.scale(1, -1);
-      tempCtx.drawImage(image, 0, -image.height);
+      // Draw as-is; the shader's atlas addressing already accounts for row order
+      tempCtx.drawImage(image, 0, 0, natW, natH);
 
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
@@ -189,7 +191,8 @@ class WebGL2MicroLayer {
       gl.bindTexture(gl.TEXTURE_2D, null);
 
       if (cb) {
-        cb();
+        try { cb({width: natW, height: natH}); }
+        catch (_) { try { cb(); } catch (_) {} }
       }
     };
 
@@ -356,13 +359,10 @@ class WebGL2MicroLayer {
         this.gl.bindTexture(this.gl.TEXTURE_2D, value);
         this.gl.uniform1i(location, textureUnit);
 
-
-        // Can we disable this if not using mipmaps?
-        // if (generateMipmaps) {
-        if (value != null) {
+        // Generate mipmaps unless this is one of our glyph atlases
+        if (name !== 'asciiTexture' && name !== 'asciiViewTexture') {
           this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
-        // }
         break;
 
       // Arrays
@@ -666,6 +666,9 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform vec2 tileSize;               // Size of each character tile in the atlas (e.g. 8x8)
   uniform vec2 atlasSize;              // Size of the atlas grid (e.g. 16x16)
   uniform vec2 subTileOffset;          // Fractional offset for smooth scrolling [0-1]
+  uniform float asciiStartCode;        // Starting code of the atlas (e.g., 32 for printable ASCII, 0 for 0-based)
+  uniform float flipRow;               // 1.0 to invert atlas row index, 0.0 to use as-is
+  uniform float flipTileY;             // 1.0 to invert within-tile Y, 0.0 to use as-is
 
   // Camera properties
   uniform vec2 viewportSize;           // Viewport size in pixels
@@ -702,30 +705,29 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
       return;
     }
 
-    // Normalize map grid position for texture lookup
-    vec2 viewTexCoord = vec2(
-      mapGridPos.x / mapSize.x,
-      mapGridPos.y / mapSize.y
-    );
-
-    // Clamp to avoid sampling outside the texture
-    viewTexCoord = clamp(viewTexCoord, vec2(0.0),
-                    vec2(1.0 - 1.0/mapSize.x, 1.0 - 1.0/mapSize.y));
+    // Normalize map grid position for texture lookup and sample at cell centers to avoid edge ambiguity
+    vec2 viewTexCoord = (mapGridPos + vec2(0.5)) / mapSize;
+    viewTexCoord = clamp(viewTexCoord, vec2(0.0), vec2(1.0));
 
     // Sample the ASCII view texture to get character code and color
     vec4 asciiView = texture(asciiViewTexture, viewTexCoord);
 
-    // Extract character code from alpha channel
-    float charCode = asciiView.a * 255.0;
+    // Extract character code from alpha channel (0..255) and apply atlas start offset
+    float charCode = floor(asciiView.a * 255.0 + 0.5);
+    float idx = max(0.0, charCode - asciiStartCode);
 
     // Calculate the atlas texture size in pixels
     vec2 atlasTextureSize = atlasSize * tileSize;
 
-    // Calculate UV coordinates for the character in the atlas
-    vec2 atlasUv = vec2(
-      (mod(charCode, atlasSize.x) * tileSize.x + charPos.x) / atlasTextureSize.x,
-      ((atlasSize.y - 1.0 - floor(charCode / atlasSize.x)) * tileSize.y + charPos.y) / atlasTextureSize.y
-    );
+    // Calculate atlas column/row using the offset index
+    float col = mod(idx, atlasSize.x);
+    float row = floor(idx / atlasSize.x);
+
+    // Calculate UV coordinates for the character in the atlas with configurable Y handling.
+    float rowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - row) : row;
+    float yInTile = (flipTileY > 0.5) ? (tileSize.y - 1.0 - charPos.y) : charPos.y;
+    // Add a half-texel to stabilize nearest sampling at pixel centers.
+    vec2 atlasUv = (vec2(col, rowIndex) * tileSize + vec2(charPos.x, yInTile) + vec2(0.5, 0.5)) / atlasTextureSize;
 
     // Sample the character from the atlas
     vec4 char = texture(asciiTexture, atlasUv);
@@ -760,6 +762,9 @@ class DungeonRenderer extends BaseSurface {
         tileSize: TILE_SIZE,
         atlasSize: [16, 16],
         subTileOffset: [0, 0],
+        asciiStartCode: 0.0,
+        flipRow: 0.0,
+        flipTileY: 1.0,
         // Camera properties
         viewportSize: [this.width, this.height],    // Current viewport size in pixels
         mapSize: [0, 0],                            // Will be set in updateAsciiViewTexture
@@ -884,9 +889,8 @@ class DungeonRenderer extends BaseSurface {
     // Parse the dungeon map string into a 2D array
     const dungeonMap = dungeonMapString.split('\n');
 
-    // Idk what i'm going wrong honestly, but windows has a bunch of weird issues (floating point?)
-    // Adding padding around the edges fixes them...?
-    const padding = 2;
+    // No artificial padding; render the map at its exact dimensions for precise glyph tests
+    const padding = 0;
 
     // Get map dimensions - these are the actual dimensions of the entire dungeon
     const mapHeight = dungeonMap.length + 2 * padding;

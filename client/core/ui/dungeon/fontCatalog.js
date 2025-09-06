@@ -101,9 +101,9 @@ const defaultFonts = [
     id: 'Rotting_Pixels_16x16',
     name: 'Rotting Pixels 16x16',
     url: rottingPixels,
-    tile: { w: 16, h: 16 },
+    tile: { w: 8, h: 8 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
   },
 
 

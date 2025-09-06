@@ -238,16 +238,32 @@ export async function setupAsciiRenderer() {
         console.log('[DEBUG client] applying pending dungeon font', meta);
         const src = meta && (meta.dataUrl || meta.url);
         if (src) {
-          const tex = rc.renderer.createTextureFromImage(src, () => {
+          const tex = rc.renderer.createTextureFromImage(src, (dims) => {
             try {
               rc.renderer.font = tex;
               if (rc.dungeonUniforms) {
                 rc.dungeonUniforms.asciiTexture = tex;
-                if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
-                  rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+                let cols = meta?.atlas?.cols, rows = meta?.atlas?.rows;
+                if (Number.isFinite(cols) && Number.isFinite(rows) && dims && dims.width && dims.height) {
+                  const dw = Math.round(dims.width / cols);
+                  const dh = Math.round(dims.height / rows);
+                  if (!meta.tile || meta.tile.w !== dw || meta.tile.h !== dh) {
+                    try { console.warn('[font] derived tileSize differs from metadata', { metaTile: meta.tile, derived: { w: dw, h: dh } }); } catch (_) {}
+                    rc.dungeonUniforms.tileSize = [dw, dh];
+                  } else {
+                    rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+                  }
+                  rc.dungeonUniforms.atlasSize = [cols, rows];
+                } else {
+                  if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+                    rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+                  }
+                  if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+                    rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                  }
                 }
-                if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
-                  rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                if (Number.isFinite(meta.startCode)) {
+                  rc.dungeonUniforms.asciiStartCode = Number(meta.startCode);
                 }
                 // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
                 try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
@@ -369,16 +385,32 @@ try {
         return;
       }
       // Create texture and swap into uniforms on load
-      const tex = rc.renderer.createTextureFromImage(src, () => {
+      const tex = rc.renderer.createTextureFromImage(src, (dims) => {
         try {
           rc.renderer.font = tex;
           if (rc.dungeonUniforms) {
             rc.dungeonUniforms.asciiTexture = tex;
-            if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
-              rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+            let cols = meta?.atlas?.cols, rows = meta?.atlas?.rows;
+            if (Number.isFinite(cols) && Number.isFinite(rows) && dims && dims.width && dims.height) {
+              const dw = Math.round(dims.width / cols);
+              const dh = Math.round(dims.height / rows);
+              if (!meta.tile || meta.tile.w !== dw || meta.tile.h !== dh) {
+                try { console.warn('[font] derived tileSize differs from metadata', { metaTile: meta.tile, derived: { w: dw, h: dh } }); } catch (_) {}
+                rc.dungeonUniforms.tileSize = [dw, dh];
+              } else {
+                rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+              }
+              rc.dungeonUniforms.atlasSize = [cols, rows];
+            } else {
+              if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+                rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+              }
+              if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+                rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+              }
             }
-            if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
-              rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+            if (Number.isFinite(meta.startCode)) {
+              rc.dungeonUniforms.asciiStartCode = Number(meta.startCode);
             }
             // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
             try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
