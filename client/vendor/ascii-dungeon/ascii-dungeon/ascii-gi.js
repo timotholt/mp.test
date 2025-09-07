@@ -299,6 +299,9 @@ uniform vec2 resolution;
   uniform float lastCascadeIndex;
   uniform float baseRayCount;
   uniform bool bilinearFixEnabled;
+  // Debug uniforms
+  uniform float threshold;
+  uniform float curve;
 
   in vec2 vUv;
   out vec3 FragColor;
@@ -494,9 +497,18 @@ uniform vec2 resolution;
       totalRadiance += mergedRadiance * avgRecip;
     }
 
+    // Apply debug threshold/curve if enabled (threshold > 0)
+    vec3 outColor = totalRadiance.rgb;
+    if (threshold > 0.0) {
+      vec3 shifted = max(outColor - vec3(threshold), vec3(0.0));
+      vec3 normalized = shifted / max(1.0 - threshold, 1e-6);
+      float c = max(curve, 1e-4);
+      outColor = pow(normalized, vec3(c));
+    }
+
     FragColor = (cascadeIndex > firstCascadeIndex)
-    ? totalRadiance.rgb
-    : pow(totalRadiance.rgb, vec3(1.0 / srgb));
+    ? outColor
+    : pow(outColor, vec3(1.0 / srgb));
   }`;
 
 class RC extends DistanceField {
@@ -604,6 +616,9 @@ class RC extends DistanceField {
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
+        // Debug defaults
+        threshold: 0.0,
+        curve: 1.0,
       },
       fragmentShader: rcFragmentShader,
     });

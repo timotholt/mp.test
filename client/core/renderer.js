@@ -356,6 +356,7 @@ export async function setupAsciiRenderer() {
       try { canvas.style.cursor = 'default'; } catch (_) {}
     });
 
+    // Wheel zoom: zoom at pointer position
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -365,25 +366,31 @@ export async function setupAsciiRenderer() {
       rc.zoomCamera(factor, x, y);
     }, { passive: false });
 
-    // Optional: keyboard zoom
+    // Keyboard helpers: +/- zoom and F8 UI toggle
     window.addEventListener('keydown', (e) => {
-      if (e.key === '+') rc.zoomCamera(1.1, 0.5, 0.5);
-      if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
-    });
-
-    // UI overlay integration: keep canvas interactive on Login/Lobby; disable only during gameplay
-    window.addEventListener('ui:blocking-changed', (e) => {
-      const blocking = !!(e && e.detail && e.detail.blocking);
-      let route = null;
-      try { route = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null; } catch (_) {}
-      const STATES = window.APP_STATES || {};
-      const shouldDisable = !!(blocking && route === STATES.GAMEPLAY_ACTIVE);
-      try { container.style.pointerEvents = shouldDisable ? 'none' : 'auto'; } catch (_) {}
-      if (shouldDisable && dragging) {
-        // Cancel any in-flight drag so we don't keep panning under a blocking gameplay modal
-        dragging = false;
-        try { canvas.style.cursor = 'default'; } catch (_) {}
-      }
+      try {
+        if (e.key === '+' || e.key === '=') {
+          rc.zoomCamera(1.1, 0.5, 0.5);
+        } else if (e.key === '-') {
+          rc.zoomCamera(0.9, 0.5, 0.5);
+        } else if (e.key === 'F8') {
+          const hidden = document.body.getAttribute('data-ui-hidden') === 'true' ? false : true;
+          document.body.setAttribute('data-ui-hidden', hidden ? 'true' : 'false');
+          const ids = ['hover-status-bar', 'zoom-controls', 'settings-overlay-root', 'settings-scrim'];
+          ids.forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (hidden) {
+              if (!el.getAttribute('data-prev-display')) el.setAttribute('data-prev-display', el.style.display || '');
+              el.style.display = 'none';
+            } else {
+              const prev = el.getAttribute('data-prev-display');
+              el.style.display = (prev != null) ? prev : '';
+              el.removeAttribute('data-prev-display');
+            }
+          });
+        }
+      } catch (_) {}
     });
 
     // Initial adjustment
@@ -561,6 +568,22 @@ try {
     } catch (err) {
       console.warn('[font update] listener error', err);
     }
+  });
+} catch (_) {}
+
+// Global listener: debug threshold/curve from Display tab
+try {
+  window.addEventListener('ui:rc-debug-changed', (e) => {
+    try {
+      const rc = window.radianceCascades;
+      if (!rc || !rc.rcUniforms) return;
+      const d = (e && e.detail) || {};
+      const threshold = Number(d.threshold) || 0;
+      const curve = Number(d.curve) || 1;
+      rc.rcUniforms.threshold = threshold;
+      rc.rcUniforms.curve = curve;
+      rc.renderPass && rc.renderPass();
+    } catch (_) {}
   });
 } catch (_) {}
 

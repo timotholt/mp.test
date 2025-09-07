@@ -614,7 +614,7 @@ export function renderDisplayTab(container) {
         if (currentImg) { try { drawPreview(f, currentImg); } catch (e) { try { console.error('[GlyphPreview] drawPreview (zoom out) failed', e); } catch (_) {} } }
         try { updateInfo(); } catch (_) {}
       } catch (err) {
-        try { console.error('[GlyphPreview] zoomOut failed:', err); } catch (_) {}
+        try { console.error('[GlyphPreview] drawPreview (zoom out) failed', err); } catch (_) {}
       }
     };
     // Attach handlers
@@ -622,6 +622,84 @@ export function renderDisplayTab(container) {
     try { canvas.addEventListener('mousemove', handleHover); canvas.addEventListener('mouseleave', handleHover); } catch (_) {}
     // Initial render
     try { updatePreview(); updateInfo(); } catch (_) {}
+
+  } catch (_) {}
+
+  // Debug section (threshold/curve) — gated by flag
+  try {
+    const ENABLE_DEBUG = (typeof window !== 'undefined' && window.__enableDisplayDebug != null)
+      ? !!window.__enableDisplayDebug
+      : true; // enable by default; set window.__enableDisplayDebug=false to hide
+    if (ENABLE_DEBUG) {
+      const dbg = makeSection('Debug', 'Threshold/Curve post-process. F8 hides UI.', 'afterTitle', true);
+      container.appendChild(dbg);
+
+      const toFixed2 = (v) => Number(v).toFixed(2);
+
+      const { row: thrRow, input: thrRng, value: thrVal, reset: thrReset } = createRangeElement(
+        0, 1, 0.01, 0, 'Threshold:', {
+          storageKey: 'rc_debug_threshold',
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
+          fromStorage: (s) => { const v = parseFloat(s); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0; },
+          onChange: (v) => {
+            try {
+              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+              const detail = { threshold: Number(v) || 0, curve };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      thrRng.id = 'settings-rc-threshold';
+      thrVal.id = 'settings-rc-threshold-val';
+      dbg.appendChild(thrRow);
+
+      const { row: crvRow, input: crvRng, value: crvVal, reset: crvReset } = createRangeElement(
+        0.1, 4, 0.05, 1, 'Curve:', {
+          storageKey: 'rc_debug_curve',
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
+          fromStorage: (s) => { const v = parseFloat(s); return Number.isFinite(v) ? Math.max(0.1, Math.min(4, v)) : 1; },
+          onChange: (v) => {
+            try {
+              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+              const detail = { threshold: thr, curve: Number(v) || 1 };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      crvRng.id = 'settings-rc-curve';
+      crvVal.id = 'settings-rc-curve-val';
+      dbg.appendChild(crvRow);
+
+      // Debug Reset button
+      const dbgToolbar = createUiElement(basicToolbarRow, 'div');
+      const dbgResetBtn = createUiElement(basicButton, 'Reset');
+      dbgResetBtn.onclick = () => {
+        try { thrReset && thrReset(); } catch (_) {}
+        try { crvReset && crvReset(); } catch (_) {}
+        try {
+          const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+          const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve } }));
+        } catch (_) {}
+      };
+      dbgToolbar.appendChild(document.createElement('div'));
+      dbgToolbar.appendChild(document.createElement('div'));
+      dbgToolbar.appendChild(dbgResetBtn);
+      dbg.appendChild(dbgToolbar);
+
+      // Emit current values once so renderer syncs when opening tab
+      try {
+        const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+        const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve } }));
+      } catch (_) {}
+    }
   } catch (_) {}
 
 }
