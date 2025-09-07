@@ -157,28 +157,46 @@ class WebGL2MicroLayer {
     return shader;
   }
 
-  createTextureFromImage(path, cb) {
+  createTextureFromImage(path, optionsOrCb, maybeCb) {
     // Load the texture
     const gl = this.gl;
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    // Fill the texture with a 1x1 blue pixel as a placeholder
+    // Fill the texture with a 1x1 black pixel as a placeholder
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+
+    // Back-compat signature: (path, cb) or (path, options, cb)
+    let cb = null;
+    let options = {};
+    if (typeof optionsOrCb === 'function') {
+      cb = optionsOrCb;
+      options = {};
+    } else {
+      options = optionsOrCb || {};
+      cb = (typeof maybeCb === 'function') ? maybeCb : null;
+    }
+
+    const flipY = (options.flipY !== undefined) ? !!options.flipY : true; // default matches previous behavior
+    const flipX = !!options.flipX;
 
     // Asynchronously load an image
     const image = new Image();
     image.src = path;
     image.onload = function () {
-      // Create a temporary canvas to flip the image
+      // Create a temporary canvas to allow optional flipping
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
       tempCanvas.height = image.height;
       const tempCtx = tempCanvas.getContext('2d');
 
-      // Flip the image horizontally and vertically
-      tempCtx.scale(1, -1);
-      tempCtx.drawImage(image, 0, -image.height);
+      // Apply optional flips
+      const sx = flipX ? -1 : 1;
+      const sy = flipY ? -1 : 1;
+      const tx = flipX ? image.width : 0;
+      const ty = flipY ? image.height : 0;
+      tempCtx.setTransform(sx, 0, 0, sy, tx, ty);
+      tempCtx.drawImage(image, 0, 0);
 
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
@@ -666,6 +684,8 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform vec2 tileSize;               // Size of each character tile in the atlas (e.g. 8x8)
   uniform vec2 atlasSize;              // Size of the atlas grid (e.g. 16x16)
   uniform vec2 subTileOffset;          // Fractional offset for smooth scrolling [0-1]
+  uniform float flipRow;               // 1.0 flips atlas row indexing vertically, 0.0 leaves as-is
+  uniform float flipTileY;             // 1.0 flips Y within each tile, 0.0 leaves as-is
 
   // Camera properties
   uniform vec2 viewportSize;           // Viewport size in pixels
@@ -721,11 +741,13 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Calculate the atlas texture size in pixels
     vec2 atlasTextureSize = atlasSize * tileSize;
 
-    // Calculate UV coordinates for the character in the atlas
-    vec2 atlasUv = vec2(
-      (mod(charCode, atlasSize.x) * tileSize.x + charPos.x) / atlasTextureSize.x,
-      ((atlasSize.y - 1.0 - floor(charCode / atlasSize.x)) * tileSize.y + charPos.y) / atlasTextureSize.y
-    );
+    // Compute atlas column/row and apply configurable flips
+    float idx = floor(charCode + 0.5);
+    float col = mod(idx, atlasSize.x);
+    float row = floor(idx / atlasSize.x);
+    float rowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - row) : row;
+    float yInTile = (flipTileY > 0.5) ? (tileSize.y - 1.0 - charPos.y) : charPos.y;
+    vec2 atlasUv = (vec2(col, rowIndex) * tileSize + vec2(charPos.x, yInTile)) / atlasTextureSize;
 
     // Sample the character from the atlas
     vec4 char = texture(asciiTexture, atlasUv);
@@ -760,6 +782,8 @@ class DungeonRenderer extends BaseSurface {
         tileSize: TILE_SIZE,
         atlasSize: [16, 16],
         subTileOffset: [0, 0],
+        flipRow: 1.0,                               // Default to current behavior (row flip)
+        flipTileY: 0.0,                             // Default: no flip within tile Y
         // Camera properties
         viewportSize: [this.width, this.height],    // Current viewport size in pixels
         mapSize: [0, 0],                            // Will be set in updateAsciiViewTexture

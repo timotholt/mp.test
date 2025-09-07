@@ -45,6 +45,8 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
     glyphCount: 255,
+    flipRow: 1,
+    flipTileY: 0,    
   },
   // Bundled 16x16 PNG atlas in client/fonts
   {
@@ -54,6 +56,9 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 1,
+    flipTileY: 0,    
+
   },
   // Bundled 16x16 PNG atlas in client/fonts
   {
@@ -63,6 +68,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 1,
+    flipTileY: 0,    
   },
   {
     id: 'Bisasam_20x20 Yobbo Mod',
@@ -71,6 +78,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 1,
+    flipTileY: 0,    
   },
   {
     id: 'Bisasam_24x24',
@@ -79,6 +88,8 @@ const defaultFonts = [
     tile: { w: 24, h: 24 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 1,
+    flipTileY: 0,    
   },
   // This font is purple when loaded by the dungeon renderer so it's commented out
   // {
@@ -96,14 +107,19 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 1,
+    flipTileY: 0,    
   },
   {
     id: 'Rotting_Pixels_16x16',
     name: 'Rotting Pixels 16x16',
     url: rottingPixels,
-    tile: { w: 16, h: 16 },
+    tile: { w: 8, h: 8 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
+    // Discovered correct mapping in glyph test: flipRow=false, flipTileY=true
+    flipRow: 0,
+    flipTileY: 1,
   },
 
 

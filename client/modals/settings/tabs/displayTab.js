@@ -224,6 +224,11 @@ export function renderDisplayTab(container) {
           atlas: f.atlas,
           startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
         };
+        // Include optional flip hints ONLY if present on the font
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTextureY')) detail.flipTextureY = !!f.flipTextureY;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTextureX')) detail.flipTextureX = !!f.flipTextureX;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) detail.flipRow = !!f.flipRow;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) detail.flipTileY = !!f.flipTileY;
         if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
         window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
       } catch (_) {}

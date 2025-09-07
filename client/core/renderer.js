@@ -44,6 +44,33 @@ function hideLegacyDom() {
               tile: f.tile,
               atlas: f.atlas,
               startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
+              // Optional flip hints from catalog
+              flipTextureY: !!f.flipTextureY,
+              flipTextureX: !!f.flipTextureX,
+              flipRow: !!f.flipRow,
+              flipTileY: !!f.flipTileY,
+            };
+            if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
+            window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
+          }
+        }
+      } else {
+        // No saved font yet: proactively dispatch default 'vendor-8x8' like the Display tab does
+        const f = getFont('vendor-8x8');
+        if (f) {
+          const src = resolveImageSrc(f);
+          if (src) {
+            const detail = {
+              id: f.id,
+              name: f.name,
+              tile: f.tile,
+              atlas: f.atlas,
+              startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
+              // Optional flip hints from catalog
+              flipTextureY: !!f.flipTextureY,
+              flipTextureX: !!f.flipTextureX,
+              flipRow: !!f.flipRow,
+              flipTileY: !!f.flipTileY,
             };
             if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
             window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
@@ -238,7 +265,12 @@ export async function setupAsciiRenderer() {
         console.log('[DEBUG client] applying pending dungeon font', meta);
         const src = meta && (meta.dataUrl || meta.url);
         if (src) {
-          const tex = rc.renderer.createTextureFromImage(src, () => {
+          // Respect optional flip hints; default to flipY=true to match vendor behavior
+          const options = {
+            flipY: (meta && meta.flipTextureY === undefined) ? true : !!meta.flipTextureY,
+            flipX: !!(meta && meta.flipTextureX),
+          };
+          const tex = rc.renderer.createTextureFromImage(src, options, () => {
             try {
               rc.renderer.font = tex;
               if (rc.dungeonUniforms) {
@@ -248,6 +280,13 @@ export async function setupAsciiRenderer() {
                 }
                 if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
                   rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                }
+                // Apply optional shader flip controls if provided
+                if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
+                  rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
+                }
+                if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
+                  rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
                 }
                 // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
                 try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
@@ -349,6 +388,74 @@ export async function setupAsciiRenderer() {
 
     // Initial adjustment
     handleResize();
+
+    // Ensure the current dungeon font is applied after vendor load completes (avoid race)
+    try {
+      const applySelectedFont = () => {
+        const rc = window.radianceCascades;
+        if (!rc || !rc.renderer || !rc.dungeonUniforms) return false;
+        // Defer until the view texture exists to match steady-state rendering conditions
+        if (!rc.asciiViewTexture) return false;
+        let fontId = null;
+        try { fontId = localStorage.getItem('ui_dungeon_font_id'); } catch (_) { fontId = null; }
+        const alias = { 'vendor-16x16': 'Bisasam_16x16', 'Bisasam 16x16': 'Bisasam_16x16' };
+        const resolvedId = alias[fontId] || fontId || 'vendor-8x8';
+        const f = getFont(resolvedId);
+        if (!f) return true; // nothing to apply
+        const src = resolveImageSrc(f);
+        if (!src) return true;
+        const options = {
+          flipY: (f && f.flipTextureY === undefined) ? true : !!f.flipTextureY,
+          flipX: !!(f && f.flipTextureX),
+        };
+        const tex = rc.renderer.createTextureFromImage(src, options, () => {
+          try {
+            rc.renderer.font = tex;
+            rc.dungeonUniforms.asciiTexture = tex;
+            if (f.tile && Number.isFinite(f.tile.w) && Number.isFinite(f.tile.h)) {
+              rc.dungeonUniforms.tileSize = [f.tile.w, f.tile.h];
+            }
+            if (f.atlas && Number.isFinite(f.atlas.cols) && Number.isFinite(f.atlas.rows)) {
+              rc.dungeonUniforms.atlasSize = [f.atlas.cols, f.atlas.rows];
+            }
+            if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) {
+              rc.dungeonUniforms.flipRow = f.flipRow ? 1.0 : 0.0;
+            }
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) {
+              rc.dungeonUniforms.flipTileY = f.flipTileY ? 1.0 : 0.0;
+            }
+            // Force-refresh view texture and pipelines to match Display-tab steady state
+            try {
+              if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
+                rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+              }
+            } catch (_) {}
+            try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
+            try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
+            rc.renderPass && rc.renderPass();
+            // One extra frame next tick to ensure everything is latched post-init
+            try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
+          } catch (_) {}
+        });
+        return true;
+      };
+      let tries = 0;
+      const maxTries = 60; // ~1s at ~16ms
+      (function waitForVendor(){
+        const rc = window.radianceCascades;
+        if (rc && rc.initialized && rc.asciiViewTexture) {
+          if (!applySelectedFont()) {
+            // If apply returned false due to a late check, try again next tick
+            setTimeout(waitForVendor, 16);
+          }
+        } else if (tries++ < maxTries) {
+          setTimeout(waitForVendor, 16);
+        } else {
+          // Give it one best-effort apply even if not flagged initialized
+          applySelectedFont();
+        }
+      })();
+    } catch (_) {}
   } catch (e) {
     console.error('[ASCII renderer] setup failed:', e);
   }
@@ -369,7 +476,26 @@ try {
         return;
       }
       // Create texture and swap into uniforms on load
-      const tex = rc.renderer.createTextureFromImage(src, () => {
+      // Respect optional flip hints; default to flipY=true to match vendor behavior
+      const options = {
+        flipY: (meta && meta.flipTextureY === undefined) ? true : !!meta.flipTextureY,
+        flipX: !!(meta && meta.flipTextureX),
+      };
+      // Skip if identical to last applied font
+      try {
+        const last = rc.__appliedFontMeta || null;
+        const sameId = !!(last && last.id === meta.id);
+        const sameSrc = !!(last && last.src === (meta.dataUrl || meta.url));
+        const sameTile = !!(last && last.tileW === (meta.tile && meta.tile.w) && last.tileH === (meta.tile && meta.tile.h));
+        const sameAtlas = !!(last && last.atlasCols === (meta.atlas && meta.atlas.cols) && last.atlasRows === (meta.atlas && meta.atlas.rows));
+        const sameFlipRow = !!(last && last.flipRow === (!!meta.flipRow));
+        const sameFlipTileY = !!(last && last.flipTileY === (!!meta.flipTileY));
+        if (sameId && sameSrc && sameTile && sameAtlas && sameFlipRow && sameFlipTileY) {
+          return; // no-op; visuals already consistent
+        }
+      } catch (_) {}
+
+      const tex = rc.renderer.createTextureFromImage(src, options, () => {
         try {
           rc.renderer.font = tex;
           if (rc.dungeonUniforms) {
@@ -380,16 +506,169 @@ try {
             if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
               rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
             }
+            // Apply optional shader flip controls if provided
+            if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
+              rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
+            }
+            if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
+              rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
+            }
+            // Cache applied meta to prevent redundant re-applies
+            try {
+              rc.__appliedFontMeta = {
+                id: meta.id,
+                src: (meta.dataUrl || meta.url) || null,
+                tileW: meta.tile && meta.tile.w,
+                tileH: meta.tile && meta.tile.h,
+                atlasCols: meta.atlas && meta.atlas.cols,
+                atlasRows: meta.atlas && meta.atlas.rows,
+                flipRow: !!meta.flipRow,
+                flipTileY: !!meta.flipTileY,
+              };
+            } catch (_) {}
+            // Force-refresh view texture and pipelines to match steady-state
+            try {
+              if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
+                rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+              }
+            } catch (_) {}
+            try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
+            // Re-apply uniforms after pipeline rebuild to avoid losing state
+            try {
+              if (rc.dungeonUniforms) {
+                rc.dungeonUniforms.asciiTexture = tex;
+                if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+                  rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+                }
+                if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+                  rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                }
+                if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
+                  rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
+                }
+                if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
+                  rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
+                }
+              }
+            } catch (_) {}
             // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
             try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
             rc.renderPass && rc.renderPass();
+            try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
           }
-        } catch (err) {
-          console.warn('[font update] apply failed', err);
-        }
+        } catch (e) { console.warn('[font update] pending apply failed', e); }
       });
     } catch (err) {
       console.warn('[font update] listener error', err);
     }
   });
+} catch (_) {}
+
+// ... (rest of the code remains the same)
+
+// Ensure the current dungeon font is applied after vendor load completes (avoid race)
+try {
+  const applySelectedFont = () => {
+    const rc = window.radianceCascades;
+    if (!rc || !rc.renderer || !rc.dungeonUniforms) return false;
+    // Defer until the view texture exists to match steady-state rendering conditions
+    if (!rc.asciiViewTexture) return false;
+    let fontId = null;
+    try { fontId = localStorage.getItem('ui_dungeon_font_id'); } catch (_) { fontId = null; }
+    const alias = { 'vendor-16x16': 'Bisasam_16x16', 'Bisasam 16x16': 'Bisasam_16x16' };
+    const resolvedId = alias[fontId] || fontId || 'vendor-8x8';
+    const f = getFont(resolvedId);
+    if (!f) return true; // nothing to apply
+    const src = resolveImageSrc(f);
+    if (!src) return true;
+    const meta = {
+      id: resolvedId,
+      dataUrl: src,
+      tile: f.tile,
+      atlas: f.atlas,
+      flipRow: f.flipRow,
+      flipTileY: f.flipTileY,
+    };
+    // Respect optional flip hints; default to flipY=true to match vendor behavior
+    const options = {
+      flipY: (f && f.flipTextureY === undefined) ? true : !!f.flipTextureY,
+      flipX: !!(f && f.flipTextureX),
+    };
+    // Skip if identical to last applied font
+    try {
+      const last = rc.__appliedFontMeta || null;
+      const sameId = !!(last && last.id === meta.id);
+      const sameSrc = !!(last && last.src === (meta.dataUrl || meta.url));
+      const sameTile = !!(last && last.tileW === (meta.tile && meta.tile.w) && last.tileH === (meta.tile && meta.tile.h));
+      const sameAtlas = !!(last && last.atlasCols === (meta.atlas && meta.atlas.cols) && last.atlasRows === (meta.atlas && meta.atlas.rows));
+      const sameFlipRow = !!(last && last.flipRow === (!!meta.flipRow));
+      const sameFlipTileY = !!(last && last.flipTileY === (!!meta.flipTileY));
+      if (sameId && sameSrc && sameTile && sameAtlas && sameFlipRow && sameFlipTileY) {
+        return false; // no-op; visuals already consistent
+      }
+    } catch (_) {}
+
+    const tex = rc.renderer.createTextureFromImage(src, options, () => {
+      try {
+        rc.renderer.font = tex;
+        if (rc.dungeonUniforms) {
+          rc.dungeonUniforms.asciiTexture = tex;
+          if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+            rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
+          }
+          if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+            rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+          }
+          // Apply optional shader flip controls if provided
+          if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
+            rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
+          }
+          if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
+            rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
+          }
+          // Cache applied meta to prevent redundant re-applies
+          try {
+            rc.__appliedFontMeta = {
+              id: meta.id,
+              src: (meta.dataUrl || meta.url) || null,
+              tileW: meta.tile && meta.tile.w,
+              tileH: meta.tile && meta.tile.h,
+              atlasCols: meta.atlas && meta.atlas.cols,
+              atlasRows: meta.atlas && meta.atlas.rows,
+              flipRow: !!meta.flipRow,
+              flipTileY: !!meta.flipTileY,
+            };
+          } catch (_) {}
+          // Force-refresh view texture and pipelines to match steady-state
+          try {
+            if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
+              rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+            }
+          } catch (_) {}
+          try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
+          try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
+          rc.renderPass && rc.renderPass();
+          // One extra frame next tick to ensure everything is latched post-init
+          try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
+        }
+      } catch (_) {}
+    });
+    return true;
+  };
+  let tries = 0;
+  const maxTries = 60; // ~1s at ~16ms
+  (function waitForVendor(){
+    const rc = window.radianceCascades;
+    if (rc && rc.initialized && rc.asciiViewTexture) {
+      if (!applySelectedFont()) {
+        // If apply returned false due to a late check, try again next tick
+        setTimeout(waitForVendor, 16);
+      }
+    } else if (tries++ < maxTries) {
+      setTimeout(waitForVendor, 16);
+    } else {
+      // Give it one best-effort apply even if not flagged initialized
+      applySelectedFont();
+    }
+  })();
 } catch (_) {}
