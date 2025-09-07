@@ -118,8 +118,8 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
     // Discovered correct mapping in glyph test: flipRow=false, flipTileY=true
-    flipRow: 0,
-    flipTileY: 1,
+    flipRow: 1,
+    flipTileY: 0,
   },
 
 
