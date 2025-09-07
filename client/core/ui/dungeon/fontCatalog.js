@@ -14,6 +14,9 @@
 //   atlas: { cols: 16, rows: 16 }, // optional; if not provided, we infer from glyphCount
 //   startCode: 32,               // first character code in the atlas (usually 32 for space)
 //   glyphCount: 95               // number of glyphs available (e.g., 95 printable ASCII)
+//   // Optional per-font orientation overrides (defaults: flipRow=0, flipTileY=1)
+//   flipRow: 0 | 1,
+//   flipTileY: 0 | 1,
 // }
 //
 // NOTE: Provide at least one of (url | dataUrl). If both exist, dataUrl takes precedence.
@@ -45,6 +48,8 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
     glyphCount: 255,
+    flipRow: 0,
+    flipTileY: 1,
   },
   // Bundled 16x16 PNG atlas in client/fonts
   {
@@ -54,6 +59,8 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 0,
+    flipTileY: 1,
   },
   // Bundled 16x16 PNG atlas in client/fonts
   {
@@ -63,6 +70,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 0,
+    flipTileY: 1,
   },
   {
     id: 'Bisasam_20x20 Yobbo Mod',
@@ -71,6 +80,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 0,
+    flipTileY: 1,
   },
   {
     id: 'Bisasam_24x24',
@@ -79,6 +90,8 @@ const defaultFonts = [
     tile: { w: 24, h: 24 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 0,
+    flipTileY: 1,
   },
   // This font is purple when loaded by the dungeon renderer so it's commented out
   // {
@@ -96,6 +109,8 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
+    flipRow: 0,
+    flipTileY: 1,
   },
   {
     id: 'Rotting_Pixels_16x16',
@@ -104,6 +119,8 @@ const defaultFonts = [
     tile: { w: 8, h: 8 },
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
+    flipRow: 0,
+    flipTileY: 1,
   },
 
 

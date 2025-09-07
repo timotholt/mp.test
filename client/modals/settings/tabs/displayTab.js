@@ -224,6 +224,9 @@ export function renderDisplayTab(container) {
           atlas: f.atlas,
           startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
         };
+        // Optional per-font orientation overrides
+        if (Number.isFinite(f.flipRow)) detail.flipRow = Number(f.flipRow);
+        if (Number.isFinite(f.flipTileY)) detail.flipTileY = Number(f.flipTileY);
         if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
         window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
       } catch (_) {}

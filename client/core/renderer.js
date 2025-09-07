@@ -45,6 +45,9 @@ function hideLegacyDom() {
               atlas: f.atlas,
               startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
             };
+            // Optional per-font orientation overrides
+            if (Number.isFinite(f.flipRow)) detail.flipRow = Number(f.flipRow);
+            if (Number.isFinite(f.flipTileY)) detail.flipTileY = Number(f.flipTileY);
             if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
             window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
           }
@@ -265,6 +268,9 @@ export async function setupAsciiRenderer() {
                 if (Number.isFinite(meta.startCode)) {
                   rc.dungeonUniforms.asciiStartCode = Number(meta.startCode);
                 }
+                // Apply optional per-font flip overrides when provided
+                if (Number.isFinite(meta.flipRow)) rc.dungeonUniforms.flipRow = Number(meta.flipRow);
+                if (Number.isFinite(meta.flipTileY)) rc.dungeonUniforms.flipTileY = Number(meta.flipTileY);
                 // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
                 try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
                 rc.renderPass && rc.renderPass();
@@ -348,6 +354,54 @@ export async function setupAsciiRenderer() {
       if (e.key === '-') rc.zoomCamera(0.9, 0.5, 0.5);
     });
 
+    // Toggle UI visibility for dungeon testing: F8 (safe default; avoids F12/DevTools)
+    // Hides all siblings in #app except rc-canvas and dungeon-scrim. Restores exact previous display.
+    (function setupDungeonUiToggle(){
+      function setUiHidden(hidden) {
+        try {
+          const app = document.getElementById('app');
+          if (!app) return;
+          const kids = Array.from(app.children || []);
+          kids.forEach((el) => {
+            const id = (el && el.id) || '';
+            if (id === 'rc-canvas' || id === 'dungeon-scrim') return; // keep renderer and scrim visible
+            if (hidden) {
+              if (el.dataset.prevDisplay === undefined) {
+                // Preserve exact inline style so we can restore later
+                el.dataset.prevDisplay = el.style.display || '';
+              }
+              el.style.display = 'none';
+            } else {
+              if (el.dataset.prevDisplay !== undefined) {
+                el.style.display = el.dataset.prevDisplay;
+                delete el.dataset.prevDisplay;
+              } else {
+                el.style.display = '';
+              }
+            }
+          });
+          // Ensure canvas remains interactive while testing
+          try { container.style.pointerEvents = 'auto'; } catch (_) {}
+          window.__uiHiddenForDungeonTest = !!hidden;
+        } catch (_) {}
+      }
+      // Expose a console helper for quick toggling
+      try { window.toggleDungeonUi = () => setUiHidden(!window.__uiHiddenForDungeonTest); } catch (_) {}
+      // Ignore when typing in form elements to avoid surprises
+      window.addEventListener('keydown', (e) => {
+        try {
+          const t = e.target;
+          const tag = (t && t.tagName) || '';
+          const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable);
+          if (typing) return;
+          if (e.key === 'F8') {
+            e.preventDefault();
+            setUiHidden(!window.__uiHiddenForDungeonTest);
+          }
+        } catch (_) {}
+      });
+    })();
+
     // UI overlay integration: keep canvas interactive on Login/Lobby; disable only during gameplay
     window.addEventListener('ui:blocking-changed', (e) => {
       const blocking = !!(e && e.detail && e.detail.blocking);
@@ -412,6 +466,9 @@ try {
             if (Number.isFinite(meta.startCode)) {
               rc.dungeonUniforms.asciiStartCode = Number(meta.startCode);
             }
+            // Apply optional per-font flip overrides when provided
+            if (Number.isFinite(meta.flipRow)) rc.dungeonUniforms.flipRow = Number(meta.flipRow);
+            if (Number.isFinite(meta.flipTileY)) rc.dungeonUniforms.flipTileY = Number(meta.flipTileY);
             // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
             try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
             rc.renderPass && rc.renderPass();
