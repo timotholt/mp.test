@@ -376,9 +376,8 @@ export async function setupAsciiRenderer() {
         } else if (e.key === 'F8') {
           const hidden = document.body.getAttribute('data-ui-hidden') === 'true' ? false : true;
           document.body.setAttribute('data-ui-hidden', hidden ? 'true' : 'false');
-          const ids = ['hover-status-bar', 'zoom-controls', 'settings-overlay-root', 'settings-scrim'];
-          ids.forEach((id) => {
-            const el = document.getElementById(id);
+
+          const toggleEl = (el) => {
             if (!el) return;
             if (hidden) {
               if (!el.getAttribute('data-prev-display')) el.setAttribute('data-prev-display', el.style.display || '');
@@ -388,7 +387,27 @@ export async function setupAsciiRenderer() {
               el.style.display = (prev != null) ? prev : '';
               el.removeAttribute('data-prev-display');
             }
-          });
+          };
+
+          // Known chrome and overlay containers
+          const ids = [
+            'hover-status-bar', 'zoom-controls', 'settings-overlay-root', 'settings-scrim',
+            'overlay', 'overlay-content', 'modal-root', 'dungeon-scrim'
+          ];
+          ids.forEach((id) => toggleEl(document.getElementById(id)));
+
+          // Route screens (LOGIN, LOBBY, ROOM, GAMEPLAY_*), created via makeScreen(id)
+          try {
+            const states = (window.APP_STATES || {});
+            Object.values(states).forEach((sid) => {
+              toggleEl(document.getElementById(String(sid)));
+            });
+          } catch (_) {}
+
+          // Login modal cards (class)
+          try {
+            document.querySelectorAll('.login-card').forEach((el) => toggleEl(el));
+          } catch (_) {}
         }
       } catch (_) {}
     });
