@@ -44,12 +44,12 @@ function hideLegacyDom() {
               tile: f.tile,
               atlas: f.atlas,
               startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
-              // Optional flip hints from catalog
-              flipTextureY: !!f.flipTextureY,
-              flipTextureX: !!f.flipTextureX,
-              flipRow: !!f.flipRow,
-              flipTileY: !!f.flipTileY,
             };
+            // Include flip hints only if defined on the font entry
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTextureY')) detail.flipTextureY = !!f.flipTextureY;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTextureX')) detail.flipTextureX = !!f.flipTextureX;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) detail.flipRow = !!f.flipRow;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) detail.flipTileY = !!f.flipTileY;
             if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
             window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
           }
@@ -66,12 +66,12 @@ function hideLegacyDom() {
               tile: f.tile,
               atlas: f.atlas,
               startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
-              // Optional flip hints from catalog
-              flipTextureY: !!f.flipTextureY,
-              flipTextureX: !!f.flipTextureX,
-              flipRow: !!f.flipRow,
-              flipTileY: !!f.flipTileY,
             };
+            // Include flip hints only if defined on the font entry
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTextureY')) detail.flipTextureY = !!f.flipTextureY;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTextureX')) detail.flipTextureX = !!f.flipTextureX;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) detail.flipRow = !!f.flipRow;
+            if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) detail.flipTileY = !!f.flipTileY;
             if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
             window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
           }
@@ -586,9 +586,10 @@ try {
       dataUrl: src,
       tile: f.tile,
       atlas: f.atlas,
-      flipRow: f.flipRow,
-      flipTileY: f.flipTileY,
     };
+    // Only attach flip flags if explicitly defined on the font entry
+    if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) meta.flipRow = !!f.flipRow;
+    if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) meta.flipTileY = !!f.flipTileY;
     // Respect optional flip hints; default to flipY=true to match vendor behavior
     const options = {
       flipY: (f && f.flipTextureY === undefined) ? true : !!f.flipTextureY,

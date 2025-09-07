@@ -45,8 +45,8 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
     glyphCount: 255,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
   },
   // Bundled 16x16 PNG atlas in client/fonts
   {
@@ -56,8 +56,8 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
 
   },
   // Bundled 16x16 PNG atlas in client/fonts
@@ -68,8 +68,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
   },
   {
     id: 'Bisasam_20x20 Yobbo Mod',
@@ -78,8 +78,8 @@ const defaultFonts = [
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
   },
   {
     id: 'Bisasam_24x24',
@@ -88,8 +88,8 @@ const defaultFonts = [
     tile: { w: 24, h: 24 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
   },
   // This font is purple when loaded by the dungeon renderer so it's commented out
   // {
@@ -107,8 +107,8 @@ const defaultFonts = [
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
     startCode: 32,
-    flipRow: 1,
-    flipTileY: 0,    
+    // flipRow: 1,   // use renderer default
+    // flipTileY: 0, // use renderer default
   },
   {
     id: 'Rotting_Pixels_16x16',
@@ -118,8 +118,8 @@ const defaultFonts = [
     atlas: { cols: 16, rows: 16 },
     startCode: 0,
     // Discovered correct mapping in glyph test: flipRow=false, flipTileY=true
-    flipRow: 1,
-    flipTileY: 0,
+    // flipRow: 1,   // use renderer default unless we re-validate this font needs overrides
+    // flipTileY: 0, // use renderer default unless we re-validate this font needs overrides
   },
 
 
