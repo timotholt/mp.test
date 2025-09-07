@@ -353,6 +353,13 @@ uniform vec2 resolution;
       if (df <= minStepSize) {
         vec4 sampleLight = textureLod(sceneTexture, rayUv, 0.0);
         sampleLight.rgb = pow(sampleLight.rgb, vec3(srgb));
+        // Apply threshold/curve at sample time so it participates in accumulation
+        if (threshold > 0.0) {
+          vec3 shifted = max(sampleLight.rgb - vec3(threshold), vec3(0.0));
+          vec3 normalized = shifted / max(1.0 - threshold, 1e-6);
+          float c = max(curve, 1e-4);
+          sampleLight.rgb = pow(normalized, vec3(c));
+        }
         return sampleLight;
       }
 
@@ -394,6 +401,14 @@ uniform vec2 resolution;
       upperProbePosition,
       basePixelsBetweenProbes == 1.0 ? 0.0 : log(basePixelsBetweenProbes) / log(2.0)
     ).rgb;
+
+    // Apply threshold/curve to upper cascade contribution as well
+    if (threshold > 0.0) {
+      vec3 shiftedUp = max(upperSample - vec3(threshold), vec3(0.0));
+      vec3 normalizedUp = shiftedUp / max(1.0 - threshold, 1e-6);
+      float cUp = max(curve, 1e-4);
+      upperSample = pow(normalizedUp, vec3(cUp));
+    }
 
     return currentRadiance + vec4(upperSample, 1.0);
   }
@@ -497,15 +512,8 @@ uniform vec2 resolution;
       totalRadiance += mergedRadiance * avgRecip;
     }
 
-    // Apply debug threshold/curve if enabled (threshold > 0)
+    // Output: final gamma only; threshold/curve already applied in-situ
     vec3 outColor = totalRadiance.rgb;
-    if (threshold > 0.0) {
-      vec3 shifted = max(outColor - vec3(threshold), vec3(0.0));
-      vec3 normalized = shifted / max(1.0 - threshold, 1e-6);
-      float c = max(curve, 1e-4);
-      outColor = pow(normalized, vec3(c));
-    }
-
     FragColor = (cascadeIndex > firstCascadeIndex)
     ? outColor
     : pow(outColor, vec3(1.0 / srgb));
