@@ -44,11 +44,15 @@
     try {
       const rc = window.radianceCascades;
       if (rc && typeof rc.setDungeonMap === 'function') {
-        // Change FLOOR glyph: replace '.' with IBM full block '█' (CP437 219) for solid tiles
-        const floorMapped = String(mapString || '').replace(/\./g, '█');
+        // Change FLOOR glyphs for display only:
+        // - '.' -> '█' (solid floor plate)
+        // - '#' -> ' ' (space) so walls are not drawn on FLOOR; walls render via ENTITIES only
+        const src = String(mapString || '');
+        const floorMapped = src.replace(/\./g, '█').replace(/#/g, ' ');
         rc.setDungeonMap(floorMapped);
       } else {
-        window.__pendingDungeonMap = String(mapString || '').replace(/\./g, '█');
+        const src = String(mapString || '');
+        window.__pendingDungeonMap = src.replace(/\./g, '█').replace(/#/g, ' ');
       }
     } catch (_) {}
   }
@@ -58,19 +62,64 @@
   function computeEntitiesFromMap(mapString) {
     const entities = [];
     const rows = String(mapString || '').split('\n');
+    // Helper: check if a position is a wall ('#') within bounds
+    const isWall = (x, y) => {
+      if (y < 0 || y >= rows.length) return false;
+      const row = rows[y] || '';
+      if (x < 0 || x >= row.length) return false;
+      return row[x] === '#';
+    };
+    // Map a bitmask of neighbors (N=1,S=2,W=4,E=8) to CP437 box-drawing glyphs
+    const wallGlyph = (n, s, w, e) => {
+      const mask = (n?1:0) | (s?2:0) | (w?4:0) | (e?8:0);
+      switch (mask) {
+        case 0: // isolated; default to horizontal
+        case 8: // E only
+        case 4: // W only
+        case 12: // W+E
+          return { ch: '─', code: 196 };
+        case 1: // N only
+        case 2: // S only
+        case 3: // N+S
+          return { ch: '│', code: 179 };
+        case 9: // N+E -> bottom-left corner
+          return { ch: '└', code: 192 };
+        case 5: // N+W -> bottom-right corner
+          return { ch: '┘', code: 217 };
+        case 10: // S+E -> top-left corner
+          return { ch: '┌', code: 218 };
+        case 6: // S+W -> top-right corner
+          return { ch: '┐', code: 191 };
+        case 7: // N+S+W -> tee right
+          return { ch: '┤', code: 180 };
+        case 11: // N+S+E -> tee left
+          return { ch: '├', code: 195 };
+        case 14: // S+W+E -> tee up
+          return { ch: '┬', code: 194 };
+        case 13: // N+W+E -> tee down
+          return { ch: '┴', code: 193 };
+        case 15: // all
+          return { ch: '┼', code: 197 };
+        default:
+          return { ch: '█', code: 219 }; // fallback to solid
+      }
+    };
     for (let y = 0; y < rows.length; y++) {
       const row = rows[y];
       for (let x = 0; x < row.length; x++) {
         const ch = row[x];
         if (ch === '#') {
-          // Dark, near-neutral wall color in the entities layer to avoid emission.
-          // Visual wall appearance comes primarily from the FLOOR layer color map below.
-          // Use IBM block glyph for solid walls (CP437). CP437 code for '█' is 219.
-          entities.push({ x, y, char: '█', charCode: 219, color: [0.06, 0.07, 0.08], blocking: true });
+          // Use ANSI/CP437 box-drawing based on 4-neighbor connectivity
+          const n = isWall(x, y - 1);
+          const s = isWall(x, y + 1);
+          const w = isWall(x - 1, y);
+          const e = isWall(x + 1, y);
+          const g = wallGlyph(n, s, w, e);
+          entities.push({ x, y, char: g.ch, charCode: g.code, color: [0.30, 0.30, 0.30], blocking: true });
         } else if (ch === '@') {
           // Player '@' should be white in the entities layer
           // entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
-          entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
+          //entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
         }
       }
     }
