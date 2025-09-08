@@ -178,7 +178,11 @@ void main() {
         const row = rows[y];
         for (let x = 0; x < row.length; x++) {
           const ch = row[x];
-          const code = ch.codePointAt(0) || 32;
+          // Floors are rendered as Unicode '█' (U+2588) by dungeonDisplayManager,
+          // but our atlases are laid out in CP437 order where full block is code 219.
+          // Remap that single glyph so it selects the correct atlas cell.
+          const cp = (ch && ch.codePointAt) ? (ch.codePointAt(0) || 32) : 32;
+          const code = (cp === 0x2588 /* Unicode full block */) ? 219 : cp;
           const tex = textureForCode(code);
           if (!tex) continue;
           const spr = new PIXI.Sprite(tex);

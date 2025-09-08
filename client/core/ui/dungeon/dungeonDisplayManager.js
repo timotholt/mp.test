@@ -42,18 +42,16 @@
 
   function setMapString(mapString) {
     try {
-      const rc = window.radianceCascades;
-      if (rc && typeof rc.setDungeonMap === 'function') {
-        // Change FLOOR glyphs for display only:
-        // - '.' -> '█' (solid floor plate)
-        // - '#' -> ' ' (space) so walls are not drawn on FLOOR; walls render via ENTITIES only
-        const src = String(mapString || '');
-        const floorMapped = src.replace(/\./g, '█').replace(/#/g, ' ');
-        rc.setDungeonMap(floorMapped);
-      } else {
-        const src = String(mapString || '');
-        window.__pendingDungeonMap = src.replace(/\./g, '█').replace(/#/g, ' ');
+      // Change FLOOR glyphs for display only:
+      // - '.' -> '█' (solid floor plate)
+      // - '#' -> ' ' (space) so walls are not drawn on FLOOR; walls render via ENTITIES only
+      const src = String(mapString || '');
+      const floorMapped = src.replace(/\./g, '█').replace(/#/g, ' ');
+      // Prefer Pixi: apply immediately if available, otherwise stash for Pixi boot
+      if (window.pxr && typeof window.pxr.setDungeonMap === 'function') {
+        window.pxr.setDungeonMap(floorMapped);
       }
+      window.__pendingDungeonMap = floorMapped;
     } catch (_) {}
   }
 
@@ -129,7 +127,6 @@
   // Apply floors as non-blocking and walls/entities as blocking layer over the floor.
   function applyFloorAndEntities(mapString) {
     try {
-      const rc = window.radianceCascades;
       const entities = computeEntitiesFromMap(mapString);
       // Merge any additional, route-specific entities (e.g., demo humans)
       try {
@@ -137,36 +134,9 @@
           entities.push.apply(entities, window.__extraDemoEntities);
         }
       } catch (_) {}
-      if (rc && typeof rc.setPositionBlockMapFill === 'function' && typeof rc.setEntities === 'function') {
-        rc.setPositionBlockMapFill(false); // floors never block
-        rc.setEntities(entities);
-        // Apply a non-blinding character color map for the FLOOR layer
-        if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
-          const charMap = JSON.stringify({
-            '#': [0.36, 0.38, 0.42],  // walls (visual albedo on FLOOR layer)
-            '.': [0.14, 0.14, 0.16],  // legacy dot entry (kept for safety)
-            '░': [0.14, 0.14, 0.16],  // legacy shade entry (kept for safety)
-            '█': [0.03, 0.03, 0.03],  // floor tile (IBM full block) — solid, dark plate
-            '~': [0.20, 0.40, 0.80],  // water (optional)
-            '+': [0.85, 0.65, 0.20],  // doors (optional)
-            '|': [0.50, 0.52, 0.56],  // divider (optional)
-          });
-          rc.surface.setCharacterColorMap(charMap);
-        }
-      } else {
-        window.__pendingBlockFill = false;
-        window.__pendingEntities = entities;
-        // Stash the color map until RC is ready
-        window.__pendingCharacterColorMap = JSON.stringify({
-          '#': [0.36, 0.38, 0.42],
-          '.': [0.14, 0.14, 0.16],
-          '░': [0.14, 0.14, 0.16],
-          '█': [0.03, 0.03, 0.03],
-          '~': [0.20, 0.40, 0.80],
-          '+': [0.85, 0.65, 0.20],
-          '|': [0.50, 0.52, 0.56],
-        });
-      }
+      // Push to Pixi immediately if active; also stash for boot-time consumption.
+      try { if (window.pxr && typeof window.pxr.setEntities === 'function') { window.pxr.setEntities(entities); } } catch (_) {}
+      window.__pendingEntities = entities;
     } catch (_) {}
   }
 
