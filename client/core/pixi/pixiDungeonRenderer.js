@@ -34,6 +34,21 @@
   // Keep low because sprite tints darken visible glyphs; 0.06–0.10 works well.
   const GLYPH_KEY_THRESHOLD = 0.08;
 
+  // Raymarching emissive lighting (every pixel can emit if bright enough)
+  // All parameters are centralized here so UI sliders can bind directly later.
+  const RAYMARCH_DEFAULTS = {
+    enabled: true,          // turn the effect on by default
+    threshold: 0.35,        // emission threshold on scene luminance (0..1)
+    curve: 1.6,             // emission curve (gamma-like exponent)
+    intensity: 1.2,         // multiplier for emissive contribution
+    ambient: 0.35,          // base ambient level added to all pixels
+    stepPx: 5.0,            // step size in pixels along each ray
+    steps: 28,              // number of steps traced per direction (<= 64)
+    dirCount: 12,           // number of directions on the unit circle (<= 32 recommended)
+    occlusionBlock: 0.85,   // how strongly the occlusion mask blocks light (0..1)
+    distanceFalloff: 1.0,   // linear falloff factor with distance (0..2)
+  };
+
   // Lazy PIXI loader to avoid touching package.json.
   async function loadPixi() {
     if (window.PIXI) return window.PIXI;
@@ -60,6 +75,93 @@
       console.error('[pixiDungeonRenderer] Unable to load PixiJS', e);
       throw e;
     }
+  }
+
+  // Screen-space emissive raymarch: every pixel on the scene acts as an emitter
+  // based on luminance threshold/curve. Rays accumulate emission while being
+  // attenuated by distance and blocked by the occlusion RT (walls).
+  function createRaymarchFilter(PIXI) {
+    const MAX_STEPS = 64;
+    const MAX_DIRS = 32;
+    const frag = `
+precision highp float;
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;      // scene color (albedo)
+uniform sampler2D uOcclusion;    // occlusion mask (white blocks)
+uniform vec2 uResolution;        // renderer size in pixels
+uniform float uThreshold;        // emission threshold on luminance
+uniform float uCurve;            // emission curve exponent
+uniform float uIntensity;        // emission intensity multiplier
+uniform float uAmbient;          // ambient level
+uniform float uStepPx;           // step length in pixels
+uniform float uSteps;            // steps per direction (<= ${MAX_STEPS})
+uniform float uDirCount;         // number of directions (<= ${MAX_DIRS})
+uniform float uOcclusionBlock;   // occlusion block strength (0..1)
+uniform float uDistanceFalloff;  // linear falloff
+
+float lum(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+float texOcc(vec2 uv){ vec3 o = texture2D(uOcclusion, uv).rgb; return max(max(o.r,o.g),o.b); }
+
+// Uniformly distribute directions on the circle
+vec2 dirForIndex(int i, float n){
+  float fi = float(i);
+  float fn = max(n, 1.0);
+  float a = 6.28318530718 * (fi / fn);
+  return vec2(cos(a), sin(a));
+}
+
+void main(){
+  vec2 uv = vTextureCoord;
+  vec4 base4 = texture2D(uSampler, uv);
+  vec3 base = base4.rgb;
+  float stepLen = max(0.5, uStepPx);
+  float invW = 1.0 / uResolution.x;
+  float invH = 1.0 / uResolution.y;
+  float emitAccum = 0.0;
+  float normAccum = 0.0;
+
+  float DC = max(1.0, uDirCount);
+  float ST = max(1.0, min(uSteps, float(${MAX_STEPS})));
+  for (int di = 0; di < ${MAX_DIRS}; di++){
+    if (float(di) >= DC) break;
+    vec2 d = dirForIndex(di, DC);
+    vec2 stepUV = vec2(stepLen*invW, stepLen*invH) * d;
+    vec2 p = uv;
+    float trans = 1.0;
+    for (int si = 0; si < ${MAX_STEPS}; si++){
+      if (float(si) >= ST) break;
+      p += stepUV;
+      float occ = texOcc(p);
+      trans *= (1.0 - uOcclusionBlock * occ);
+      if (trans < 0.003) break;
+      float L = lum(texture2D(uSampler, p).rgb);
+      float e = max(0.0, (L - uThreshold) / max(1e-6, 1.0 - uThreshold));
+      e = pow(e, max(0.001, uCurve));
+      float dist = float(si+1) * stepLen;
+      float fall = max(0.0, 1.0 - uDistanceFalloff * (dist / 512.0));
+      emitAccum += trans * e * fall;
+      normAccum += fall;
+    }
+  }
+  float emissive = (normAccum > 0.0) ? (emitAccum / normAccum) : 0.0;
+  float lighting = clamp(uAmbient + uIntensity * emissive, 0.0, 2.0);
+  vec3 color = base * lighting;
+  gl_FragColor = vec4(color, base4.a);
+}`;
+    const uniforms = {
+      uOcclusion: null,
+      uResolution: new Float32Array([1024, 768]),
+      uThreshold: RAYMARCH_DEFAULTS.threshold,
+      uCurve: RAYMARCH_DEFAULTS.curve,
+      uIntensity: RAYMARCH_DEFAULTS.intensity,
+      uAmbient: RAYMARCH_DEFAULTS.ambient,
+      uStepPx: RAYMARCH_DEFAULTS.stepPx,
+      uSteps: RAYMARCH_DEFAULTS.steps,
+      uDirCount: RAYMARCH_DEFAULTS.dirCount,
+      uOcclusionBlock: RAYMARCH_DEFAULTS.occlusionBlock,
+      uDistanceFalloff: RAYMARCH_DEFAULTS.distanceFalloff,
+    };
+    return new PIXI.Filter(undefined, frag, uniforms);
   }
 
   // Top-level filters (available to the renderer API)
@@ -148,6 +250,7 @@ void main() {
       },
       rt: { scene: null, sprite: null, occlusion: null },
       giFilter: null,
+      rayFilter: null,
       filterChain: [],
       camera: { x: 0, y: 0, scale: 1 },
       pixelPerfect: true,
@@ -163,6 +266,7 @@ void main() {
       blackKeyFilterWorld: null,
       blackKeyFilterOcc: null,
       viewingOcclusion: false,
+      rayParams: { ...RAYMARCH_DEFAULTS },
       // no debug flags kept in production path
     };
 
@@ -484,7 +588,9 @@ void main() {
 
       // GI-like filter (available but disabled by default to keep base colors faithful)
       state.giFilter = createGiFilter(PIXI);
-      state.filterChain = [];
+      // Raymarch emissive filter (on by default per RAYMARCH_DEFAULTS)
+      state.rayFilter = createRaymarchFilter(PIXI);
+      state.filterChain = RAYMARCH_DEFAULTS.enabled ? [state.rayFilter] : [];
       state.rt.sprite.filters = state.filterChain;
 
       // Default: enable black-key on world (uniform ASCII transparency)
@@ -521,7 +627,7 @@ void main() {
         viewEl.addEventListener('mouseleave', onUp);
       } catch (_) {}
 
-      // Function keys: F2 toggles occlusion mask / scene
+      // Function keys: F2 toggles occlusion mask / scene; F3 toggles raymarch on/off
       try {
         function onKey(ev) {
           if (!ev || ev.repeat) return;
@@ -533,6 +639,19 @@ void main() {
               } else {
                 api && api.viewScene && api.viewScene();
               }
+              ev.preventDefault();
+              ev.stopPropagation();
+            } catch (_) {}
+          } else if (ev.code === 'F3') {
+            try {
+              // Toggle raymarch filter in the post chain
+              const has = state.rayFilter && state.filterChain.includes(state.rayFilter);
+              if (has) {
+                state.filterChain = state.filterChain.filter(f => f !== state.rayFilter);
+              } else if (state.rayFilter) {
+                state.filterChain.push(state.rayFilter);
+              }
+              state.rt.sprite.filters = state.filterChain;
               ev.preventDefault();
               ev.stopPropagation();
             } catch (_) {}
@@ -555,6 +674,7 @@ void main() {
           try { if (state.rt.occlusion) state.rt.occlusion.destroy(true); } catch (_) {}
           state.rt.occlusion = PIXI.RenderTexture.create({ width: w, height: h, resolution: app.renderer.resolution });
           try { state.rt.occlusion.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
+          try { if (state.rayFilter) { state.rayFilter.uniforms.uResolution[0] = w; state.rayFilter.uniforms.uResolution[1] = h; } } catch (_) {}
           updateCamera();
         } catch (e) { console.warn('[pixi] resize failed', e); }
       }
@@ -602,6 +722,25 @@ void main() {
           state.giFilter.uniforms.uTime = (now - state.startTs) * 0.001;
           // If a pipeline consumes occlusion, keep the uniform bound
           try { state.giFilter.uniforms.uOcclusion = state.rt.occlusion; } catch (_) {}
+        }
+        // Update Raymarch uniforms
+        if (state.rayFilter) {
+          try {
+            const w = state.app.renderer.width|0; const h = state.app.renderer.height|0;
+            state.rayFilter.uniforms.uResolution[0] = w;
+            state.rayFilter.uniforms.uResolution[1] = h;
+            state.rayFilter.uniforms.uOcclusion = state.rt.occlusion;
+            const p = state.rayParams;
+            state.rayFilter.uniforms.uThreshold = p.threshold;
+            state.rayFilter.uniforms.uCurve = p.curve;
+            state.rayFilter.uniforms.uIntensity = p.intensity;
+            state.rayFilter.uniforms.uAmbient = p.ambient;
+            state.rayFilter.uniforms.uStepPx = p.stepPx;
+            state.rayFilter.uniforms.uSteps = Math.max(1, Math.min(64, (p.steps|0)));
+            state.rayFilter.uniforms.uDirCount = Math.max(1, Math.min(32, (p.dirCount|0)));
+            state.rayFilter.uniforms.uOcclusionBlock = Math.max(0, Math.min(1, p.occlusionBlock));
+            state.rayFilter.uniforms.uDistanceFalloff = Math.max(0, Math.min(2, p.distanceFalloff));
+          } catch (_) {}
         }
 
         // First render occlusion mask offstage
@@ -691,6 +830,28 @@ void main() {
       } catch (_) {}
     }
     function clearFilters() { setFilterChain([]); }
+
+    // Raymarch API
+    function enableRaymarch() {
+      try {
+        if (!state.rayFilter) return;
+        if (!state.filterChain.includes(state.rayFilter)) state.filterChain.push(state.rayFilter);
+        state.rt.sprite.filters = state.filterChain;
+      } catch (_) {}
+    }
+    function disableRaymarch() {
+      try {
+        if (!state.rayFilter) return;
+        state.filterChain = state.filterChain.filter(f => f !== state.rayFilter);
+        state.rt.sprite.filters = state.filterChain;
+      } catch (_) {}
+    }
+    function setRayParams(params) {
+      try {
+        if (!params) return;
+        Object.assign(state.rayParams, params);
+      } catch (_) {}
+    }
 
 
     function setSprites(sprites) {
@@ -826,6 +987,9 @@ void main() {
       viewScene,
       detectFloorSeams,
       debugGlyphFrame,
+      enableRaymarch,
+      disableRaymarch,
+      setRayParams,
       setGlyphInset: (px) => { try { state.debugInset = Math.max(0, Number(px)||0); state.textures.byCode.clear(); if (state.lastSprites && state.lastSprites.length) setSprites(state.lastSprites); } catch (_) {} },
       destroy,
     };
