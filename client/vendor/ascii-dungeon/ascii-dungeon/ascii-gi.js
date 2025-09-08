@@ -725,20 +725,13 @@ class RC extends DistanceField {
       );
     }
 
-    // Render floor layer
+    // Build FLOOR-only surface for fog. Do NOT compose entities here.
     this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
     this.renderer.setRenderTarget(this.surfaceRenderTarget);
     // Clear to fully transparent to avoid previous-frame remnants
     this.renderer.clear();
     this.render();
-    // Overlay entities visually with alpha blending so floors remain underneath
-    const gl = this.gl;
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
-    this.render();
-    gl.disable(gl.BLEND);
 
     // Feed composed surface into the overlay shader
     this.overlayUniforms.drawPassTexture = this.surfaceRenderTarget.texture;
@@ -759,9 +752,17 @@ class RC extends DistanceField {
       this.overlayRender();
     }
 
-    // Render directly to screen
+    // Render directly to screen (fog applied to FLOOR only)
     this.renderer.setRenderTarget(null);
     this.overlayRender();
+
+    // Now overlay ENTITIES on top of the fogged scene (no fog on entities)
+    const gl = this.gl;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
+    this.render();
+    gl.disable(gl.BLEND);
   }
 
   triggerDraw() {
