@@ -274,23 +274,30 @@ void main() {
       const sy = rowIdx * (cellH || state.tile.h) + pad;
 
       // UV inset to avoid sampling atlas gutters
-      // Default tiny inset helps reduce bleeding at certain scales, but we must not shrink solid floor blocks
+      // Default tiny inset helps reduce bleeding at certain scales; use anisotropic inset so
+      // line-drawing glyphs still butt perfectly without a 1px gap between tiles.
       let inset = Math.max(0, Number(state.debugInset) || 0);
+      let insetX = inset, insetY = inset;
       try {
         // Do NOT inset fully filled block (floor) so tiles butt without visible gaps
-        if (key === 219) {
-          inset = 0;
-        } else {
-          // Apply stronger inset for thin CP437 line glyphs to avoid seam artifacts
+        if (key === 219) { insetX = 0; insetY = 0; }
+        else {
           const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
+          const H_SPAN = [196,218,191,192,217,180,195,194,193,197]; // spans left-right
+          const V_SPAN = [179,218,191,192,217,180,195,194,193,197]; // spans top-bottom
           if (LINE_CODES.indexOf(key) !== -1) {
-            inset = Math.max(inset, 0.28);
+            // Keep a modest inset to reduce atlas bleed, but do not shrink along the axis that must butt
+            const strong = Math.max(inset, 0.20);
+            insetX = strong; insetY = strong;
+            if (H_SPAN.indexOf(key) !== -1) insetX = 0; // full horizontal extent
+            if (V_SPAN.indexOf(key) !== -1) insetY = 0; // full vertical extent
           }
         }
       } catch (_) {}
-      inset = Math.max(0, Math.min(inset, Math.min(state.tile.w, state.tile.h) * 0.49));
-      const frame = (inset > 0)
-        ? new PIXI.Rectangle(sx + inset, sy + inset, state.tile.w - inset * 2, state.tile.h - inset * 2)
+      insetX = Math.max(0, Math.min(insetX, (state.tile.w) * 0.49));
+      insetY = Math.max(0, Math.min(insetY, (state.tile.h) * 0.49));
+      const frame = (insetX > 0 || insetY > 0)
+        ? new PIXI.Rectangle(sx + insetX, sy + insetY, state.tile.w - insetX * 2, state.tile.h - insetY * 2)
         : new PIXI.Rectangle(sx, sy, state.tile.w, state.tile.h);
       const tex = new PIXI.Texture(base, frame);
       tex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
