@@ -159,6 +159,10 @@ window.startLobby = startLobby;
 // Defer until DOM is ready so we can attach under #app
 function bootPixi() {
   try { window.bootPixiRenderer && window.bootPixiRenderer(); } catch (e) { try { console.error('[main] Pixi boot failed', e); } catch (_) {} }
+  // Ensure core UI overlays are present (previously created by ASCII renderer)
+  try { ensureStatusBar(); } catch (_) {}
+  try { ensureBanner(); } catch (_) {}
+  try { ensureZoomControls(); } catch (_) {}
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bootPixi);
