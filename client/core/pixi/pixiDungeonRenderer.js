@@ -196,7 +196,7 @@ void main() {
       tile: { w: 8, h: 8 },
       atlas: { cols: 16, rows: 16, startCode: 32 },
       flip: { tileY: false, row: false },
-      textures: { base: null, byCode: new Map() },
+      textures: { base: null, byCode: new Map(), originalBase: null },
       map: { rows: [], width: 0, height: 0 },
       entityById: new Map(), // id -> { sprite, emission }
       lastEntities: [], // remember latest desired entities to reapply post-font-load
@@ -229,20 +229,30 @@ void main() {
       if (!base || !base.valid) return null;
       const start = state.atlas.startCode | 0;
       let idx = Math.max(0, key - start);
-      // Derive atlas layout from base texture size to avoid OOB frames
-      const cols = Math.max(1, Math.floor(base.width / state.tile.w));
-      const rows = Math.max(1, Math.floor(base.height / state.tile.h));
+      // Derive atlas layout from base texture size (respecting optional extrusion padding)
+      const pad = Number(state.atlas.pad || 0);
+      const cellW = state.tile.w + pad * 2;
+      const cellH = state.tile.h + pad * 2;
+      const cols = Math.max(1, Math.floor(base.width / (cellW || state.tile.w)));
+      const rows = Math.max(1, Math.floor(base.height / (cellH || state.tile.h)));
       const maxIndex = (cols * rows) - 1;
       if (idx > maxIndex) idx = idx % (maxIndex + 1);
-      const sx = (idx % cols) * state.tile.w;
+      const sx = (idx % cols) * (cellW || state.tile.w) + pad;
       let rowIdx = Math.floor(idx / cols);
       // If the atlas is stored upside-down, invert the row index using derived rows
       if (state.flip.tileY && Number.isFinite(rows) && rows > 0) {
         rowIdx = (rows - 1) - rowIdx;
       }
-      const sy = rowIdx * state.tile.h;
-      // Optional debug UV inset to avoid sampling atlas gutters
+      const sy = rowIdx * (cellH || state.tile.h) + pad;
+      // Optional UV inset to avoid sampling atlas gutters
       let inset = (state.debug && Number.isFinite(state.debug.uvInsetPx)) ? Number(state.debug.uvInsetPx) : 0;
+      // Apply a small permanent inset for thin CP437 line glyphs to reduce sporadic edge artifacts
+      try {
+        const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
+        if (LINE_CODES.indexOf(key) !== -1) {
+          inset = Math.max(inset, 0.25);
+        }
+      } catch (_) {}
       inset = Math.max(0, Math.min(inset, Math.min(state.tile.w, state.tile.h) * 0.49));
       const frame = (inset > 0)
         ? new PIXI.Rectangle(sx + inset, sy + inset, state.tile.w - inset * 2, state.tile.h - inset * 2)
@@ -251,6 +261,80 @@ void main() {
       tex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
       state.textures.byCode.set(key, tex);
       return tex;
+    }
+
+    // Build an extruded atlas on a canvas by duplicating edge pixels to create gutters.
+    function buildExtrudedAtlas(base, padPx) {
+      try {
+        const pad = Math.max(0, Math.floor(Number(padPx) || 0));
+        if (!pad) return null;
+        const src = base && base.resource && base.resource.source; // HTMLImageElement/Canvas
+        if (!src || !base.valid) return null;
+        const tW = state.tile.w, tH = state.tile.h;
+        const cols = Math.max(1, Math.floor(base.width / tW));
+        const rows = Math.max(1, Math.floor(base.height / tH));
+        const cellW = tW + pad*2;
+        const cellH = tH + pad*2;
+        const outW = cols * cellW;
+        const outH = rows * cellH;
+        const canvas = document.createElement('canvas');
+        canvas.width = outW; canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.imageSmoothingEnabled = false;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const sx0 = c * tW;
+            const sy0 = r * tH;
+            const dx0 = c * cellW + pad;
+            const dy0 = r * cellH + pad;
+            // center
+            ctx.drawImage(src, sx0, sy0, tW, tH, dx0, dy0, tW, tH);
+            // edges
+            // left/right strips
+            ctx.drawImage(src, sx0, sy0, 1, tH, dx0 - pad, dy0, pad, tH);
+            ctx.drawImage(src, sx0 + tW - 1, sy0, 1, tH, dx0 + tW, dy0, pad, tH);
+            // top/bottom strips
+            ctx.drawImage(src, sx0, sy0, tW, 1, dx0, dy0 - pad, tW, pad);
+            ctx.drawImage(src, sx0, sy0 + tH - 1, tW, 1, dx0, dy0 + tH, tW, pad);
+            // corners
+            ctx.drawImage(src, sx0, sy0, 1, 1, dx0 - pad, dy0 - pad, pad, pad);
+            ctx.drawImage(src, sx0 + tW - 1, sy0, 1, 1, dx0 + tW, dy0 - pad, pad, pad);
+            ctx.drawImage(src, sx0, sy0 + tH - 1, 1, 1, dx0 - pad, dy0 + tH, pad, pad);
+            ctx.drawImage(src, sx0 + tW - 1, sy0 + tH - 1, 1, 1, dx0 + tW, dy0 + tH, pad, pad);
+          }
+        }
+        const newBase = PIXI.BaseTexture.from(canvas);
+        try { newBase.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
+        return { base: newBase, pad };
+      } catch (_) { return null; }
+    }
+
+    function enableAtlasExtrude(padPx = 1) {
+      try {
+        const base = state.textures.originalBase || state.textures.base;
+        if (!base || !base.valid) return false;
+        const out = buildExtrudedAtlas(base, padPx);
+        if (!out) return false;
+        state.textures.byCode.clear();
+        state.textures.base = out.base;
+        state.atlas.pad = out.pad;
+        rebuildMap();
+        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
+        return true;
+      } catch (_) { return false; }
+    }
+
+    function disableAtlasExtrude() {
+      try {
+        if (!state.textures.originalBase) return false;
+        state.textures.byCode.clear();
+        state.textures.base = state.textures.originalBase;
+        state.atlas.pad = 0;
+        rebuildMap();
+        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
+        return true;
+      } catch (_) { return false; }
     }
 
     function rebuildMap() {
@@ -723,6 +807,24 @@ void main() {
       state.filterChain = [];
       state.rt.sprite.filters = state.filterChain;
 
+      // Default: enable black-key on ENTITIES only (helps atlases without alpha)
+      try {
+        let th = 0.025; // safe conservative default
+        try {
+          const s = localStorage.getItem('ui_blackkey_entities_threshold');
+          if (s != null && s !== '') {
+            if (s.trim().endsWith('%')) {
+              const p = parseFloat(s);
+              if (Number.isFinite(p)) th = Math.max(0, Math.min(1, p / 100));
+            } else {
+              const v = Number(s);
+              if (Number.isFinite(v)) th = Math.max(0, Math.min(1, v));
+            }
+          }
+        } catch (_) {}
+        enableBlackKeyOnEntities(th);
+      } catch (_) {}
+
       // Pointer wheel zoom (anchor under cursor) and drag pan
       try {
         function onWheel(ev) {
@@ -860,10 +962,16 @@ void main() {
       // Reset per-code cache
       state.textures.byCode.clear();
       state.textures.base = base;
+      state.textures.originalBase = base;
       // Rebuild map sprites to adopt new glyph textures/size
       if (base.valid) {
+        // Optionally auto-extrude if configured via localStorage
+        try {
+          const s = localStorage.getItem('ui_atlas_extrude_pad');
+          const pad = (s != null && s !== '') ? Math.max(0, Math.floor(Number(s))) : 1; // default 1
+          if (pad > 0) enableAtlasExtrude(pad);
+        } catch (_) {}
         rebuildMap();
-        // Re-apply entities now that glyphs are valid
         try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
       } else {
         try {
@@ -930,6 +1038,8 @@ void main() {
       addFilter,
       clearFilters,
       setBypassRT: (flag) => { try { state.flags.useRT = !flag; applyRTMode(); } catch (_) {} },
+      enableAtlasExtrude,
+      disableAtlasExtrude,
       destroy,
     };
     return api;
