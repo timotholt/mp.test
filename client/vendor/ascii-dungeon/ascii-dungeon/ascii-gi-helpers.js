@@ -680,6 +680,8 @@ class BaseSurface {
 
 const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font texture atlas
   uniform sampler2D asciiViewTexture;  // The texture mapping dungeon cells to ASCII codes
+  uniform sampler2D positionBlockMap;  // Map-sized mask: 1.0 blocks, 0.0 does not
+  uniform float useOcclusionAlpha;     // 1.0 for offscreen (GI/DF), 0.0 for on-screen
   uniform vec2 gridSize;               // Number of visible grid cells in x,y directions
   uniform vec2 tileSize;               // Size of each character tile in the atlas (e.g. 8x8)
   uniform vec2 atlasSize;              // Size of the atlas grid (e.g. 16x16)
@@ -752,9 +754,16 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Sample the character from the atlas
     vec4 char = texture(asciiTexture, atlasUv);
 
+    // Position-level blocking flag (tile granularity)
+    float posBlock = texture(positionBlockMap, viewTexCoord).r; // 0..1
+    // Pixel-accurate occlusion uses glyph alpha gated by position flag
+    float occAlpha = char.a * posBlock;
+    // On-screen visuals should remain opaque where glyph exists; GI uses occAlpha
+    float outA = mix(char.a, occAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
+
     // Output the character with the color from asciiViewTexture
-    if (char.a > 0.0) {
-      FragColor = char * vec4(asciiView.rgb, 1.0);
+    if (char.a > 0.0 || outA > 0.0) {
+      FragColor = vec4(char.rgb * asciiView.rgb, outA);
     } else {
       FragColor = vec4(0.0, 0.0, 0.0, 0.0);
     }
@@ -778,6 +787,8 @@ class DungeonRenderer extends BaseSurface {
       uniforms: {
         asciiTexture: null,
         asciiViewTexture: null,
+        positionBlockMap: null,
+        useOcclusionAlpha: 1.0,
         gridSize: [0, 0],                           // Will be calculated based on camera and viewport
         tileSize: TILE_SIZE,
         atlasSize: [16, 16],
@@ -804,6 +815,17 @@ class DungeonRenderer extends BaseSurface {
     this.dungeonStage = props.stage;
     this.dungeonUniforms = props.uniforms;
     this.dungeonUniforms.asciiTexture = this.renderer.font;
+
+    // Initialize a positionBlockMap texture (will be resized with the map)
+    this.positionBlockMapTexture = this.gl.createTexture();
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+    const initialPB = new Uint8Array(1); initialPB[0] = 255; // default block
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, 1, 1, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, initialPB);
+    this.dungeonUniforms.positionBlockMap = this.positionBlockMapTexture;
 
     // Implement the render dungeon method
     this.surface.renderDungeon = (dungeonMapString) => {
@@ -980,8 +1002,20 @@ class DungeonRenderer extends BaseSurface {
       this.gl.RGBA, this.gl.UNSIGNED_BYTE, data
     );
 
-    // Update uniform
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+    let pbw = this._positionBlockWidth;
+    let pbh = this._positionBlockHeight;
+    if (!this.positionBlockData || pbw !== mapWidth || pbh !== mapHeight) {
+      // Default to ALL BLOCKING (255) to preserve prior occlusion semantics
+      // until higher layers or routes explicitly mark floors as non-blocking.
+      this.positionBlockData = new Uint8Array(mapWidth * mapHeight);
+      this.positionBlockData.fill(255);
+      this._positionBlockWidth = mapWidth;
+      this._positionBlockHeight = mapHeight;
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, mapWidth, mapHeight, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.positionBlockData);
+      this.dungeonUniforms.positionBlockMap = this.positionBlockMapTexture;
+    }
+
     this.updateCameraUniforms();
 
     // The viewport size will be set separately from the map size
@@ -1123,7 +1157,7 @@ class DungeonRenderer extends BaseSurface {
 #≈≈≈≈≈#,,,,,,#...⚱...⚱...⚱...#~≈≈#!!!#≡≡≡≡☠≡≡≡#...#.....+.....+.☠...+...⚔#
 #~~~~~#,,,,,,#...............###~≈#!!!#≡≡≡≡≡≡≡≡#...#.....#.....#.....#...⚔#
 #~~~~~#,,,,,,#........*......#...~#####+≡≡≡≡≡≡≡#...##################⚰⚰⚰⚰#
-#~~~~~#,,,,,,#..?............#....~~~~~~≡≡≡≡≡≡≡≡#..∞####+#.....#...........#
+#~~~~~#,,,,,,#..?............#....~~~~~~≡≡≡≡≡≡≡≡≡#..∞####+#.....#...........#
 ######+############+####+#####...~~~~~~≡≡≡≡≡≡≡≡≡+....§...+..$..#...........#
 #§....┌─┐....#%..$#☼...#⚱...#...~~~~~≡≡≡≡≡≡≡≡≡≡#....#####.....#.⚰⚰⚰⚰⚰⚰⚰⚰.#
 #.....│ │....#....#....#....#....~~~~≡≡≡≡≡≡≡≡≡≡≡#............☠#.⚰........⚰.#
@@ -1164,6 +1198,8 @@ class DungeonRenderer extends BaseSurface {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+    // Use occlusion alpha when rendering offscreen for GI/DF
+    this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
     // Render to the target
     this.renderIndex = 1 - this.renderIndex;
@@ -1191,6 +1227,8 @@ class DungeonRenderer extends BaseSurface {
 
     // Render to screen
     this.renderer.setRenderTarget(null);
+    // Visual pass: disable occlusion alpha so glyph visuals remain unchanged
+    this.dungeonUniforms.useOcclusionAlpha = 0.0;
     this.render();
   }
 }
