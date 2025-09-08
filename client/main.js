@@ -16,6 +16,7 @@ import { ensureBanner } from './core/ui/banner.js';
 import { registerGameplayMovement } from './core/input/gameplayInput.js';
 import { registerLoginRoute } from './routes/login.js';
 import { registerLobbyRoute, stopLobbyPolling as stopLobbyPollingExport } from './routes/lobby.js';
+import { getFont, resolveImageSrc } from './core/ui/dungeon/fontCatalog.js';
 import { ensureDungeonScrim } from './core/ui/dungeon/dungeonScrim.js';
 import { attemptReconnect as attemptReconnectNet } from './core/net/reconnect.js';
 import * as LS from './core/localStorage.js';
@@ -157,15 +158,85 @@ window.startLobby = startLobby;
 // ASCII renderer moved to './core/renderer.js'
 
 // Defer until DOM is ready so we can attach under #app
-function bootPixi() {
-  try { window.bootPixiRenderer && window.bootPixiRenderer(); } catch (e) { try { console.error('[main] Pixi boot failed', e); } catch (_) {} }
+async function bootPixi() {
+  try { if (window.bootPixiRenderer) { await window.bootPixiRenderer(); } } catch (e) { try { console.error('[main] Pixi boot failed', e); } catch (_) {} }
   // Ensure core UI overlays are present (previously created by ASCII renderer)
   try { ensureStatusBar(); } catch (_) {}
   try { ensureBanner(); } catch (_) {}
   try { ensureZoomControls(); } catch (_) {}
+
+  // Proactively dispatch the current dungeon font so Pixi shows without opening Settings
+  try {
+    let fontId = null;
+    try { fontId = localStorage.getItem('ui_dungeon_font_id'); } catch (_) { fontId = null; }
+    const alias = { 'vendor-16x16': 'Bisasam_16x16', 'Bisasam 16x16': 'Bisasam_16x16' };
+    const resolvedId = alias[fontId] || fontId || 'vendor-8x8';
+    const f = getFont(resolvedId);
+    if (f) {
+      const src = resolveImageSrc(f);
+      if (src) {
+        const detail = {
+          id: f.id,
+          name: f.name,
+          tile: f.tile,
+          atlas: f.atlas,
+          startCode: Number.isFinite(f.startCode) ? f.startCode : 32,
+        };
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTextureY')) detail.flipTextureY = !!f.flipTextureY;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTextureX')) detail.flipTextureX = !!f.flipTextureX;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) detail.flipRow = !!f.flipRow;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) detail.flipTileY = !!f.flipTileY;
+        if (f.dataUrl) detail.dataUrl = f.dataUrl; else detail.url = src;
+        window.dispatchEvent(new CustomEvent('ui:dungeon-font-changed', { detail }));
+      }
+    }
+  } catch (_) {}
+
+  // Re-emit current route so dungeonDisplayManager reapplies map (ensures Pixi picks it up)
+  try {
+    const current = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null;
+    if (current) window.dispatchEvent(new CustomEvent('route:changed', { detail: { route: current } }));
+  } catch (_) {}
+
+  // Global keydown: +/- zoom and F8 UI toggle (mirrors ASCII behavior)
+  try {
+    window.addEventListener('keydown', (e) => {
+      try {
+        if (e.key === '+' || e.key === '=') {
+          window.dispatchEvent(new CustomEvent('ui:zoom', { detail: { factor: 1.1 } }));
+        } else if (e.key === '-') {
+          window.dispatchEvent(new CustomEvent('ui:zoom', { detail: { factor: 0.9 } }));
+        } else if (e.key === 'F8') {
+          const hidden = document.body.getAttribute('data-ui-hidden') === 'true' ? false : true;
+          document.body.setAttribute('data-ui-hidden', hidden ? 'true' : 'false');
+          const toggleEl = (el) => {
+            if (!el) return;
+            if (hidden) {
+              if (!el.getAttribute('data-prev-display')) el.setAttribute('data-prev-display', el.style.display || '');
+              el.style.display = 'none';
+            } else {
+              const prev = el.getAttribute('data-prev-display');
+              el.style.display = (prev != null) ? prev : '';
+              el.removeAttribute('data-prev-display');
+            }
+          };
+          const ids = [
+            'hover-status-bar', 'zoom-controls', 'settings-overlay-root', 'settings-scrim',
+            'overlay', 'overlay-content', 'modal-root', 'dungeon-scrim'
+          ];
+          ids.forEach((id) => toggleEl(document.getElementById(id)));
+          try {
+            const states = (window.APP_STATES || {});
+            Object.values(states).forEach((sid) => toggleEl(document.getElementById(String(sid))));
+          } catch (_) {}
+          try { document.querySelectorAll('.login-card').forEach((el) => toggleEl(el)); } catch (_) {}
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
 }
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bootPixi);
+  document.addEventListener('DOMContentLoaded', () => { bootPixi(); });
 } else {
   bootPixi();
 }

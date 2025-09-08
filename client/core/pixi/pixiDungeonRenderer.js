@@ -257,8 +257,19 @@ void main() {
         x: state.camera.x + (ax * viewW) / state.camera.scale,
         y: state.camera.y + (ay * viewH) / state.camera.scale,
       };
-      let newScale = clamp(state.camera.scale * (Number(factor)||1), 0.25, 8.0);
-      if (state.pixelPerfect) newScale = Math.max(1, Math.round(newScale));
+      let newScale;
+      if (state.pixelPerfect) {
+        const f = Number(factor) || 1;
+        if (f > 1) {
+          newScale = Math.min(8, Math.floor(state.camera.scale) + 1);
+        } else if (f < 1) {
+          newScale = Math.max(1, Math.ceil(state.camera.scale) - 1);
+        } else {
+          newScale = Math.max(1, Math.round(state.camera.scale));
+        }
+      } else {
+        newScale = clamp(state.camera.scale * (Number(factor)||1), 0.25, 8.0);
+      }
       state.camera.scale = newScale;
       const worldAfter = {
         x: state.camera.x + (ax * viewW) / state.camera.scale,
@@ -477,7 +488,24 @@ void main() {
       state.textures.byCode.clear();
       state.textures.base = base;
       // Rebuild map sprites to adopt new glyph textures/size
-      rebuildMap();
+      if (base.valid) {
+        rebuildMap();
+      } else {
+        try {
+          const onLoaded = () => { try { rebuildMap(); } catch (_) {} };
+          if (typeof base.once === 'function') {
+            base.once('loaded', onLoaded);
+          } else if (typeof base.on === 'function') {
+            const handler = () => { try { base.off && base.off('loaded', handler); } catch (_) {} onLoaded(); };
+            base.on('loaded', handler);
+          } else {
+            // Fallback: poll until valid
+            const it = setInterval(() => {
+              if (base.valid) { clearInterval(it); try { rebuildMap(); } catch (_) {} }
+            }, 16);
+          }
+        } catch (_) { /* no-op */ }
+      }
     }
 
     // Multi-pass helpers
