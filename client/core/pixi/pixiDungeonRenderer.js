@@ -36,25 +36,6 @@
         window.PIXI = PIXI;
         return PIXI;
       }
-    } catch (_) {}
-    try {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://unpkg.com/pixi.js@7/dist/pixi.min.js';
-        s.async = true;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Failed to load PIXI UMD'));
-        document.head.appendChild(s);
-      });
-      if (window.PIXI) return window.PIXI;
-    } catch (e) {
-      console.error('[pixiDungeonRenderer] Unable to load PixiJS', e);
-      throw e;
-    }
-  }
-
-  // Small helper: clamp
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   // Placeholder GI-like filter (single-pass). Tunable and replaceable.
   function createGiFilter(PIXI) {
@@ -101,6 +82,94 @@ void main() {
     const uniforms = { uTime: 0, uFogAmount: 0.2, uFalloff: 1.8 };
     return new PIXI.Filter(undefined, frag, uniforms);
   }
+
+  // Chroma-key style transparency: discard near-black pixels for atlases without alpha
+  function createBlackKeyFilter(PIXI) {
+    const frag = `
+precision mediump float;
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+uniform float uThreshold; // 0..1
+void main() {
+  vec4 c = texture2D(uSampler, vTextureCoord);
+  float mx = max(c.r, max(c.g, c.b));
+  // Keep only pixels brighter than threshold; multiply by original alpha
+  float a = c.a * step(uThreshold, mx);
+  gl_FragColor = vec4(c.rgb, a);
+}`;
+    const uniforms = { uThreshold: 0.025 };
+    return new PIXI.Filter(undefined, frag, uniforms);
+  }
+
+    } catch (_) {}
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/pixi.js@7/dist/pixi.min.js';
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load PIXI UMD'));
+        document.head.appendChild(s);
+      });
+      if (window.PIXI) return window.PIXI;
+    } catch (e) {
+      console.error('[pixiDungeonRenderer] Unable to load PixiJS', e);
+      throw e;
+    }
+  }
+
+  // Top-level filters (available to the renderer API)
+  function createGiFilter(PIXI) {
+    const frag = `
+precision highp float;
+
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+uniform float uTime;
+uniform float uFogAmount;
+uniform float uFalloff;
+
+void main() {
+  vec2 uv = vTextureCoord;
+  vec4 base = texture2D(uSampler, uv);
+  vec3 accum = base.rgb;
+  float k = 0.08;
+  accum += texture2D(uSampler, uv + vec2( 1.0/1024.0,  0.0)).rgb * k;
+  accum += texture2D(uSampler, uv + vec2(-1.0/1024.0,  0.0)).rgb * k;
+  accum += texture2D(uSampler, uv + vec2( 0.0,  1.0/1024.0)).rgb * k;
+  accum += texture2D(uSampler, uv + vec2( 0.0, -1.0/1024.0)).rgb * k;
+  vec2 dc = uv - 0.5;
+  float d = length(dc);
+  float fog = clamp(uFogAmount * smoothstep(0.3, 0.8, d), 0.0, 1.0);
+  float decay = 1.0 / (1.0 + uFalloff * d * 3.0);
+  vec3 lit = mix(accum, accum * decay, 0.85);
+  vec3 x = max(vec3(0.0), lit - 0.004);
+  vec3 mapped = (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
+  vec3 color = mix(mapped, vec3(0.0), fog);
+  gl_FragColor = vec4(color, base.a);
+}`;
+    const uniforms = { uTime: 0, uFogAmount: 0.2, uFalloff: 1.8 };
+    return new PIXI.Filter(undefined, frag, uniforms);
+  }
+
+  function createBlackKeyFilter(PIXI) {
+    const frag = `
+precision mediump float;
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+uniform float uThreshold; // 0..1
+void main() {
+  vec4 c = texture2D(uSampler, vTextureCoord);
+  float mx = max(c.r, max(c.g, c.b));
+  float a = c.a * step(uThreshold, mx);
+  gl_FragColor = vec4(c.rgb, a);
+}`;
+    const uniforms = { uThreshold: 0.025 };
+    return new PIXI.Filter(undefined, frag, uniforms);
+  }
+
+  // Small helper: clamp
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   function createRendererAPI(PIXI) {
     // Internal state
@@ -191,6 +260,15 @@ void main() {
           spr.anchor.set(0, 0); // top-left of tile
           const wp = dungeonToWorld(x, y);
           spr.x = wp.x; spr.y = wp.y;
+          // Apply per-glyph tint on the floor map to avoid blinding white floors.
+          try {
+            if (ch === '█') {
+              // Dark plate floor (approx RGB ~0.03)
+              spr.tint = 0x080808;
+            } else if (ch === '░' || ch === '.') {
+              spr.tint = 0x242424;
+            }
+          } catch (_) {}
           // If rows are vertically flipped inside tiles, flip the sprite.
           if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
           layer.addChild(spr);
@@ -352,6 +430,14 @@ void main() {
       root.addChild(state.layers.entities);
       app.stage.addChild(state.layers.ui);
 
+      // Apply black-key transparency to both tiles and entities for atlases with solid black backgrounds
+      try {
+        const fkTiles = createBlackKeyFilter(PIXI);
+        const fkEnt = createBlackKeyFilter(PIXI);
+        state.layers.tiles.filters = [fkTiles];
+        state.layers.entities.filters = [fkEnt];
+      } catch (_) {}
+
       // Render-to-texture sprite for post-fx
       state.rt.scene = await PIXI.RenderTexture.create({ width, height, resolution: app.renderer.resolution });
       try { state.rt.scene.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
@@ -361,9 +447,9 @@ void main() {
       // Ensure stage only contains postfx RT sprite (and UI); root remains offstage
       try { app.stage.removeChild(root); } catch (_) {}
 
-      // GI-like filter
+      // GI-like filter (available but disabled by default to keep base colors faithful)
       state.giFilter = createGiFilter(PIXI);
-      state.filterChain = [state.giFilter];
+      state.filterChain = [];
       state.rt.sprite.filters = state.filterChain;
 
       // Pointer wheel zoom (anchor under cursor) and drag pan
