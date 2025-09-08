@@ -692,7 +692,6 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform vec2 subTileOffset;          // Fractional offset for smooth scrolling [0-1]
   uniform float flipRow;               // 1.0 flips atlas row indexing vertically, 0.0 leaves as-is
   uniform float flipTileY;             // 1.0 flips Y within each tile, 0.0 leaves as-is
-  uniform float startCode;             // Atlas index offset (e.g., 32 for ASCII fonts starting at space)
 
   // Camera properties
   uniform vec2 viewportSize;           // Viewport size in pixels
@@ -742,16 +741,14 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Sample the ASCII view texture to get character code and color
     vec4 asciiView = texture(asciiViewTexture, viewTexCoord);
 
-    // Extract character code from alpha channel (0..255)
+    // Extract character code from alpha channel
     float charCode = asciiView.a * 255.0;
 
     // Calculate the atlas texture size in pixels
     vec2 atlasTextureSize = atlasSize * tileSize;
 
-    // Compute atlas column/row using startCode offset so fonts with atlas starting at 32 map correctly
-    float rawIdx = floor(charCode + 0.5) - startCode;
-    float maxIdx = atlasSize.x * atlasSize.y - 1.0;
-    float idx = clamp(rawIdx, 0.0, maxIdx);
+    // Compute atlas column/row and apply configurable flips
+    float idx = floor(charCode + 0.5);
     float col = mod(idx, atlasSize.x);
     float row = floor(idx / atlasSize.x);
     float rowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - row) : row;
@@ -765,15 +762,17 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     float posBlock = texture(positionBlockMap, viewTexCoord).r; // 0..1
     // Pixel-accurate occlusion uses glyph alpha gated by position flag
     float occAlpha = char.a * posBlock;
-    // On-screen visuals should remain opaque where glyph exists; GI uses occAlpha
-    float outA = mix(char.a, occAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
-
-    // Output the character with the color from asciiViewTexture
-    if (char.a > 0.0 || outA > 0.0) {
-      FragColor = vec4(char.rgb * asciiView.rgb, outA);
-    } else {
-      FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    // Offscreen GI pass: write occlusion ONLY (no RGB), so colors never bleed into lighting
+    if (useOcclusionAlpha > 0.5) {
+      FragColor = vec4(0.0, 0.0, 0.0, occAlpha);
+      return;
     }
+    // Visual pass: discard background pixels so entities never punch holes in the floor
+    if (char.a < 0.001) {
+      discard;
+    }
+    // Treat font atlas as alpha mask only; color comes from asciiView texture
+    FragColor = vec4(asciiView.rgb, char.a);
   }`;
 
 class DungeonRenderer extends BaseSurface {
@@ -802,7 +801,6 @@ class DungeonRenderer extends BaseSurface {
         subTileOffset: [0, 0],
         flipRow: 1.0,                               // Default to current behavior (row flip)
         flipTileY: 0.0,                             // Default: no flip within tile Y
-        startCode: 32.0,                            // Default ASCII fonts start at 32 (space)
         // Camera properties
         viewportSize: [this.width, this.height],    // Current viewport size in pixels
         mapSize: [0, 0],                            // Will be set in updateAsciiViewTexture
@@ -954,28 +952,18 @@ class DungeonRenderer extends BaseSurface {
       console.log('[DEBUG renderer] updateAsciiViewTexture', { mapWidth, mapHeight, padding });
     } catch (_) {}
 
-    // Create a Uint8Array to hold RGBA data for each cell (FLOOR layer)
+    // Create a Uint8Array to hold RGBA data for each cell
     const data = new Uint8Array(mapWidth * mapHeight * 4);
 
     // Fill the texture data for the entire map
-    // Minimal CP437 remap so Unicode glyphs resolve to expected 0..255 atlas indices
-    const cp437Map = {
-      '░': 176, // light shade
-      '▒': 177, // medium shade
-      '▓': 178, // dark shade
-      '█': 219, // full block
-      // Add more as needed: box drawing, etc.
-    };
     for (let y = 0; y < mapHeight; y++) {
       const row = dungeonMap[y - padding] || ' ';
       for (let x = 0; x < mapWidth; x++) {
         // Get the character at this position
         const char = row[x - padding] ? row[x - padding] : ' ';
 
-        // Get CP437/ASCII byte code for the character.
-        // If the char is a Unicode box/shade, map to CP437 byte; otherwise use low 8 bits.
-        const mapped = cp437Map[char];
-        const asciiCode = (mapped !== undefined) ? mapped : (char.codePointAt(0) & 0xFF);
+        // Get ASCII code of the character
+        const asciiCode = char.charCodeAt(0);
 
         // Check if we have a position override for this x,y coordinate
         const posKey = `${x - padding},${y - padding}`;
@@ -1001,7 +989,7 @@ class DungeonRenderer extends BaseSurface {
       }
     }
 
-    // Create and initialize the FLOOR texture if it doesn't exist
+    // Create and initialize the texture if it doesn't exist
     if (!this.asciiViewTexture) {
       this.asciiViewTexture = this.gl.createTexture();
     }
@@ -1014,15 +1002,13 @@ class DungeonRenderer extends BaseSurface {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
 
-    // Upload the data to the FLOOR texture
+    // Upload the data to the texture
     this.gl.texImage2D(
       this.gl.TEXTURE_2D, 0, this.gl.RGBA8, mapWidth, mapHeight, 0,
       this.gl.RGBA, this.gl.UNSIGNED_BYTE, data
     );
 
-    // Ensure an ENTITIES layer exists (separate from FLOOR). This layer is used as the
-    // occlusion source in offscreen passes so floors stay non-blocking.
-    // Allocate or resize the entity buffer/texture to match the map.
+    // Ensure an ENTITIES texture exists and matches the map size
     if (!this.entityViewTexture) {
       this.entityViewTexture = this.gl.createTexture();
     }
@@ -1030,7 +1016,6 @@ class DungeonRenderer extends BaseSurface {
     if (!this.entityData || needsEntityResize) {
       this._entityW = mapWidth;
       this._entityH = mapHeight;
-      // RGBA per cell: rgb=color, a=ASCII code for the glyph (0 means empty)
       this.entityData = new Uint8Array(this._entityW * this._entityH * 4);
       this.entityData.fill(0); // start with no entities
     }
@@ -1094,13 +1079,10 @@ class DungeonRenderer extends BaseSurface {
     this.canvas = canvas;
     this.render = render;
     this.renderTargets = renderTargets;
-    const {container, setHex, setDungeonMap, setPositionBlockMapFill, setBlockAt, setEntities} = this.buildCanvas();
+    const {container, setHex, setDungeonMap} = this.buildCanvas();
     this.container = container;
     this.setHex = setHex;
     this.setDungeonMap = setDungeonMap;
-    if (typeof setPositionBlockMapFill === 'function') this.setPositionBlockMapFill = setPositionBlockMapFill;
-    if (typeof setBlockAt === 'function') this.setBlockAt = setBlockAt;
-    if (typeof setEntities === 'function') this.setEntities = setEntities;
     this.renderIndex = 0;
 
     // Initial calculation of grid size
@@ -1243,8 +1225,7 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    // Offscreen (GI/DF): use ENTITIES layer for occlusion glyphs (fallback to FLOOR if missing).
-    // This guarantees floors never act as occluders; only entities (e.g., walls) do.
+    // Use ENTITIES as the occlusion source if present; floors should never occlude
     this.dungeonUniforms.asciiViewTexture = this.entityViewTexture || this.asciiViewTexture;
     // Use occlusion alpha when rendering offscreen for GI/DF
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
@@ -1275,13 +1256,16 @@ class DungeonRenderer extends BaseSurface {
 
     // Render to screen
     this.renderer.setRenderTarget(null);
-    // Visual pass: draw FLOOR first (no occlusion alpha), then overlay ENTITIES
+    // Visual pass: draw FLOOR first, then overlay ENTITIES
     this.dungeonUniforms.useOcclusionAlpha = 0.0;
+    // FLOOR
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
     this.render();
-    // Overlay entities
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
-    this.render();
+    // ENTITIES on top
+    if (this.entityViewTexture) {
+      this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
+      this.render();
+    }
   }
 
   // API: Fill the entire PositionBlockMap with 0 or 255
