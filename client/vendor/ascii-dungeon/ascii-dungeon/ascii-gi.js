@@ -302,6 +302,8 @@ uniform vec2 resolution;
   // Debug uniforms
   uniform float threshold;
   uniform float curve;
+  // New: distance attenuation for ray samples
+  uniform float lightDecay; // per-screen-unit decay, applied as exp(-lightDecay * distance)
 
   in vec2 vUv;
   out vec3 FragColor;
@@ -353,6 +355,10 @@ uniform vec2 resolution;
       if (df <= minStepSize) {
         vec4 sampleLight = textureLod(sceneTexture, rayUv, 0.0);
         sampleLight.rgb = pow(sampleLight.rgb, vec3(srgb));
+        // Distance-based attenuation; boost normalized distance so slider has punch
+        float normDist = (dist / max(scale, 1e-6)) * 12.0;
+        float attenuation = exp(-max(lightDecay, 0.0) * normDist);
+        sampleLight.rgb *= attenuation;
         // Apply threshold/curve at sample time so it participates in accumulation
         if (threshold > 0.0) {
           vec3 shifted = max(sampleLight.rgb - vec3(threshold), vec3(0.0));
@@ -579,6 +585,7 @@ class RC extends DistanceField {
         sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
         srgb: this.srgbFalloff,
+        lightDecay: 0.8,
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,

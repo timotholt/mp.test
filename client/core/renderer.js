@@ -617,11 +617,13 @@ try {
       const curve = Number(d.curve) || 1;
       const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
       const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
+      const overlayGain = (d.overlayGain != null) ? Math.max(0, Math.min(3, Number(d.overlayGain))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
-      // Map Falloff slider to overlay haze intensity rather than RC gamma shaping
-      if (rc.overlayUniforms && srgbFalloff != null) rc.overlayUniforms.overlayGain = srgbFalloff;
+      // Map Falloff slider to distance attenuation (lightDecay) to control shadow range
+      if (srgbFalloff != null) rc.rcUniforms.lightDecay = srgbFalloff;
       if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
+      if (rc.overlayUniforms && overlayGain != null) rc.overlayUniforms.overlayGain = overlayGain;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
   });

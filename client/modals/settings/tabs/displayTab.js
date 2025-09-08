@@ -706,7 +706,7 @@ export function renderDisplayTab(container) {
       fogVal.id = 'settings-rc-fog-val';
       dbg.appendChild(fogRow);
 
-      // Falloff slider (SRGB curve strength 0..3)
+      // Falloff slider (Distance falloff for GI)
       const { row: srgRow, input: srgRng, value: srgVal, reset: srgReset } = createRangeElement(
         0.0, 3.0, 0.1, 2.0, 'Falloff:', {
           storageKey: 'rc_debug_srgb',
@@ -722,7 +722,8 @@ export function renderDisplayTab(container) {
               const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
               const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
               const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
-              const detail = { threshold: thr, curve, fogAmount, srgbFalloff: Number(v) || 2.0 };
+              const haze = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
+              const detail = { threshold: thr, curve, fogAmount, srgbFalloff: Number(v) || 2.0, overlayGain: haze };
               window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
             } catch (_) {}
           }
@@ -732,6 +733,33 @@ export function renderDisplayTab(container) {
       srgVal.id = 'settings-rc-srgb-val';
       dbg.appendChild(srgRow);
 
+      // Haze Intensity (overlay gain, affects fog brightness)
+      const { row: hazRow, input: hazRng, value: hazVal, reset: hazReset } = createRangeElement(
+        0.0, 3.0, 0.05, 1.2, 'Haze Intensity:', {
+          storageKey: 'rc_debug_haze',
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
+          fromStorage: (s) => {
+            const v = parseFloat(s);
+            return Number.isFinite(v) ? Math.max(0.0, Math.min(3.0, v)) : 1.2;
+          },
+          onChange: (v) => {
+            try {
+              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+              const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+              const detail = { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain: Number(v) || 1.2 };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      hazRng.id = 'settings-rc-haze';
+      hazVal.id = 'settings-rc-haze-val';
+      dbg.appendChild(hazRow);
+
       // Debug Reset button
       const dbgToolbar = createUiElement(basicToolbarRow, 'div');
       const dbgResetBtn = createUiElement(basicButton, 'Reset');
@@ -740,12 +768,14 @@ export function renderDisplayTab(container) {
         try { crvReset && crvReset(); } catch (_) {}
         try { fogReset && fogReset(); } catch (_) {}
         try { srgReset && srgReset(); } catch (_) {}
+        try { hazReset && hazReset(); } catch (_) {}
         try {
           const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
           const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
           const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
           const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
-          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
+          const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
         } catch (_) {}
       };
       dbgToolbar.appendChild(document.createElement('div'));
@@ -759,7 +789,8 @@ export function renderDisplayTab(container) {
         const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
         const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
         const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
-        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
+        const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
+        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
       } catch (_) {}
     }
   } catch (_) {}
