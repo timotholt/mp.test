@@ -38,6 +38,12 @@
         return PIXI;
       }
 
+    // ---- Legacy atlas extrude and rebuild stubs (no-ops, kept for clarity) ----
+    function buildExtrudedAtlas() { return null; }
+    function enableAtlasExtrude() { try { console.warn('[pixiDungeonRenderer] enableAtlasExtrude() is disabled in sprite-only mode'); } catch (_) {} return false; }
+    function disableAtlasExtrude() { try { console.warn('[pixiDungeonRenderer] disableAtlasExtrude() is disabled in sprite-only mode'); } catch (_) {} return false; }
+    function rebuildMap() { /* no-op in sprite-only mode */ }
+
       // (helpers moved into createRendererAPI)
 
     } catch (_) {}
@@ -110,6 +116,19 @@ void main() {
   // Small helper: clamp
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+  /**
+   * SpriteSpec
+   * @typedef {Object} SpriteSpec
+   * @property {string=} id          Optional stable id for animation/lookups
+   * @property {string=} char        Single-character glyph
+   * @property {number=} charCode    Codepoint for glyph (used if provided)
+   * @property {number} x            Dungeon grid X
+   * @property {number} y            Dungeon grid Y
+   * @property {number|number[]} color  0xRRGGBB or [r,g,b] 0..1
+   * @property {number=} alpha       0..1 (default 1)
+   * @property {boolean=} occludes   If true, contributes to occlusion mask
+   */
+
   function createRendererAPI(PIXI) {
     // Internal state
     const state = {
@@ -129,7 +148,8 @@ void main() {
       atlas: { cols: 16, rows: 16, startCode: 32 },
       flip: { tileY: false, row: false },
       textures: { base: null, byCode: new Map(), originalBase: null },
-      entityById: new Map(), // id -> { sprite, occlSprite }
+      idIndex: new Map(), // id -> { sprite, occlSprite }
+      lastSprites: [],
       raf: 0,
       startTs: performance.now(),
       // no debug flags kept in production path
@@ -341,7 +361,10 @@ void main() {
     }
 
     // Apply black-key only to ENTITIES layer (useful when floors are atlas tiles)
-    function enableBlackKeyOnEntities(threshold) { enableBlackKeyFilters(threshold); }
+    function enableBlackKeyOnEntities(threshold) {
+      try { console.warn('[pixiDungeonRenderer] enableBlackKeyOnEntities() is deprecated; use enableBlackKeyFilters()'); } catch (_) {}
+      enableBlackKeyFilters(threshold);
+    }
 
  
     // Simple tween manager for entity motion
@@ -645,31 +668,15 @@ void main() {
       state.textures.byCode.clear();
       state.textures.base = base;
       state.textures.originalBase = base;
-      // Rebuild map sprites to adopt new glyph textures/size
-      if (base.valid) {
-        // Optionally auto-extrude if configured via localStorage
+      // Redraw with new font when ready
+      const redraw = () => { try { if (state.lastSprites && state.lastSprites.length) setSprites(state.lastSprites); } catch (_) {} };
+      if (base.valid) redraw();
+      else {
         try {
-          const s = localStorage.getItem('ui_atlas_extrude_pad');
-          const pad = (s != null && s !== '') ? Math.max(0, Math.floor(Number(s))) : 1; // default 1
-          if (pad > 0) enableAtlasExtrude(pad);
+          if (typeof base.once === 'function') base.once('loaded', redraw);
+          else if (typeof base.on === 'function') { const h = () => { try { base.off && base.off('loaded', h); } catch (_) {} redraw(); }; base.on('loaded', h); }
+          else { const it = setInterval(() => { if (base.valid) { clearInterval(it); redraw(); } }, 16); }
         } catch (_) {}
-        rebuildMap();
-        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
-      } else {
-        try {
-          const onLoaded = () => { try { rebuildMap(); if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {} };
-          if (typeof base.once === 'function') {
-            base.once('loaded', onLoaded);
-          } else if (typeof base.on === 'function') {
-            const handler = () => { try { base.off && base.off('loaded', handler); } catch (_) {} onLoaded(); };
-            base.on('loaded', handler);
-          } else {
-            // Fallback: poll until valid
-            const it = setInterval(() => {
-              if (base.valid) { clearInterval(it); try { rebuildMap(); } catch (_) {} }
-            }, 16);
-          }
-        } catch (_) { /* no-op */ }
       }
     }
 
@@ -694,8 +701,9 @@ void main() {
       if (!world) return;
       world.removeChildren();
       try { if (occ) occ.removeChildren(); } catch (_) {}
-      try { state.entityById.clear(); } catch (_) {}
+      try { state.idIndex.clear(); } catch (_) {}
       const list = Array.isArray(sprites) ? sprites : [];
+      try { state.lastSprites = list.slice(); } catch (_) { state.lastSprites = list; }
       list.forEach((s) => {
         try {
           const code = Number.isFinite(s?.charCode) ? (s.charCode|0) : ((s?.char && String(s.char).codePointAt(0)) || 32);
@@ -724,16 +732,17 @@ void main() {
           if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
           world.addChild(spr);
           if (s.occludes) {
-            const o = new PIXI.Graphics();
-            o.beginFill(0xFFFFFF);
-            o.drawRect(0, 0, state.tile.w, state.tile.h);
-            o.endFill();
-            o.x = wp.x;
-            o.y = wp.y;
+            // Use a white sprite (fast path) scaled to tile size for occlusion mask
+            const o = new PIXI.Sprite(PIXI.Texture.WHITE);
+            try { o.roundPixels = true; } catch (_) {}
+            o.anchor.set(0, 0);
+            o.x = wp.x; o.y = wp.y;
+            o.width = state.tile.w; o.height = state.tile.h;
+            if (state.flip.row) { o.scale.y *= -1; o.y += state.tile.h; }
             occ.addChild(o);
-            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.entityById.set(s.id, { sprite: spr, occlSprite: o, emission: 0 }); } catch (_) {}
+            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.idIndex.set(s.id, { sprite: spr, occlSprite: o }); } catch (_) {}
           } else {
-            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.entityById.set(s.id, { sprite: spr, occlSprite: null, emission: 0 }); } catch (_) {}
+            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.idIndex.set(s.id, { sprite: spr, occlSprite: null }); } catch (_) {}
           }
         } catch (_) {}
       });
@@ -748,6 +757,29 @@ void main() {
       state.root = null;
     }
 
+    // Deprecated wrapper: accept legacy entity list and translate to sprites
+    function setEntities(list) {
+      try { console.warn('[pixiDungeonRenderer] setEntities() is deprecated; use setSprites()'); } catch (_) {}
+      const arr = Array.isArray(list) ? list : [];
+      const sprites = arr.map((e) => ({ id: e.id, char: e.char, charCode: e.charCode, x: e.x|0, y: e.y|0, color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF), alpha: (e.alpha != null) ? e.alpha : 1, occludes: !!(e.blocking || e.occludes) }));
+      setSprites(sprites);
+    }
+
+    function animateEntity(id, toX, toY, opts = {}) {
+      const rec = state.idIndex.get(id);
+      if (!rec) return false;
+      const spr = rec.sprite;
+      const occ = rec.occlSprite || null;
+      const from = { x: spr.x, y: spr.y };
+      const dest = dungeonToWorld(toX|0, toY|0);
+      const duration = Math.max(1, Number(opts.duration || 250)); // ms
+      const ease = (t) => t * t * (3 - 2 * t); // smoothstep
+      const start = performance.now();
+      const tw = { id, spr, occ, from, dest, start, duration, ease };
+      tweens.add(tw);
+      return true;
+    }
+
     const api = {
       init,
       setFont,
@@ -759,7 +791,7 @@ void main() {
       animateEntity,
       enableBlackKeyFilters,
       disableBlackKeyFilters,
-      enableBlackKeyOnEntities,
+      enableBlackKeyOnEntities, // deprecated alias
       setFilterChain,
       addFilter,
       clearFilters,
