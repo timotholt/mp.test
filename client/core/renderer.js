@@ -281,6 +281,9 @@ export async function setupAsciiRenderer() {
                 if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
                   rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
                 }
+                if (Number.isFinite(meta.startCode)) {
+                  rc.dungeonUniforms.startCode = meta.startCode * 1.0;
+                }
                 // Apply optional shader flip controls if provided
                 if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
                   rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
@@ -288,9 +291,31 @@ export async function setupAsciiRenderer() {
                 if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
                   rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
                 }
-                // Recompute grid/camera with the new tile size so the first drag doesn't "snap"
+                // Cache applied meta to prevent redundant re-applies
+                try {
+                  rc.__appliedFontMeta = {
+                    id: meta.id,
+                    src: (meta.dataUrl || meta.url) || null,
+                    tileW: meta.tile && meta.tile.w,
+                    tileH: meta.tile && meta.tile.h,
+                    atlasCols: meta.atlas && meta.atlas.cols,
+                    atlasRows: meta.atlas && meta.atlas.rows,
+                    startCode: Number.isFinite(meta.startCode) ? meta.startCode : undefined,
+                    flipRow: !!meta.flipRow,
+                    flipTileY: !!meta.flipTileY,
+                  };
+                } catch (_) {}
+                // Force-refresh view texture and pipelines to match steady-state
+                try {
+                  if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
+                    rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+                  }
+                } catch (_) {}
+                try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
                 try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
                 rc.renderPass && rc.renderPass();
+                // One extra frame next tick to ensure everything is latched post-init
+                try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
               }
             } catch (e) { console.warn('[font update] pending apply failed', e); }
           });
@@ -446,37 +471,81 @@ export async function setupAsciiRenderer() {
         if (!f) return true; // nothing to apply
         const src = resolveImageSrc(f);
         if (!src) return true;
+        const meta = {
+          id: resolvedId,
+          dataUrl: src,
+          tile: f.tile,
+          atlas: f.atlas,
+        };
+        // Only attach flip flags if explicitly defined on the font entry
+        if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) meta.flipRow = !!f.flipRow;
+        if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) meta.flipTileY = !!f.flipTileY;
+        // Respect optional flip hints; default to flipY=true to match vendor behavior
         const options = {
           flipY: (f && f.flipTextureY === undefined) ? true : !!f.flipTextureY,
           flipX: !!(f && f.flipTextureX),
         };
+        // Skip if identical to last applied font
+        try {
+          const last = rc.__appliedFontMeta || null;
+          const sameId = !!(last && last.id === meta.id);
+          const sameSrc = !!(last && last.src === (meta.dataUrl || meta.url));
+          const sameTile = !!(last && last.tileW === (meta.tile && meta.tile.w) && last.tileH === (meta.tile && meta.tile.h));
+          const sameAtlas = !!(last && last.atlasCols === (meta.atlas && meta.atlas.cols) && last.atlasRows === (meta.atlas && meta.atlas.rows));
+          const sameFlipRow = !!(last && last.flipRow === (!!meta.flipRow));
+          const sameFlipTileY = !!(last && last.flipTileY === (!!meta.flipTileY));
+          if (sameId && sameSrc && sameTile && sameAtlas && sameFlipRow && sameFlipTileY) {
+            return false; // no-op; visuals already consistent
+          }
+        } catch (_) {}
+
         const tex = rc.renderer.createTextureFromImage(src, options, () => {
           try {
             rc.renderer.font = tex;
-            rc.dungeonUniforms.asciiTexture = tex;
-            if (f.tile && Number.isFinite(f.tile.w) && Number.isFinite(f.tile.h)) {
-              rc.dungeonUniforms.tileSize = [f.tile.w, f.tile.h];
-            }
-            if (f.atlas && Number.isFinite(f.atlas.cols) && Number.isFinite(f.atlas.rows)) {
-              rc.dungeonUniforms.atlasSize = [f.atlas.cols, f.atlas.rows];
-            }
-            if (Object.prototype.hasOwnProperty.call(f, 'flipRow')) {
-              rc.dungeonUniforms.flipRow = f.flipRow ? 1.0 : 0.0;
-            }
-            if (Object.prototype.hasOwnProperty.call(f, 'flipTileY')) {
-              rc.dungeonUniforms.flipTileY = f.flipTileY ? 1.0 : 0.0;
-            }
-            // Force-refresh view texture and pipelines to match Display-tab steady state
-            try {
-              if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
-                rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+            if (rc.dungeonUniforms) {
+              rc.dungeonUniforms.asciiTexture = tex;
+              if (meta.tile && Number.isFinite(meta.tile.w) && Number.isFinite(meta.tile.h)) {
+                rc.dungeonUniforms.tileSize = [meta.tile.w, meta.tile.h];
               }
-            } catch (_) {}
-            try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
-            try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
-            rc.renderPass && rc.renderPass();
-            // One extra frame next tick to ensure everything is latched post-init
-            try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
+              if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
+                rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+              }
+              if (Number.isFinite(meta.startCode)) {
+                rc.dungeonUniforms.startCode = meta.startCode * 1.0;
+              }
+              // Apply optional shader flip controls if provided
+              if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
+                rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
+              }
+              if (Object.prototype.hasOwnProperty.call(meta, 'flipTileY')) {
+                rc.dungeonUniforms.flipTileY = meta.flipTileY ? 1.0 : 0.0;
+              }
+              // Cache applied meta to prevent redundant re-applies
+              try {
+                rc.__appliedFontMeta = {
+                  id: meta.id,
+                  src: (meta.dataUrl || meta.url) || null,
+                  tileW: meta.tile && meta.tile.w,
+                  tileH: meta.tile && meta.tile.h,
+                  atlasCols: meta.atlas && meta.atlas.cols,
+                  atlasRows: meta.atlas && meta.atlas.rows,
+                  startCode: Number.isFinite(meta.startCode) ? meta.startCode : undefined,
+                  flipRow: !!meta.flipRow,
+                  flipTileY: !!meta.flipTileY,
+                };
+              } catch (_) {}
+              // Force-refresh view texture and pipelines to match steady-state
+              try {
+                if (rc.surface && typeof rc.surface.dungeonMap === 'string' && typeof rc.updateAsciiViewTexture === 'function') {
+                  rc.updateAsciiViewTexture(rc.surface.dungeonMap);
+                }
+              } catch (_) {}
+              try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
+              try { if (typeof rc.updateCameraUniforms === 'function') rc.updateCameraUniforms(); } catch (_) {}
+              rc.renderPass && rc.renderPass();
+              // One extra frame next tick to ensure everything is latched post-init
+              try { setTimeout(() => { try { rc.renderPass && rc.renderPass(); } catch (_) {} }, 0); } catch (_) {}
+            }
           } catch (_) {}
         });
         return true;
@@ -548,6 +617,9 @@ try {
             if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
               rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
             }
+            if (Number.isFinite(meta.startCode)) {
+              rc.dungeonUniforms.startCode = meta.startCode * 1.0;
+            }
             // Apply optional shader flip controls if provided
             if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
               rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
@@ -564,6 +636,7 @@ try {
                 tileH: meta.tile && meta.tile.h,
                 atlasCols: meta.atlas && meta.atlas.cols,
                 atlasRows: meta.atlas && meta.atlas.rows,
+                startCode: Number.isFinite(meta.startCode) ? meta.startCode : undefined,
                 flipRow: !!meta.flipRow,
                 flipTileY: !!meta.flipTileY,
               };
@@ -584,6 +657,9 @@ try {
                 }
                 if (meta.atlas && Number.isFinite(meta.atlas.cols) && Number.isFinite(meta.atlas.rows)) {
                   rc.dungeonUniforms.atlasSize = [meta.atlas.cols, meta.atlas.rows];
+                }
+                if (Number.isFinite(meta.startCode)) {
+                  rc.dungeonUniforms.startCode = meta.startCode * 1.0;
                 }
                 if (Object.prototype.hasOwnProperty.call(meta, 'flipRow')) {
                   rc.dungeonUniforms.flipRow = meta.flipRow ? 1.0 : 0.0;
@@ -618,12 +694,14 @@ try {
       const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
       const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
       const overlayGain = (d.overlayGain != null) ? Math.max(0, Math.min(3, Number(d.overlayGain))) : null;
+      const bilinearFixEnabled = (d.bilinearFixEnabled != null) ? !!d.bilinearFixEnabled : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
       // Map Falloff slider to distance attenuation (lightDecay) to control shadow range
       if (srgbFalloff != null) rc.rcUniforms.lightDecay = srgbFalloff;
       if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
       if (rc.overlayUniforms && overlayGain != null) rc.overlayUniforms.overlayGain = overlayGain;
+      if (bilinearFixEnabled != null) rc.rcUniforms.bilinearFixEnabled = bilinearFixEnabled;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
   });

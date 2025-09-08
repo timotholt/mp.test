@@ -588,7 +588,7 @@ class RC extends DistanceField {
         lightDecay: 0.8,
         enableSun: false,
         firstCascadeIndex: 0,
-        bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
+        bilinearFixEnabled: true,
         // Debug defaults
         threshold: 0.0,
         curve: 1.0,

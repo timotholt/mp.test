@@ -763,6 +763,32 @@ export function renderDisplayTab(container) {
       // Debug Reset button
       const dbgToolbar = createUiElement(basicToolbarRow, 'div');
       const dbgResetBtn = createUiElement(basicButton, 'Reset');
+      // Bilinear Fix checkbox (default ON)
+      const bilinearRow = document.createElement('div');
+      bilinearRow.style.display = 'flex';
+      bilinearRow.style.alignItems = 'center';
+      bilinearRow.style.gap = '8px';
+      const bilinearLabel = document.createElement('label');
+      bilinearLabel.textContent = 'Bilinear Fix';
+      const bilinearInput = document.createElement('input');
+      bilinearInput.type = 'checkbox';
+      const bilinearStored = localStorage.getItem('rc_bilinear_fix');
+      bilinearInput.checked = (bilinearStored == null) ? true : (bilinearStored === 'true');
+      bilinearInput.onchange = () => {
+        const val = !!bilinearInput.checked;
+        try { localStorage.setItem('rc_bilinear_fix', val ? 'true' : 'false'); } catch (_) {}
+        try {
+          const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+          const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+          const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+          const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+          const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain, bilinearFixEnabled: val } }));
+        } catch (_) {}
+      };
+      bilinearRow.appendChild(bilinearLabel);
+      bilinearRow.appendChild(bilinearInput);
+      dbg.appendChild(bilinearRow);
       dbgResetBtn.onclick = () => {
         try { thrReset && thrReset(); } catch (_) {}
         try { crvReset && crvReset(); } catch (_) {}
@@ -775,7 +801,8 @@ export function renderDisplayTab(container) {
           const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
           const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
           const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
-          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
+          const bilinearFixEnabled = (localStorage.getItem('rc_bilinear_fix') === 'false') ? false : true;
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain, bilinearFixEnabled } }));
         } catch (_) {}
       };
       dbgToolbar.appendChild(document.createElement('div'));
@@ -790,7 +817,8 @@ export function renderDisplayTab(container) {
         const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
         const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
         const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
-        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
+        const bilinearFixEnabled = (localStorage.getItem('rc_bilinear_fix') === 'false') ? false : true;
+        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain, bilinearFixEnabled } }));
       } catch (_) {}
     }
   } catch (_) {}

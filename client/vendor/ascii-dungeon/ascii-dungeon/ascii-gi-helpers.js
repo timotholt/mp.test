@@ -692,6 +692,7 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform vec2 subTileOffset;          // Fractional offset for smooth scrolling [0-1]
   uniform float flipRow;               // 1.0 flips atlas row indexing vertically, 0.0 leaves as-is
   uniform float flipTileY;             // 1.0 flips Y within each tile, 0.0 leaves as-is
+  uniform float startCode;             // Atlas index offset (e.g., 32 for ASCII fonts starting at space)
 
   // Camera properties
   uniform vec2 viewportSize;           // Viewport size in pixels
@@ -741,14 +742,16 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Sample the ASCII view texture to get character code and color
     vec4 asciiView = texture(asciiViewTexture, viewTexCoord);
 
-    // Extract character code from alpha channel
+    // Extract character code from alpha channel (0..255)
     float charCode = asciiView.a * 255.0;
 
     // Calculate the atlas texture size in pixels
     vec2 atlasTextureSize = atlasSize * tileSize;
 
-    // Compute atlas column/row and apply configurable flips
-    float idx = floor(charCode + 0.5);
+    // Compute atlas column/row using startCode offset so fonts with atlas starting at 32 map correctly
+    float rawIdx = floor(charCode + 0.5) - startCode;
+    float maxIdx = atlasSize.x * atlasSize.y - 1.0;
+    float idx = clamp(rawIdx, 0.0, maxIdx);
     float col = mod(idx, atlasSize.x);
     float row = floor(idx / atlasSize.x);
     float rowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - row) : row;
@@ -799,6 +802,7 @@ class DungeonRenderer extends BaseSurface {
         subTileOffset: [0, 0],
         flipRow: 1.0,                               // Default to current behavior (row flip)
         flipTileY: 0.0,                             // Default: no flip within tile Y
+        startCode: 32.0,                            // Default ASCII fonts start at 32 (space)
         // Camera properties
         viewportSize: [this.width, this.height],    // Current viewport size in pixels
         mapSize: [0, 0],                            // Will be set in updateAsciiViewTexture
@@ -954,14 +958,24 @@ class DungeonRenderer extends BaseSurface {
     const data = new Uint8Array(mapWidth * mapHeight * 4);
 
     // Fill the texture data for the entire map
+    // Minimal CP437 remap so Unicode glyphs resolve to expected 0..255 atlas indices
+    const cp437Map = {
+      '░': 176, // light shade
+      '▒': 177, // medium shade
+      '▓': 178, // dark shade
+      '█': 219, // full block
+      // Add more as needed: box drawing, etc.
+    };
     for (let y = 0; y < mapHeight; y++) {
       const row = dungeonMap[y - padding] || ' ';
       for (let x = 0; x < mapWidth; x++) {
         // Get the character at this position
         const char = row[x - padding] ? row[x - padding] : ' ';
 
-        // Get ASCII code of the character
-        const asciiCode = char.charCodeAt(0);
+        // Get CP437/ASCII byte code for the character.
+        // If the char is a Unicode box/shade, map to CP437 byte; otherwise use low 8 bits.
+        const mapped = cp437Map[char];
+        const asciiCode = (mapped !== undefined) ? mapped : (char.codePointAt(0) & 0xFF);
 
         // Check if we have a position override for this x,y coordinate
         const posKey = `${x - padding},${y - padding}`;

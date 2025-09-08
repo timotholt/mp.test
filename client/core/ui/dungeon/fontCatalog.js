@@ -55,7 +55,7 @@ const defaultFonts = [
     url: bisasam16Url,
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
     // flipRow: 1,   // use renderer default
     // flipTileY: 0, // use renderer default
 
@@ -67,7 +67,7 @@ const defaultFonts = [
     url: bisasam20Url,
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
     // flipRow: 1,   // use renderer default
     // flipTileY: 0, // use renderer default
   },
@@ -77,7 +77,7 @@ const defaultFonts = [
     url: bisasam20YobboModUrl,
     tile: { w: 20, h: 20 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
     // flipRow: 1,   // use renderer default
     // flipTileY: 0, // use renderer default
   },
@@ -87,7 +87,7 @@ const defaultFonts = [
     url: bisasam24Url,
     tile: { w: 24, h: 24 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
     // flipRow: 1,   // use renderer default
     // flipTileY: 0, // use renderer default
   },
@@ -106,7 +106,7 @@ const defaultFonts = [
     url: rogueyun16Url,
     tile: { w: 16, h: 16 },
     atlas: { cols: 16, rows: 16 },
-    startCode: 32,
+    startCode: 0,
     // flipRow: 1,   // use renderer default
     // flipTileY: 0, // use renderer default
   },

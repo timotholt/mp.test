@@ -44,9 +44,11 @@
     try {
       const rc = window.radianceCascades;
       if (rc && typeof rc.setDungeonMap === 'function') {
-        rc.setDungeonMap(mapString);
+        // Change FLOOR glyph: replace '.' with IBM full block '█' (CP437 219) for solid tiles
+        const floorMapped = String(mapString || '').replace(/\./g, '█');
+        rc.setDungeonMap(floorMapped);
       } else {
-        window.__pendingDungeonMap = mapString;
+        window.__pendingDungeonMap = String(mapString || '').replace(/\./g, '█');
       }
     } catch (_) {}
   }
@@ -93,7 +95,9 @@
         if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
           const charMap = JSON.stringify({
             '#': [0.36, 0.38, 0.42],  // walls (visual albedo on FLOOR layer)
-            '.': [0.14, 0.14, 0.16],  // floor dots slightly darker for contrast
+            '.': [0.14, 0.14, 0.16],  // legacy dot entry (kept for safety)
+            '░': [0.14, 0.14, 0.16],  // legacy shade entry (kept for safety)
+            '█': [0.03, 0.03, 0.03],  // floor tile (IBM full block) — solid, dark plate
             '~': [0.20, 0.40, 0.80],  // water (optional)
             '+': [0.85, 0.65, 0.20],  // doors (optional)
             '|': [0.50, 0.52, 0.56],  // divider (optional)
@@ -107,6 +111,8 @@
         window.__pendingCharacterColorMap = JSON.stringify({
           '#': [0.36, 0.38, 0.42],
           '.': [0.14, 0.14, 0.16],
+          '░': [0.14, 0.14, 0.16],
+          '█': [0.03, 0.03, 0.03],
           '~': [0.20, 0.40, 0.80],
           '+': [0.85, 0.65, 0.20],
           '|': [0.50, 0.52, 0.56],
