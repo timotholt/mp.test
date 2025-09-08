@@ -61,11 +61,12 @@
       for (let x = 0; x < row.length; x++) {
         const ch = row[x];
         if (ch === '#') {
-          // Medium gray for walls in the entity layer (not bright white)
-          entities.push({ x, y, char: '#', color: [0.68, 0.70, 0.74], blocking: true });
+          // Dark, near-neutral wall color in the entities layer to avoid emission.
+          // Visual wall appearance comes primarily from the FLOOR layer color map below.
+          entities.push({ x, y, char: '#', color: [0.06, 0.07, 0.08], blocking: true });
         } else if (ch === '@') {
-          // Slightly warm tint for the player '@'
-          entities.push({ x, y, char: '@', color: [0.95, 0.55, 0.20], blocking: false });
+          // Player '@' should be white in the entities layer
+          entities.push({ x, y, char: '@', color: [1.0, 1.0, 1.0], blocking: false });
         }
       }
     }
@@ -83,8 +84,8 @@
         // Apply a non-blinding character color map for the FLOOR layer
         if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
           const charMap = JSON.stringify({
-            '#': [0.36, 0.38, 0.42],  // darker gray walls on the floor layer
-            '.': [0.18, 0.18, 0.20],  // dark neutral floor
+            '#': [0.36, 0.38, 0.42],  // walls (visual albedo on FLOOR layer)
+            '.': [0.14, 0.14, 0.16],  // floor dots slightly darker for contrast
             '~': [0.20, 0.40, 0.80],  // water (optional)
             '+': [0.85, 0.65, 0.20],  // doors (optional)
             '|': [0.50, 0.52, 0.56],  // divider (optional)
@@ -97,7 +98,7 @@
         // Stash the color map until RC is ready
         window.__pendingCharacterColorMap = JSON.stringify({
           '#': [0.36, 0.38, 0.42],
-          '.': [0.18, 0.18, 0.20],
+          '.': [0.14, 0.14, 0.16],
           '~': [0.20, 0.40, 0.80],
           '+': [0.85, 0.65, 0.20],
           '|': [0.50, 0.52, 0.56],

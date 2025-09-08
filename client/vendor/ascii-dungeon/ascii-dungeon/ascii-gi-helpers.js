@@ -1006,6 +1006,31 @@ class DungeonRenderer extends BaseSurface {
       this.gl.RGBA, this.gl.UNSIGNED_BYTE, data
     );
 
+    // Ensure an ENTITIES layer exists (separate from FLOOR). This layer is used as the
+    // occlusion source in offscreen passes so floors stay non-blocking.
+    // Allocate or resize the entity buffer/texture to match the map.
+    if (!this.entityViewTexture) {
+      this.entityViewTexture = this.gl.createTexture();
+    }
+    const needsEntityResize = (!this._entityW || !this._entityH || this._entityW !== mapWidth || this._entityH !== mapHeight);
+    if (!this.entityData || needsEntityResize) {
+      this._entityW = mapWidth;
+      this._entityH = mapHeight;
+      // RGBA per cell: rgb=color, a=ASCII code for the glyph (0 means empty)
+      this.entityData = new Uint8Array(this._entityW * this._entityH * 4);
+      this.entityData.fill(0); // start with no entities
+    }
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+    // Upload current (possibly empty) entity data
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D, 0, this.gl.RGBA8, this._entityW, this._entityH, 0,
+      this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData
+    );
+
     let pbw = this._positionBlockWidth;
     let pbh = this._positionBlockHeight;
     if (!this.positionBlockData || pbw !== mapWidth || pbh !== mapHeight) {
@@ -1204,7 +1229,8 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    // Use ENTITY layer as occlusion source (floors do not block)
+    // Offscreen (GI/DF): use ENTITIES layer for occlusion glyphs (fallback to FLOOR if missing).
+    // This guarantees floors never act as occluders; only entities (e.g., walls) do.
     this.dungeonUniforms.asciiViewTexture = this.entityViewTexture || this.asciiViewTexture;
     // Use occlusion alpha when rendering offscreen for GI/DF
     this.dungeonUniforms.useOcclusionAlpha = 1.0;

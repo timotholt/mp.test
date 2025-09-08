@@ -703,8 +703,9 @@ class RC extends DistanceField {
           vec4 rc = texture(inputTexture, vUv);
           vec4 d = texture(drawPassTexture, vUv);
 
-          FragColor = rc;
-          // FragColor = vec4(d.a > 0.0 && showSurface ? d.rgb : rc.rgb, 1.0);
+          // Show the dungeon surface where glyphs exist; elsewhere, show radiance.
+          // This restores correct floor/entity colors while still displaying GI in void.
+          FragColor = vec4(d.a > 0.0 && showSurface ? d.rgb : rc.rgb, 1.0);
         }`
     });
 
@@ -772,7 +773,39 @@ class RC extends DistanceField {
   }
 
   overlayPass(inputTexture, preRc) {
-    this.overlayUniforms.drawPassTexture = this.dungeonPassTextureHigh;
+    // Build a high-res SURFACE texture (floors + entities) for on-screen composition.
+    // We render the floor first (no occlusion alpha), then overlay entities.
+    if (!this.surfaceRenderTarget) {
+      this.surfaceRenderTarget = this.renderer.createRenderTarget(
+        this.width * this.scaling,
+        this.height * this.scaling,
+        {
+          minFilter: this.gl.NEAREST,
+          magFilter: this.gl.NEAREST,
+          internalFormat: this.gl.RGBA,
+          format: this.gl.RGBA,
+          type: this.gl.UNSIGNED_BYTE,
+        }
+      );
+    }
+
+    // Render floor layer
+    this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual
+    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
+    this.renderer.setRenderTarget(this.surfaceRenderTarget);
+    // Clear to fully transparent to avoid previous-frame remnants
+    this.renderer.clear();
+    this.render();
+    // Overlay entities visually with alpha blending so floors remain underneath
+    const gl = this.gl;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
+    this.render();
+    gl.disable(gl.BLEND);
+
+    // Feed composed surface into the overlay shader
+    this.overlayUniforms.drawPassTexture = this.surfaceRenderTarget.texture;
 
     if (this.forceFullPass) {
       this.frame = 0;
@@ -780,7 +813,7 @@ class RC extends DistanceField {
     const frame = this.forceFullPass ? 0 : 1 - this.frame;
 
     if (this.frame == 0 && !this.forceFullPass) {
-      const input = this.overlayRenderTargets[0].texture ?? this.dungeonPassTextureHigh;
+      const input = this.overlayRenderTargets[0].texture ?? inputTexture;
       this.overlayUniforms.inputTexture = input;
       this.renderer.setRenderTarget(this.overlayRenderTargets[1]);
       this.overlayRender();
