@@ -80,18 +80,17 @@
     for (let y = 0; y < rows.length; y++) {
       const row = rows[y] || '';
       for (let x = 0; x < row.length; x++) {
-        const ch = row[x]; if (!ch) continue;
+        const ch = row[x]; if (ch == null) continue;
+        // True floor pass: lay a floor on every cell so ambient-lit background is uniform
+        floors.push({ x, y, charCode: 219, color: 0x303030, alpha: 1, occludes: false });
+        // Overlays per content
         if (ch === '#') {
           const n = isWall(x, y - 1), s = isWall(x, y + 1), w = isWall(x - 1, y), e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          // Always lay a floor under a wall, then the wall on top
-          floors.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
-          overlays.push({ x, y, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
-        } else if (ch === '.') {
-          floors.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
+          overlays.push({ x, y, charCode: g.code, color: 0x404040, alpha: 1, occludes: true  });
         } else if (ch === '@') {
           overlays.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
-        } else if (ch !== ' ') {
+        } else if (ch !== ' ' && ch !== '.') {
           overlays.push({ x, y, charCode: String(ch).codePointAt(0), color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }

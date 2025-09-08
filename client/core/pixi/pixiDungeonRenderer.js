@@ -29,6 +29,9 @@
 
   // Tuned to eliminate seam artifacts at pixel-perfect scales without visible shrink
   const GLYPH_UV_INSET_PX = 0.18;
+  // Luminance threshold for black-key transparency. Binary: below -> fully transparent
+  // Keep low because sprite tints darken visible glyphs; 0.06–0.10 works well.
+  const GLYPH_KEY_THRESHOLD = 0.08;
 
   // Lazy PIXI loader to avoid touching package.json.
   async function loadPixi() {
@@ -106,11 +109,12 @@ uniform sampler2D uSampler;
 uniform float uThreshold; // 0..1
 void main() {
   vec4 c = texture2D(uSampler, vTextureCoord);
-  float mx = max(c.r, max(c.g, c.b));
-  float a = c.a * step(uThreshold, mx);
+  // Luminance-based key (independent of hue); binary alpha
+  float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float a = c.a * step(uThreshold, lum);
   gl_FragColor = vec4(c.rgb, a);
 }`;
-    const uniforms = { uThreshold: 0.025 };
+    const uniforms = { uThreshold: GLYPH_KEY_THRESHOLD };
     return new PIXI.Filter(undefined, frag, uniforms);
   }
 
@@ -154,6 +158,9 @@ void main() {
       raf: 0,
       startTs: performance.now(),
       debugInset: GLYPH_UV_INSET_PX,   // default inset; tune via setGlyphInset(px) if needed
+      blackKeyFilterWorld: null,
+      blackKeyFilterOcc: null,
+      viewingOcclusion: false,
       // no debug flags kept in production path
     };
 
@@ -199,15 +206,20 @@ void main() {
       const sy = rowIdx * (cellH || state.tile.h) + pad;
 
       // UV inset to avoid sampling atlas gutters
-      // Apply a tiny uniform inset to all glyphs to reduce occasional bleeding at certain scales
-      // Keep a stronger inset for thin CP437 line glyphs (they're the most sensitive)
+      // Default tiny inset helps reduce bleeding at certain scales, but we must not shrink solid floor blocks
       let inset = Math.max(0, Number(state.debugInset) || 0);
-    //   try {
-    //     const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
-    //     if (LINE_CODES.indexOf(key) !== -1) {
-    //       inset = Math.max(inset, 0.28);
-    //     }
-    //   } catch (_) {}
+      try {
+        // Do NOT inset fully filled block (floor) so tiles butt without visible gaps
+        if (key === 219) {
+          inset = 0;
+        } else {
+          // Apply stronger inset for thin CP437 line glyphs to avoid seam artifacts
+          const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
+          if (LINE_CODES.indexOf(key) !== -1) {
+            inset = Math.max(inset, 0.28);
+          }
+        }
+      } catch (_) {}
       inset = Math.max(0, Math.min(inset, Math.min(state.tile.w, state.tile.h) * 0.49));
       const frame = (inset > 0)
         ? new PIXI.Rectangle(sx + inset, sy + inset, state.tile.w - inset * 2, state.tile.h - inset * 2)
@@ -224,17 +236,22 @@ void main() {
     // Enable chroma-key style transparency on world layer (pre-composite)
     function enableBlackKeyFilters(threshold) {
       try {
-        const fk = createBlackKeyFilter(PIXI);
-        if (threshold != null && Number.isFinite(threshold)) fk.uniforms.uThreshold = Number(threshold);
-        state.blackKeyFilter = fk;
-        if (state.layers.world) state.layers.world.filters = [fk];
+        const t = (threshold != null && Number.isFinite(threshold)) ? Number(threshold) : GLYPH_KEY_THRESHOLD;
+        const fkW = createBlackKeyFilter(PIXI); fkW.uniforms.uThreshold = t;
+        const fkO = createBlackKeyFilter(PIXI); fkO.uniforms.uThreshold = t;
+        state.blackKeyFilterWorld = fkW;
+        state.blackKeyFilterOcc = fkO;
+        if (state.layers.world) state.layers.world.filters = [fkW];
+        if (state.layers.occlusion) state.layers.occlusion.filters = [fkO];
       } catch (_) {}
     }
 
     // Disable black-key filters on both layers
     function disableBlackKeyFilters() {
-      state.blackKeyFilter = null;
+      state.blackKeyFilterWorld = null;
+      state.blackKeyFilterOcc = null;
       try { if (state.layers.world) state.layers.world.filters = null; } catch (_) {}
+      try { if (state.layers.occlusion) state.layers.occlusion.filters = null; } catch (_) {}
     }
 
     // Simple tween manager for entity motion (see final animateEntity using idIndex)
@@ -355,12 +372,8 @@ void main() {
       const MaxSprites = 65535;
       // World must be a Container to support filters (black-key pre-composite)
       state.layers.world = new PIXI.Container();
-      // Occlusion may use ParticleContainer for batching
-      if (PIXI.ParticleContainer) {
-        state.layers.occlusion = new PIXI.ParticleContainer(MaxSprites, { scale: true, position: true, rotation: false, uvs: false, alpha: true, tint: false });
-      } else {
-        state.layers.occlusion = new PIXI.Container();
-      }
+      // Occlusion uses a Container so we can apply threshold filtering for binary masks
+      state.layers.occlusion = new PIXI.Container();
       state.layers.ui = new PIXI.Container();
       root.addChild(state.layers.world);
       app.stage.addChild(state.layers.ui);
@@ -395,7 +408,7 @@ void main() {
       state.rt.sprite.filters = state.filterChain;
 
       // Default: enable black-key on world (uniform ASCII transparency)
-      try { enableBlackKeyFilters(0.025); } catch (_) {}
+      try { enableBlackKeyFilters(GLYPH_KEY_THRESHOLD); } catch (_) {}
 
       // Pointer wheel zoom (anchor under cursor) and drag pan
       try {
@@ -426,6 +439,26 @@ void main() {
         viewEl.addEventListener('pointerup', onUp);
         viewEl.addEventListener('pointercancel', onUp);
         viewEl.addEventListener('mouseleave', onUp);
+      } catch (_) {}
+
+      // Function keys: F2 toggles occlusion mask / scene
+      try {
+        function onKey(ev) {
+          if (!ev || ev.repeat) return;
+          if (ev.code === 'F2') {
+            try {
+              state.viewingOcclusion = !state.viewingOcclusion;
+              if (state.viewingOcclusion) {
+                api && api.viewOcclusion && api.viewOcclusion();
+              } else {
+                api && api.viewScene && api.viewScene();
+              }
+              ev.preventDefault();
+              ev.stopPropagation();
+            } catch (_) {}
+          }
+        }
+        window.addEventListener('keydown', onKey);
       } catch (_) {}
 
       // Resize handling
@@ -508,6 +541,26 @@ void main() {
 
       // Return minimal API
       return api;
+    }
+
+    // Debug: swap the full-screen RT to show occlusion mask, and restore
+    function viewOcclusion() {
+      try {
+        if (state && state.rt && state.rt.sprite && state.rt.occlusion) {
+          state.rt.sprite.texture = state.rt.occlusion;
+          // Show raw mask without post-fx filters
+          try { state.rt.sprite.filters = []; } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    function viewScene() {
+      try {
+        if (state && state.rt && state.rt.sprite && state.rt.scene) {
+          state.rt.sprite.texture = state.rt.scene;
+          // Restore user filter chain
+          try { state.rt.sprite.filters = state.filterChain; } catch (_) {}
+        }
+      } catch (_) {}
     }
 
     function setFont(meta) {
@@ -615,13 +668,15 @@ void main() {
           if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
           world.addChild(spr);
           if (s.occludes) {
-            // Use a white sprite (fast path) scaled to tile size for occlusion mask
-            const o = new PIXI.Sprite(PIXI.Texture.WHITE);
+            // Use the exact glyph texture for occlusion so the mask matches visible pixels
+            const o = new PIXI.Sprite(tex);
             try { o.roundPixels = true; } catch (_) {}
             o.anchor.set(0, 0);
             o.x = wp.x; o.y = wp.y;
-            o.width = state.tile.w; o.height = state.tile.h;
-            if (state.flip.row) { o.scale.y *= -1; o.y += state.tile.h; }
+            // Ensure mask is solid white where glyph exists
+            try { o.tint = 0xFFFFFF; } catch (_) {}
+            o.alpha = 1;
+            if (state.flip.row) { o.scale.y = -1; o.y += state.tile.h; }
             occ.addChild(o);
             try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.idIndex.set(s.id, { sprite: spr, occlSprite: o }); } catch (_) {}
           } else {
@@ -669,6 +724,8 @@ void main() {
       addFilter,
       clearFilters,
       getOcclusionTexture: () => state.rt && state.rt.occlusion,
+      viewOcclusion,
+      viewScene,
       setGlyphInset: (px) => { try { state.debugInset = Math.max(0, Number(px)||0); state.textures.byCode.clear(); if (state.lastSprites && state.lastSprites.length) setSprites(state.lastSprites); } catch (_) {} },
       destroy,
     };
