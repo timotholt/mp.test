@@ -46,7 +46,8 @@
   // Build a single sprite list from an ASCII map + optional extras (already sprite-shaped)
   // Each sprite: { id?, charCode, x, y, color(0xRRGGBB|[r,g,b]), alpha?, occludes? }
   function buildSpritesFromMap(mapString, extras = []) {
-    const out = [];
+    const floors = [];
+    const overlays = [];
     const rows = String(mapString || '').split('\n');
     const isWall = (x, y) => {
       if (y < 0 || y >= rows.length) return false;
@@ -83,13 +84,15 @@
         if (ch === '#') {
           const n = isWall(x, y - 1), s = isWall(x, y + 1), w = isWall(x - 1, y), e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          //out.push({ x, y, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
+          // Always lay a floor under a wall, then the wall on top
+          floors.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
+          overlays.push({ x, y, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
         } else if (ch === '.') {
-          out.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
+          floors.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch === '@') {
-          out.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
+          overlays.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch !== ' ') {
-          out.push({ x, y, charCode: String(ch).codePointAt(0), color: 0xFFFFFF, alpha: 1, occludes: false });
+          overlays.push({ x, y, charCode: String(ch).codePointAt(0), color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }
     }
@@ -97,7 +100,7 @@
     try {
       if (Array.isArray(extras) && extras.length) {
         for (const e of extras) {
-          out.push({
+          overlays.push({
             id: e.id,
             x: e.x|0, y: e.y|0,
             charCode: e.charCode,
@@ -108,7 +111,8 @@
         }
       }
     } catch (_) {}
-    return out;
+    // Floors first, overlays after to guarantee proper layering
+    return floors.concat(overlays);
   }
 
   function applySprites(sprites) {
