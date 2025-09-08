@@ -1309,7 +1309,7 @@ class DungeonRenderer extends BaseSurface {
       const my = (e.y|0) + padding;
       if (mx < 0 || my < 0 || mx >= W || my >= H) continue;
       const idx4 = ((H - my - 1) * W + mx) * 4;
-      const color = e.color && e.color.length === 3 ? e.color : [1,1,1];
+      const color = e.color && e.color.length === 3 ? e.color : [0,0,0];
       this.entityData[idx4 + 0] = Math.max(0, Math.min(255, Math.floor(color[0] * 255)));
       this.entityData[idx4 + 1] = Math.max(0, Math.min(255, Math.floor(color[1] * 255)));
       this.entityData[idx4 + 2] = Math.max(0, Math.min(255, Math.floor(color[2] * 255)));

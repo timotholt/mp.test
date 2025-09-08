@@ -101,6 +101,15 @@ resetBtn.onclick = () => renderer.resetCamera();
 
 ## Q&A
 
+- Q: If I don't assign a color to an entity, does it emit light?
+  A: No. By design, an entity without a specified RGB color is treated as non‑emissive (color `[0,0,0]`). It can still occlude based on `blocking: true`, but it won’t contribute any luminance to GI. Give it a color (e.g., white `[1,1,1]` or torch orange `[1.0, 0.6, 0.2]`) to make it emit light.
+
+- Q: Why does a character on the FLOOR layer (like `'^'`) not emit light?
+  A: Lighting and occlusion are driven by the ENTITIES layer plus the per‑cell `positionBlockMap`. Characters that exist only on the FLOOR layer are visual albedo and do not emit. To make `'^'` a light, include it in your entities list with a color and optionally set `blocking`.
+
+- Q: How do I keep floors visible but non‑blocking?
+  A: Render floors via the FLOOR layer (character color map) and call `setPositionBlockMapFill(false)` so all tiles start as non‑blocking. Then push walls/actors via `setEntities([...])` and set `blocking: true` selectively; those cells will occlude and receive/emit light, while floors remain purely visual.
+
 - Q: Without any position color map, is the dungeon transparent and shows the canvas underneath?
   A: Non‑glyph pixels are written as RGBA(0,0,0,0), but the canvas is opaque (`alpha:false`) and blending is disabled, so you see black by default. It isn’t composited with the page; effectively it’s a black background unless you change the clear/render color or draw an underlay. Default glyph tint is white if no color maps are provided.
 
