@@ -617,6 +617,7 @@ class RC extends DistanceField {
         resolution: [this.width, this.height],
         showSurface: true,
         fogAmount: 0.8,
+        overlayGain: 1.2,
       },
       fragmentShader: `
         uniform sampler2D inputTexture;
@@ -624,6 +625,7 @@ class RC extends DistanceField {
         uniform vec2 resolution;
         uniform bool showSurface;
         uniform float fogAmount; // 0..1, 0 = no fog (pure surface), 1 = full lighting on glyphs
+        uniform float overlayGain; // scales radiance before compositing (haze intensity)
 
         in vec2 vUv;
         out vec4 FragColor;
@@ -632,10 +634,11 @@ class RC extends DistanceField {
           vec4 rc = texture(inputTexture, vUv);
           vec4 d = texture(drawPassTexture, vUv);
 
-          // Modulate surface color by radiance ("fog") where glyphs exist; pure radiance elsewhere.
+          // Screen-style fog: screen(surface, overlayGain*rc) gives additive "haze" feel
           vec3 surface = d.rgb;
-          vec3 lit = surface * rc.rgb;            // simple albedo * lighting
-          vec3 fogged = mix(surface, lit, clamp(fogAmount, 0.0, 1.0));
+          vec3 rcScaled = clamp(overlayGain * rc.rgb, 0.0, 1.0);
+          vec3 screenC = 1.0 - (1.0 - surface) * (1.0 - rcScaled);
+          vec3 fogged = mix(surface, screenC, clamp(fogAmount, 0.0, 1.0));
           FragColor = vec4(d.a > 0.0 && showSurface ? fogged : rc.rgb, 1.0);
         }`
     });

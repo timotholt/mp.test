@@ -619,7 +619,8 @@ try {
       const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
-      if (srgbFalloff != null) rc.rcUniforms.srgb = srgbFalloff;
+      // Map Falloff slider to overlay haze intensity rather than RC gamma shaping
+      if (rc.overlayUniforms && srgbFalloff != null) rc.overlayUniforms.overlayGain = srgbFalloff;
       if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
