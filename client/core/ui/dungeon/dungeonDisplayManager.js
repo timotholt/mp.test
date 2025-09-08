@@ -24,8 +24,8 @@
     '############################################################',
   ].join('\n');
 
-  // Track last raw map applied so we can re-apply on Pixi readiness
-  let __lastMapRaw = '';
+  // Track last route sprites so we can re-apply on Pixi readiness
+  let __lastSprites = [];
 
   // Lobby: tall vertical shaft down the center
   let LOBBY_MAP = [
@@ -43,125 +43,117 @@
     '##############################|#############################',
   ].join('\n');
 
-  function setMapString(mapString) {
-    try {
-      // Change FLOOR glyphs for display only:
-      // - '.' -> '█' (solid floor plate)
-      // - '#' -> ' ' (space) so walls are not drawn on FLOOR; walls render via ENTITIES only
-      const src = String(mapString || '');
-      __lastMapRaw = src;
-      const floorMapped = src.replace(/\./g, '█').replace(/#/g, ' ');
-      // Prefer Pixi: apply immediately if available, otherwise stash for Pixi boot
-      if (window.pxr && typeof window.pxr.setDungeonMap === 'function') {
-        window.pxr.setDungeonMap(floorMapped);
-      }
-      window.__pendingDungeonMap = floorMapped;
-    } catch (_) {}
-  }
-
-  // Build entity list from a floor map. Floors remain in mapString visually.
-  // We add entities on top only for walls ('#') and the player '@'.
-  function computeEntitiesFromMap(mapString) {
-    const entities = [];
+  // Convert ASCII map into a single list of sprite specs consumed by pxr.setSprites()
+  // Each sprite: { char|charCode, x, y, color, alpha, occludes, id? }
+  function asciiToSprites(mapString) {
+    const sprites = [];
     const rows = String(mapString || '').split('\n');
-    // Helper: check if a position is a wall ('#') within bounds
     const isWall = (x, y) => {
       if (y < 0 || y >= rows.length) return false;
       const row = rows[y] || '';
       if (x < 0 || x >= row.length) return false;
       return row[x] === '#';
     };
-    // Map a bitmask of neighbors (N=1,S=2,W=4,E=8) to CP437 box-drawing glyphs
     const wallGlyph = (n, s, w, e) => {
       const mask = (n?1:0) | (s?2:0) | (w?4:0) | (e?8:0);
       switch (mask) {
-        case 0: // isolated; default to horizontal
-        case 8: // E only
-        case 4: // W only
-        case 12: // W+E
+        case 0:
+        case 8:
+        case 4:
+        case 12:
           return { ch: '─', code: 196 };
-        case 1: // N only
-        case 2: // S only
-        case 3: // N+S
+        case 1:
+        case 2:
+        case 3:
           return { ch: '│', code: 179 };
-        case 9: // N+E -> bottom-left corner
+        case 9:
           return { ch: '└', code: 192 };
-        case 5: // N+W -> bottom-right corner
+        case 5:
           return { ch: '┘', code: 217 };
-        case 10: // S+E -> top-left corner
+        case 10:
           return { ch: '┌', code: 218 };
-        case 6: // S+W -> top-right corner
+        case 6:
           return { ch: '┐', code: 191 };
-        case 7: // N+S+W -> tee right
+        case 7:
           return { ch: '┤', code: 180 };
-        case 11: // N+S+E -> tee left
+        case 11:
           return { ch: '├', code: 195 };
-        case 14: // S+W+E -> tee up
+        case 14:
           return { ch: '┬', code: 194 };
-        case 13: // N+W+E -> tee down
+        case 13:
           return { ch: '┴', code: 193 };
-        case 15: // all
+        case 15:
           return { ch: '┼', code: 197 };
         default:
-          return { ch: '█', code: 219 }; // fallback to solid
+          return { ch: '█', code: 219 };
       }
     };
     for (let y = 0; y < rows.length; y++) {
-      const row = rows[y];
+      const row = rows[y] || '';
       for (let x = 0; x < row.length; x++) {
         const ch = row[x];
+        if (!ch) continue;
         if (ch === '#') {
-          // Use ANSI/CP437 box-drawing based on 4-neighbor connectivity
           const n = isWall(x, y - 1);
           const s = isWall(x, y + 1);
           const w = isWall(x - 1, y);
           const e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          entities.push({ x, y, char: g.ch, charCode: g.code, color: [0.30, 0.30, 0.30], blocking: true });
+          sprites.push({ x, y, char: g.ch, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
+        } else if (ch === '.') {
+          // Floor plate as solid block
+          sprites.push({ x, y, char: '█', charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
+        } else if (ch === ' ') {
+          // empty
         } else if (ch === '@') {
-          // Player '@' should be white in the entities layer
-          // entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
-          //entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
+          // Player marker in maps (non-occluding visual)
+          sprites.push({ x, y, char: '@', charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
+        } else {
+          // Any other glyph: draw as-is, non-occluding by default
+          sprites.push({ x, y, char: ch, color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }
     }
-    return entities;
+    // Append extra demo sprites if present
+    try {
+      if (Array.isArray(window.__extraDemoEntities) && window.__extraDemoEntities.length) {
+        for (const e of window.__extraDemoEntities) {
+          sprites.push({
+            id: e.id,
+            x: e.x|0, y: e.y|0,
+            char: e.char || '@', charCode: e.charCode,
+            color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF),
+            alpha: (e.alpha != null) ? e.alpha : 1,
+            occludes: !!(e.occludes || e.blocking),
+          });
+        }
+      }
+    } catch (_) {}
+    return sprites;
   }
 
-  // Apply floors as non-blocking and walls/entities as blocking layer over the floor.
-  function applyFloorAndEntities(mapString) {
+  function applySprites(sprites) {
     try {
-      const entities = computeEntitiesFromMap(mapString);
-      // Merge any additional, route-specific entities (e.g., demo humans)
-      try {
-        if (Array.isArray(window.__extraDemoEntities) && window.__extraDemoEntities.length) {
-          entities.push.apply(entities, window.__extraDemoEntities);
-        }
-      } catch (_) {}
-      // Push to Pixi immediately if active; also stash for boot-time consumption.
-      try { if (window.pxr && typeof window.pxr.setEntities === 'function') { window.pxr.setEntities(entities); } } catch (_) {}
-      window.__pendingEntities = entities;
-    } catch (_) {}
+      __lastSprites = sprites.slice();
+    } catch (_) { __lastSprites = sprites; }
+    try { if (window.pxr && typeof window.pxr.setSprites === 'function') window.pxr.setSprites(sprites); } catch (_) {}
+    window.__pendingSprites = sprites;
   }
 
   function applyForRoute(route) {
     try {
       const STATES = window.APP_STATES || {};
       if (route === STATES.LOGIN) {
-        setMapString(LOGIN_MAP);
-        // Place three colored humans via entity list (white, blue, red). Non-blocking, moderate tint.
-        // Coordinates chosen to sit on the open floor row near the bottom (y=10) inside the corridor.
+        // Demo humans (optional)
         window.__extraDemoEntities = [
-          { x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false }, // white
-          { x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false }, // blue (Ultramarines-like)
-          { x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false }, // red (Blood Angels-like)
+          { id: 'demo-1', x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
+          { id: 'demo-2', x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
+          { id: 'demo-3', x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
         ];
-        applyFloorAndEntities(LOGIN_MAP);
+        applySprites(asciiToSprites(LOGIN_MAP));
       } else if (route === STATES.LOBBY) {
-        setMapString(LOBBY_MAP);
-        // No extra demo entities on Lobby by default
         window.__extraDemoEntities = [];
-        applyFloorAndEntities(LOBBY_MAP);
+        applySprites(asciiToSprites(LOBBY_MAP));
       } else if (route === STATES.GAMEPLAY_ACTIVE) {
         // Gameplay dungeon is controlled by gameplay events (wireRoomEvents.js)
         // Do not override here.
@@ -209,9 +201,8 @@
       const current = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null;
       if (current) {
         applyForRoute(current);
-      } else if (__lastMapRaw) {
-        setMapString(__lastMapRaw);
-        applyFloorAndEntities(__lastMapRaw);
+      } else if (__lastSprites && __lastSprites.length) {
+        applySprites(__lastSprites);
       }
     } catch (_) {}
   });
@@ -222,3 +213,108 @@
     if (current) applyForRoute(current);
   } catch (_) {}
 })();
+
+// Build a debug map that shows ASCII/CP437 codes (default 32..256) twice:
+// - Left group as MAP TILES (actual tile glyphs)
+// - Right group as ENTITIES drawn over a dim background
+// You can override range/shape via opts: { start, end, cols, blackKey, threshold }
+function debugAsciiGrid(opts = {}) {
+  const start = Number.isFinite(opts.start) ? (opts.start|0) : 32;
+  const end = Number.isFinite(opts.end) ? (opts.end|0) : 256; // inclusive
+  const count = Math.max(0, (end - start + 1));
+  const groupCols = Math.max(1, Math.min(64, Number.isFinite(opts.cols) ? (opts.cols|0) : 16));
+  const groupRows = Math.max(1, Math.ceil(count / groupCols));
+  const gap = 2; // columns between groups
+  const pad = 1; // border padding
+  const leftX = pad;
+  const topY = pad;
+  const groupX0 = leftX;                     // ASCII group A
+  const groupX1 = leftX + groupCols + gap;   // ASCII group B (mirrored as separate region)
+  const groupX2 = groupX1 + groupCols + gap; // Alternating floors A
+  const groupX3 = groupX2 + groupCols + gap; // Alternating floors B
+  const groupX4 = groupX3 + groupCols + gap; // Rooms A
+  const groupX5 = groupX4 + groupCols + gap; // Rooms B
+  const width = groupX5 + groupCols + pad;
+  const height = topY + groupRows + pad;
+
+  const sprites = [];
+
+  // Group 0: ASCII tiles as-is
+  let code = start;
+  for (let gy = 0; gy < groupRows; gy++) {
+    for (let gx = 0; gx < groupCols; gx++) {
+      if (code > end) break;
+      sprites.push({ id: `dbg-a-${code}`, charCode: code, x: groupX0 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      code++;
+    }
+  }
+
+  // Group 1: ASCII tiles mirrored to a second region
+  code = start;
+  for (let gy = 0; gy < groupRows; gy++) {
+    for (let gx = 0; gx < groupCols; gx++) {
+      if (code > end) break;
+      sprites.push({ id: `dbg-b-${code}`, charCode: code, x: groupX1 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      code++;
+    }
+  }
+
+  // Group 2: alternating floor rows (█)
+  const floorCh = '█';
+  for (let gy = 0; gy < groupRows; gy++) {
+    const useFloorRow = (gy % 2) === 0;
+    if (!useFloorRow) continue;
+    for (let gx = 0; gx < groupCols; gx++) {
+      sprites.push({ id: `dbg-f-a-${gy}-${gx}`, char: floorCh, charCode: 219, x: groupX2 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+    }
+  }
+
+  // Group 3: alternating floor rows again in a second region
+  for (let gy = 0; gy < groupRows; gy++) {
+    const useFloorRow = (gy % 2) === 0;
+    if (!useFloorRow) continue;
+    for (let gx = 0; gx < groupCols; gx++) {
+      sprites.push({ id: `dbg-f-b-${gy}-${gx}`, char: floorCh, charCode: 219, x: groupX3 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+    }
+  }
+
+  // Helpers to push CP437 box glyphs into sprites for rooms
+  const H = 196, V = 179, TL = 218, TR = 191, BL = 192, BR = 217;
+  function drawBoxToSprites(gxBase, ox, oy, w, h) {
+    if (w < 2 || h < 2) return;
+    const y0 = topY + oy, y1 = topY + oy + h - 1;
+    const x0 = gxBase + ox, x1 = gxBase + ox + w - 1;
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      sprites.push({ id: `dbg-r-top-${x}-${y0}` , charCode: H, x, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-r-bot-${x}-${y1}` , charCode: H, x, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
+    }
+    for (let y = y0 + 1; y <= y1 - 1; y++) {
+      sprites.push({ id: `dbg-r-left-${x0}-${y}` , charCode: V, x: x0, y, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-r-right-${x1}-${y}` , charCode: V, x: x1, y, color: 0xFFFFFF, alpha: 1, occludes: false });
+    }
+    sprites.push({ id: `dbg-r-tl-${x0}-${y0}`, charCode: TL, x: x0, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
+    sprites.push({ id: `dbg-r-tr-${x1}-${y0}`, charCode: TR, x: x1, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
+    sprites.push({ id: `dbg-r-bl-${x0}-${y1}`, charCode: BL, x: x0, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
+    sprites.push({ id: `dbg-r-br-${x1}-${y1}`, charCode: BR, x: x1, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
+  }
+
+  // Group 4/5: rooms in two regions
+  const roomPad = 1;
+  const rW = groupCols - roomPad * 2;
+  const rH = Math.max(4, Math.min(groupRows - roomPad * 2, Math.floor(groupRows * 0.6)));
+  drawBoxToSprites(groupX4, roomPad, roomPad, Math.max(6, rW), rH);
+  drawBoxToSprites(groupX4, roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)));
+  drawBoxToSprites(groupX4, roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)));
+  drawBoxToSprites(groupX5, roomPad, roomPad, Math.max(6, rW), rH);
+  drawBoxToSprites(groupX5, roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)));
+  drawBoxToSprites(groupX5, roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)));
+
+  // Apply to renderer (unified sprite pipeline)
+  try { if (window.pxr && typeof window.pxr.setSprites === 'function') window.pxr.setSprites(sprites); } catch (_) {}
+  try { window.__pendingSprites = sprites; } catch (_) {}
+
+  // Optional: black-key for quick inspection
+  if (opts.blackKey) {
+    try { window.pxr && window.pxr.enableBlackKeyFilters(Number.isFinite(opts.threshold) ? opts.threshold : undefined); } catch (_) {}
+  }
+}

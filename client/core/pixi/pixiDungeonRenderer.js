@@ -14,12 +14,13 @@
 // Public API (exposed on window.pxr):
 // - init(opts)
 // - setFont(meta)
-// - setDungeonMap(mapString)
-// - setEntities(list)
+// - setSprites(list)          // unified sprite pipeline
+// - setEntities(list)         // DEPRECATED wrapper: translates to setSprites
 // - panCamera(dx, dy)
 // - zoomCamera(factor, ax, ay)
 // - toScreen({ x, y }) -> { x, y }
 // - animateEntity(id, toX, toY, opts)
+// - getOcclusionTexture()
 // - destroy()
 
 (function () {
@@ -38,70 +39,6 @@
       }
 
       // (helpers moved into createRendererAPI)
-
-  // Placeholder GI-like filter (single-pass). Tunable and replaceable.
-  function createGiFilter(PIXI) {
-    const frag = `
-precision highp float;
-
-varying vec2 vTextureCoord;
-uniform sampler2D uSampler;
-uniform float uTime;
-uniform float uFogAmount;
-uniform float uFalloff;
-
-// Very lightweight halo/falloff effect + subtle filmic curve.
-void main() {
-  vec2 uv = vTextureCoord;
-  vec4 base = texture2D(uSampler, uv);
-
-  // Fake bounce light by sampling a small neighborhood
-  vec3 accum = base.rgb;
-  float k = 0.08; // small kernel weight
-  accum += texture2D(uSampler, uv + vec2( 1.0/1024.0,  0.0)).rgb * k;
-  accum += texture2D(uSampler, uv + vec2(-1.0/1024.0,  0.0)).rgb * k;
-  accum += texture2D(uSampler, uv + vec2( 0.0,  1.0/1024.0)).rgb * k;
-  accum += texture2D(uSampler, uv + vec2( 0.0, -1.0/1024.0)).rgb * k;
-
-  // Distance-based falloff from center (placeholder for ray-march distance)
-  vec2 dc = uv - 0.5;
-  float d = length(dc);
-  float fog = clamp(uFogAmount * smoothstep(0.3, 0.8, d), 0.0, 1.0);
-
-  // Fake sRGB-ish falloff shaping
-  float decay = 1.0 / (1.0 + uFalloff * d * 3.0);
-  vec3 lit = mix(accum, accum * decay, 0.85);
-
-  // Filmic-like tone map (very mild)
-  vec3 x = max(vec3(0.0), lit - 0.004);
-  vec3 mapped = (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
-
-  // Apply fog
-  vec3 color = mix(mapped, vec3(0.0), fog);
-  gl_FragColor = vec4(color, base.a);
-}
-`;
-    const uniforms = { uTime: 0, uFogAmount: 0.2, uFalloff: 1.8 };
-    return new PIXI.Filter(undefined, frag, uniforms);
-  }
-
-  // Chroma-key style transparency: discard near-black pixels for atlases without alpha
-  function createBlackKeyFilter(PIXI) {
-    const frag = `
-precision mediump float;
-varying vec2 vTextureCoord;
-uniform sampler2D uSampler;
-uniform float uThreshold; // 0..1
-void main() {
-  vec4 c = texture2D(uSampler, vTextureCoord);
-  float mx = max(c.r, max(c.g, c.b));
-  // Keep only pixels brighter than threshold; multiply by original alpha
-  float a = c.a * step(uThreshold, mx);
-  gl_FragColor = vec4(c.rgb, a);
-}`;
-    const uniforms = { uThreshold: 0.025 };
-    return new PIXI.Filter(undefined, frag, uniforms);
-  }
 
     } catch (_) {}
     try {
@@ -179,11 +116,11 @@ void main() {
       app: null,
       root: null,
       layers: {
-        tiles: null,
-        entities: null,
+        world: null,      // unified visible glyphs
+        occlusion: null,  // monochrome mask
         ui: null,
       },
-      rt: { scene: null, sprite: null },
+      rt: { scene: null, sprite: null, occlusion: null },
       giFilter: null,
       filterChain: [],
       camera: { x: 0, y: 0, scale: 1 },
@@ -192,9 +129,7 @@ void main() {
       atlas: { cols: 16, rows: 16, startCode: 32 },
       flip: { tileY: false, row: false },
       textures: { base: null, byCode: new Map(), originalBase: null },
-      map: { rows: [], width: 0, height: 0 },
-      entityById: new Map(), // id -> { sprite, emission }
-      lastEntities: [], // remember latest desired entities to reapply post-font-load
+      entityById: new Map(), // id -> { sprite, occlSprite }
       raf: 0,
       startTs: performance.now(),
       // no debug flags kept in production path
@@ -368,264 +303,60 @@ void main() {
       }
     }
 
+    // Back-compat wrapper: accept legacy entity list and compose into unified sprites
     function setEntities(list) {
-      const layer = state.layers.entities;
-      if (!layer) return;
-      // Reuse existing sprites if ids match; otherwise rebuild simply.
-      layer.removeChildren();
-      state.entityById.clear();
-      if (!Array.isArray(list)) { state.lastEntities = []; return; }
-      // Remember latest desired entities in case font loads after this call
-      try { state.lastEntities = list.slice(); } catch (_) { state.lastEntities = list; }
-      list.forEach((e, idx) => {
-        const code = (Number.isFinite(e.charCode) ? e.charCode : (String(e.char||' ').codePointAt(0) || 32));
-        const tex = textureForCode(code);
-        if (!tex) return;
-        const spr = new PIXI.Sprite(tex);
-        try { spr.roundPixels = true; } catch (_) {}
-        spr.anchor.set(0, 0);
-        const wp = dungeonToWorld(e.x|0, e.y|0);
-        spr.x = wp.x; spr.y = wp.y;
-        if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
-        // Albedo tint from entity color property (array [r,g,b] 0..1)
-        try {
-          if (Array.isArray(e.color) && e.color.length >= 3) {
-            const r = clamp(Math.round((e.color[0]||0) * 255), 0, 255);
-            const g = clamp(Math.round((e.color[1]||0) * 255), 0, 255);
-            const b = clamp(Math.round((e.color[2]||0) * 255), 0, 255);
-            spr.tint = (r<<16) | (g<<8) | b;
-          } else {
-            spr.tint = 0xFFFFFF;
-          }
-        } catch (_) { spr.tint = 0xFFFFFF; }
-        layer.addChild(spr);
-        const id = e.id != null ? e.id : idx;
-        state.entityById.set(id, { sprite: spr, emission: (e.emission != null ? e.emission : 0) });
-      });
+      const arr = Array.isArray(list) ? list : [];
+      try { state.lastEntities = arr.slice(); } catch (_) { state.lastEntities = arr; }
+      state.pending.entities = arr.map((e) => ({
+        char: e.char,
+        charCode: e.charCode,
+        x: e.x|0, y: e.y|0,
+        color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF),
+        alpha: (e.alpha != null) ? e.alpha : 1,
+        occludes: !!(e.blocking || e.occludes),
+      }));
+      recombineAndDraw();
+    }
+
+    function recombineAndDraw() {
+      try { setSprites([].concat(state.pending.map, state.pending.entities)); } catch (_) {}
     }
 
     // Enable chroma-key style transparency on both tile and entity layers
     function enableBlackKeyFilters(threshold) {
       try {
-        const fkTiles = createBlackKeyFilter(PIXI);
-        const fkEnt = createBlackKeyFilter(PIXI);
+        const fkWorld = createBlackKeyFilter(PIXI);
         if (threshold != null && Number.isFinite(threshold)) {
-          fkTiles.uniforms.uThreshold = Number(threshold);
-          fkEnt.uniforms.uThreshold = Number(threshold);
+          fkWorld.uniforms.uThreshold = Number(threshold);
         }
-        if (state.layers.tiles) state.layers.tiles.filters = [fkTiles];
-        if (state.layers.entities) state.layers.entities.filters = [fkEnt];
-        state.blackKeyFilters = { tiles: fkTiles, entities: fkEnt };
+        if (state.layers.world) state.layers.world.filters = [fkWorld];
+        state.blackKeyFilters = { world: fkWorld };
       } catch (_) {}
     }
 
     // Disable black-key filters on both layers
     function disableBlackKeyFilters() {
-      try { if (state.layers.tiles) state.layers.tiles.filters = null; } catch (_) {}
-      try { if (state.layers.entities) state.layers.entities.filters = null; } catch (_) {}
+      try { if (state.layers.world) state.layers.world.filters = null; } catch (_) {}
       state.blackKeyFilters = null;
     }
 
     // Apply black-key only to ENTITIES layer (useful when floors are atlas tiles)
-    function enableBlackKeyOnEntities(threshold) {
-      try {
-        const fk = createBlackKeyFilter(PIXI);
-        if (threshold != null && Number.isFinite(threshold)) fk.uniforms.uThreshold = Number(threshold);
-        if (state.layers.entities) state.layers.entities.filters = [fk];
-        // Do not touch tiles layer
-        state.blackKeyFilters = Object.assign({}, state.blackKeyFilters, { entities: fk });
-      } catch (_) {}
-    }
+    function enableBlackKeyOnEntities(threshold) { enableBlackKeyFilters(threshold); }
 
-    // Build a debug map that shows ASCII/CP437 codes (default 32..256) twice:
-    // - Left group as MAP TILES (actual tile glyphs)
-    // - Right group as ENTITIES drawn over a dim background
-    // You can override range/shape via opts: { start, end, cols, blackKey, threshold }
-    function debugAsciiGrid(opts = {}) {
-      const start = Number.isFinite(opts.start) ? (opts.start|0) : 32;
-      const end = Number.isFinite(opts.end) ? (opts.end|0) : 256; // inclusive
-      const count = Math.max(0, (end - start + 1));
-      const groupCols = Math.max(1, Math.min(64, Number.isFinite(opts.cols) ? (opts.cols|0) : 16));
-      const groupRows = Math.max(1, Math.ceil(count / groupCols));
-      const gap = 2; // columns between groups
-      const pad = 1; // border padding
-      const leftX = pad;
-      const topY = pad;
-      const groupX0 = leftX;                     // ASCII as map tiles
-      const groupX1 = leftX + groupCols + gap;   // ASCII as entities
-      const groupX2 = groupX1 + groupCols + gap; // Alternating floor rows as map
-      const groupX3 = groupX2 + groupCols + gap; // Alternating floor rows as entities
-      const groupX4 = groupX3 + groupCols + gap; // Rooms as map tiles
-      const groupX5 = groupX4 + groupCols + gap; // Rooms as entities
-      const width = groupX5 + groupCols + pad;
-      const height = topY + groupRows + pad;
-
-      // Background tiles use '.' (tinted to 0x242424 in rebuildMap()).
-      const bg = '.';
-      const grid = [];
-      for (let y = 0; y < height; y++) {
-        const row = new Array(width).fill(bg);
-        grid.push(row);
-      }
-
-      // Group 0 (left): map tiles using the glyphs themselves
-      let code = start;
-      for (let gy = 0; gy < groupRows; gy++) {
-        for (let gx = 0; gx < groupCols; gx++) {
-          if (code > end) break;
-          const ch = String.fromCharCode(code);
-          grid[topY + gy][groupX0 + gx] = ch;
-          code++;
-        }
-      }
-
-      // Group 1 (second): keep background as '.' in the map; overlay entities with the same glyphs
-      const entities = [];
-      code = start;
-      for (let gy = 0; gy < groupRows; gy++) {
-        for (let gx = 0; gx < groupCols; gx++) {
-          if (code > end) break;
-          entities.push({
-            id: `dbg-ascii-${code}`,
-            charCode: code,
-            x: groupX1 + gx,
-            y: topY + gy,
-            color: [1, 1, 1], // white tint for clarity
-            emission: 0,
-          });
-          code++;
-        }
-      }
-
-      // Group 2 (third): alternating rows of floor tiles as MAP tiles
-      // Use full block '█' (CP437 219) as our floor glyph to mirror real dungeon floors
-      const floorCh = '█';
-      for (let gy = 0; gy < groupRows; gy++) {
-        const useFloorRow = (gy % 2) === 0;
-        for (let gx = 0; gx < groupCols; gx++) {
-          grid[topY + gy][groupX2 + gx] = useFloorRow ? floorCh : bg;
-        }
-      }
-
-      // Group 3 (fourth): alternating rows of floor tiles as ENTITIES
-      for (let gy = 0; gy < groupRows; gy++) {
-        const useFloorRow = (gy % 2) === 0;
-        if (!useFloorRow) continue; // only place on the rows that would be floors
-        for (let gx = 0; gx < groupCols; gx++) {
-          entities.push({
-            id: `dbg-floor-${gy}-${gx}`,
-            charCode: 219, // CP437 full block
-            x: groupX3 + gx,
-            y: topY + gy,
-            color: [1, 1, 1],
-            emission: 0,
-          });
-        }
-      }
-
-      // Helper to draw a CP437 box into a grid region as MAP tiles
-      function drawBoxToMap(ox, oy, w, h) {
-        const H = 196; // '─'
-        const V = 179; // '│'
-        const TL = 218; // '┌'
-        const TR = 191; // '┐'
-        const BL = 192; // '└'
-        const BR = 217; // '┘'
-        if (w < 2 || h < 2) return;
-        const y0 = topY + oy, y1 = topY + oy + h - 1;
-        const x0 = ox, x1 = ox + w - 1;
-        if (y0 < topY || y1 >= topY + groupRows) return;
-        for (let x = x0; x <= x1; x++) {
-          if (x < 0 || x >= grid[0].length) continue;
-          grid[y0][x] = String.fromCharCode(H);
-          grid[y1][x] = String.fromCharCode(H);
-        }
-        for (let y = y0; y <= y1; y++) {
-          if (y < 0 || y >= grid.length) continue;
-          if (x0 >= 0 && x0 < grid[0].length) grid[y][x0] = String.fromCharCode(V);
-          if (x1 >= 0 && x1 < grid[0].length) grid[y][x1] = String.fromCharCode(V);
-        }
-        if (x0 >= 0 && x0 < grid[0].length) {
-          if (y0 >= 0 && y0 < grid.length) grid[y0][x0] = String.fromCharCode(TL);
-          if (y1 >= 0 && y1 < grid.length) grid[y1][x0] = String.fromCharCode(BL);
-        }
-        if (x1 >= 0 && x1 < grid[0].length) {
-          if (y0 >= 0 && y0 < grid.length) grid[y0][x1] = String.fromCharCode(TR);
-          if (y1 >= 0 && y1 < grid.length) grid[y1][x1] = String.fromCharCode(BR);
-        }
-      }
-
-      // Helper to draw a CP437 box as ENTITIES
-      function drawBoxToEntities(ox, oy, w, h, gxBase) {
-        const H = 196, V = 179, TL = 218, TR = 191, BL = 192, BR = 217;
-        if (w < 2 || h < 2) return;
-        const y0 = topY + oy, y1 = topY + oy + h - 1;
-        const x0 = gxBase + ox, x1 = gxBase + ox + w - 1;
-        // top/bottom
-        for (let x = x0 + 1; x <= x1 - 1; x++) {
-          entities.push({ id: `dbg-r-top-${x}-${y0}` , charCode: H, x, y: y0, color: [1,1,1], emission: 0 });
-          entities.push({ id: `dbg-r-bot-${x}-${y1}` , charCode: H, x, y: y1, color: [1,1,1], emission: 0 });
-        }
-        // left/right
-        for (let y = y0 + 1; y <= y1 - 1; y++) {
-          entities.push({ id: `dbg-r-left-${x0}-${y}` , charCode: V, x: x0, y, color: [1,1,1], emission: 0 });
-          entities.push({ id: `dbg-r-right-${x1}-${y}` , charCode: V, x: x1, y, color: [1,1,1], emission: 0 });
-        }
-        // corners
-        entities.push({ id: `dbg-r-tl-${x0}-${y0}`, charCode: TL, x: x0, y: y0, color: [1,1,1], emission: 0 });
-        entities.push({ id: `dbg-r-tr-${x1}-${y0}`, charCode: TR, x: x1, y: y0, color: [1,1,1], emission: 0 });
-        entities.push({ id: `dbg-r-bl-${x0}-${y1}`, charCode: BL, x: x0, y: y1, color: [1,1,1], emission: 0 });
-        entities.push({ id: `dbg-r-br-${x1}-${y1}`, charCode: BR, x: x1, y: y1, color: [1,1,1], emission: 0 });
-      }
-
-      // Group 4 (fifth): rooms as MAP tiles
-      // Draw 3 rooms of different sizes inside the region
-      const roomPad = 1;
-      const rW = groupCols - roomPad * 2;
-      const rH = Math.max(4, Math.min(groupRows - roomPad * 2, Math.floor(groupRows * 0.6)));
-      // Big centered
-      drawBoxToMap(groupX4 + roomPad, roomPad, Math.max(6, rW), rH);
-      // Small top-left
-      drawBoxToMap(groupX4 + roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)));
-      // Medium bottom-right
-      drawBoxToMap(groupX4 + roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)));
-
-      // Group 5 (sixth): rooms as ENTITIES
-      drawBoxToEntities(roomPad, roomPad, Math.max(6, rW), rH, groupX5);
-      drawBoxToEntities(roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)), groupX5);
-      drawBoxToEntities(roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)), groupX5);
-
-      // Apply to renderer
-      const mapString = grid.map(r => r.join('')).join('\n');
-      setDungeonMap(mapString);
-      setEntities(entities);
-
-      // Optional: reset camera to 1x at origin so user can pan/zoom as needed
-      try {
-        state.camera.x = 0;
-        state.camera.y = 0;
-        state.camera.scale = 1;
-        updateCamera();
-      } catch (_) {}
-
-      // If requested, flip black-key filters on for quick inspection
-      if (opts.blackKey) {
-        enableBlackKeyFilters(Number.isFinite(opts.threshold) ? opts.threshold : undefined);
-      }
-    }
-
+ 
     // Simple tween manager for entity motion
     const tweens = new Set();
     function animateEntity(id, toX, toY, opts = {}) {
       const rec = state.entityById.get(id);
       if (!rec) return false;
       const spr = rec.sprite;
+      const occ = rec.occlSprite || null;
       const from = { x: spr.x, y: spr.y };
       const dest = dungeonToWorld(toX|0, toY|0);
       const duration = Math.max(1, Number(opts.duration || 250)); // ms
       const ease = (t) => t * t * (3 - 2 * t); // smoothstep
       const start = performance.now();
-      const tw = { id, spr, from, dest, start, duration, ease };
+      const tw = { id, spr, occ, from, dest, start, duration, ease };
       tweens.add(tw);
       return true;
     }
@@ -679,6 +410,14 @@ void main() {
       const px = -state.camera.x * s;
       const py = -state.camera.y * s;
       root.position.set(state.pixelPerfect ? Math.round(px) : px, state.pixelPerfect ? Math.round(py) : py);
+      // Mirror transform onto occlusion layer so masks align 1:1 with visuals
+      try {
+        const occ = state.layers.occlusion;
+        if (occ) {
+          occ.scale.set(s);
+          occ.position.set(state.pixelPerfect ? Math.round(px) : px, state.pixelPerfect ? Math.round(py) : py);
+        }
+      } catch (_) {}
     }
 
     // Init and pipeline
@@ -733,15 +472,14 @@ void main() {
       state.root = root;
       try { root.roundPixels = true; } catch (_) {}
 
-      // Layers: tiles below, entities above
-      state.layers.tiles = new PIXI.Container();
-      state.layers.entities = new PIXI.Container();
+      // Layers: world (visible) + occlusion (mask)
+      state.layers.world = new PIXI.Container();
+      state.layers.occlusion = new PIXI.Container(); // offstage, rendered to occlusion RT
       state.layers.ui = new PIXI.Container();
-      root.addChild(state.layers.tiles);
-      root.addChild(state.layers.entities);
+      root.addChild(state.layers.world);
       app.stage.addChild(state.layers.ui);
-      try { state.layers.tiles.roundPixels = true; } catch (_) {}
-      try { state.layers.entities.roundPixels = true; } catch (_) {}
+      try { state.layers.world.roundPixels = true; } catch (_) {}
+      try { state.layers.occlusion.roundPixels = true; } catch (_) {}
 
       // Black-key transparency (disabled by default to avoid potential 1px artifacts at 1x)
       // To enable later for atlases without alpha, set these filters at runtime.
@@ -761,13 +499,17 @@ void main() {
       // Ensure stage only contains postfx RT sprite (and UI); root remains offstage
       try { app.stage.removeChild(root); } catch (_) {}
 
+      // Separate occlusion RT (not shown directly). We render a monochrome mask into this.
+      state.rt.occlusion = await PIXI.RenderTexture.create({ width, height, resolution: app.renderer.resolution });
+      try { state.rt.occlusion.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
+
       // GI-like filter (available but disabled by default to keep base colors faithful)
       state.giFilter = createGiFilter(PIXI);
       state.filterChain = [];
       state.rt.sprite.filters = state.filterChain;
 
-      // Default: enable black-key on ENTITIES only (fixed threshold)
-      try { enableBlackKeyOnEntities(0.025); } catch (_) {}
+      // Default: enable black-key on world (uniform ASCII transparency)
+      try { enableBlackKeyFilters(0.025); } catch (_) {}
 
       // Pointer wheel zoom (anchor under cursor) and drag pan
       try {
@@ -811,6 +553,9 @@ void main() {
           state.rt.scene = PIXI.RenderTexture.create({ width: w, height: h, resolution: app.renderer.resolution });
           try { state.rt.scene.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
           state.rt.sprite.texture = state.rt.scene;
+          try { if (state.rt.occlusion) state.rt.occlusion.destroy(true); } catch (_) {}
+          state.rt.occlusion = PIXI.RenderTexture.create({ width: w, height: h, resolution: app.renderer.resolution });
+          try { state.rt.occlusion.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
           updateCamera();
         } catch (e) { console.warn('[pixi] resize failed', e); }
       }
@@ -847,6 +592,7 @@ void main() {
             const x = tw.from.x + (tw.dest.x - tw.from.x) * k;
             const y = tw.from.y + (tw.dest.y - tw.from.y) * k;
             tw.spr.position.set(x, y);
+            try { if (tw.occ) tw.occ.position.set(x, y); } catch (_) {}
             if (t >= 1) remove.push(tw);
           });
           remove.forEach((tw) => tweens.delete(tw));
@@ -855,14 +601,15 @@ void main() {
         // Update GI uniforms
         if (state.giFilter) {
           state.giFilter.uniforms.uTime = (now - state.startTs) * 0.001;
+          // If a pipeline consumes occlusion, keep the uniform bound
+          try { state.giFilter.uniforms.uOcclusion = state.rt.occlusion; } catch (_) {}
         }
 
-        // First render world into RT (try Pixi v7 signature, fallback to v6)
-        try {
-          app.renderer.render({ container: root, target: state.rt.scene, clear: true });
-        } catch (_) {
-          try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {}
-        }
+        // First render occlusion mask offstage
+        try { app.renderer.render({ container: state.layers.occlusion, target: state.rt.occlusion, clear: true }); } catch (_) { try { app.renderer.render(state.layers.occlusion, { renderTexture: state.rt.occlusion, clear: true }); } catch (_) {} }
+
+        // Then render world into color RT (try Pixi v7 signature, fallback to v6)
+        try { app.renderer.render({ container: root, target: state.rt.scene, clear: true }); } catch (_) { try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {} }
         // Then render stage, which has the RT sprite with filters
         try {
           app.renderer.render({ container: app.stage, clear: true });
@@ -941,17 +688,62 @@ void main() {
     }
     function clearFilters() { setFilterChain([]); }
 
-    function setDungeonMap(mapString) {
-      const rows = String(mapString || '').split('\n');
-      state.map.rows = rows;
-      state.map.height = rows.length;
-      state.map.width = rows.reduce((m, r) => Math.max(m, r.length), 0);
-      rebuildMap();
+
+    function setSprites(sprites) {
+      const world = state.layers.world; const occ = state.layers.occlusion;
+      if (!world) return;
+      world.removeChildren();
+      try { if (occ) occ.removeChildren(); } catch (_) {}
+      try { state.entityById.clear(); } catch (_) {}
+      const list = Array.isArray(sprites) ? sprites : [];
+      list.forEach((s) => {
+        try {
+          const code = Number.isFinite(s?.charCode) ? (s.charCode|0) : ((s?.char && String(s.char).codePointAt(0)) || 32);
+          const tex = textureForCode(code);
+          if (!tex) return;
+          const spr = new PIXI.Sprite(tex);
+          try { spr.roundPixels = true; } catch (_) {}
+          spr.anchor.set(0, 0); // top-left of tile
+          const wp = dungeonToWorld(s.x|0, s.y|0);
+          spr.x = wp.x; spr.y = wp.y;
+          // Apply optional tint/alpha from sprite spec (no renderer heuristics)
+          try {
+            if (Array.isArray(s.color) && s.color.length >= 3) {
+              const r = clamp(Math.round((s.color[0]||0) * 255), 0, 255);
+              const g = clamp(Math.round((s.color[1]||0) * 255), 0, 255);
+              const b = clamp(Math.round((s.color[2]||0) * 255), 0, 255);
+              spr.tint = (r<<16) | (g<<8) | b;
+            } else if (Number.isFinite(s.color)) {
+              spr.tint = s.color >>> 0;
+            } else {
+              spr.tint = 0xFFFFFF;
+            }
+            if (s.alpha != null) spr.alpha = Math.max(0, Math.min(1, Number(s.alpha)));
+          } catch (_) { spr.tint = 0xFFFFFF; }
+          // If rows are vertically flipped inside tiles, flip the sprite.
+          if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
+          world.addChild(spr);
+          if (s.occludes) {
+            const o = new PIXI.Graphics();
+            o.beginFill(0xFFFFFF);
+            o.drawRect(0, 0, state.tile.w, state.tile.h);
+            o.endFill();
+            o.x = wp.x;
+            o.y = wp.y;
+            occ.addChild(o);
+            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.entityById.set(s.id, { sprite: spr, occlSprite: o, emission: 0 }); } catch (_) {}
+          } else {
+            try { if (s && Object.prototype.hasOwnProperty.call(s, 'id')) state.entityById.set(s.id, { sprite: spr, occlSprite: null, emission: 0 }); } catch (_) {}
+          }
+        } catch (_) {}
+      });
     }
 
+    // Cleanup
     function destroy() {
-      try { cancelAnimationFrame(state.raf); } catch (_) {}
-      try { state.app && state.app.destroy(true, { children: true }); } catch (_) {}
+      try { if (state.raf) cancelAnimationFrame(state.raf); } catch (_) {}
+      try { if (state.app) state.app.destroy(true, { children: true }); } catch (_) {}
+      try { if (state.rt && state.rt.occlusion) state.rt.occlusion.destroy(true); } catch (_) {}
       state.app = null;
       state.root = null;
     }
@@ -959,7 +751,7 @@ void main() {
     const api = {
       init,
       setFont,
-      setDungeonMap,
+      setSprites,
       setEntities,
       panCamera,
       zoomCamera,
@@ -968,10 +760,10 @@ void main() {
       enableBlackKeyFilters,
       disableBlackKeyFilters,
       enableBlackKeyOnEntities,
-      debugAsciiGrid,
       setFilterChain,
       addFilter,
       clearFilters,
+      getOcclusionTexture: () => state.rt && state.rt.occlusion,
       destroy,
     };
     return api;
@@ -1025,9 +817,9 @@ void main() {
       }
     } catch (_) {}
 
-    // Apply any pending assets (map and entities) like ASCII renderer does
-    try { if (window.__pendingDungeonMap) api.setDungeonMap(window.__pendingDungeonMap); } catch (_) {}
+    // Apply any pending assets staged before boot
     try { if (window.__pendingEntities) api.setEntities(window.__pendingEntities); } catch (_) {}
+    try { if (window.__pendingSprites) api.setSprites(window.__pendingSprites); } catch (_) {}
 
     console.log('[pixiDungeonRenderer] ready. Exposed as window.pxr');
     // Signal readiness so producers (e.g., dungeonDisplayManager) can push content deterministically
