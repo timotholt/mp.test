@@ -37,6 +37,11 @@
         return PIXI;
       }
 
+    // Debug helper: set UV inset in pixels (applies to future texture frame builds)
+    function setUvInsetPx(px) {
+      try { state.debug.uvInsetPx = Number(px) || 0; state.textures.byCode.clear(); rebuildMap(); setEntities(state.lastEntities||[]); } catch (_) {}
+    }
+
       // (helpers moved into createRendererAPI)
 
   // Placeholder GI-like filter (single-pass). Tunable and replaceable.
@@ -197,6 +202,8 @@ void main() {
       lastEntities: [], // remember latest desired entities to reapply post-font-load
       raf: 0,
       startTs: performance.now(),
+      debug: { floorBgTint: null, uvInsetPx: 0 },
+      flags: { useRT: true },
     };
 
     // Helpers: coordinate transforms
@@ -234,7 +241,12 @@ void main() {
         rowIdx = (rows - 1) - rowIdx;
       }
       const sy = rowIdx * state.tile.h;
-      const frame = new PIXI.Rectangle(sx, sy, state.tile.w, state.tile.h);
+      // Optional debug UV inset to avoid sampling atlas gutters
+      let inset = (state.debug && Number.isFinite(state.debug.uvInsetPx)) ? Number(state.debug.uvInsetPx) : 0;
+      inset = Math.max(0, Math.min(inset, Math.min(state.tile.w, state.tile.h) * 0.49));
+      const frame = (inset > 0)
+        ? new PIXI.Rectangle(sx + inset, sy + inset, state.tile.w - inset * 2, state.tile.h - inset * 2)
+        : new PIXI.Rectangle(sx, sy, state.tile.w, state.tile.h);
       const tex = new PIXI.Texture(base, frame);
       tex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
       state.textures.byCode.set(key, tex);
@@ -268,7 +280,9 @@ void main() {
               // Dark plate floor (approx RGB ~0.03)
               spr.tint = 0x080808;
             } else if (ch === '░' || ch === '.') {
-              spr.tint = 0x242424;
+              // Allow debug override for background floor tint
+              const t = (state.debug && state.debug.floorBgTint != null) ? state.debug.floorBgTint : 0x242424;
+              spr.tint = t;
             }
           } catch (_) {}
           // If rows are vertically flipped inside tiles, flip the sprite.
@@ -336,11 +350,39 @@ void main() {
       state.blackKeyFilters = null;
     }
 
+    // Apply black-key only to ENTITIES layer (useful when floors are atlas tiles)
+    function enableBlackKeyOnEntities(threshold) {
+      try {
+        const fk = createBlackKeyFilter(PIXI);
+        if (threshold != null && Number.isFinite(threshold)) fk.uniforms.uThreshold = Number(threshold);
+        if (state.layers.entities) state.layers.entities.filters = [fk];
+        // Do not touch tiles layer
+        state.blackKeyFilters = Object.assign({}, state.blackKeyFilters, { entities: fk });
+      } catch (_) {}
+    }
+
     // Build a debug map that shows ASCII/CP437 codes (default 32..256) twice:
     // - Left group as MAP TILES (actual tile glyphs)
     // - Right group as ENTITIES drawn over a dim background
     // You can override range/shape via opts: { start, end, cols, blackKey, threshold }
     function debugAsciiGrid(opts = {}) {
+      // Allow overriding the dim floor tint to make background more visible during tests
+      try {
+        const def = 0x0b3a7a; // dark blue
+        let tint = def;
+        if (opts && opts.bgTint != null) {
+          if (typeof opts.bgTint === 'number') {
+            tint = opts.bgTint | 0;
+          } else if (typeof opts.bgTint === 'string') {
+            const s = String(opts.bgTint).trim();
+            const hex = s.startsWith('#') ? s.slice(1) : s;
+            const n = parseInt(hex, 16);
+            if (Number.isFinite(n)) tint = n >>> 0;
+          }
+        }
+        state.debug.floorBgTint = tint;
+      } catch (_) {}
+      try { if (opts && opts.uvInsetPx != null) state.debug.uvInsetPx = Number(opts.uvInsetPx) || 0; } catch (_) {}
       const start = Number.isFinite(opts.start) ? (opts.start|0) : 32;
       const end = Number.isFinite(opts.end) ? (opts.end|0) : 256; // inclusive
       const count = Math.max(0, (end - start + 1));
@@ -354,7 +396,9 @@ void main() {
       const groupX1 = leftX + groupCols + gap;   // ASCII as entities
       const groupX2 = groupX1 + groupCols + gap; // Alternating floor rows as map
       const groupX3 = groupX2 + groupCols + gap; // Alternating floor rows as entities
-      const width = groupX3 + groupCols + pad;
+      const groupX4 = groupX3 + groupCols + gap; // Rooms as map tiles
+      const groupX5 = groupX4 + groupCols + gap; // Rooms as entities
+      const width = groupX5 + groupCols + pad;
       const height = topY + groupRows + pad;
 
       // Background tile to make black-key artifacts visible: use '.' which we tint to 0x242424 in rebuildMap().
@@ -419,6 +463,78 @@ void main() {
           });
         }
       }
+
+      // Helper to draw a CP437 box into a grid region as MAP tiles
+      function drawBoxToMap(ox, oy, w, h) {
+        const H = 196; // '─'
+        const V = 179; // '│'
+        const TL = 218; // '┌'
+        const TR = 191; // '┐'
+        const BL = 192; // '└'
+        const BR = 217; // '┘'
+        if (w < 2 || h < 2) return;
+        const y0 = topY + oy, y1 = topY + oy + h - 1;
+        const x0 = ox, x1 = ox + w - 1;
+        if (y0 < topY || y1 >= topY + groupRows) return;
+        for (let x = x0; x <= x1; x++) {
+          if (x < 0 || x >= grid[0].length) continue;
+          grid[y0][x] = String.fromCharCode(H);
+          grid[y1][x] = String.fromCharCode(H);
+        }
+        for (let y = y0; y <= y1; y++) {
+          if (y < 0 || y >= grid.length) continue;
+          if (x0 >= 0 && x0 < grid[0].length) grid[y][x0] = String.fromCharCode(V);
+          if (x1 >= 0 && x1 < grid[0].length) grid[y][x1] = String.fromCharCode(V);
+        }
+        if (x0 >= 0 && x0 < grid[0].length) {
+          if (y0 >= 0 && y0 < grid.length) grid[y0][x0] = String.fromCharCode(TL);
+          if (y1 >= 0 && y1 < grid.length) grid[y1][x0] = String.fromCharCode(BL);
+        }
+        if (x1 >= 0 && x1 < grid[0].length) {
+          if (y0 >= 0 && y0 < grid.length) grid[y0][x1] = String.fromCharCode(TR);
+          if (y1 >= 0 && y1 < grid.length) grid[y1][x1] = String.fromCharCode(BR);
+        }
+      }
+
+      // Helper to draw a CP437 box as ENTITIES
+      function drawBoxToEntities(ox, oy, w, h, gxBase) {
+        const H = 196, V = 179, TL = 218, TR = 191, BL = 192, BR = 217;
+        if (w < 2 || h < 2) return;
+        const y0 = topY + oy, y1 = topY + oy + h - 1;
+        const x0 = gxBase + ox, x1 = gxBase + ox + w - 1;
+        // top/bottom
+        for (let x = x0 + 1; x <= x1 - 1; x++) {
+          entities.push({ id: `dbg-r-top-${x}-${y0}` , charCode: H, x, y: y0, color: [1,1,1], emission: 0 });
+          entities.push({ id: `dbg-r-bot-${x}-${y1}` , charCode: H, x, y: y1, color: [1,1,1], emission: 0 });
+        }
+        // left/right
+        for (let y = y0 + 1; y <= y1 - 1; y++) {
+          entities.push({ id: `dbg-r-left-${x0}-${y}` , charCode: V, x: x0, y, color: [1,1,1], emission: 0 });
+          entities.push({ id: `dbg-r-right-${x1}-${y}` , charCode: V, x: x1, y, color: [1,1,1], emission: 0 });
+        }
+        // corners
+        entities.push({ id: `dbg-r-tl-${x0}-${y0}`, charCode: TL, x: x0, y: y0, color: [1,1,1], emission: 0 });
+        entities.push({ id: `dbg-r-tr-${x1}-${y0}`, charCode: TR, x: x1, y: y0, color: [1,1,1], emission: 0 });
+        entities.push({ id: `dbg-r-bl-${x0}-${y1}`, charCode: BL, x: x0, y: y1, color: [1,1,1], emission: 0 });
+        entities.push({ id: `dbg-r-br-${x1}-${y1}`, charCode: BR, x: x1, y: y1, color: [1,1,1], emission: 0 });
+      }
+
+      // Group 4 (fifth): rooms as MAP tiles
+      // Draw 3 rooms of different sizes inside the region
+      const roomPad = 1;
+      const rW = groupCols - roomPad * 2;
+      const rH = Math.max(4, Math.min(groupRows - roomPad * 2, Math.floor(groupRows * 0.6)));
+      // Big centered
+      drawBoxToMap(groupX4 + roomPad, roomPad, Math.max(6, rW), rH);
+      // Small top-left
+      drawBoxToMap(groupX4 + roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)));
+      // Medium bottom-right
+      drawBoxToMap(groupX4 + roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)));
+
+      // Group 5 (sixth): rooms as ENTITIES
+      drawBoxToEntities(roomPad, roomPad, Math.max(6, rW), rH, groupX5);
+      drawBoxToEntities(roomPad + 1, roomPad + 1, Math.max(4, Math.floor(rW * 0.5)), Math.max(4, Math.floor(rH * 0.5)), groupX5);
+      drawBoxToEntities(roomPad + Math.max(2, Math.floor(rW * 0.35)), roomPad + Math.max(2, Math.floor(rH * 0.45)), Math.max(5, Math.floor(rW * 0.6)), Math.max(4, Math.floor(rH * 0.5)), groupX5);
 
       // Apply to renderer
       const mapString = grid.map(r => r.join('')).join('\n');
@@ -565,6 +681,8 @@ void main() {
       root.addChild(state.layers.tiles);
       root.addChild(state.layers.entities);
       app.stage.addChild(state.layers.ui);
+      try { state.layers.tiles.roundPixels = true; } catch (_) {}
+      try { state.layers.entities.roundPixels = true; } catch (_) {}
 
       // Black-key transparency (disabled by default to avoid potential 1px artifacts at 1x)
       // To enable later for atlases without alpha, set these filters at runtime.
@@ -581,8 +699,24 @@ void main() {
       state.rt.sprite = new PIXI.Sprite(state.rt.scene);
       state.rt.sprite.roundPixels = true;
       app.stage.addChild(state.rt.sprite);
-      // Ensure stage only contains postfx RT sprite (and UI); root remains offstage
+      // Ensure stage only contains postfx RT sprite (and UI); root remains offstage when using RT
       try { app.stage.removeChild(root); } catch (_) {}
+
+      function applyRTMode() {
+        const useRT = !!state.flags.useRT;
+        try {
+          if (useRT) {
+            // Stage should have RT sprite and not the root container
+            if (!app.stage.children.includes(state.rt.sprite)) app.stage.addChild(state.rt.sprite);
+            try { app.stage.removeChild(root); } catch (_) {}
+          } else {
+            // Stage should have root directly and no RT sprite
+            try { app.stage.removeChild(state.rt.sprite); } catch (_) {}
+            if (!app.stage.children.includes(root)) app.stage.addChild(root);
+          }
+        } catch (_) {}
+      }
+      applyRTMode();
 
       // GI-like filter (available but disabled by default to keep base colors faithful)
       state.giFilter = createGiFilter(PIXI);
@@ -677,17 +811,26 @@ void main() {
           state.giFilter.uniforms.uTime = (now - state.startTs) * 0.001;
         }
 
-        // First render world into RT (try Pixi v7 signature, fallback to v6)
-        try {
-          app.renderer.render({ container: root, target: state.rt.scene, clear: true });
-        } catch (_) {
-          try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {}
-        }
-        // Then render stage, which has the RT sprite with filters
-        try {
-          app.renderer.render({ container: app.stage, clear: true });
-        } catch (_) {
-          try { app.renderer.render(app.stage); } catch (_) {}
+        if (state.flags.useRT) {
+          // First render world into RT (try Pixi v7 signature, fallback to v6)
+          try {
+            app.renderer.render({ container: root, target: state.rt.scene, clear: true });
+          } catch (_) {
+            try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {}
+          }
+          // Then render stage, which has the RT sprite with filters
+          try {
+            app.renderer.render({ container: app.stage, clear: true });
+          } catch (_) {
+            try { app.renderer.render(app.stage); } catch (_) {}
+          }
+        } else {
+          // Direct render: stage contains root + UI, no RT indirection
+          try {
+            app.renderer.render({ container: app.stage, clear: true });
+          } catch (_) {
+            try { app.renderer.render(app.stage); } catch (_) {}
+          }
         }
         state.raf = requestAnimationFrame(tick);
       }
@@ -781,10 +924,12 @@ void main() {
       animateEntity,
       enableBlackKeyFilters,
       disableBlackKeyFilters,
+      enableBlackKeyOnEntities,
       debugAsciiGrid,
       setFilterChain,
       addFilter,
       clearFilters,
+      setBypassRT: (flag) => { try { state.flags.useRT = !flag; applyRTMode(); } catch (_) {} },
       destroy,
     };
     return api;
