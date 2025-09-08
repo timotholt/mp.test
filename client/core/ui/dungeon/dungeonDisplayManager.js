@@ -43,10 +43,10 @@
     '##############################|#############################',
   ].join('\n');
 
-  // Convert ASCII map into a single list of sprite specs consumed by pxr.setSprites()
-  // Each sprite: { char|charCode, x, y, color, alpha, occludes, id? }
-  function asciiToSprites(mapString) {
-    const sprites = [];
+  // Build a single sprite list from an ASCII map + optional extras (already sprite-shaped)
+  // Each sprite: { id?, char|charCode, x, y, color(0xRRGGBB|[r,g,b]), alpha?, occludes? }
+  function buildSpritesFromMap(mapString, extras = []) {
+    const out = [];
     const rows = String(mapString || '').split('\n');
     const isWall = (x, y) => {
       if (y < 0 || y >= rows.length) return false;
@@ -60,68 +60,47 @@
         case 0:
         case 8:
         case 4:
-        case 12:
-          return { ch: '─', code: 196 };
+        case 12: return { ch: '─', code: 196 };
         case 1:
         case 2:
-        case 3:
-          return { ch: '│', code: 179 };
-        case 9:
-          return { ch: '└', code: 192 };
-        case 5:
-          return { ch: '┘', code: 217 };
-        case 10:
-          return { ch: '┌', code: 218 };
-        case 6:
-          return { ch: '┐', code: 191 };
-        case 7:
-          return { ch: '┤', code: 180 };
-        case 11:
-          return { ch: '├', code: 195 };
-        case 14:
-          return { ch: '┬', code: 194 };
-        case 13:
-          return { ch: '┴', code: 193 };
-        case 15:
-          return { ch: '┼', code: 197 };
-        default:
-          return { ch: '█', code: 219 };
+        case 3:  return { ch: '│', code: 179 };
+        case 9:  return { ch: '└', code: 192 };
+        case 5:  return { ch: '┘', code: 217 };
+        case 10: return { ch: '┌', code: 218 };
+        case 6:  return { ch: '┐', code: 191 };
+        case 7:  return { ch: '┤', code: 180 };
+        case 11: return { ch: '├', code: 195 };
+        case 14: return { ch: '┬', code: 194 };
+        case 13: return { ch: '┴', code: 193 };
+        case 15: return { ch: '┼', code: 197 };
+        default: return { ch: '█', code: 219 };
       }
     };
     for (let y = 0; y < rows.length; y++) {
       const row = rows[y] || '';
       for (let x = 0; x < row.length; x++) {
-        const ch = row[x];
-        if (!ch) continue;
+        const ch = row[x]; if (!ch) continue;
         if (ch === '#') {
-          const n = isWall(x, y - 1);
-          const s = isWall(x, y + 1);
-          const w = isWall(x - 1, y);
-          const e = isWall(x + 1, y);
+          const n = isWall(x, y - 1), s = isWall(x, y + 1), w = isWall(x - 1, y), e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          sprites.push({ x, y, char: g.ch, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
+          out.push({ x, y, char: g.ch, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
         } else if (ch === '.') {
-          // Floor plate as solid block
-          sprites.push({ x, y, char: '█', charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
-        } else if (ch === ' ') {
-          // empty
+          out.push({ x, y, char: '█', charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch === '@') {
-          // Player marker in maps (non-occluding visual)
-          sprites.push({ x, y, char: '@', charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
-        } else {
-          // Any other glyph: draw as-is, non-occluding by default
-          sprites.push({ x, y, char: ch, color: 0xFFFFFF, alpha: 1, occludes: false });
+          out.push({ x, y, char: '@', charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
+        } else if (ch !== ' ') {
+          out.push({ x, y, char: ch, color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }
     }
-    // Append extra demo sprites if present
+    // Append extras (already in sprite spec shape)
     try {
-      if (Array.isArray(window.__extraDemoEntities) && window.__extraDemoEntities.length) {
-        for (const e of window.__extraDemoEntities) {
-          sprites.push({
+      if (Array.isArray(extras) && extras.length) {
+        for (const e of extras) {
+          out.push({
             id: e.id,
             x: e.x|0, y: e.y|0,
-            char: e.char || '@', charCode: e.charCode,
+            char: e.char, charCode: e.charCode,
             color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF),
             alpha: (e.alpha != null) ? e.alpha : 1,
             occludes: !!(e.occludes || e.blocking),
@@ -129,7 +108,7 @@
         }
       }
     } catch (_) {}
-    return sprites;
+    return out;
   }
 
   function applySprites(sprites) {
@@ -140,24 +119,17 @@
     window.__pendingSprites = sprites;
   }
 
+  // Resolve and apply sprites for a given route
   function applyForRoute(route) {
     try {
       const STATES = window.APP_STATES || {};
-      if (route === STATES.LOGIN) {
-        // Demo humans (optional)
-        window.__extraDemoEntities = [
-          { id: 'demo-1', x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
-          { id: 'demo-2', x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
-          { id: 'demo-3', x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
-        ];
-        applySprites(asciiToSprites(LOGIN_MAP));
-      } else if (route === STATES.LOBBY) {
-        window.__extraDemoEntities = [];
-        applySprites(asciiToSprites(LOBBY_MAP));
-      } else if (route === STATES.GAMEPLAY_ACTIVE) {
-        // Gameplay dungeon is controlled by gameplay events (wireRoomEvents.js)
-        // Do not override here.
-      }
+      const extras = route === STATES.LOGIN ? [
+        { id: 'demo-1', x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
+        { id: 'demo-2', x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
+        { id: 'demo-3', x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
+      ] : [];
+      const map = route === STATES.LOGIN ? LOGIN_MAP : route === STATES.LOBBY ? LOBBY_MAP : null;
+      if (map) applySprites(buildSpritesFromMap(map, extras));
     } catch (_) {}
   }
 
@@ -213,6 +185,9 @@
     if (current) applyForRoute(current);
   } catch (_) {}
 })();
+
+// Developer helpers
+try { window.DDM = Object.freeze({ buildSpritesFromMap, debugAsciiGrid }); } catch (_) {}
 
 // Build a debug map that shows ASCII/CP437 codes (default 32..256) twice:
 // - Left group as MAP TILES (actual tile glyphs)
