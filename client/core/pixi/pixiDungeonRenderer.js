@@ -368,6 +368,11 @@ void main() {
     function updateCamera() {
       const root = state.root; if (!root) return;
       const s = state.pixelPerfect ? Math.max(1, Math.round(state.camera.scale)) : state.camera.scale;
+      // Snap camera to whole pixels at pixel-perfect scales to avoid 1px seams/dots at 1x
+      if (state.pixelPerfect) {
+        state.camera.x = Math.round(state.camera.x);
+        state.camera.y = Math.round(state.camera.y);
+      }
       root.scale.set(s);
       const px = -state.camera.x * s;
       const py = -state.camera.y * s;
@@ -416,6 +421,10 @@ void main() {
       state.app = app;
       const viewEl = app.canvas || app.view;
       try { viewEl.style.imageRendering = 'pixelated'; } catch (_) {}
+      
+      // Prefer integer pixel snapping at the renderer level if supported
+      try { if (app.renderer && 'roundPixels' in app.renderer) app.renderer.roundPixels = true; } catch (_) {}
+      try { if (PIXI.settings && 'ROUND_PIXELS' in PIXI.settings) PIXI.settings.ROUND_PIXELS = true; } catch (_) {}
 
       // Root world container (offscreen: rendered into RT only, not directly to stage)
       const root = new PIXI.Container();
@@ -430,13 +439,14 @@ void main() {
       root.addChild(state.layers.entities);
       app.stage.addChild(state.layers.ui);
 
-      // Apply black-key transparency to both tiles and entities for atlases with solid black backgrounds
-      try {
-        const fkTiles = createBlackKeyFilter(PIXI);
-        const fkEnt = createBlackKeyFilter(PIXI);
-        state.layers.tiles.filters = [fkTiles];
-        state.layers.entities.filters = [fkEnt];
-      } catch (_) {}
+      // Black-key transparency (disabled by default to avoid potential 1px artifacts at 1x)
+      // To enable later for atlases without alpha, set these filters at runtime.
+      // try {
+      //   const fkTiles = createBlackKeyFilter(PIXI);
+      //   const fkEnt = createBlackKeyFilter(PIXI);
+      //   state.layers.tiles.filters = [fkTiles];
+      //   state.layers.entities.filters = [fkEnt];
+      // } catch (_) {}
 
       // Render-to-texture sprite for post-fx
       state.rt.scene = await PIXI.RenderTexture.create({ width, height, resolution: app.renderer.resolution });
