@@ -37,6 +37,8 @@
         return PIXI;
       }
 
+      // (helpers moved into createRendererAPI)
+
   // Placeholder GI-like filter (single-pass). Tunable and replaceable.
   function createGiFilter(PIXI) {
     const frag = `
@@ -310,6 +312,131 @@ void main() {
         const id = e.id != null ? e.id : idx;
         state.entityById.set(id, { sprite: spr, emission: (e.emission != null ? e.emission : 0) });
       });
+    }
+
+    // Enable chroma-key style transparency on both tile and entity layers
+    function enableBlackKeyFilters(threshold) {
+      try {
+        const fkTiles = createBlackKeyFilter(PIXI);
+        const fkEnt = createBlackKeyFilter(PIXI);
+        if (threshold != null && Number.isFinite(threshold)) {
+          fkTiles.uniforms.uThreshold = Number(threshold);
+          fkEnt.uniforms.uThreshold = Number(threshold);
+        }
+        if (state.layers.tiles) state.layers.tiles.filters = [fkTiles];
+        if (state.layers.entities) state.layers.entities.filters = [fkEnt];
+        state.blackKeyFilters = { tiles: fkTiles, entities: fkEnt };
+      } catch (_) {}
+    }
+
+    // Disable black-key filters on both layers
+    function disableBlackKeyFilters() {
+      try { if (state.layers.tiles) state.layers.tiles.filters = null; } catch (_) {}
+      try { if (state.layers.entities) state.layers.entities.filters = null; } catch (_) {}
+      state.blackKeyFilters = null;
+    }
+
+    // Build a debug map that shows ASCII/CP437 codes (default 32..256) twice:
+    // - Left group as MAP TILES (actual tile glyphs)
+    // - Right group as ENTITIES drawn over a dim background
+    // You can override range/shape via opts: { start, end, cols, blackKey, threshold }
+    function debugAsciiGrid(opts = {}) {
+      const start = Number.isFinite(opts.start) ? (opts.start|0) : 32;
+      const end = Number.isFinite(opts.end) ? (opts.end|0) : 256; // inclusive
+      const count = Math.max(0, (end - start + 1));
+      const groupCols = Math.max(1, Math.min(64, Number.isFinite(opts.cols) ? (opts.cols|0) : 16));
+      const groupRows = Math.max(1, Math.ceil(count / groupCols));
+      const gap = 2; // columns between groups
+      const pad = 1; // border padding
+      const leftX = pad;
+      const topY = pad;
+      const groupX0 = leftX;                     // ASCII as map tiles
+      const groupX1 = leftX + groupCols + gap;   // ASCII as entities
+      const groupX2 = groupX1 + groupCols + gap; // Alternating floor rows as map
+      const groupX3 = groupX2 + groupCols + gap; // Alternating floor rows as entities
+      const width = groupX3 + groupCols + pad;
+      const height = topY + groupRows + pad;
+
+      // Background tile to make black-key artifacts visible: use '.' which we tint to 0x242424 in rebuildMap().
+      const bg = '.';
+      const grid = [];
+      for (let y = 0; y < height; y++) {
+        const row = new Array(width).fill(bg);
+        grid.push(row);
+      }
+
+      // Group 0 (left): map tiles using the glyphs themselves
+      let code = start;
+      for (let gy = 0; gy < groupRows; gy++) {
+        for (let gx = 0; gx < groupCols; gx++) {
+          if (code > end) break;
+          const ch = String.fromCharCode(code);
+          grid[topY + gy][groupX0 + gx] = ch;
+          code++;
+        }
+      }
+
+      // Group 1 (second): keep background as '.' in the map; overlay entities with the same glyphs
+      const entities = [];
+      code = start;
+      for (let gy = 0; gy < groupRows; gy++) {
+        for (let gx = 0; gx < groupCols; gx++) {
+          if (code > end) break;
+          entities.push({
+            id: `dbg-ascii-${code}`,
+            charCode: code,
+            x: groupX1 + gx,
+            y: topY + gy,
+            color: [1, 1, 1], // white tint for clarity
+            emission: 0,
+          });
+          code++;
+        }
+      }
+
+      // Group 2 (third): alternating rows of floor tiles as MAP tiles
+      // Use full block '█' (CP437 219) as our floor glyph to mirror real dungeon floors
+      const floorCh = '█';
+      for (let gy = 0; gy < groupRows; gy++) {
+        const useFloorRow = (gy % 2) === 0;
+        for (let gx = 0; gx < groupCols; gx++) {
+          grid[topY + gy][groupX2 + gx] = useFloorRow ? floorCh : bg;
+        }
+      }
+
+      // Group 3 (fourth): alternating rows of floor tiles as ENTITIES
+      for (let gy = 0; gy < groupRows; gy++) {
+        const useFloorRow = (gy % 2) === 0;
+        if (!useFloorRow) continue; // only place on the rows that would be floors
+        for (let gx = 0; gx < groupCols; gx++) {
+          entities.push({
+            id: `dbg-floor-${gy}-${gx}`,
+            charCode: 219, // CP437 full block
+            x: groupX3 + gx,
+            y: topY + gy,
+            color: [1, 1, 1],
+            emission: 0,
+          });
+        }
+      }
+
+      // Apply to renderer
+      const mapString = grid.map(r => r.join('')).join('\n');
+      setDungeonMap(mapString);
+      setEntities(entities);
+
+      // Optional: reset camera to 1x at origin so user can pan/zoom as needed
+      try {
+        state.camera.x = 0;
+        state.camera.y = 0;
+        state.camera.scale = 1;
+        updateCamera();
+      } catch (_) {}
+
+      // If requested, flip black-key filters on for quick inspection
+      if (opts.blackKey) {
+        enableBlackKeyFilters(Number.isFinite(opts.threshold) ? opts.threshold : undefined);
+      }
     }
 
     // Simple tween manager for entity motion
@@ -652,6 +779,9 @@ void main() {
       zoomCamera,
       toScreen: ({ x, y }) => dungeonToScreen(x, y),
       animateEntity,
+      enableBlackKeyFilters,
+      disableBlackKeyFilters,
+      debugAsciiGrid,
       setFilterChain,
       addFilter,
       clearFilters,
@@ -715,6 +845,21 @@ void main() {
     console.log('[pixiDungeonRenderer] ready. Exposed as window.pxr');
     // Signal readiness so producers (e.g., dungeonDisplayManager) can push content deterministically
     try { window.dispatchEvent(new CustomEvent('pxr:ready')); } catch (_) {}
+    // Convenience: allow quickly invoking the ASCII debug grid from console
+    try {
+      window.showAsciiBlackKeyDebug = async (opts) => {
+        // If the renderer hasn't been booted yet, boot first
+        try {
+          if (!window.pxr) {
+            const PIXI2 = await loadPixi();
+            const api2 = createRendererAPI(PIXI2);
+            window.pxr = api2;
+            await api2.init({ containerId: 'pixi-canvas' });
+          }
+        } catch (_) {}
+        try { window.pxr.debugAsciiGrid(opts || {}); } catch (_) {}
+      };
+    } catch (_) {}
     return api;
   }
 
