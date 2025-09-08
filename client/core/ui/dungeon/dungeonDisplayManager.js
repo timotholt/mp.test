@@ -44,7 +44,7 @@
   ].join('\n');
 
   // Build a single sprite list from an ASCII map + optional extras (already sprite-shaped)
-  // Each sprite: { id?, char|charCode, x, y, color(0xRRGGBB|[r,g,b]), alpha?, occludes? }
+  // Each sprite: { id?, charCode, x, y, color(0xRRGGBB|[r,g,b]), alpha?, occludes? }
   function buildSpritesFromMap(mapString, extras = []) {
     const out = [];
     const rows = String(mapString || '').split('\n');
@@ -83,13 +83,13 @@
         if (ch === '#') {
           const n = isWall(x, y - 1), s = isWall(x, y + 1), w = isWall(x - 1, y), e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          out.push({ x, y, char: g.ch, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
+          //out.push({ x, y, charCode: g.code, color: 0x4D4D4D, alpha: 1, occludes: true });
         } else if (ch === '.') {
-          out.push({ x, y, char: '█', charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
+          out.push({ x, y, charCode: 219, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch === '@') {
-          out.push({ x, y, char: '@', charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
+          out.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch !== ' ') {
-          out.push({ x, y, char: ch, color: 0xFFFFFF, alpha: 1, occludes: false });
+          out.push({ x, y, charCode: String(ch).codePointAt(0), color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }
     }
@@ -100,7 +100,7 @@
           out.push({
             id: e.id,
             x: e.x|0, y: e.y|0,
-            char: e.char, charCode: e.charCode,
+            charCode: e.charCode,
             color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF),
             alpha: (e.alpha != null) ? e.alpha : 1,
             occludes: !!(e.occludes || e.blocking),
@@ -125,9 +125,9 @@
       const STATES = window.APP_STATES || {};
       const extras = route === STATES.LOGIN ? [
         // Three demo '@' sprites
-        { id: 'demo-1', x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
-        { id: 'demo-2', x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
-        { id: 'demo-3', x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
+        { id: 'demo-1', x: 2, y: 4, charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
+        { id: 'demo-2', x: 30, y: 7, charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
+        { id: 'demo-3', x: 48, y: 6, charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
         // Test: line-drawing characters as EXTRAS to compare transparency with map-origin walls
         // Small rectangle near top-left of corridor
         { id: 'lx', x: 6,  y: 2, color: [1.0, 0.28, 0.28], charCode: 196, blocking: false }, // H
@@ -140,7 +140,7 @@
         { id: 'bl', x: 6,  y: 4, color: [1.0, 0.28, 0.28], charCode: 192, blocking: false }, // BL
         { id: 'br', x: 8,  y: 4, color: [1.0, 0.28, 0.28], charCode: 217, blocking: false }, // BR
         // Caret as EXTRA to compare with map-origin '^'
-        { id: 'caret-extra', x: 10, y: 2, color: [1.0, 0.28, 0.28], char: '^', blocking: false },
+        { id: 'caret-extra', x: 10, y: 2, color: [1.0, 0.28, 0.28], charCode: 94, blocking: false },
       ] : [];
       const map = route === STATES.LOGIN ? LOGIN_MAP : route === STATES.LOBBY ? LOBBY_MAP : null;
       if (map) applySprites(buildSpritesFromMap(map, extras));
@@ -257,7 +257,7 @@ function debugAsciiGrid(opts = {}) {
     const useFloorRow = (gy % 2) === 0;
     if (!useFloorRow) continue;
     for (let gx = 0; gx < groupCols; gx++) {
-      sprites.push({ id: `dbg-f-a-${gy}-${gx}`, char: floorCh, charCode: 219, x: groupX2 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-f-a-${gy}-${gx}`, charCode: 219, x: groupX2 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
     }
   }
 
@@ -266,7 +266,7 @@ function debugAsciiGrid(opts = {}) {
     const useFloorRow = (gy % 2) === 0;
     if (!useFloorRow) continue;
     for (let gx = 0; gx < groupCols; gx++) {
-      sprites.push({ id: `dbg-f-b-${gy}-${gx}`, char: floorCh, charCode: 219, x: groupX3 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-f-b-${gy}-${gx}`, charCode: 219, x: groupX3 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
     }
   }
 
