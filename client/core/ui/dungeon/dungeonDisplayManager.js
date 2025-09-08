@@ -11,16 +11,16 @@
   // Login: very horizontal corridor across the middle
   let LOGIN_MAP = [
     '############################################################',
-    '############################################################',
-    '##############################+#############################',
-    '##############################.#############################',
-    '##############################.#############################',
-    '########@=====================.====================^########',
-    '##############################.#############################',
-    '##############################.#############################',
-    '##############################.#############################',
-    '############################################################',
-    '############################################################',
+    '#..........######.................######.............^.....#',
+    '#..........#....#.................#....#...................#',
+    '#..........#....#.....@@@@@.......#....#...................#',
+    '#..........######.................######...................#',
+    '#..........................................................#',
+    '#.............######....................######.............#',
+    '#.............#....#....................#....#.............#',
+    '#.....@.......#....#....................#....#.......@.....#',
+    '#.............######....................######.............#',
+    '#..........................................................#',
     '############################################################',
   ].join('\n');
 
@@ -51,13 +51,70 @@
     } catch (_) {}
   }
 
+  // Build entity list from a floor map. Floors remain in mapString visually.
+  // We add entities on top only for walls ('#') and the player '@'.
+  function computeEntitiesFromMap(mapString) {
+    const entities = [];
+    const rows = String(mapString || '').split('\n');
+    for (let y = 0; y < rows.length; y++) {
+      const row = rows[y];
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (ch === '#') {
+          // Medium gray for walls in the entity layer (not bright white)
+          entities.push({ x, y, char: '#', color: [0.68, 0.70, 0.74], blocking: true });
+        } else if (ch === '@') {
+          // Slightly warm tint for the player '@'
+          entities.push({ x, y, char: '@', color: [0.95, 0.55, 0.20], blocking: false });
+        }
+      }
+    }
+    return entities;
+  }
+
+  // Apply floors as non-blocking and walls/entities as blocking layer over the floor.
+  function applyFloorAndEntities(mapString) {
+    try {
+      const rc = window.radianceCascades;
+      const entities = computeEntitiesFromMap(mapString);
+      if (rc && typeof rc.setPositionBlockMapFill === 'function' && typeof rc.setEntities === 'function') {
+        rc.setPositionBlockMapFill(false); // floors never block
+        rc.setEntities(entities);
+        // Apply a non-blinding character color map for the FLOOR layer
+        if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
+          const charMap = JSON.stringify({
+            '#': [0.36, 0.38, 0.42],  // darker gray walls on the floor layer
+            '.': [0.18, 0.18, 0.20],  // dark neutral floor
+            '~': [0.20, 0.40, 0.80],  // water (optional)
+            '+': [0.85, 0.65, 0.20],  // doors (optional)
+            '|': [0.50, 0.52, 0.56],  // divider (optional)
+          });
+          rc.surface.setCharacterColorMap(charMap);
+        }
+      } else {
+        window.__pendingBlockFill = false;
+        window.__pendingEntities = entities;
+        // Stash the color map until RC is ready
+        window.__pendingCharacterColorMap = JSON.stringify({
+          '#': [0.36, 0.38, 0.42],
+          '.': [0.18, 0.18, 0.20],
+          '~': [0.20, 0.40, 0.80],
+          '+': [0.85, 0.65, 0.20],
+          '|': [0.50, 0.52, 0.56],
+        });
+      }
+    } catch (_) {}
+  }
+
   function applyForRoute(route) {
     try {
       const STATES = window.APP_STATES || {};
       if (route === STATES.LOGIN) {
         setMapString(LOGIN_MAP);
+        applyFloorAndEntities(LOGIN_MAP);
       } else if (route === STATES.LOBBY) {
         setMapString(LOBBY_MAP);
+        applyFloorAndEntities(LOBBY_MAP);
       } else if (route === STATES.GAMEPLAY_ACTIVE) {
         // Gameplay dungeon is controlled by gameplay events (wireRoomEvents.js)
         // Do not override here.

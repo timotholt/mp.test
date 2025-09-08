@@ -559,23 +559,6 @@ class AsciiCanvas {
       if (typeof this.dungeonMap === 'string') {
         this.renderDungeon(this.dungeonMap);
       }
-
-    // Ensure ENTITY layer texture matches map dimensions
-    if (!this.entityViewTexture) {
-      this.entityViewTexture = this.gl.createTexture();
-    }
-    if (!this.entityData || this._entityW !== mapWidth || this._entityH !== mapHeight) {
-      this.entityData = new Uint8Array(mapWidth * mapHeight * 4);
-      this._entityW = mapWidth; this._entityH = mapHeight;
-      // Start empty (no entities)
-      this.entityData.fill(0);
-      this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, mapWidth, mapHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData);
-    }
     } catch (error) {
       console.error("Invalid character color map JSON:", error);
     }

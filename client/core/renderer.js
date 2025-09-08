@@ -313,6 +313,22 @@ export async function setupAsciiRenderer() {
       window.__pendingPositionColorMap = undefined;
     }
 
+    // New: apply pending PositionBlockMap fill and Entities (layered rendering)
+    if (typeof window.__pendingBlockFill !== 'undefined' && typeof rc.setPositionBlockMapFill === 'function') {
+      try {
+        console.log('[DEBUG client] applying pending block-fill', window.__pendingBlockFill);
+        rc.setPositionBlockMapFill(window.__pendingBlockFill);
+      } catch (_) {}
+      window.__pendingBlockFill = undefined;
+    }
+    if (window.__pendingEntities && typeof rc.setEntities === 'function') {
+      try {
+        console.log('[DEBUG client] applying pending entities', window.__pendingEntities?.length || 0);
+        rc.setEntities(window.__pendingEntities);
+      } catch (_) {}
+      window.__pendingEntities = undefined;
+    }
+
     // Minimal camera controls (mouse): pan + wheel zoom
     const canvas = rc.canvas;
     let dragging = false;
