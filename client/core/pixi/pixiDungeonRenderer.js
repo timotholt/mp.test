@@ -179,6 +179,73 @@ void main() {
       return worldToScreen(p.x, p.y);
     }
 
+    // Debug helper: inspect the computed glyph frame and inferred inset for a codepoint
+    function debugGlyphFrame(code) {
+      try {
+        const tex = textureForCode(code|0);
+        if (!tex) return { ok: false, reason: 'no-texture' };
+        const f = tex.frame || { x: 0, y: 0, width: state.tile.w, height: state.tile.h };
+        const insetX = (state.tile.w - f.width) * 0.5;
+        const insetY = (state.tile.h - f.height) * 0.5;
+        const info = {
+          ok: true,
+          code: code|0,
+          tile: { w: state.tile.w, h: state.tile.h },
+          frame: { x: f.x, y: f.y, w: f.width, h: f.height },
+          inferredInset: { x: insetX, y: insetY },
+          atlas: { cols: state.atlas.cols, rows: state.atlas.rows, startCode: state.atlas.startCode }
+        };
+        try { console.log('[debugGlyphFrame]', info); } catch (_) {}
+        return info;
+      } catch (e) {
+        return { ok: false, reason: String(e && e.message || e) };
+      }
+    }
+
+    // Runtime detection of floor seams: render only the floors layer into a temporary RT
+    // and scan tile-boundary columns/rows for any pixels with alpha < 255 (indicating gaps)
+    function detectFloorSeams(opts = {}) {
+      const app = state.app; if (!app || !state.layers.floors) return { ok: false, reason: 'no-app-or-floors' };
+      const w = app.renderer.width|0; const h = app.renderer.height|0;
+      const s = state.pixelPerfect ? Math.max(1, Math.round(state.camera.scale)) : state.camera.scale;
+      const periodX = Math.max(1, Math.round(state.tile.w * s));
+      const periodY = Math.max(1, Math.round(state.tile.h * s));
+      const x0 = Math.round(state.root ? state.root.position.x : 0);
+      const y0 = Math.round(state.root ? state.root.position.y : 0);
+      const maxProbeCols = Math.min(Math.ceil(w / periodX), opts.maxCols || 64);
+      const maxProbeRows = Math.min(Math.ceil(h / periodY), opts.maxRows || 64);
+      const rt = PIXI.RenderTexture.create({ width: w, height: h, resolution: app.renderer.resolution });
+      let verticalIssues = 0, horizontalIssues = 0;
+      try {
+        // Render only floors
+        app.renderer.render({ container: state.layers.floors, target: rt, clear: true });
+        const extract = app.renderer.extract;
+        // Probe vertical boundaries
+        for (let i = 0; i < maxProbeCols; i++) {
+          const x = x0 + i * periodX;
+          if (x < 0 || x >= w) continue;
+          const rect = new PIXI.Rectangle(Math.max(0, x), 0, 1, h);
+          const px = extract.pixels(rt, rect);
+          for (let p = 3; p < px.length; p += 4) { if (px[p] < 250) { verticalIssues++; break; } }
+        }
+        // Probe horizontal boundaries
+        for (let j = 0; j < maxProbeRows; j++) {
+          const y = y0 + j * periodY;
+          if (y < 0 || y >= h) continue;
+          const rect = new PIXI.Rectangle(0, Math.max(0, y), w, 1);
+          const px = extract.pixels(rt, rect);
+          for (let p = 3; p < px.length; p += 4) { if (px[p] < 250) { horizontalIssues++; break; } }
+        }
+      } catch (e) {
+        console.warn('[detectFloorSeams] failed', e);
+      } finally {
+        try { rt.destroy(true); } catch (_) {}
+      }
+      const result = { ok: true, verticalIssues, horizontalIssues };
+      try { console.log('[detectFloorSeams]', result); } catch (_) {}
+      return result;
+    }
+
     // Build/cached glyph texture for a char code
     function textureForCode(code) {
       const key = code | 0;
@@ -651,7 +718,7 @@ void main() {
           const code = Number.isFinite(s?.charCode) ? (s.charCode|0) : ((s?.char && String(s.char).codePointAt(0)) || 32);
           const tex = textureForCode(code);
           if (!tex) return;
-          const spr = new PIXI.Sprite(tex);
+          let spr = new PIXI.Sprite(tex);
           try { spr.roundPixels = true; } catch (_) {}
           spr.anchor.set(0, 0); // top-left of tile
           const wp = dungeonToWorld(s.x|0, s.y|0);
@@ -672,8 +739,20 @@ void main() {
           } catch (_) { spr.tint = 0xFFFFFF; }
           // If rows are vertically flipped inside tiles, flip the sprite.
           if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
-          // Route solid floor block to the unfiltered floors layer to avoid filter-induced artifacts
+          // Route solid floor block to the unfiltered floors layer and render as a solid quad
           if (floors && code === 219 && s.occludes === false) {
+            // Preserve computed tint/alpha from above before we swap the sprite
+            const prevTint = (spr && Number.isFinite(spr.tint)) ? (spr.tint >>> 0) : 0xFFFFFF;
+            const prevAlpha = (spr && Number.isFinite(spr.alpha)) ? spr.alpha : 1;
+            // Replace glyph with a white quad sized to the tile; tint provides color
+            spr = new PIXI.Sprite(PIXI.Texture.WHITE);
+            try { spr.roundPixels = true; } catch (_) {}
+            spr.anchor.set(0, 0);
+            spr.x = wp.x; spr.y = wp.y;
+            spr.width = state.tile.w; spr.height = state.tile.h;
+            // Reapply tint/alpha so it picks up the requested floor color
+            try { spr.tint = prevTint; } catch (_) { spr.tint = prevTint; }
+            spr.alpha = prevAlpha;
             floors.addChild(spr);
           } else {
             world.addChild(spr);
@@ -737,6 +816,8 @@ void main() {
       getOcclusionTexture: () => state.rt && state.rt.occlusion,
       viewOcclusion,
       viewScene,
+      detectFloorSeams,
+      debugGlyphFrame,
       setGlyphInset: (px) => { try { state.debugInset = Math.max(0, Number(px)||0); state.textures.byCode.clear(); if (state.lastSprites && state.lastSprites.length) setSprites(state.lastSprites); } catch (_) {} },
       destroy,
     };

@@ -77,6 +77,9 @@
         default: return { ch: '█', code: 219 };
       }
     };
+    // Debug: collect wall-like characters that aren't '#'
+    const wallLike = new Set(['|','-','+']);
+    const misused = [];
     for (let y = 0; y < rows.length; y++) {
       const row = rows[y] || '';
       for (let x = 0; x < row.length; x++) {
@@ -91,9 +94,16 @@
         } else if (ch === '@') {
           overlays.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch !== ' ' && ch !== '.') {
+          if (wallLike.has(ch)) misused.push({ x, y, ch });
           overlays.push({ x, y, charCode: String(ch).codePointAt(0), color: 0xFFFFFF, alpha: 1, occludes: false });
         }
       }
+    }
+    if (misused.length) {
+      try {
+        const sample = misused.slice(0, 8).map(m => `${m.ch}@(${m.x},${m.y})`).join(', ');
+        console.warn(`[dungeonDisplay] Detected wall-like ASCII in map (use '#' for walls): count=${misused.length}. e.g. ${sample}`);
+      } catch (_) {}
     }
     // Append extras (already in sprite spec shape)
     try {
