@@ -28,7 +28,8 @@
   if (typeof window === 'undefined') return;
 
   // Tuned to eliminate seam artifacts at pixel-perfect scales without visible shrink
-  const GLYPH_UV_INSET_PX = 0.18;
+  // const GLYPH_UV_INSET_PX = 0.18;
+    const GLYPH_UV_INSET_PX = 0.0;
   // Luminance threshold for black-key transparency. Binary: below -> fully transparent
   // Keep low because sprite tints darken visible glyphs; 0.06–0.10 works well.
   const GLYPH_KEY_THRESHOLD = 0.08;
