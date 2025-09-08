@@ -24,6 +24,9 @@
     '############################################################',
   ].join('\n');
 
+  // Track last raw map applied so we can re-apply on Pixi readiness
+  let __lastMapRaw = '';
+
   // Lobby: tall vertical shaft down the center
   let LOBBY_MAP = [
     '##############################|#############################',
@@ -46,6 +49,7 @@
       // - '.' -> '█' (solid floor plate)
       // - '#' -> ' ' (space) so walls are not drawn on FLOOR; walls render via ENTITIES only
       const src = String(mapString || '');
+      __lastMapRaw = src;
       const floorMapped = src.replace(/\./g, '█').replace(/#/g, ' ');
       // Prefer Pixi: apply immediately if available, otherwise stash for Pixi boot
       if (window.pxr && typeof window.pxr.setDungeonMap === 'function') {
@@ -197,6 +201,19 @@
     const r = (e && e.detail && e.detail.route) || null;
     if (!r) return;
     applyForRoute(r);
+  });
+
+  // When Pixi renderer signals readiness, re-apply the current route (or last map)
+  window.addEventListener('pxr:ready', () => {
+    try {
+      const current = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null;
+      if (current) {
+        applyForRoute(current);
+      } else if (__lastMapRaw) {
+        setMapString(__lastMapRaw);
+        applyFloorAndEntities(__lastMapRaw);
+      }
+    } catch (_) {}
   });
 
   // Apply immediately for current route on first load

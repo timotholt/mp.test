@@ -123,6 +123,7 @@ void main() {
       textures: { base: null, byCode: new Map() },
       map: { rows: [], width: 0, height: 0 },
       entityById: new Map(), // id -> { sprite, emission }
+      lastEntities: [], // remember latest desired entities to reapply post-font-load
       raf: 0,
       startTs: performance.now(),
     };
@@ -203,7 +204,9 @@ void main() {
       // Reuse existing sprites if ids match; otherwise rebuild simply.
       layer.removeChildren();
       state.entityById.clear();
-      if (!Array.isArray(list)) return;
+      if (!Array.isArray(list)) { state.lastEntities = []; return; }
+      // Remember latest desired entities in case font loads after this call
+      try { state.lastEntities = list.slice(); } catch (_) { state.lastEntities = list; }
       list.forEach((e, idx) => {
         const code = (Number.isFinite(e.charCode) ? e.charCode : (String(e.char||' ').codePointAt(0) || 32));
         const tex = textureForCode(code);
@@ -494,9 +497,11 @@ void main() {
       // Rebuild map sprites to adopt new glyph textures/size
       if (base.valid) {
         rebuildMap();
+        // Re-apply entities now that glyphs are valid
+        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
       } else {
         try {
-          const onLoaded = () => { try { rebuildMap(); } catch (_) {} };
+          const onLoaded = () => { try { rebuildMap(); if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {} };
           if (typeof base.once === 'function') {
             base.once('loaded', onLoaded);
           } else if (typeof base.on === 'function') {
@@ -612,6 +617,8 @@ void main() {
     try { if (window.__pendingEntities) api.setEntities(window.__pendingEntities); } catch (_) {}
 
     console.log('[pixiDungeonRenderer] ready. Exposed as window.pxr');
+    // Signal readiness so producers (e.g., dungeonDisplayManager) can push content deterministically
+    try { window.dispatchEvent(new CustomEvent('pxr:ready')); } catch (_) {}
     return api;
   }
 
