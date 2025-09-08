@@ -27,6 +27,8 @@ import { initSupabase } from './core/auth/supabaseAuth.js';
 
 import './core/ui/colorKnobs.js';
 import './core/ui/dungeon/dungeonDisplayManager.js';
+// Load Pixi renderer module (IIFE attaches window.bootPixiRenderer for dev use)
+import './core/pixi/pixiDungeonRenderer.js';
 
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
