@@ -6,7 +6,6 @@ import OverlayManager, { PRIORITY } from './core/overlayManager.js';
 import { presentStartGameConfirm } from './modals/startGameConfirm.js';
 import { presentFCLSelectModal } from './modals/factionClassLoadout.js';
 import { APP_STATES, makeScreen, setRoute, toggleRenderer } from './core/router.js';
-import { setupAsciiRenderer } from './core/renderer.js';
 import { SUBSTATES, presentSubstate } from './core/substates.js';
 // Initialize UI theme system (IIFE side-effect import)
 import './core/ui/theme/themeManager.js';
@@ -158,10 +157,13 @@ window.startLobby = startLobby;
 // ASCII renderer moved to './core/renderer.js'
 
 // Defer until DOM is ready so we can attach under #app
+function bootPixi() {
+  try { window.bootPixiRenderer && window.bootPixiRenderer(); } catch (e) { try { console.error('[main] Pixi boot failed', e); } catch (_) {} }
+}
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupAsciiRenderer);
+  document.addEventListener('DOMContentLoaded', bootPixi);
 } else {
-  setupAsciiRenderer();
+  bootPixi();
 }
 
 // Initial entry: try reconnect; if none, go to login

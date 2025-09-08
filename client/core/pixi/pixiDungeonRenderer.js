@@ -116,6 +116,7 @@ void main() {
       giFilter: null,
       filterChain: [],
       camera: { x: 0, y: 0, scale: 1 },
+      pixelPerfect: true,
       tile: { w: 8, h: 8 },
       atlas: { cols: 16, rows: 16, startCode: 32 },
       flip: { tileY: false, row: false },
@@ -146,15 +147,19 @@ void main() {
       const cached = state.textures.byCode.get(key);
       if (cached) return cached;
       const base = state.textures.base;
-      if (!base) return null;
+      if (!base || !base.valid) return null;
       const start = state.atlas.startCode | 0;
-      const idx = Math.max(0, key - start);
-      const cols = Math.max(1, state.atlas.cols | 0);
+      let idx = Math.max(0, key - start);
+      // Derive atlas layout from base texture size to avoid OOB frames
+      const cols = Math.max(1, Math.floor(base.width / state.tile.w));
+      const rows = Math.max(1, Math.floor(base.height / state.tile.h));
+      const maxIndex = (cols * rows) - 1;
+      if (idx > maxIndex) idx = idx % (maxIndex + 1);
       const sx = (idx % cols) * state.tile.w;
       let rowIdx = Math.floor(idx / cols);
-      // If the atlas is stored upside-down, invert the row index.
-      if (state.flip.tileY && Number.isFinite(state.atlas.rows) && state.atlas.rows > 0) {
-        rowIdx = (state.atlas.rows - 1) - rowIdx;
+      // If the atlas is stored upside-down, invert the row index using derived rows
+      if (state.flip.tileY && Number.isFinite(rows) && rows > 0) {
+        rowIdx = (rows - 1) - rowIdx;
       }
       const sy = rowIdx * state.tile.h;
       const frame = new PIXI.Rectangle(sx, sy, state.tile.w, state.tile.h);
@@ -177,6 +182,7 @@ void main() {
           const tex = textureForCode(code);
           if (!tex) continue;
           const spr = new PIXI.Sprite(tex);
+          try { spr.roundPixels = true; } catch (_) {}
           spr.anchor.set(0, 0); // top-left of tile
           const wp = dungeonToWorld(x, y);
           spr.x = wp.x; spr.y = wp.y;
@@ -199,6 +205,7 @@ void main() {
         const tex = textureForCode(code);
         if (!tex) return;
         const spr = new PIXI.Sprite(tex);
+        try { spr.roundPixels = true; } catch (_) {}
         spr.anchor.set(0, 0);
         const wp = dungeonToWorld(e.x|0, e.y|0);
         spr.x = wp.x; spr.y = wp.y;
@@ -250,7 +257,9 @@ void main() {
         x: state.camera.x + (ax * viewW) / state.camera.scale,
         y: state.camera.y + (ay * viewH) / state.camera.scale,
       };
-      state.camera.scale = clamp(state.camera.scale * (Number(factor)||1), 0.25, 8.0);
+      let newScale = clamp(state.camera.scale * (Number(factor)||1), 0.25, 8.0);
+      if (state.pixelPerfect) newScale = Math.max(1, Math.round(newScale));
+      state.camera.scale = newScale;
       const worldAfter = {
         x: state.camera.x + (ax * viewW) / state.camera.scale,
         y: state.camera.y + (ay * viewH) / state.camera.scale,
@@ -262,8 +271,11 @@ void main() {
     }
     function updateCamera() {
       const root = state.root; if (!root) return;
-      root.scale.set(state.camera.scale);
-      root.position.set(-state.camera.x * state.camera.scale, -state.camera.y * state.camera.scale);
+      const s = state.pixelPerfect ? Math.max(1, Math.round(state.camera.scale)) : state.camera.scale;
+      root.scale.set(s);
+      const px = -state.camera.x * s;
+      const py = -state.camera.y * s;
+      root.position.set(state.pixelPerfect ? Math.round(px) : px, state.pixelPerfect ? Math.round(py) : py);
     }
 
     // Init and pipeline
@@ -306,11 +318,13 @@ void main() {
         container.appendChild(app.view);
       }
       state.app = app;
+      const viewEl = app.canvas || app.view;
+      try { viewEl.style.imageRendering = 'pixelated'; } catch (_) {}
 
-      // Root world container (subject to camera transform)
+      // Root world container (offscreen: rendered into RT only, not directly to stage)
       const root = new PIXI.Container();
       state.root = root;
-      app.stage.addChild(root);
+      try { root.roundPixels = true; } catch (_) {}
 
       // Layers: tiles below, entities above
       state.layers.tiles = new PIXI.Container();
@@ -321,15 +335,49 @@ void main() {
       app.stage.addChild(state.layers.ui);
 
       // Render-to-texture sprite for post-fx
-      state.rt.scene = await PIXI.RenderTexture.create({ width, height });
+      state.rt.scene = await PIXI.RenderTexture.create({ width, height, resolution: app.renderer.resolution });
+      try { state.rt.scene.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
       state.rt.sprite = new PIXI.Sprite(state.rt.scene);
       state.rt.sprite.roundPixels = true;
       app.stage.addChild(state.rt.sprite);
+      // Ensure stage only contains postfx RT sprite (and UI); root remains offstage
+      try { app.stage.removeChild(root); } catch (_) {}
 
       // GI-like filter
       state.giFilter = createGiFilter(PIXI);
       state.filterChain = [state.giFilter];
       state.rt.sprite.filters = state.filterChain;
+
+      // Pointer wheel zoom (anchor under cursor) and drag pan
+      try {
+        function onWheel(ev) {
+          try {
+            ev.preventDefault();
+            const factor = (ev.deltaY < 0) ? 1.2 : (1/1.2);
+            const rect = viewEl.getBoundingClientRect();
+            const ax = (ev.clientX - rect.left) / rect.width;
+            const ay = (ev.clientY - rect.top) / rect.height;
+            zoomCamera(factor, ax, ay);
+          } catch (_) {}
+        }
+        let dragging = false; let lastX = 0; let lastY = 0; let pid = null;
+        function onDown(ev) { try { dragging = true; lastX = ev.clientX; lastY = ev.clientY; pid = ev.pointerId; viewEl.setPointerCapture && viewEl.setPointerCapture(pid); } catch (_) {} }
+        function onMove(ev) {
+          if (!dragging) return;
+          try {
+            const dx = ev.clientX - lastX; const dy = ev.clientY - lastY; lastX = ev.clientX; lastY = ev.clientY;
+            const s = state.pixelPerfect ? Math.max(1, Math.round(state.camera.scale)) : state.camera.scale;
+            panCamera(-dx / s, -dy / s);
+          } catch (_) {}
+        }
+        function onUp(ev) { try { dragging = false; if (pid != null) { viewEl.releasePointerCapture && viewEl.releasePointerCapture(pid); } pid = null; } catch (_) {} }
+        viewEl.addEventListener('wheel', onWheel, { passive: false });
+        viewEl.addEventListener('pointerdown', onDown);
+        viewEl.addEventListener('pointermove', onMove);
+        viewEl.addEventListener('pointerup', onUp);
+        viewEl.addEventListener('pointercancel', onUp);
+        viewEl.addEventListener('mouseleave', onUp);
+      } catch (_) {}
 
       // Resize handling
       function handleResize() {
@@ -339,7 +387,8 @@ void main() {
           app.renderer.resize(w, h);
           // Recreate RT when size changes
           state.rt.scene.destroy(true);
-          state.rt.scene = PIXI.RenderTexture.create({ width: w, height: h });
+          state.rt.scene = PIXI.RenderTexture.create({ width: w, height: h, resolution: app.renderer.resolution });
+          try { state.rt.scene.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
           state.rt.sprite.texture = state.rt.scene;
           updateCamera();
         } catch (e) { console.warn('[pixi] resize failed', e); }
@@ -422,6 +471,8 @@ void main() {
       // Load base texture
       const base = PIXI.Texture.from(src).baseTexture;
       base.scaleMode = PIXI.SCALE_MODES.NEAREST;
+      try { if (PIXI.MIPMAP_MODES) base.mipmap = PIXI.MIPMAP_MODES.OFF; else base.mipmap = false; } catch (_) {}
+      try { base.anisotropicLevel = 0; } catch (_) {}
       // Reset per-code cache
       state.textures.byCode.clear();
       state.textures.base = base;
