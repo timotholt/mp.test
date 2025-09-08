@@ -37,15 +37,6 @@
         window.PIXI = PIXI;
         return PIXI;
       }
-
-    // ---- Legacy atlas extrude and rebuild stubs (no-ops, kept for clarity) ----
-    function buildExtrudedAtlas() { return null; }
-    function enableAtlasExtrude() { try { console.warn('[pixiDungeonRenderer] enableAtlasExtrude() is disabled in sprite-only mode'); } catch (_) {} return false; }
-    function disableAtlasExtrude() { try { console.warn('[pixiDungeonRenderer] disableAtlasExtrude() is disabled in sprite-only mode'); } catch (_) {} return false; }
-    function rebuildMap() { /* no-op in sprite-only mode */ }
-
-      // (helpers moved into createRendererAPI)
-
     } catch (_) {}
     try {
       await new Promise((resolve, reject) => {
@@ -211,136 +202,9 @@ void main() {
       state.textures.byCode.set(key, tex);
       return tex;
     }
-
-    // Build an extruded atlas on a canvas by duplicating edge pixels to create gutters.
-    function buildExtrudedAtlas(base, padPx) {
-      try {
-        const pad = Math.max(0, Math.floor(Number(padPx) || 0));
-        if (!pad) return null;
-        const src = base && base.resource && base.resource.source; // HTMLImageElement/Canvas
-        if (!src || !base.valid) return null;
-        const tW = state.tile.w, tH = state.tile.h;
-        const cols = Math.max(1, Math.floor(base.width / tW));
-        const rows = Math.max(1, Math.floor(base.height / tH));
-        const cellW = tW + pad*2;
-        const cellH = tH + pad*2;
-        const outW = cols * cellW;
-        const outH = rows * cellH;
-        const canvas = document.createElement('canvas');
-        canvas.width = outW; canvas.height = outH;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return null;
-        ctx.imageSmoothingEnabled = false;
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const sx0 = c * tW;
-            const sy0 = r * tH;
-            const dx0 = c * cellW + pad;
-            const dy0 = r * cellH + pad;
-            // center
-            ctx.drawImage(src, sx0, sy0, tW, tH, dx0, dy0, tW, tH);
-            // edges
-            // left/right strips
-            ctx.drawImage(src, sx0, sy0, 1, tH, dx0 - pad, dy0, pad, tH);
-            ctx.drawImage(src, sx0 + tW - 1, sy0, 1, tH, dx0 + tW, dy0, pad, tH);
-            // top/bottom strips
-            ctx.drawImage(src, sx0, sy0, tW, 1, dx0, dy0 - pad, tW, pad);
-            ctx.drawImage(src, sx0, sy0 + tH - 1, tW, 1, dx0, dy0 + tH, tW, pad);
-            // corners
-            ctx.drawImage(src, sx0, sy0, 1, 1, dx0 - pad, dy0 - pad, pad, pad);
-            ctx.drawImage(src, sx0 + tW - 1, sy0, 1, 1, dx0 + tW, dy0 - pad, pad, pad);
-            ctx.drawImage(src, sx0, sy0 + tH - 1, 1, 1, dx0 - pad, dy0 + tH, pad, pad);
-            ctx.drawImage(src, sx0 + tW - 1, sy0 + tH - 1, 1, 1, dx0 + tW, dy0 + tH, pad, pad);
-          }
-        }
-        const newBase = PIXI.BaseTexture.from(canvas);
-        try { newBase.scaleMode = PIXI.SCALE_MODES.NEAREST; } catch (_) {}
-        return { base: newBase, pad };
-      } catch (_) { return null; }
-    }
-
-    function enableAtlasExtrude(padPx = 1) {
-      try {
-        const base = state.textures.originalBase || state.textures.base;
-        if (!base || !base.valid) return false;
-        const out = buildExtrudedAtlas(base, padPx);
-        if (!out) return false;
-        state.textures.byCode.clear();
-        state.textures.base = out.base;
-        state.atlas.pad = out.pad;
-        rebuildMap();
-        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
-        return true;
-      } catch (_) { return false; }
-    }
-
-    function disableAtlasExtrude() {
-      try {
-        if (!state.textures.originalBase) return false;
-        state.textures.byCode.clear();
-        state.textures.base = state.textures.originalBase;
-        state.atlas.pad = 0;
-        rebuildMap();
-        try { if (state.lastEntities && state.lastEntities.length) setEntities(state.lastEntities); } catch (_) {}
-        return true;
-      } catch (_) { return false; }
-    }
-
-    function rebuildMap() {
-      if (!state.layers.tiles) return;
-      const layer = state.layers.tiles;
-      layer.removeChildren();
-      const rows = state.map.rows;
-      for (let y = 0; y < rows.length; y++) {
-        const row = rows[y];
-        for (let x = 0; x < row.length; x++) {
-          const ch = row[x];
-          // Floors are rendered as Unicode '█' (U+2588) by dungeonDisplayManager,
-          // but our atlases are laid out in CP437 order where full block is code 219.
-          // Remap that single glyph so it selects the correct atlas cell.
-          const cp = (ch && ch.codePointAt) ? (ch.codePointAt(0) || 32) : 32;
-          const code = (cp === 0x2588 /* Unicode full block */) ? 219 : cp;
-          const tex = textureForCode(code);
-          if (!tex) continue;
-          const spr = new PIXI.Sprite(tex);
-          try { spr.roundPixels = true; } catch (_) {}
-          spr.anchor.set(0, 0); // top-left of tile
-          const wp = dungeonToWorld(x, y);
-          spr.x = wp.x; spr.y = wp.y;
-          // Apply per-glyph tint on the floor map to avoid blinding white floors.
-          try {
-            if (ch === '█') {
-              // Dark plate floor (approx RGB ~0.03)
-              spr.tint = 0x080808;
-            } else if (ch === '░' || ch === '.') {
-              spr.tint = 0x242424;
-            }
-          } catch (_) {}
-          // If rows are vertically flipped inside tiles, flip the sprite.
-          if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
-          layer.addChild(spr);
-        }
-      }
-    }
-
-    // Back-compat wrapper: accept legacy entity list and compose into unified sprites
-    function setEntities(list) {
-      const arr = Array.isArray(list) ? list : [];
-      try { state.lastEntities = arr.slice(); } catch (_) { state.lastEntities = arr; }
-      state.pending.entities = arr.map((e) => ({
-        char: e.char,
-        charCode: e.charCode,
-        x: e.x|0, y: e.y|0,
-        color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF),
-        alpha: (e.alpha != null) ? e.alpha : 1,
-        occludes: !!(e.blocking || e.occludes),
-      }));
-      recombineAndDraw();
-    }
-
-    function recombineAndDraw() {
-      try { setSprites([].concat(state.pending.map, state.pending.entities)); } catch (_) {}
-    }
+    
+    // (legacy atlas extrude/rebuild code removed in sprite-only renderer)
+    // (legacy setEntities/pending map recombine removed; new setEntities wrapper defined later)
 
     // Enable chroma-key style transparency on both tile and entity layers
     function enableBlackKeyFilters(threshold) {
@@ -367,22 +231,8 @@ void main() {
     }
 
  
-    // Simple tween manager for entity motion
+    // Simple tween manager for entity motion (see final animateEntity using idIndex)
     const tweens = new Set();
-    function animateEntity(id, toX, toY, opts = {}) {
-      const rec = state.entityById.get(id);
-      if (!rec) return false;
-      const spr = rec.sprite;
-      const occ = rec.occlSprite || null;
-      const from = { x: spr.x, y: spr.y };
-      const dest = dungeonToWorld(toX|0, toY|0);
-      const duration = Math.max(1, Number(opts.duration || 250)); // ms
-      const ease = (t) => t * t * (3 - 2 * t); // smoothstep
-      const start = performance.now();
-      const tw = { id, spr, occ, from, dest, start, duration, ease };
-      tweens.add(tw);
-      return true;
-    }
 
     // Camera controls
     function panCamera(dx, dy) {
@@ -496,8 +346,10 @@ void main() {
       try { root.roundPixels = true; } catch (_) {}
 
       // Layers: world (visible) + occlusion (mask)
-      state.layers.world = new PIXI.Container();
-      state.layers.occlusion = new PIXI.Container(); // offstage, rendered to occlusion RT
+      const WorldPC = PIXI.ParticleContainer || PIXI.Container;
+      state.layers.world = new WorldPC(undefined, { scale: false, position: true, rotation: false, uvs: true, alpha: true, tint: true });
+      const OccPC = PIXI.ParticleContainer || PIXI.Container;
+      state.layers.occlusion = new OccPC(undefined, { scale: false, position: true, rotation: false, uvs: false, alpha: true, tint: false }); // offstage
       state.layers.ui = new PIXI.Container();
       root.addChild(state.layers.world);
       app.stage.addChild(state.layers.ui);
