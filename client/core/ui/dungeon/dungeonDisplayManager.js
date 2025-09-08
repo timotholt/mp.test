@@ -63,7 +63,8 @@
         if (ch === '#') {
           // Dark, near-neutral wall color in the entities layer to avoid emission.
           // Visual wall appearance comes primarily from the FLOOR layer color map below.
-          entities.push({ x, y, char: '#', color: [0.06, 0.07, 0.08], blocking: true });
+          // Use IBM block glyph for solid walls (CP437). CP437 code for '█' is 219.
+          entities.push({ x, y, char: '█', charCode: 219, color: [0.06, 0.07, 0.08], blocking: true });
         } else if (ch === '@') {
           // Player '@' should be white in the entities layer
           entities.push({ x, y, char: '@', color: [1.0, 1.0, 1.0], blocking: false });

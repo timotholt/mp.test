@@ -615,8 +615,12 @@ try {
       const d = (e && e.detail) || {};
       const threshold = Number(d.threshold) || 0;
       const curve = Number(d.curve) || 1;
+      const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
+      const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
+      if (srgbFalloff != null) rc.rcUniforms.srgb = srgbFalloff;
+      if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
   });

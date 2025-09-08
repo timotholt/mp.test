@@ -540,58 +540,16 @@ class RC extends DistanceField {
       this.sunAngleSlider.disabled = true;
     }
 
-    this.falloffSlider = addSlider({
-      id: "falloff-slider-container",
-      name: "Falloff",
-      onUpdate: (value) => {
-        this.rcUniforms.srgb = value;
-        this.renderPass();
-        return value;
-      },
-      options: {min: 0.0, max: 3.0, value: 2.0, step: 0.1},
-    });
+    // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)
+    this.srgbFalloff = 2.0; // default, overridden by renderer via ui:rc-debug-changed
 
-    this.pixelsBetweenProbes = addSlider({
-      id: "radius-slider-container",
-      name: "Pixels Between Base Probes",
-      onUpdate: (value) => {
-        this.rawBasePixelsBetweenProbes = Math.pow(2, value);
-        this.initializeParameters(true);
-        this.renderPass();
-        return Math.pow(2, value);
-      },
-      options: {min: 0, max: 4, value: this.rawBasePixelsBetweenProbesExponent, step: 1},
-      initialSpanValue: this.rawBasePixelsBetweenProbes,
-    });
+    // Base probe spacing exponent kept; no slider (controlled externally if needed)
 
-    this.rayIntervalSlider = addSlider({
-      id: "radius-slider-container", name: "Interval Length", onUpdate: (value) => {
-        this.rcUniforms.rayInterval = value;
-        this.renderPass();
-        return value;
-      },
-      options: {min: 1.0, max: 512.0, step: 0.1, value: 1.0},
-    });
+    this.rayIntervalValue = 1.0;
 
-    this.baseRayCountSlider = addSlider({
-      id: "radius-slider-container", name: "Base Ray Count", onUpdate: (value) => {
-        this.rcUniforms.baseRayCount = Math.pow(4.0, value);
-        this.baseRayCount = Math.pow(4.0, value);
-        this.initializeParameters();
-        this.renderPass();
-        return Math.pow(4.0, value);
-      },
-      options: {min: 1.0, max: 3.0, step: 1.0, value: 1.0},
-    });
+    // Base ray count controlled by this.baseRayCount (default 4.0); no slider here
 
-    this.intervalOverlapSlider = addSlider({
-      id: "radius-slider-container", name: "Interval Overlap %", onUpdate: (value) => {
-        this.rcUniforms.intervalOverlap = value;
-        this.renderPass();
-        return value;
-      },
-      options: {min: -1.0, max: 2.0, step: 0.01, value: 0.1},
-    });
+    this.intervalOverlapValue = 0.1;
 
     this.initializeParameters();
 
@@ -614,13 +572,13 @@ class RC extends DistanceField {
         cascadeIndex: 0.0,
         basePixelsBetweenProbes: this.basePixelsBetweenProbes,
         cascadeInterval: this.radianceInterval,
-        rayInterval: this.rayIntervalSlider.value,
-        intervalOverlap: this.intervalOverlapSlider.value,
-        baseRayCount: Math.pow(4.0, this.baseRayCountSlider.value),
+        rayInterval: this.rayIntervalValue,
+        intervalOverlap: this.intervalOverlapValue,
+        baseRayCount: this.baseRayCount,
         // If the sun angle slider isn't present, default to 0.0
         sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
-        srgb: this.falloffSlider.value,
+        srgb: this.srgbFalloff,
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
@@ -631,47 +589,16 @@ class RC extends DistanceField {
       fragmentShader: rcFragmentShader,
     });
 
-    this.baseRayCountSlider.setSpan(Math.pow(4.0, this.baseRayCountSlider.value));
+    // No vendor slider: span display disabled
 
     this.firstLayer = this.radianceCascades - 1;
     this.lastLayer = 0;
 
-    this.lastLayerSlider = addSlider({
-      id: "radius-slider-container",
-      name: "(RC) Layer to Render",
-      onUpdate: (value) => {
-        this.rcUniforms.firstCascadeIndex = value;
-        this.overlayUniforms.showSurface = value == 0;
-        this.lastLayer = value;
-        this.renderPass();
-        return value;
-      },
-      options: {min: 0, max: this.radianceCascades - 1, value: 0, step: 1},
-    });
+    // Layer selection slider removed; keep defaults via firstLayer/lastLayer
 
-    this.firstLayerSlider = addSlider({
-      id: "radius-slider-container",
-      name: "(RC) Layer Count",
-      onUpdate: (value) => {
-        this.rcUniforms.cascadeCount = value;
-        this.firstLayer = value - 1;
-        this.renderPass();
-        return value;
-      },
-      options: {min: 1, max: this.radianceCascades, value: this.radianceCascades, step: 1},
-    });
+    // Cascade count slider removed; defaults set in initializeParameters()
 
-    this.stage = 3;
-    this.stageToRender = addSlider({
-      id: "radius-slider-container",
-      name: "Stage To Render",
-      onUpdate: (value) => {
-        this.stage = value;
-        this.renderPass();
-        return value;
-      },
-      options: {min: 0, max: 3, value: 3, step: 1},
-    });
+    this.stage = 3; // no vendor stage slider
 
     const {
       stage: overlayStage,
@@ -689,12 +616,14 @@ class RC extends DistanceField {
         drawPassTexture: null,
         resolution: [this.width, this.height],
         showSurface: true,
+        fogAmount: 0.8,
       },
       fragmentShader: `
         uniform sampler2D inputTexture;
         uniform sampler2D drawPassTexture;
         uniform vec2 resolution;
         uniform bool showSurface;
+        uniform float fogAmount; // 0..1, 0 = no fog (pure surface), 1 = full lighting on glyphs
 
         in vec2 vUv;
         out vec4 FragColor;
@@ -703,9 +632,11 @@ class RC extends DistanceField {
           vec4 rc = texture(inputTexture, vUv);
           vec4 d = texture(drawPassTexture, vUv);
 
-          // Show the dungeon surface where glyphs exist; elsewhere, show radiance.
-          // This restores correct floor/entity colors while still displaying GI in void.
-          FragColor = vec4(d.a > 0.0 && showSurface ? d.rgb : rc.rgb, 1.0);
+          // Modulate surface color by radiance ("fog") where glyphs exist; pure radiance elsewhere.
+          vec3 surface = d.rgb;
+          vec3 lit = surface * rc.rgb;            // simple albedo * lighting
+          vec3 fogged = mix(surface, lit, clamp(fogAmount, 0.0, 1.0));
+          FragColor = vec4(d.a > 0.0 && showSurface ? fogged : rc.rgb, 1.0);
         }`
     });
 
@@ -719,6 +650,8 @@ class RC extends DistanceField {
     this.overlayUniforms = overlayUniforms;
     this.overlayRender = overlayRender;
     this.overlayRenderTargets = overlayRenderTargets;
+
+    // Fog amount controlled by Display->Debug; no vendor slider
   }
 
   // Key parameters we care about

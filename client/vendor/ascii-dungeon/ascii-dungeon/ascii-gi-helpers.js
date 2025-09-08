@@ -1313,7 +1313,13 @@ class DungeonRenderer extends BaseSurface {
       this.entityData[idx4 + 0] = Math.max(0, Math.min(255, Math.floor(color[0] * 255)));
       this.entityData[idx4 + 1] = Math.max(0, Math.min(255, Math.floor(color[1] * 255)));
       this.entityData[idx4 + 2] = Math.max(0, Math.min(255, Math.floor(color[2] * 255)));
-      const code = (typeof e.char === 'string' && e.char.length > 0) ? (e.char.codePointAt(0) & 0xFF) : 32;
+      let code = 32;
+      if (Number.isFinite(e.charCode)) {
+        code = (e.charCode & 0xFF);
+      } else if (typeof e.char === 'string' && e.char.length > 0) {
+        // Fallback: map Unicode char to byte by low 8 bits (works for ASCII <128)
+        code = (e.char.codePointAt(0) & 0xFF);
+      }
       this.entityData[idx4 + 3] = code;
       if (e.blocking) {
         const bIdx = my * this._positionBlockWidth + mx;

@@ -646,7 +646,9 @@ export function renderDisplayTab(container) {
           onChange: (v) => {
             try {
               const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
-              const detail = { threshold: Number(v) || 0, curve };
+              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+              const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+              const detail = { threshold: Number(v) || 0, curve, fogAmount, srgbFalloff };
               window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
             } catch (_) {}
           }
@@ -666,7 +668,9 @@ export function renderDisplayTab(container) {
           onChange: (v) => {
             try {
               const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
-              const detail = { threshold: thr, curve: Number(v) || 1 };
+              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+              const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+              const detail = { threshold: thr, curve: Number(v) || 1, fogAmount, srgbFalloff };
               window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
             } catch (_) {}
           }
@@ -676,16 +680,72 @@ export function renderDisplayTab(container) {
       crvVal.id = 'settings-rc-curve-val';
       dbg.appendChild(crvRow);
 
+      // Fog Amount slider (0..1)
+      const { row: fogRow, input: fogRng, value: fogVal, reset: fogReset } = createRangeElement(
+        0.0, 1.0, 0.05, 0.8, 'Fog Amount:', {
+          storageKey: 'rc_debug_fog',
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
+          fromStorage: (s) => {
+            const v = parseFloat(s);
+            return Number.isFinite(v) ? Math.max(0.0, Math.min(1.0, v)) : 0.8;
+          },
+          onChange: (v) => {
+            try {
+              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+              const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+              const detail = { threshold: thr, curve, fogAmount: Number(v) || 0.8, srgbFalloff };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      fogRng.id = 'settings-rc-fog';
+      fogVal.id = 'settings-rc-fog-val';
+      dbg.appendChild(fogRow);
+
+      // Falloff slider (SRGB curve strength 0..3)
+      const { row: srgRow, input: srgRng, value: srgVal, reset: srgReset } = createRangeElement(
+        0.0, 3.0, 0.1, 2.0, 'Falloff:', {
+          storageKey: 'rc_debug_srgb',
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
+          fromStorage: (s) => {
+            const v = parseFloat(s);
+            return Number.isFinite(v) ? Math.max(0.0, Math.min(3.0, v)) : 2.0;
+          },
+          onChange: (v) => {
+            try {
+              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+              const detail = { threshold: thr, curve, fogAmount, srgbFalloff: Number(v) || 2.0 };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      srgRng.id = 'settings-rc-srgb';
+      srgVal.id = 'settings-rc-srgb-val';
+      dbg.appendChild(srgRow);
+
       // Debug Reset button
       const dbgToolbar = createUiElement(basicToolbarRow, 'div');
       const dbgResetBtn = createUiElement(basicButton, 'Reset');
       dbgResetBtn.onclick = () => {
         try { thrReset && thrReset(); } catch (_) {}
         try { crvReset && crvReset(); } catch (_) {}
+        try { fogReset && fogReset(); } catch (_) {}
+        try { srgReset && srgReset(); } catch (_) {}
         try {
           const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
           const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
-          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve } }));
+          const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+          const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
         } catch (_) {}
       };
       dbgToolbar.appendChild(document.createElement('div'));
@@ -697,7 +757,9 @@ export function renderDisplayTab(container) {
       try {
         const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
         const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
-        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve } }));
+        const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+        const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
+        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
       } catch (_) {}
     }
   } catch (_) {}
