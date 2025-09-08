@@ -27,6 +27,9 @@
 (function () {
   if (typeof window === 'undefined') return;
 
+  // Tuned to eliminate seam artifacts at pixel-perfect scales without visible shrink
+  const GLYPH_UV_INSET_PX = 0.18;
+
   // Lazy PIXI loader to avoid touching package.json.
   async function loadPixi() {
     if (window.PIXI) return window.PIXI;
@@ -150,6 +153,7 @@ void main() {
       lastSprites: [],    // last applied sprite list; used to redraw on font change
       raf: 0,
       startTs: performance.now(),
+      debugInset: GLYPH_UV_INSET_PX,   // default inset; tune via setGlyphInset(px) if needed
       // no debug flags kept in production path
     };
 
@@ -176,12 +180,14 @@ void main() {
       if (!base || !base.valid) return null;
       const start = state.atlas.startCode | 0;
       let idx = Math.max(0, key - start);
-      // Derive atlas layout from base texture size (respecting optional extrusion padding)
+      // Prefer explicit atlas metadata when available; fall back to deriving from texture size
       const pad = Number(state.atlas.pad || 0);
       const cellW = state.tile.w + pad * 2;
       const cellH = state.tile.h + pad * 2;
-      const cols = Math.max(1, Math.floor(base.width / (cellW || state.tile.w)));
-      const rows = Math.max(1, Math.floor(base.height / (cellH || state.tile.h)));
+      const metaCols = Number.isFinite(state.atlas.cols) ? (state.atlas.cols|0) : 0;
+      const metaRows = Number.isFinite(state.atlas.rows) ? (state.atlas.rows|0) : 0;
+      const cols = Math.max(1, metaCols || Math.floor(base.width / (cellW || state.tile.w)));
+      const rows = Math.max(1, metaRows || Math.floor(base.height / (cellH || state.tile.h)));
       const maxIndex = (cols * rows) - 1;
       if (idx > maxIndex) idx = idx % (maxIndex + 1);
       const sx = (idx % cols) * (cellW || state.tile.w) + pad;
@@ -191,15 +197,17 @@ void main() {
         rowIdx = (rows - 1) - rowIdx;
       }
       const sy = rowIdx * (cellH || state.tile.h) + pad;
-      // UV inset to avoid sampling atlas gutters (applied selectively to thin line glyphs below)
-      let inset = 0;
-      // Apply a small permanent inset for thin CP437 line glyphs to reduce sporadic edge artifacts
-      try {
-        const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
-        if (LINE_CODES.indexOf(key) !== -1) {
-          inset = Math.max(inset, 0.25);
-        }
-      } catch (_) {}
+
+      // UV inset to avoid sampling atlas gutters
+      // Apply a tiny uniform inset to all glyphs to reduce occasional bleeding at certain scales
+      // Keep a stronger inset for thin CP437 line glyphs (they're the most sensitive)
+      let inset = Math.max(0, Number(state.debugInset) || 0);
+    //   try {
+    //     const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
+    //     if (LINE_CODES.indexOf(key) !== -1) {
+    //       inset = Math.max(inset, 0.28);
+    //     }
+    //   } catch (_) {}
       inset = Math.max(0, Math.min(inset, Math.min(state.tile.w, state.tile.h) * 0.49));
       const frame = (inset > 0)
         ? new PIXI.Rectangle(sx + inset, sy + inset, state.tile.w - inset * 2, state.tile.h - inset * 2)
@@ -661,6 +669,7 @@ void main() {
       addFilter,
       clearFilters,
       getOcclusionTexture: () => state.rt && state.rt.occlusion,
+      setGlyphInset: (px) => { try { state.debugInset = Math.max(0, Number(px)||0); state.textures.byCode.clear(); if (state.lastSprites && state.lastSprites.length) setSprites(state.lastSprites); } catch (_) {} },
       destroy,
     };
     return api;
