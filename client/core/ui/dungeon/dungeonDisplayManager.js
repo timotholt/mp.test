@@ -239,12 +239,15 @@ function debugAsciiGrid(opts = {}) {
 
   const sprites = [];
 
+  const occlAscii = !!opts.occludesAscii;
+  const occlRooms = !!opts.occludesRooms;
+
   // Group 0: ASCII tiles as-is
   let code = start;
   for (let gy = 0; gy < groupRows; gy++) {
     for (let gx = 0; gx < groupCols; gx++) {
       if (code > end) break;
-      sprites.push({ id: `dbg-a-${code}`, charCode: code, x: groupX0 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-a-${code}`, charCode: code, x: groupX0 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: occlAscii });
       code++;
     }
   }
@@ -254,7 +257,7 @@ function debugAsciiGrid(opts = {}) {
   for (let gy = 0; gy < groupRows; gy++) {
     for (let gx = 0; gx < groupCols; gx++) {
       if (code > end) break;
-      sprites.push({ id: `dbg-b-${code}`, charCode: code, x: groupX1 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-b-${code}`, charCode: code, x: groupX1 + gx, y: topY + gy, color: 0xFFFFFF, alpha: 1, occludes: occlAscii });
       code++;
     }
   }
@@ -285,17 +288,17 @@ function debugAsciiGrid(opts = {}) {
     const y0 = topY + oy, y1 = topY + oy + h - 1;
     const x0 = gxBase + ox, x1 = gxBase + ox + w - 1;
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      sprites.push({ id: `dbg-r-top-${x}-${y0}` , charCode: H, x, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
-      sprites.push({ id: `dbg-r-bot-${x}-${y1}` , charCode: H, x, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-r-top-${x}-${y0}` , charCode: H, x, y: y0, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
+      sprites.push({ id: `dbg-r-bot-${x}-${y1}` , charCode: H, x, y: y1, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
     }
     for (let y = y0 + 1; y <= y1 - 1; y++) {
-      sprites.push({ id: `dbg-r-left-${x0}-${y}` , charCode: V, x: x0, y, color: 0xFFFFFF, alpha: 1, occludes: false });
-      sprites.push({ id: `dbg-r-right-${x1}-${y}` , charCode: V, x: x1, y, color: 0xFFFFFF, alpha: 1, occludes: false });
+      sprites.push({ id: `dbg-r-left-${x0}-${y}` , charCode: V, x: x0, y, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
+      sprites.push({ id: `dbg-r-right-${x1}-${y}` , charCode: V, x: x1, y, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
     }
-    sprites.push({ id: `dbg-r-tl-${x0}-${y0}`, charCode: TL, x: x0, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
-    sprites.push({ id: `dbg-r-tr-${x1}-${y0}`, charCode: TR, x: x1, y: y0, color: 0xFFFFFF, alpha: 1, occludes: false });
-    sprites.push({ id: `dbg-r-bl-${x0}-${y1}`, charCode: BL, x: x0, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
-    sprites.push({ id: `dbg-r-br-${x1}-${y1}`, charCode: BR, x: x1, y: y1, color: 0xFFFFFF, alpha: 1, occludes: false });
+    sprites.push({ id: `dbg-r-tl-${x0}-${y0}`, charCode: TL, x: x0, y: y0, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
+    sprites.push({ id: `dbg-r-tr-${x1}-${y0}`, charCode: TR, x: x1, y: y0, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
+    sprites.push({ id: `dbg-r-bl-${x0}-${y1}`, charCode: BL, x: x0, y: y1, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
+    sprites.push({ id: `dbg-r-br-${x1}-${y1}`, charCode: BR, x: x1, y: y1, color: 0xFFFFFF, alpha: 1, occludes: occlRooms });
   }
 
   // Group 4/5: rooms in two regions

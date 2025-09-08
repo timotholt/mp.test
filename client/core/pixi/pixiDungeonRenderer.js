@@ -15,12 +15,13 @@
 // - init(opts)
 // - setFont(meta)
 // - setSprites(list)          // unified sprite pipeline
-// - setEntities(list)         // DEPRECATED wrapper: translates to setSprites
 // - panCamera(dx, dy)
 // - zoomCamera(factor, ax, ay)
 // - toScreen({ x, y }) -> { x, y }
 // - animateEntity(id, toX, toY, opts)
 // - getOcclusionTexture()
+// - setFilterChain(filters), addFilter(filter), clearFilters()
+// - enableBlackKeyFilters(threshold), disableBlackKeyFilters()
 // - destroy()
 
 (function () {
@@ -64,6 +65,7 @@ uniform sampler2D uSampler;
 uniform float uTime;
 uniform float uFogAmount;
 uniform float uFalloff;
+uniform sampler2D uOcclusion; // optional occlusion mask (alpha/white)
 
 void main() {
   vec2 uv = vTextureCoord;
@@ -82,9 +84,14 @@ void main() {
   vec3 x = max(vec3(0.0), lit - 0.004);
   vec3 mapped = (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
   vec3 color = mix(mapped, vec3(0.0), fog);
+
+  // Mild darken from occlusion mask if provided
+  vec4 occ = texture2D(uOcclusion, uv);
+  float occAmt = clamp(max(max(occ.r, occ.g), occ.b), 0.0, 1.0);
+  color = mix(color, color * 0.65, occAmt);
   gl_FragColor = vec4(color, base.a);
 }`;
-    const uniforms = { uTime: 0, uFogAmount: 0.2, uFalloff: 1.8 };
+    const uniforms = { uTime: 0, uFogAmount: 0.2, uFalloff: 1.8, uOcclusion: null };
     return new PIXI.Filter(undefined, frag, uniforms);
   }
 
@@ -139,8 +146,8 @@ void main() {
       atlas: { cols: 16, rows: 16, startCode: 32 },
       flip: { tileY: false, row: false },
       textures: { base: null, byCode: new Map(), originalBase: null },
-      idIndex: new Map(), // id -> { sprite, occlSprite }
-      lastSprites: [],
+      idIndex: new Map(), // id -> { sprite, occlSprite } for animation/tweening
+      lastSprites: [],    // last applied sprite list; used to redraw on font change
       raf: 0,
       startTs: performance.now(),
       // no debug flags kept in production path
@@ -209,28 +216,19 @@ void main() {
     // Enable chroma-key style transparency on both tile and entity layers
     function enableBlackKeyFilters(threshold) {
       try {
-        const fkWorld = createBlackKeyFilter(PIXI);
-        if (threshold != null && Number.isFinite(threshold)) {
-          fkWorld.uniforms.uThreshold = Number(threshold);
-        }
-        if (state.layers.world) state.layers.world.filters = [fkWorld];
-        state.blackKeyFilters = { world: fkWorld };
+        const fk = createBlackKeyFilter(PIXI);
+        if (threshold != null && Number.isFinite(threshold)) fk.uniforms.uThreshold = Number(threshold);
+        state.blackKeyFilter = fk;
+        if (state.rt && state.rt.sprite) state.rt.sprite.filters = [fk].concat(state.filterChain || []);
       } catch (_) {}
     }
 
     // Disable black-key filters on both layers
     function disableBlackKeyFilters() {
-      try { if (state.layers.world) state.layers.world.filters = null; } catch (_) {}
-      state.blackKeyFilters = null;
+      state.blackKeyFilter = null;
+      try { if (state.rt && state.rt.sprite) state.rt.sprite.filters = state.filterChain || []; } catch (_) {}
     }
 
-    // Apply black-key only to ENTITIES layer (useful when floors are atlas tiles)
-    function enableBlackKeyOnEntities(threshold) {
-      try { console.warn('[pixiDungeonRenderer] enableBlackKeyOnEntities() is deprecated; use enableBlackKeyFilters()'); } catch (_) {}
-      enableBlackKeyFilters(threshold);
-    }
-
- 
     // Simple tween manager for entity motion (see final animateEntity using idIndex)
     const tweens = new Set();
 
@@ -346,10 +344,15 @@ void main() {
       try { root.roundPixels = true; } catch (_) {}
 
       // Layers: world (visible) + occlusion (mask)
-      const WorldPC = PIXI.ParticleContainer || PIXI.Container;
-      state.layers.world = new WorldPC(undefined, { scale: false, position: true, rotation: false, uvs: true, alpha: true, tint: true });
-      const OccPC = PIXI.ParticleContainer || PIXI.Container;
-      state.layers.occlusion = new OccPC(undefined, { scale: false, position: true, rotation: false, uvs: false, alpha: true, tint: false }); // offstage
+      const MaxSprites = 65535;
+      if (PIXI.ParticleContainer) {
+        state.layers.world = new PIXI.ParticleContainer(MaxSprites, { scale: false, position: true, rotation: false, uvs: true, alpha: true, tint: true });
+        // Occlusion uses Texture.WHITE scaled to tile size, so allow scale here
+        state.layers.occlusion = new PIXI.ParticleContainer(MaxSprites, { scale: true, position: true, rotation: false, uvs: false, alpha: true, tint: false });
+      } else {
+        state.layers.world = new PIXI.Container();
+        state.layers.occlusion = new PIXI.Container();
+      }
       state.layers.ui = new PIXI.Container();
       root.addChild(state.layers.world);
       app.stage.addChild(state.layers.ui);
@@ -536,13 +539,15 @@ void main() {
     function setFilterChain(filtersArray) {
       try {
         state.filterChain = Array.isArray(filtersArray) ? filtersArray.slice() : [];
-        state.rt.sprite.filters = state.filterChain;
+        if (state.blackKeyFilter) state.rt.sprite.filters = [state.blackKeyFilter].concat(state.filterChain);
+        else state.rt.sprite.filters = state.filterChain;
       } catch (_) {}
     }
     function addFilter(filter) {
       try {
         state.filterChain.push(filter);
-        state.rt.sprite.filters = state.filterChain;
+        if (state.blackKeyFilter) state.rt.sprite.filters = [state.blackKeyFilter].concat(state.filterChain);
+        else state.rt.sprite.filters = state.filterChain;
       } catch (_) {}
     }
     function clearFilters() { setFilterChain([]); }
@@ -556,8 +561,27 @@ void main() {
       try { state.idIndex.clear(); } catch (_) {}
       const list = Array.isArray(sprites) ? sprites : [];
       try { state.lastSprites = list.slice(); } catch (_) { state.lastSprites = list; }
+      // Compute a conservative dungeon-space view window for culling
+      let cull = null;
+      try {
+        const app = state.app;
+        if (app && app.renderer) {
+          const s = state.pixelPerfect ? Math.max(1, Math.round(state.camera.scale)) : state.camera.scale;
+          const viewW = app.renderer.width / s;
+          const viewH = app.renderer.height / s;
+          const minX = Math.floor(state.camera.x / state.tile.w) - 1;
+          const minY = Math.floor(state.camera.y / state.tile.h) - 1;
+          const maxX = Math.ceil((state.camera.x + viewW) / state.tile.w) + 1;
+          const maxY = Math.ceil((state.camera.y + viewH) / state.tile.h) + 1;
+          cull = { minX, minY, maxX, maxY };
+        }
+      } catch (_) { cull = null; }
       list.forEach((s) => {
         try {
+          if (cull) {
+            const sx = (s.x|0); const sy = (s.y|0);
+            if (sx < cull.minX || sy < cull.minY || sx > cull.maxX || sy > cull.maxY) return; // skip offscreen
+          }
           const code = Number.isFinite(s?.charCode) ? (s.charCode|0) : ((s?.char && String(s.char).codePointAt(0)) || 32);
           const tex = textureForCode(code);
           if (!tex) return;
@@ -609,14 +633,6 @@ void main() {
       state.root = null;
     }
 
-    // Deprecated wrapper: accept legacy entity list and translate to sprites
-    function setEntities(list) {
-      try { console.warn('[pixiDungeonRenderer] setEntities() is deprecated; use setSprites()'); } catch (_) {}
-      const arr = Array.isArray(list) ? list : [];
-      const sprites = arr.map((e) => ({ id: e.id, char: e.char, charCode: e.charCode, x: e.x|0, y: e.y|0, color: Array.isArray(e.color) ? e.color : (Number.isFinite(e.color) ? e.color : 0xFFFFFF), alpha: (e.alpha != null) ? e.alpha : 1, occludes: !!(e.blocking || e.occludes) }));
-      setSprites(sprites);
-    }
-
     function animateEntity(id, toX, toY, opts = {}) {
       const rec = state.idIndex.get(id);
       if (!rec) return false;
@@ -636,14 +652,12 @@ void main() {
       init,
       setFont,
       setSprites,
-      setEntities,
       panCamera,
       zoomCamera,
       toScreen: ({ x, y }) => dungeonToScreen(x, y),
       animateEntity,
       enableBlackKeyFilters,
       disableBlackKeyFilters,
-      enableBlackKeyOnEntities, // deprecated alias
       setFilterChain,
       addFilter,
       clearFilters,
@@ -702,7 +716,6 @@ void main() {
     } catch (_) {}
 
     // Apply any pending assets staged before boot
-    try { if (window.__pendingEntities) api.setEntities(window.__pendingEntities); } catch (_) {}
     try { if (window.__pendingSprites) api.setSprites(window.__pendingSprites); } catch (_) {}
 
     console.log('[pixiDungeonRenderer] ready. Exposed as window.pxr');
