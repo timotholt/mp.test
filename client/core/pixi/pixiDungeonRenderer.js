@@ -37,11 +37,6 @@
         return PIXI;
       }
 
-    // Debug helper: set UV inset in pixels (applies to future texture frame builds)
-    function setUvInsetPx(px) {
-      try { state.debug.uvInsetPx = Number(px) || 0; state.textures.byCode.clear(); rebuildMap(); setEntities(state.lastEntities||[]); } catch (_) {}
-    }
-
       // (helpers moved into createRendererAPI)
 
   // Placeholder GI-like filter (single-pass). Tunable and replaceable.
@@ -202,8 +197,7 @@ void main() {
       lastEntities: [], // remember latest desired entities to reapply post-font-load
       raf: 0,
       startTs: performance.now(),
-      debug: { floorBgTint: null, uvInsetPx: 0 },
-      flags: { useRT: true },
+      // no debug flags kept in production path
     };
 
     // Helpers: coordinate transforms
@@ -244,8 +238,8 @@ void main() {
         rowIdx = (rows - 1) - rowIdx;
       }
       const sy = rowIdx * (cellH || state.tile.h) + pad;
-      // Optional UV inset to avoid sampling atlas gutters
-      let inset = (state.debug && Number.isFinite(state.debug.uvInsetPx)) ? Number(state.debug.uvInsetPx) : 0;
+      // UV inset to avoid sampling atlas gutters (applied selectively to thin line glyphs below)
+      let inset = 0;
       // Apply a small permanent inset for thin CP437 line glyphs to reduce sporadic edge artifacts
       try {
         const LINE_CODES = [179,196,218,191,192,217,180,195,194,193,197];
@@ -364,9 +358,7 @@ void main() {
               // Dark plate floor (approx RGB ~0.03)
               spr.tint = 0x080808;
             } else if (ch === '░' || ch === '.') {
-              // Allow debug override for background floor tint
-              const t = (state.debug && state.debug.floorBgTint != null) ? state.debug.floorBgTint : 0x242424;
-              spr.tint = t;
+              spr.tint = 0x242424;
             }
           } catch (_) {}
           // If rows are vertically flipped inside tiles, flip the sprite.
@@ -450,23 +442,6 @@ void main() {
     // - Right group as ENTITIES drawn over a dim background
     // You can override range/shape via opts: { start, end, cols, blackKey, threshold }
     function debugAsciiGrid(opts = {}) {
-      // Allow overriding the dim floor tint to make background more visible during tests
-      try {
-        const def = 0x0b3a7a; // dark blue
-        let tint = def;
-        if (opts && opts.bgTint != null) {
-          if (typeof opts.bgTint === 'number') {
-            tint = opts.bgTint | 0;
-          } else if (typeof opts.bgTint === 'string') {
-            const s = String(opts.bgTint).trim();
-            const hex = s.startsWith('#') ? s.slice(1) : s;
-            const n = parseInt(hex, 16);
-            if (Number.isFinite(n)) tint = n >>> 0;
-          }
-        }
-        state.debug.floorBgTint = tint;
-      } catch (_) {}
-      try { if (opts && opts.uvInsetPx != null) state.debug.uvInsetPx = Number(opts.uvInsetPx) || 0; } catch (_) {}
       const start = Number.isFinite(opts.start) ? (opts.start|0) : 32;
       const end = Number.isFinite(opts.end) ? (opts.end|0) : 256; // inclusive
       const count = Math.max(0, (end - start + 1));
@@ -485,7 +460,7 @@ void main() {
       const width = groupX5 + groupCols + pad;
       const height = topY + groupRows + pad;
 
-      // Background tile to make black-key artifacts visible: use '.' which we tint to 0x242424 in rebuildMap().
+      // Background tiles use '.' (tinted to 0x242424 in rebuildMap()).
       const bg = '.';
       const grid = [];
       for (let y = 0; y < height; y++) {
@@ -783,47 +758,16 @@ void main() {
       state.rt.sprite = new PIXI.Sprite(state.rt.scene);
       state.rt.sprite.roundPixels = true;
       app.stage.addChild(state.rt.sprite);
-      // Ensure stage only contains postfx RT sprite (and UI); root remains offstage when using RT
+      // Ensure stage only contains postfx RT sprite (and UI); root remains offstage
       try { app.stage.removeChild(root); } catch (_) {}
-
-      function applyRTMode() {
-        const useRT = !!state.flags.useRT;
-        try {
-          if (useRT) {
-            // Stage should have RT sprite and not the root container
-            if (!app.stage.children.includes(state.rt.sprite)) app.stage.addChild(state.rt.sprite);
-            try { app.stage.removeChild(root); } catch (_) {}
-          } else {
-            // Stage should have root directly and no RT sprite
-            try { app.stage.removeChild(state.rt.sprite); } catch (_) {}
-            if (!app.stage.children.includes(root)) app.stage.addChild(root);
-          }
-        } catch (_) {}
-      }
-      applyRTMode();
 
       // GI-like filter (available but disabled by default to keep base colors faithful)
       state.giFilter = createGiFilter(PIXI);
       state.filterChain = [];
       state.rt.sprite.filters = state.filterChain;
 
-      // Default: enable black-key on ENTITIES only (helps atlases without alpha)
-      try {
-        let th = 0.025; // safe conservative default
-        try {
-          const s = localStorage.getItem('ui_blackkey_entities_threshold');
-          if (s != null && s !== '') {
-            if (s.trim().endsWith('%')) {
-              const p = parseFloat(s);
-              if (Number.isFinite(p)) th = Math.max(0, Math.min(1, p / 100));
-            } else {
-              const v = Number(s);
-              if (Number.isFinite(v)) th = Math.max(0, Math.min(1, v));
-            }
-          }
-        } catch (_) {}
-        enableBlackKeyOnEntities(th);
-      } catch (_) {}
+      // Default: enable black-key on ENTITIES only (fixed threshold)
+      try { enableBlackKeyOnEntities(0.025); } catch (_) {}
 
       // Pointer wheel zoom (anchor under cursor) and drag pan
       try {
@@ -913,26 +857,17 @@ void main() {
           state.giFilter.uniforms.uTime = (now - state.startTs) * 0.001;
         }
 
-        if (state.flags.useRT) {
-          // First render world into RT (try Pixi v7 signature, fallback to v6)
-          try {
-            app.renderer.render({ container: root, target: state.rt.scene, clear: true });
-          } catch (_) {
-            try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {}
-          }
-          // Then render stage, which has the RT sprite with filters
-          try {
-            app.renderer.render({ container: app.stage, clear: true });
-          } catch (_) {
-            try { app.renderer.render(app.stage); } catch (_) {}
-          }
-        } else {
-          // Direct render: stage contains root + UI, no RT indirection
-          try {
-            app.renderer.render({ container: app.stage, clear: true });
-          } catch (_) {
-            try { app.renderer.render(app.stage); } catch (_) {}
-          }
+        // First render world into RT (try Pixi v7 signature, fallback to v6)
+        try {
+          app.renderer.render({ container: root, target: state.rt.scene, clear: true });
+        } catch (_) {
+          try { app.renderer.render(root, { renderTexture: state.rt.scene, clear: true }); } catch (_) {}
+        }
+        // Then render stage, which has the RT sprite with filters
+        try {
+          app.renderer.render({ container: app.stage, clear: true });
+        } catch (_) {
+          try { app.renderer.render(app.stage); } catch (_) {}
         }
         state.raf = requestAnimationFrame(tick);
       }
@@ -1037,9 +972,6 @@ void main() {
       setFilterChain,
       addFilter,
       clearFilters,
-      setBypassRT: (flag) => { try { state.flags.useRT = !flag; applyRTMode(); } catch (_) {} },
-      enableAtlasExtrude,
-      disableAtlasExtrude,
       destroy,
     };
     return api;
@@ -1100,21 +1032,6 @@ void main() {
     console.log('[pixiDungeonRenderer] ready. Exposed as window.pxr');
     // Signal readiness so producers (e.g., dungeonDisplayManager) can push content deterministically
     try { window.dispatchEvent(new CustomEvent('pxr:ready')); } catch (_) {}
-    // Convenience: allow quickly invoking the ASCII debug grid from console
-    try {
-      window.showAsciiBlackKeyDebug = async (opts) => {
-        // If the renderer hasn't been booted yet, boot first
-        try {
-          if (!window.pxr) {
-            const PIXI2 = await loadPixi();
-            const api2 = createRendererAPI(PIXI2);
-            window.pxr = api2;
-            await api2.init({ containerId: 'pixi-canvas' });
-          }
-        } catch (_) {}
-        try { window.pxr.debugAsciiGrid(opts || {}); } catch (_) {}
-      };
-    } catch (_) {}
     return api;
   }
 
