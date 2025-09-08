@@ -87,7 +87,7 @@
         if (ch === '#') {
           const n = isWall(x, y - 1), s = isWall(x, y + 1), w = isWall(x - 1, y), e = isWall(x + 1, y);
           const g = wallGlyph(n, s, w, e);
-          overlays.push({ x, y, charCode: g.code, color: 0x404040, alpha: 1, occludes: true  });
+          overlays.push({ x, y, charCode: g.code, color: 0xf0f0f0, alpha: 1, occludes: true  });
         } else if (ch === '@') {
           overlays.push({ x, y, charCode: 64, color: 0xFFFFFF, alpha: 1, occludes: false });
         } else if (ch !== ' ' && ch !== '.') {

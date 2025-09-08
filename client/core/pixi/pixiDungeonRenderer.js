@@ -140,7 +140,8 @@ void main() {
       app: null,
       root: null,
       layers: {
-        world: null,      // unified visible glyphs
+        floors: null,     // unfiltered background floor tiles
+        world: null,      // visible glyphs that may need black-key
         occlusion: null,  // monochrome mask
         ui: null,
       },
@@ -370,13 +371,17 @@ void main() {
 
       // Layers: world (visible) + occlusion (mask)
       const MaxSprites = 65535;
+      // Floors: separate unfiltered container so binary key doesn't cause seams on solid tiles
+      state.layers.floors = new PIXI.Container();
       // World must be a Container to support filters (black-key pre-composite)
       state.layers.world = new PIXI.Container();
       // Occlusion uses a Container so we can apply threshold filtering for binary masks
       state.layers.occlusion = new PIXI.Container();
       state.layers.ui = new PIXI.Container();
+      root.addChild(state.layers.floors);
       root.addChild(state.layers.world);
       app.stage.addChild(state.layers.ui);
+      try { state.layers.floors.roundPixels = true; } catch (_) {}
       try { state.layers.world.roundPixels = true; } catch (_) {}
       try { state.layers.occlusion.roundPixels = true; } catch (_) {}
 
@@ -614,8 +619,9 @@ void main() {
 
 
     function setSprites(sprites) {
-      const world = state.layers.world; const occ = state.layers.occlusion;
+      const floors = state.layers.floors; const world = state.layers.world; const occ = state.layers.occlusion;
       if (!world) return;
+      if (floors) floors.removeChildren();
       world.removeChildren();
       try { if (occ) occ.removeChildren(); } catch (_) {}
       try { state.idIndex.clear(); } catch (_) {}
@@ -666,7 +672,12 @@ void main() {
           } catch (_) { spr.tint = 0xFFFFFF; }
           // If rows are vertically flipped inside tiles, flip the sprite.
           if (state.flip.row) { spr.scale.y = -1; spr.y += state.tile.h; }
-          world.addChild(spr);
+          // Route solid floor block to the unfiltered floors layer to avoid filter-induced artifacts
+          if (floors && code === 219 && s.occludes === false) {
+            floors.addChild(spr);
+          } else {
+            world.addChild(spr);
+          }
           if (s.occludes) {
             // Use the exact glyph texture for occlusion so the mask matches visible pixels
             const o = new PIXI.Sprite(tex);
