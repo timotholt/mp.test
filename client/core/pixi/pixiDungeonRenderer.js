@@ -213,20 +213,20 @@ void main() {
     // (legacy atlas extrude/rebuild code removed in sprite-only renderer)
     // (legacy setEntities/pending map recombine removed; new setEntities wrapper defined later)
 
-    // Enable chroma-key style transparency on both tile and entity layers
+    // Enable chroma-key style transparency on world layer (pre-composite)
     function enableBlackKeyFilters(threshold) {
       try {
         const fk = createBlackKeyFilter(PIXI);
         if (threshold != null && Number.isFinite(threshold)) fk.uniforms.uThreshold = Number(threshold);
         state.blackKeyFilter = fk;
-        if (state.rt && state.rt.sprite) state.rt.sprite.filters = [fk].concat(state.filterChain || []);
+        if (state.layers.world) state.layers.world.filters = [fk];
       } catch (_) {}
     }
 
     // Disable black-key filters on both layers
     function disableBlackKeyFilters() {
       state.blackKeyFilter = null;
-      try { if (state.rt && state.rt.sprite) state.rt.sprite.filters = state.filterChain || []; } catch (_) {}
+      try { if (state.layers.world) state.layers.world.filters = null; } catch (_) {}
     }
 
     // Simple tween manager for entity motion (see final animateEntity using idIndex)
@@ -345,12 +345,12 @@ void main() {
 
       // Layers: world (visible) + occlusion (mask)
       const MaxSprites = 65535;
+      // World must be a Container to support filters (black-key pre-composite)
+      state.layers.world = new PIXI.Container();
+      // Occlusion may use ParticleContainer for batching
       if (PIXI.ParticleContainer) {
-        state.layers.world = new PIXI.ParticleContainer(MaxSprites, { scale: false, position: true, rotation: false, uvs: true, alpha: true, tint: true });
-        // Occlusion uses Texture.WHITE scaled to tile size, so allow scale here
         state.layers.occlusion = new PIXI.ParticleContainer(MaxSprites, { scale: true, position: true, rotation: false, uvs: false, alpha: true, tint: false });
       } else {
-        state.layers.world = new PIXI.Container();
         state.layers.occlusion = new PIXI.Container();
       }
       state.layers.ui = new PIXI.Container();
@@ -539,15 +539,14 @@ void main() {
     function setFilterChain(filtersArray) {
       try {
         state.filterChain = Array.isArray(filtersArray) ? filtersArray.slice() : [];
-        if (state.blackKeyFilter) state.rt.sprite.filters = [state.blackKeyFilter].concat(state.filterChain);
-        else state.rt.sprite.filters = state.filterChain;
+        // User chain remains on RT sprite (post-fx); black-key stays on world pre-fx
+        state.rt.sprite.filters = state.filterChain;
       } catch (_) {}
     }
     function addFilter(filter) {
       try {
         state.filterChain.push(filter);
-        if (state.blackKeyFilter) state.rt.sprite.filters = [state.blackKeyFilter].concat(state.filterChain);
-        else state.rt.sprite.filters = state.filterChain;
+        state.rt.sprite.filters = state.filterChain;
       } catch (_) {}
     }
     function clearFilters() { setFilterChain([]); }

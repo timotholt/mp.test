@@ -124,9 +124,23 @@
     try {
       const STATES = window.APP_STATES || {};
       const extras = route === STATES.LOGIN ? [
+        // Three demo '@' sprites
         { id: 'demo-1', x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false },
         { id: 'demo-2', x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false },
         { id: 'demo-3', x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false },
+        // Test: line-drawing characters as EXTRAS to compare transparency with map-origin walls
+        // Small rectangle near top-left of corridor
+        { id: 'lx', x: 6,  y: 2, color: [1.0, 0.28, 0.28], charCode: 196, blocking: false }, // H
+        { id: 'lx2',x: 7,  y: 2, color: [1.0, 0.28, 0.28], charCode: 196, blocking: false },
+        { id: 'lx3',x: 8,  y: 2, color: [1.0, 0.28, 0.28], charCode: 196, blocking: false },
+        { id: 'ly1',x: 6,  y: 3, color: [1.0, 0.28, 0.28], charCode: 179, blocking: false }, // V
+        { id: 'ly2',x: 8,  y: 3, color: [1.0, 0.28, 0.28], charCode: 179, blocking: false },
+        { id: 'ltl',x: 6,  y: 2, color: [1.0, 0.28, 0.28], charCode: 218, blocking: false }, // TL
+        { id: 'tr', x: 8,  y: 2, color: [1.0, 0.28, 0.28], charCode: 191, blocking: false }, // TR
+        { id: 'bl', x: 6,  y: 4, color: [1.0, 0.28, 0.28], charCode: 192, blocking: false }, // BL
+        { id: 'br', x: 8,  y: 4, color: [1.0, 0.28, 0.28], charCode: 217, blocking: false }, // BR
+        // Caret as EXTRA to compare with map-origin '^'
+        { id: 'caret-extra', x: 10, y: 2, color: [1.0, 0.28, 0.28], char: '^', blocking: false },
       ] : [];
       const map = route === STATES.LOGIN ? LOGIN_MAP : route === STATES.LOBBY ? LOBBY_MAP : null;
       if (map) applySprites(buildSpritesFromMap(map, extras));
