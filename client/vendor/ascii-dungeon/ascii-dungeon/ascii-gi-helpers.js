@@ -559,6 +559,23 @@ class AsciiCanvas {
       if (typeof this.dungeonMap === 'string') {
         this.renderDungeon(this.dungeonMap);
       }
+
+    // Ensure ENTITY layer texture matches map dimensions
+    if (!this.entityViewTexture) {
+      this.entityViewTexture = this.gl.createTexture();
+    }
+    if (!this.entityData || this._entityW !== mapWidth || this._entityH !== mapHeight) {
+      this.entityData = new Uint8Array(mapWidth * mapHeight * 4);
+      this._entityW = mapWidth; this._entityH = mapHeight;
+      // Start empty (no entities)
+      this.entityData.fill(0);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, mapWidth, mapHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData);
+    }
     } catch (error) {
       console.error("Invalid character color map JSON:", error);
     }
@@ -648,7 +665,11 @@ class BaseSurface {
   }
 
   canvasModifications() {
-    return {};
+    return {
+      setPositionBlockMapFill: (v) => this.setPositionBlockMapFill(v),
+      setBlockAt: (x, y, isBlocking) => this.setBlockAt(x, y, isBlocking),
+      setEntities: (list) => this.setEntities(list),
+    };
   }
 
   observe() {
@@ -946,7 +967,7 @@ class DungeonRenderer extends BaseSurface {
       console.log('[DEBUG renderer] updateAsciiViewTexture', { mapWidth, mapHeight, padding });
     } catch (_) {}
 
-    // Create a Uint8Array to hold RGBA data for each cell
+    // Create a Uint8Array to hold RGBA data for each cell (FLOOR layer)
     const data = new Uint8Array(mapWidth * mapHeight * 4);
 
     // Fill the texture data for the entire map
@@ -983,7 +1004,7 @@ class DungeonRenderer extends BaseSurface {
       }
     }
 
-    // Create and initialize the texture if it doesn't exist
+    // Create and initialize the FLOOR texture if it doesn't exist
     if (!this.asciiViewTexture) {
       this.asciiViewTexture = this.gl.createTexture();
     }
@@ -996,7 +1017,7 @@ class DungeonRenderer extends BaseSurface {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
 
-    // Upload the data to the texture
+    // Upload the data to the FLOOR texture
     this.gl.texImage2D(
       this.gl.TEXTURE_2D, 0, this.gl.RGBA8, mapWidth, mapHeight, 0,
       this.gl.RGBA, this.gl.UNSIGNED_BYTE, data
@@ -1051,10 +1072,13 @@ class DungeonRenderer extends BaseSurface {
     this.canvas = canvas;
     this.render = render;
     this.renderTargets = renderTargets;
-    const {container, setHex, setDungeonMap} = this.buildCanvas();
+    const {container, setHex, setDungeonMap, setPositionBlockMapFill, setBlockAt, setEntities} = this.buildCanvas();
     this.container = container;
     this.setHex = setHex;
     this.setDungeonMap = setDungeonMap;
+    if (typeof setPositionBlockMapFill === 'function') this.setPositionBlockMapFill = setPositionBlockMapFill;
+    if (typeof setBlockAt === 'function') this.setBlockAt = setBlockAt;
+    if (typeof setEntities === 'function') this.setEntities = setEntities;
     this.renderIndex = 0;
 
     // Initial calculation of grid size
@@ -1197,7 +1221,8 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+    // Use ENTITY layer as occlusion source (floors do not block)
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture || this.asciiViewTexture;
     // Use occlusion alpha when rendering offscreen for GI/DF
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
@@ -1227,8 +1252,71 @@ class DungeonRenderer extends BaseSurface {
 
     // Render to screen
     this.renderer.setRenderTarget(null);
-    // Visual pass: disable occlusion alpha so glyph visuals remain unchanged
+    // Visual pass: draw FLOOR first (no occlusion alpha), then overlay ENTITIES
     this.dungeonUniforms.useOcclusionAlpha = 0.0;
+    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
     this.render();
+    // Overlay entities
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
+    this.render();
+  }
+
+  // API: Fill the entire PositionBlockMap with 0 or 255
+  setPositionBlockMapFill(value) {
+    const v = value ? 255 : 0;
+    if (!this.positionBlockData) return;
+    this.positionBlockData.fill(v);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this._positionBlockWidth, this._positionBlockHeight, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.positionBlockData);
+    try { this.renderPass(); } catch(_) {}
+  }
+
+  // API: Set one cell blocking/non-blocking
+  setBlockAt(x, y, isBlocking) {
+    if (!this.positionBlockData) return;
+    const padding = 2;
+    const mx = x + padding;
+    const my = y + padding;
+    if (mx < 0 || my < 0 || mx >= this._positionBlockWidth || my >= this._positionBlockHeight) return;
+    const idx = my * this._positionBlockWidth + mx;
+    this.positionBlockData[idx] = isBlocking ? 255 : 0;
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
+    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, mx, my, 1, 1, this.gl.RED, this.gl.UNSIGNED_BYTE, new Uint8Array([this.positionBlockData[idx]]));
+    try { this.renderPass(); } catch(_) {}
+  }
+
+  // API: Draw entities over floor visually and optionally block light per cell
+  setEntities(list) {
+    if (!this.entityData) return;
+    const padding = 2;
+    const W = this._entityW, H = this._entityH;
+    // Clear entity texture to empty
+    this.entityData.fill(0);
+    // We do not clear PositionBlockMap here; caller should set fill(0) first for floor semantics
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e) continue;
+      const mx = (e.x|0) + padding;
+      const my = (e.y|0) + padding;
+      if (mx < 0 || my < 0 || mx >= W || my >= H) continue;
+      const idx4 = ((H - my - 1) * W + mx) * 4;
+      const color = e.color && e.color.length === 3 ? e.color : [1,1,1];
+      this.entityData[idx4 + 0] = Math.max(0, Math.min(255, Math.floor(color[0] * 255)));
+      this.entityData[idx4 + 1] = Math.max(0, Math.min(255, Math.floor(color[1] * 255)));
+      this.entityData[idx4 + 2] = Math.max(0, Math.min(255, Math.floor(color[2] * 255)));
+      const code = (typeof e.char === 'string' && e.char.length > 0) ? (e.char.codePointAt(0) & 0xFF) : 32;
+      this.entityData[idx4 + 3] = code;
+      if (e.blocking) {
+        const bIdx = my * this._positionBlockWidth + mx;
+        this.positionBlockData[bIdx] = 255;
+      }
+    }
+    // Upload entity texture
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, W, H, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData);
+    // Upload updated block map (full upload keeps it simple)
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this._positionBlockWidth, this._positionBlockHeight, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.positionBlockData);
+    try { this.renderPass(); } catch(_) {}
   }
 }
