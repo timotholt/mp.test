@@ -498,6 +498,14 @@ export async function setupAsciiRenderer() {
         }
       })();
     } catch (_) {}
+
+    // Apply advanced GI preferences at boot if available (vendor defaults via Prefs)
+    try {
+      if (window.Prefs && typeof window.Prefs.loadAll === 'function') {
+        const adv = window.Prefs.loadAll('display.rc');
+        window.dispatchEvent(new CustomEvent('ui:rc-advanced-changed', { detail: adv }));
+      }
+    } catch (_) {}
   } catch (e) {
     console.error('[ASCII renderer] setup failed:', e);
   }
@@ -616,19 +624,92 @@ try {
       const threshold = Number(d.threshold) || 0;
       const curve = Number(d.curve) || 1;
       const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
-      const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
+      const srgbGamma = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
       const overlayGain = (d.overlayGain != null) ? Math.max(0, Math.min(3, Number(d.overlayGain))) : null;
       const emissionThreshold = (d.emissionThreshold != null) ? Math.max(0, Math.min(1, Number(d.emissionThreshold))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
-      // Map Falloff slider to distance attenuation (lightDecay) to control shadow range
-      if (srgbFalloff != null) rc.rcUniforms.lightDecay = srgbFalloff;
+      // Map Falloff slider to SRGB gamma (vendor uses 'srgb' exponent)
+      if (srgbGamma != null) rc.rcUniforms.srgb = srgbGamma;
       if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
       if (rc.overlayUniforms && overlayGain != null) rc.overlayUniforms.overlayGain = overlayGain;
       // DF emission seeding threshold (floors + entities), if provided
       if (rc.dungeonUniforms && emissionThreshold != null) rc.dungeonUniforms.emissionThreshold = emissionThreshold;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
+  });
+} catch (_) {}
+
+// Advanced GI/Renderer preferences listener
+try {
+  window.addEventListener('ui:rc-advanced-changed', (e) => {
+    try {
+      const rc = window.radianceCascades;
+      if (!rc) return;
+      const p = (e && e.detail) || {};
+
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v)));
+      const exp = clamp(p.basePPExp != null ? p.basePPExp : rc.rawBasePixelsBetweenProbesExponent || 0, 0, 8);
+      const basePP = Math.pow(2, exp);
+      const baseRayCount = (p.baseRayCount != null) ? Number(p.baseRayCount) : (rc.baseRayCount || 4);
+      const rayInterval = (p.rayInterval != null) ? Number(p.rayInterval) : (rc.rayIntervalValue || 1.0);
+      const intervalOverlap = (p.intervalOverlap != null) ? Number(p.intervalOverlap) : (rc.intervalOverlapValue || 0.1);
+
+      let needsReinit = false;
+      try {
+        if (Number(rc.rawBasePixelsBetweenProbesExponent) !== exp) needsReinit = true;
+        if (Number(rc.baseRayCount) !== Number(baseRayCount)) needsReinit = true;
+      } catch (_) {}
+
+      // Apply base fields
+      rc.rawBasePixelsBetweenProbesExponent = exp;
+      rc.rawBasePixelsBetweenProbes = basePP;
+      rc.baseRayCount = baseRayCount;
+      rc.rayIntervalValue = rayInterval;
+      rc.intervalOverlapValue = intervalOverlap;
+
+      if (needsReinit) {
+        try { if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true); } catch (_) {}
+        try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
+      }
+
+      // Uniform updates (safe after potential reinit)
+      try {
+        if (rc.rcUniforms) {
+          rc.rcUniforms.rayInterval = rc.rayIntervalValue;
+          rc.rcUniforms.intervalOverlap = rc.intervalOverlapValue;
+          if (p.distanceAttenuation != null) rc.rcUniforms.lightDecay = clamp(p.distanceAttenuation, 0, 3);
+          if (p.bilinearFix != null) rc.rcUniforms.bilinearFixEnabled = !!p.bilinearFix;
+          if (p.addNoise != null) rc.rcUniforms.addNoise = !!p.addNoise;
+          if (p.enableSun != null) rc.rcUniforms.enableSun = !!p.enableSun;
+          if (p.sunAngle != null) rc.rcUniforms.sunAngle = Number(p.sunAngle) || 0.0;
+        }
+        if (rc.dungeonUniforms && p.emissionThreshold != null) {
+          rc.dungeonUniforms.emissionThreshold = clamp(p.emissionThreshold, 0, 1);
+        }
+      } catch (_) {}
+
+      // Filtering toggle for RC render targets (vendor parity)
+      try {
+        if (Array.isArray(rc.rcRenderTargets) && p.nearestFiltering != null) {
+          rc.rcRenderTargets.forEach((r) => {
+            if (!r || !r.updateFilters) return;
+            if (p.nearestFiltering) {
+              r.updateFilters({ minFilter: rc.gl.NEAREST_MIPMAP_NEAREST, magFilter: rc.gl.NEAREST });
+            } else {
+              r.updateFilters({ minFilter: rc.gl.LINEAR_MIPMAP_LINEAR, magFilter: rc.gl.LINEAR });
+            }
+          });
+        }
+      } catch (_) {}
+
+      // Force full pass toggle
+      try { if (p.forceFullPass != null) rc.forceFullPass = !!p.forceFullPass; } catch (_) {}
+
+      try { rc.renderPass && rc.renderPass(); } catch (_) {}
+    } catch (err) {
+      try { console.warn('[ui:rc-advanced-changed] handler error', err); } catch (_) {}
+    }
   });
 } catch (_) {}
 

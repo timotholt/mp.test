@@ -8,6 +8,7 @@ import { createDropdown } from '../../../core/ui/controls.js';
 import { listFonts, getFont, resolveImageSrc, computeGlyphCount } from '../../../core/ui/dungeon/fontCatalog.js';
 import { LockedThemeDefaults } from '../../../core/ui/theme/tokens.js';
 import { getQuip } from '../../../core/ui/quip.js';
+import { defineNamespace as definePrefsNs, loadAll as prefsLoadAll, get as prefsGet, set as prefsSet, resetAll as prefsResetAll } from '../../../core/prefs/prefs.js';
 
 // Quips for Display tab (eyesight, scaling, glasses, etc.)
 const DISPLAY_QUIPS = [
@@ -45,6 +46,28 @@ const DUNGEON_QUIPS = [
 ];
 
 export function renderDisplayTab(container) {
+
+  // Ensure Display RC namespace is defined (vendor defaults)
+  try {
+    definePrefsNs('display.rc', {
+      version: 1,
+      defaults: {
+        // Vendor-aligned defaults
+        basePPExp: 0,              // 2^0 => 1 pixel between base probes
+        baseRayCount: 4,           // 4 rays base
+        rayInterval: 1.0,          // interval length
+        intervalOverlap: 0.1,      // 10%
+        distanceAttenuation: 0.0,  // vendor UI had no attenuation; keep 0
+        emissionThreshold: 0.35,   // GI seeding threshold (project extension)
+        bilinearFix: true,         // vendor default: YES
+        nearestFiltering: false,   // vendor default: Nearest OFF
+        addNoise: false,
+        enableSun: false,
+        sunAngle: 0.0,
+        forceFullPass: true,
+      }
+    });
+  } catch (_) {}
 
   // Section header: rotating quip aligned upper-right (via quip library)
   const quip = getQuip('settings.display.header', DISPLAY_QUIPS);
@@ -793,6 +816,148 @@ export function renderDisplayTab(container) {
         window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
       } catch (_) {}
     }
+  } catch (_) {}
+
+  // Advanced GI/Renderer section
+  try {
+    // Helper to emit entire advanced payload from prefs
+    const emitAdvanced = () => {
+      try {
+        const p = prefsLoadAll('display.rc');
+        window.dispatchEvent(new CustomEvent('ui:rc-advanced-changed', { detail: p }));
+      } catch (_) {}
+    };
+
+    const adv = makeSection('Advanced GI/Renderer', 'Expose vendor GI parameters', 'afterTitle', true);
+    container.appendChild(adv);
+
+    const toFixed2 = (v) => Number(v).toFixed(2);
+
+    // Base Pixels Between Probes (exponent)
+    const { row: pppRow, input: pppRng } = createRangeElement(
+      0, 4, 1, Math.max(0, Math.min(4, Number(prefsGet('display.rc', 'basePPExp', 0) || 0))), 'Probe Spacing:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (x) => {
+          const exp = Math.round(Number(x) || 0);
+          const val = Math.pow(2, exp);
+          return { text: `2^${exp} = ${val}`, title: `Base pixels between probes: ${val}`, derived: { exp, val } };
+        },
+        onChange: (x) => { try { prefsSet('display.rc', 'basePPExp', Math.round(Number(x) || 0)); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    adv.appendChild(pppRow);
+
+    // Base Ray Count (dropdown)
+    const brRow = createUiElement(basicToolbarRow, 'div');
+    const brLbl = createUiElement(basicFormLabel, 'Base Ray Count:');
+    const baseRayInit = Number(prefsGet('display.rc', 'baseRayCount', 4)) || 4;
+    const brDd = createDropdown({
+      items: [4, 9, 16].map(v => ({ label: String(v), value: v })),
+      value: baseRayInit,
+      width: '10rem',
+      onChange: (v) => { try { prefsSet('display.rc', 'baseRayCount', Number(v) || 4); emitAdvanced(); } catch (_) {} }
+    });
+    brRow.appendChild(brLbl);
+    brRow.appendChild(brDd.el);
+    adv.appendChild(brRow);
+
+    // Ray Interval
+    const { row: riRow } = createRangeElement(
+      0.5, 2.0, 0.05, Math.max(0.5, Math.min(2.0, Number(prefsGet('display.rc', 'rayInterval', 1.0)) || 1.0)), 'Interval Length:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        onChange: (v) => { try { prefsSet('display.rc', 'rayInterval', Number(v) || 1.0); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    adv.appendChild(riRow);
+
+    // Interval Overlap
+    const { row: ioRow } = createRangeElement(
+      0.0, 0.5, 0.02, Math.max(0.0, Math.min(0.5, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        onChange: (v) => { try { prefsSet('display.rc', 'intervalOverlap', Number(v) || 0.1); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    adv.appendChild(ioRow);
+
+    // Distance Attenuation (light decay)
+    const { row: ldRow } = createRangeElement(
+      0.0, 3.0, 0.05, Math.max(0.0, Math.min(3.0, Number(prefsGet('display.rc', 'distanceAttenuation', 0.0)) || 0.0)), 'Distance Attenuation:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        onChange: (v) => { try { prefsSet('display.rc', 'distanceAttenuation', Number(v) || 0.0); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    adv.appendChild(ldRow);
+
+    // Emission Threshold (DF seeding)
+    const { row: etRow } = createRangeElement(
+      0.0, 1.0, 0.01, Math.max(0.0, Math.min(1.0, Number(prefsGet('display.rc', 'emissionThreshold', 0.35)) || 0.35)), 'Emission Threshold:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        onChange: (v) => { try { prefsSet('display.rc', 'emissionThreshold', Number(v) || 0.35); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    adv.appendChild(etRow);
+
+    // Toggles: Bilinear Fix, Nearest Filtering, Add Noise, Force Full Pass
+    const tgRow1 = createUiElement(basicToolbarRow, 'div');
+    const mkToggle = (label, key) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '0.5rem';
+      const lbl = createUiElement(basicFormLabel, label);
+      const initVal = !!prefsGet('display.rc', key, false);
+      const dd = createDropdown({ items: [
+        { label: 'On', value: 'on' },
+        { label: 'Off', value: 'off' },
+      ], value: initVal ? 'on' : 'off', width: '6.5rem', onChange: (v) => {
+        try { prefsSet('display.rc', key, v === 'on'); emitAdvanced(); } catch (_) {}
+      }});
+      row.appendChild(lbl);
+      row.appendChild(dd.el);
+      return row;
+    };
+    tgRow1.appendChild(mkToggle('Bilinear Fix:', 'bilinearFix'));
+    tgRow1.appendChild(mkToggle('Nearest Filtering:', 'nearestFiltering'));
+    adv.appendChild(tgRow1);
+
+    const tgRow2 = createUiElement(basicToolbarRow, 'div');
+    tgRow2.appendChild(mkToggle('Add Noise:', 'addNoise'));
+    tgRow2.appendChild(mkToggle('Force Full Pass:', 'forceFullPass'));
+    adv.appendChild(tgRow2);
+
+    // Sun controls
+    const sunRow = createUiElement(basicToolbarRow, 'div');
+    const sunToggle = mkToggle('Sun:', 'enableSun');
+    sunRow.appendChild(sunToggle);
+    const { row: saRow } = createRangeElement(
+      0.0, 6.283, 0.01, Math.max(0.0, Math.min(6.283, Number(prefsGet('display.rc', 'sunAngle', 0.0)) || 0.0)), 'Sun Angle:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        onChange: (v) => { try { prefsSet('display.rc', 'sunAngle', Number(v) || 0.0); emitAdvanced(); } catch (_) {} }
+      }
+    );
+    sunRow.appendChild(saRow);
+    adv.appendChild(sunRow);
+
+    // Advanced Reset
+    const advToolbar = createUiElement(basicToolbarRow, 'div');
+    const advResetBtn = createUiElement(basicButton, 'Reset');
+    advResetBtn.onclick = () => { try { prefsResetAll('display.rc'); emitAdvanced(); } catch (_) {} };
+    advToolbar.appendChild(document.createElement('div'));
+    advToolbar.appendChild(document.createElement('div'));
+    advToolbar.appendChild(advResetBtn);
+    adv.appendChild(advToolbar);
+
+    // Emit once so renderer aligns on open
+    emitAdvanced();
   } catch (_) {}
 
 }
