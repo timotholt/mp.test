@@ -17,7 +17,7 @@
     '#..........######.................######...................#',
     '#...........................@..............................#',
     '#.............######....................######.............#',
-    '#.............#....#....................#....#.............#',
+    '#.............#....#....................#....#.....|.......#',
     '#.............#....#....................#....#.............#',
     '#.............######....................######.............#',
     '#..........................................................#',
@@ -65,11 +65,12 @@
           // Visual wall appearance comes primarily from the FLOOR layer color map below.
           // Use IBM block glyph for solid walls (CP437). CP437 code for '█' is 219.
           entities.push({ x, y, char: '█', charCode: 219, color: [0.06, 0.07, 0.08], blocking: true });
-        } else if (ch === '@') {
-          // Player '@' should be white in the entities layer
-          // entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
-          entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
         }
+        // else if (ch === '@') {
+        //   // Player '@' should be white in the entities layer
+        //   // entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
+        //   entities.push({ x, y, char: '@', color: [0.5, 0.5, 0.5], blocking: false });
+        // }
       }
     }
     return entities;
@@ -123,9 +124,9 @@
         // Place three colored humans via entity list (white, blue, red). Non-blocking, moderate tint.
         // Coordinates chosen to sit on the open floor row near the bottom (y=10) inside the corridor.
         window.__extraDemoEntities = [
-          // { x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false }, // white
-          // { x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false }, // blue (Ultramarines-like)
-          // { x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false }, // red (Blood Angels-like)
+          { x: 2, y: 4, char: '@', charCode: 64, color: [0.60, 0.60, 0.62], blocking: false }, // white
+          { x: 30, y: 7, char: '@', charCode: 64, color: [0.25, 0.45, 1.00], blocking: false }, // blue (Ultramarines-like)
+          { x: 48, y: 6, char: '@', charCode: 64, color: [1.00, 0.28, 0.28], blocking: false }, // red (Blood Angels-like)
         ];
         applyFloorAndEntities(LOGIN_MAP);
       } else if (route === STATES.LOBBY) {
