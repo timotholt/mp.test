@@ -853,7 +853,7 @@ export function renderDisplayTab(container) {
     const brLbl = createUiElement(basicFormLabel, 'Base Ray Count:');
     const baseRayInit = Number(prefsGet('display.rc', 'baseRayCount', 4)) || 4;
     const brDd = createDropdown({
-      items: [4, 9, 16].map(v => ({ label: String(v), value: v })),
+      items: [4, 16, 64].map(v => ({ label: String(v), value: v })),
       value: baseRayInit,
       width: '10rem',
       onChange: (v) => { try { prefsSet('display.rc', 'baseRayCount', Number(v) || 4); emitAdvanced(); } catch (_) {} }
@@ -864,7 +864,7 @@ export function renderDisplayTab(container) {
 
     // Ray Interval
     const { row: riRow } = createRangeElement(
-      0.5, 2.0, 0.05, Math.max(0.5, Math.min(2.0, Number(prefsGet('display.rc', 'rayInterval', 1.0)) || 1.0)), 'Interval Length:', {
+      1.0, 512.0, 0.1, Math.max(1.0, Math.min(512.0, Number(prefsGet('display.rc', 'rayInterval', 1.0)) || 1.0)), 'Interval Length:', {
         attachWheel,
         debugLabel: 'display',
         toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
@@ -875,7 +875,7 @@ export function renderDisplayTab(container) {
 
     // Interval Overlap
     const { row: ioRow } = createRangeElement(
-      0.0, 0.5, 0.02, Math.max(0.0, Math.min(0.5, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap:', {
+      -1.0, 2.0, 0.01, Math.max(-1.0, Math.min(2.0, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap:', {
         attachWheel,
         debugLabel: 'display',
         toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),

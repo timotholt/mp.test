@@ -546,6 +546,13 @@ class RC extends DistanceField {
       this.sunAngleSlider.disabled = true;
     }
 
+    // Vendor Parity Mode: when enabled, we mimic the vendor pipeline and parameter behavior.
+    // Toggle via window.__rcVendorParity (default: true)
+    try {
+      this.vendorParity = (typeof window !== 'undefined' && window.__rcVendorParity != null)
+        ? !!window.__rcVendorParity : true;
+    } catch (_) { this.vendorParity = true; }
+
     // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)
     this.srgbFalloff = 2.0; // default, overridden by renderer via ui:rc-debug-changed
 
@@ -585,13 +592,13 @@ class RC extends DistanceField {
         sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
         srgb: this.srgbFalloff,
-        lightDecay: 0.8,
+        lightDecay: this.vendorParity ? 0.0 : 0.8,
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
         // Debug defaults
-        threshold: 0.0,
-        curve: 1.0,
+        threshold: this.vendorParity ? 0.0 : 0.0,
+        curve: this.vendorParity ? 1.0 : 1.0,
       },
       fragmentShader: rcFragmentShader,
     });
@@ -716,8 +723,18 @@ class RC extends DistanceField {
   }
 
   overlayPass(inputTexture, preRc) {
-    // Build a high-res SURFACE texture (floors + entities) for on-screen composition.
-    // We render the floor first (no occlusion alpha), then overlay entities.
+    // Vendor parity path: render RC directly to screen; no fog/haze or entities overlay.
+    if (this.vendorParity) {
+      // Ensure both samplers are valid; disable surface show flag
+      this.overlayUniforms.inputTexture = inputTexture;
+      this.overlayUniforms.drawPassTexture = inputTexture;
+      this.overlayUniforms.showSurface = false;
+      this.renderer.setRenderTarget(null);
+      this.overlayRender();
+      return;
+    }
+
+    // Current enhanced path: fog on FLOOR, then overlay ENTITIES
     if (!this.surfaceRenderTarget) {
       this.surfaceRenderTarget = this.renderer.createRenderTarget(
         this.width * this.scaling,
@@ -732,15 +749,12 @@ class RC extends DistanceField {
       );
     }
 
-    // Build FLOOR-only surface for fog. Do NOT compose entities here.
     this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
     this.renderer.setRenderTarget(this.surfaceRenderTarget);
-    // Clear to fully transparent to avoid previous-frame remnants
     this.renderer.clear();
     this.render();
 
-    // Feed composed surface into the overlay shader
     this.overlayUniforms.drawPassTexture = this.surfaceRenderTarget.texture;
 
     if (this.forceFullPass) {
@@ -759,11 +773,9 @@ class RC extends DistanceField {
       this.overlayRender();
     }
 
-    // Render directly to screen (fog applied to FLOOR only)
     this.renderer.setRenderTarget(null);
     this.overlayRender();
 
-    // Now overlay ENTITIES on top of the fogged scene (no fog on entities)
     const gl = this.gl;
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -845,6 +857,12 @@ class RC extends DistanceField {
   }
 
   rcPass(distanceFieldTexture, dungeonTexture) {
+    // Enforce vendor parity core params regardless of UI state
+    if (this.vendorParity && this.rcUniforms) {
+      this.rcUniforms.threshold = 0.0;
+      this.rcUniforms.curve = 1.0;
+      this.rcUniforms.lightDecay = 0.0;
+    }
     this.rcUniforms.distanceTexture = distanceFieldTexture;
     this.rcUniforms.sceneTexture = dungeonTexture;
     this.rcUniforms.cascadeIndex = 0;
@@ -898,10 +916,15 @@ class RC extends DistanceField {
         return;
       }
     }
-
-    // Use combined FLOOR+ENTITIES emission for GI sceneTexture (entities still drive occlusion)
-    const emissionTexture = this.buildEmissionSurfaceTexture();
-    let rcTexture = this.rcPass(this.distanceFieldTexture, emissionTexture);
+    let rcTexture = null;
+    if (this.vendorParity) {
+      // Vendor path: use the high-res dungeon draw as the scene texture
+      rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
+    } else {
+      // Enhanced path: combined FLOOR+ENTITIES emission for GI
+      const emissionTexture = this.buildEmissionSurfaceTexture();
+      rcTexture = this.rcPass(this.distanceFieldTexture, emissionTexture);
+    }
 
     this.overlayPass(rcTexture, false);
 

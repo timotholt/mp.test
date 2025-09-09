@@ -346,7 +346,7 @@ export async function setupAsciiRenderer() {
       if (!dragging) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
-      const zoomFactor = 1.0 / Math.sqrt(rc.camera.zoomLevel || 1.0);
+      const zoomFactor = 1.0 / (rc.camera.zoomLevel || 1.0);
       rc.panCamera(-dx * zoomFactor, -dy * zoomFactor);
       lastX = e.clientX;
       lastY = e.clientY;
