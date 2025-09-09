@@ -772,6 +772,41 @@ class RC extends DistanceField {
     gl.disable(gl.BLEND);
   }
 
+  // Build a combined high-res emission surface (FLOOR first, then overlay ENTITIES)
+  // to be used as the GI sceneTexture. This lets non-blocking floor emitters glow.
+  buildEmissionSurfaceTexture() {
+    if (!this.surfaceRenderTarget) {
+      this.surfaceRenderTarget = this.renderer.createRenderTarget(
+        this.width * this.scaling,
+        this.height * this.scaling,
+        {
+          minFilter: this.gl.NEAREST,
+          magFilter: this.gl.NEAREST,
+          internalFormat: this.gl.RGBA,
+          format: this.gl.RGBA,
+          type: this.gl.UNSIGNED_BYTE,
+        }
+      );
+    }
+
+    // Render FLOOR first (no occlusion alpha)
+    this.dungeonUniforms.useOcclusionAlpha = 0.0;
+    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
+    this.renderer.setRenderTarget(this.surfaceRenderTarget);
+    this.renderer.clear();
+    this.render();
+
+    // Overlay ENTITIES into the same target so both contribute emission
+    const gl = this.gl;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
+    this.render();
+    gl.disable(gl.BLEND);
+
+    return this.surfaceRenderTarget.texture;
+  }
+
   triggerDraw() {
     this.renderPass();
   }
@@ -864,7 +899,9 @@ class RC extends DistanceField {
       }
     }
 
-    let rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
+    // Use combined FLOOR+ENTITIES emission for GI sceneTexture (entities still drive occlusion)
+    const emissionTexture = this.buildEmissionSurfaceTexture();
+    let rcTexture = this.rcPass(this.distanceFieldTexture, emissionTexture);
 
     this.overlayPass(rcTexture, false);
 

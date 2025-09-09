@@ -618,12 +618,15 @@ try {
       const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
       const srgbFalloff = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
       const overlayGain = (d.overlayGain != null) ? Math.max(0, Math.min(3, Number(d.overlayGain))) : null;
+      const emissionThreshold = (d.emissionThreshold != null) ? Math.max(0, Math.min(1, Number(d.emissionThreshold))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
       // Map Falloff slider to distance attenuation (lightDecay) to control shadow range
       if (srgbFalloff != null) rc.rcUniforms.lightDecay = srgbFalloff;
       if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
       if (rc.overlayUniforms && overlayGain != null) rc.overlayUniforms.overlayGain = overlayGain;
+      // DF emission seeding threshold (floors + entities), if provided
+      if (rc.dungeonUniforms && emissionThreshold != null) rc.dungeonUniforms.emissionThreshold = emissionThreshold;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
   });
