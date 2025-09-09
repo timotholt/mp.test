@@ -885,14 +885,25 @@ class DungeonRenderer extends BaseSurface {
     this.camera.y -= zoomScaledDeltaY; // Y is flipped in the coordinate system
 
     // Calculate subtile offset from the fractional part of camera position
-    // This is only for shader display purposes
-    this.camera.subtileOffsetX = this.camera.x - Math.floor(this.camera.x);
-    this.camera.subtileOffsetY = this.camera.y - Math.floor(this.camera.y);
+    // This is only for shader display purposes. In Vendor Parity Mode we force 0 to
+    // match the original demo behavior (uniform not used for fractional scroll).
+    const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
+    if (vp) {
+      this.camera.subtileOffsetX = 0.0;
+      this.camera.subtileOffsetY = 0.0;
+    } else {
+      this.camera.subtileOffsetX = this.camera.x - Math.floor(this.camera.x);
+      this.camera.subtileOffsetY = this.camera.y - Math.floor(this.camera.y);
+      if (this.camera.subtileOffsetX < 0) this.camera.subtileOffsetX += 1;
+      if (this.camera.subtileOffsetY < 0) this.camera.subtileOffsetY += 1;
+    }
 
-    // Ensure subtile offsets are in [0,1) range
-    if (this.camera.subtileOffsetX < 0) this.camera.subtileOffsetX += 1;
-    if (this.camera.subtileOffsetY < 0) this.camera.subtileOffsetY += 1;
-
+    // In Vendor Parity Mode, prevent sub-tile offset artifacts during zoom by
+    // forcing offsets to zero before updating uniforms.
+    try {
+      const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
+      if (vp) { this.camera.subtileOffsetX = 0.0; this.camera.subtileOffsetY = 0.0; }
+    } catch (_) {}
     this.updateCameraUniforms();
     this.renderPass();
   }
@@ -942,10 +953,13 @@ class DungeonRenderer extends BaseSurface {
   updateCameraUniforms() {
     if (this.dungeonUniforms) {
       this.dungeonUniforms.cameraPosition = [this.camera.x, this.camera.y];
-      // this.dungeonUniforms.subTileOffset = [
-      //   this.camera.subtileOffsetX,
-      //   this.camera.subtileOffsetY
-      // ];
+      // Strict Vendor Parity: always send [0,0] for subTileOffset when enabled.
+      try {
+        const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
+        if (vp) {
+          this.dungeonUniforms.subTileOffset = [0.0, 0.0];
+        }
+      } catch (_) {}
       this.updateGridSize();
     }
   }

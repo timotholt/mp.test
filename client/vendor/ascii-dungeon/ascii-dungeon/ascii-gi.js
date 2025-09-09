@@ -547,10 +547,17 @@ class RC extends DistanceField {
     }
 
     // Vendor Parity Mode: when enabled, we mimic the vendor pipeline and parameter behavior.
-    // Toggle via window.__rcVendorParity (default: true)
+    // Toggle via window.__rcVendorParity or persisted localStorage '__vendor_parity_mode' (default: true)
     try {
-      this.vendorParity = (typeof window !== 'undefined' && window.__rcVendorParity != null)
-        ? !!window.__rcVendorParity : true;
+      if (typeof window !== 'undefined' && window.__rcVendorParity != null) {
+        this.vendorParity = !!window.__rcVendorParity;
+      } else {
+        let persisted = null;
+        try { persisted = (localStorage && localStorage.getItem('__vendor_parity_mode')) || null; } catch (_) { persisted = null; }
+        if (persisted === 'on') this.vendorParity = true;
+        else if (persisted === 'off') this.vendorParity = false;
+        else this.vendorParity = true;
+      }
     } catch (_) { this.vendorParity = true; }
 
     // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)

@@ -648,13 +648,13 @@ export function renderDisplayTab(container) {
 
   } catch (_) {}
 
-  // Debug section (threshold/curve) — gated by flag
+  // Our Enhancements (threshold/curve/fog) — gated by flag
   try {
     const ENABLE_DEBUG = (typeof window !== 'undefined' && window.__enableDisplayDebug != null)
       ? !!window.__enableDisplayDebug
       : true; // enable by default; set window.__enableDisplayDebug=false to hide
     if (ENABLE_DEBUG) {
-      const dbg = makeSection('Debug', 'Threshold/Curve post-process. F8 hides UI.', 'afterTitle', true);
+      const dbg = makeSection('Our Enhancements', 'Non-vendor tweaks (threshold/curve/fog). F8 hides UI.', 'afterTitle', true);
       container.appendChild(dbg);
 
       const toFixed2 = (v) => Number(v).toFixed(2);
@@ -729,59 +729,40 @@ export function renderDisplayTab(container) {
       fogVal.id = 'settings-rc-fog-val';
       dbg.appendChild(fogRow);
 
-      // Falloff slider (Distance falloff for GI)
-      const { row: srgRow, input: srgRng, value: srgVal, reset: srgReset } = createRangeElement(
-        0.0, 3.0, 0.1, 2.0, 'Falloff:', {
-          storageKey: 'rc_debug_srgb',
+      // Move our custom controls here (were previously under Advanced)
+      // Distance Attenuation (light decay)
+      const { row: ldRow } = createRangeElement(
+        0.0, 3.0, 0.05, Math.max(0.0, Math.min(3.0, Number(prefsGet('display.rc', 'distanceAttenuation', 0.0)) || 0.0)), 'Distance Attenuation:', {
           attachWheel,
           debugLabel: 'display',
-          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
-          fromStorage: (s) => {
-            const v = parseFloat(s);
-            return Number.isFinite(v) ? Math.max(0.0, Math.min(3.0, v)) : 2.0;
-          },
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
           onChange: (v) => {
             try {
-              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
-              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
-              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
-              const haze = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
-              const detail = { threshold: thr, curve, fogAmount, srgbFalloff: Number(v) || 2.0, overlayGain: haze };
-              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+              prefsSet('display.rc', 'distanceAttenuation', Number(v) || 0.0);
+              const p = prefsLoadAll('display.rc');
+              window.dispatchEvent(new CustomEvent('ui:rc-advanced-changed', { detail: p }));
             } catch (_) {}
           }
         }
       );
-      srgRng.id = 'settings-rc-srgb';
-      srgVal.id = 'settings-rc-srgb-val';
-      dbg.appendChild(srgRow);
+      dbg.appendChild(ldRow);
 
-      // Haze Intensity (overlay gain, affects fog brightness)
-      const { row: hazRow, input: hazRng, value: hazVal, reset: hazReset } = createRangeElement(
-        0.0, 3.0, 0.05, 1.2, 'Haze Intensity:', {
-          storageKey: 'rc_debug_haze',
+      // Emission Threshold (DF seeding)
+      const { row: etRow } = createRangeElement(
+        0.0, 1.0, 0.01, Math.max(0.0, Math.min(1.0, Number(prefsGet('display.rc', 'emissionThreshold', 0.35)) || 0.35)), 'Emission Threshold:', {
           attachWheel,
           debugLabel: 'display',
-          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v } }),
-          fromStorage: (s) => {
-            const v = parseFloat(s);
-            return Number.isFinite(v) ? Math.max(0.0, Math.min(3.0, v)) : 1.2;
-          },
+          toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
           onChange: (v) => {
             try {
-              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
-              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
-              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
-              const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
-              const detail = { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain: Number(v) || 1.2 };
-              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+              prefsSet('display.rc', 'emissionThreshold', Number(v) || 0.35);
+              const p = prefsLoadAll('display.rc');
+              window.dispatchEvent(new CustomEvent('ui:rc-advanced-changed', { detail: p }));
             } catch (_) {}
           }
         }
       );
-      hazRng.id = 'settings-rc-haze';
-      hazVal.id = 'settings-rc-haze-val';
-      dbg.appendChild(hazRow);
+      dbg.appendChild(etRow);
 
       // Debug Reset button
       const dbgToolbar = createUiElement(basicToolbarRow, 'div');
@@ -790,15 +771,12 @@ export function renderDisplayTab(container) {
         try { thrReset && thrReset(); } catch (_) {}
         try { crvReset && crvReset(); } catch (_) {}
         try { fogReset && fogReset(); } catch (_) {}
-        try { srgReset && srgReset(); } catch (_) {}
-        try { hazReset && hazReset(); } catch (_) {}
         try {
           const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
           const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
           const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
           const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
-          const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
-          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
         } catch (_) {}
       };
       dbgToolbar.appendChild(document.createElement('div'));
@@ -812,8 +790,7 @@ export function renderDisplayTab(container) {
         const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
         const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
         const srgbFalloff = parseFloat(localStorage.getItem('rc_debug_srgb') || '2.0');
-        const overlayGain = parseFloat(localStorage.getItem('rc_debug_haze') || '1.2');
-        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff, overlayGain } }));
+        window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff } }));
       } catch (_) {}
     }
   } catch (_) {}
@@ -832,34 +809,91 @@ export function renderDisplayTab(container) {
     container.appendChild(adv);
 
     const toFixed2 = (v) => Number(v).toFixed(2);
+    // Vendor-style numeric formatter: integers shown without decimal; otherwise trim trailing zeros up to 3dp
+    const fmtVendor = (v) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return String(v);
+      const r = Math.round(n * 1000) / 1000;
+      if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+      let s = r.toFixed(3);
+      s = s.replace(/\.0+$/, '').replace(/(\.[0-9]*[1-9])0+$/, '$1');
+      return s;
+    };
+
+    // Vendor Parity Mode toggle (button). Persists and reloads to apply.
+    try {
+      const vpRow = createUiElement(basicToolbarRow, 'div');
+      const vpLbl = createUiElement(basicFormLabel, 'Vendor Parity Mode:');
+      let on = true;
+      try { on = ((localStorage.getItem('__vendor_parity_mode') || 'on') === 'on'); } catch (_) {}
+      try { window.__rcVendorParity = on; } catch (_) {}
+      const btn = createUiElement(basicButton, on ? 'On' : 'Off');
+      btn.onclick = () => {
+        try {
+          on = !on;
+          btn.textContent = on ? 'On' : 'Off';
+          localStorage.setItem('__vendor_parity_mode', on ? 'on' : 'off');
+          try { window.__rcVendorParity = on; } catch (_) {}
+          // Reload to fully reinitialize the pipeline under the selected mode
+          try { location.reload(); } catch (_) {}
+        } catch (_) {}
+      };
+      vpRow.appendChild(vpLbl);
+      vpRow.appendChild(btn);
+      adv.appendChild(vpRow);
+    } catch (_) {}
+
+    // Falloff (srgb exponent) — vendor control; wire into rc-debug change bus
+    try {
+      const initFall = (() => { const s = localStorage.getItem('rc_debug_srgb'); const v = parseFloat(s); return Number.isFinite(v) ? Math.max(0.1, Math.min(4.0, v)) : 2.0; })();
+      const { row: fallRow } = createRangeElement(
+        0.1, 4.0, 0.1, initFall, 'Falloff:', {
+          attachWheel,
+          debugLabel: 'display',
+          toDisplay: (v) => ({ text: fmtVendor(v), title: fmtVendor(v), derived: { v: Number(v) } }),
+          onChange: (v) => {
+            try {
+              const srgbFalloff = Number(v) || 2.0;
+              localStorage.setItem('rc_debug_srgb', String(srgbFalloff));
+              const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+              const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+              const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+              const detail = { threshold: thr, curve, fogAmount, srgbFalloff };
+              window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail }));
+            } catch (_) {}
+          }
+        }
+      );
+      adv.appendChild(fallRow);
+    } catch (_) {}
 
     // Base Pixels Between Probes (exponent)
     const { row: pppRow, input: pppRng } = createRangeElement(
-      0, 4, 1, Math.max(0, Math.min(4, Number(prefsGet('display.rc', 'basePPExp', 0) || 0))), 'Probe Spacing:', {
+      0, 4, 1, Math.max(0, Math.min(4, Number(prefsGet('display.rc', 'basePPExp', 0) || 0))), 'Pixels Between Base Probes:', {
         attachWheel,
         debugLabel: 'display',
         toDisplay: (x) => {
           const exp = Math.round(Number(x) || 0);
           const val = Math.pow(2, exp);
-          return { text: `2^${exp} = ${val}`, title: `Base pixels between probes: ${val}`, derived: { exp, val } };
+          return { text: `${val}`, title: `2^${exp} = ${val}`, derived: { exp, val } };
         },
         onChange: (x) => { try { prefsSet('display.rc', 'basePPExp', Math.round(Number(x) || 0)); emitAdvanced(); } catch (_) {} }
       }
     );
     adv.appendChild(pppRow);
 
-    // Base Ray Count (dropdown)
-    const brRow = createUiElement(basicToolbarRow, 'div');
-    const brLbl = createUiElement(basicFormLabel, 'Base Ray Count:');
+    // Base Ray Count (3-step slider 4/16/64) — show numeric value on right
+    const brVals = [4, 16, 64];
     const baseRayInit = Number(prefsGet('display.rc', 'baseRayCount', 4)) || 4;
-    const brDd = createDropdown({
-      items: [4, 16, 64].map(v => ({ label: String(v), value: v })),
-      value: baseRayInit,
-      width: '10rem',
-      onChange: (v) => { try { prefsSet('display.rc', 'baseRayCount', Number(v) || 4); emitAdvanced(); } catch (_) {} }
-    });
-    brRow.appendChild(brLbl);
-    brRow.appendChild(brDd.el);
+    const initIdx = Math.max(0, brVals.indexOf(baseRayInit));
+    const { row: brRow } = createRangeElement(
+      0, 2, 1, initIdx, 'Base Ray Count:', {
+        attachWheel,
+        debugLabel: 'display',
+        toDisplay: (i) => { const idx = Math.round(Number(i) || 0); const val = brVals[idx] ?? 4; return { text: String(val), title: String(val), derived: { idx, val } }; },
+        onChange: (i) => { try { const idx = Math.round(Number(i) || 0); const val = brVals[idx] ?? 4; prefsSet('display.rc', 'baseRayCount', val); emitAdvanced(); } catch (_) {} }
+      }
+    );
     adv.appendChild(brRow);
 
     // Ray Interval
@@ -867,7 +901,7 @@ export function renderDisplayTab(container) {
       1.0, 512.0, 0.1, Math.max(1.0, Math.min(512.0, Number(prefsGet('display.rc', 'rayInterval', 1.0)) || 1.0)), 'Interval Length:', {
         attachWheel,
         debugLabel: 'display',
-        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        toDisplay: (v) => ({ text: fmtVendor(v), title: fmtVendor(v), derived: { v: Number(v) } }),
         onChange: (v) => { try { prefsSet('display.rc', 'rayInterval', Number(v) || 1.0); emitAdvanced(); } catch (_) {} }
       }
     );
@@ -875,36 +909,16 @@ export function renderDisplayTab(container) {
 
     // Interval Overlap
     const { row: ioRow } = createRangeElement(
-      -1.0, 2.0, 0.01, Math.max(-1.0, Math.min(2.0, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap:', {
+      -1.0, 2.0, 0.01, Math.max(-1.0, Math.min(2.0, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap %:', {
         attachWheel,
         debugLabel: 'display',
-        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        toDisplay: (v) => ({ text: fmtVendor(v), title: fmtVendor(v), derived: { v: Number(v) } }),
         onChange: (v) => { try { prefsSet('display.rc', 'intervalOverlap', Number(v) || 0.1); emitAdvanced(); } catch (_) {} }
       }
     );
     adv.appendChild(ioRow);
 
-    // Distance Attenuation (light decay)
-    const { row: ldRow } = createRangeElement(
-      0.0, 3.0, 0.05, Math.max(0.0, Math.min(3.0, Number(prefsGet('display.rc', 'distanceAttenuation', 0.0)) || 0.0)), 'Distance Attenuation:', {
-        attachWheel,
-        debugLabel: 'display',
-        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
-        onChange: (v) => { try { prefsSet('display.rc', 'distanceAttenuation', Number(v) || 0.0); emitAdvanced(); } catch (_) {} }
-      }
-    );
-    adv.appendChild(ldRow);
-
-    // Emission Threshold (DF seeding)
-    const { row: etRow } = createRangeElement(
-      0.0, 1.0, 0.01, Math.max(0.0, Math.min(1.0, Number(prefsGet('display.rc', 'emissionThreshold', 0.35)) || 0.35)), 'Emission Threshold:', {
-        attachWheel,
-        debugLabel: 'display',
-        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
-        onChange: (v) => { try { prefsSet('display.rc', 'emissionThreshold', Number(v) || 0.35); emitAdvanced(); } catch (_) {} }
-      }
-    );
-    adv.appendChild(etRow);
+    // (moved) Distance Attenuation and Emission Threshold controls now live under "Our Enhancements".
 
     // Toggles: Bilinear Fix, Nearest Filtering, Add Noise, Force Full Pass
     const tgRow1 = createUiElement(basicToolbarRow, 'div');
@@ -929,7 +943,23 @@ export function renderDisplayTab(container) {
 
     const tgRow2 = createUiElement(basicToolbarRow, 'div');
     tgRow2.appendChild(mkToggle('Add Noise:', 'addNoise'));
-    tgRow2.appendChild(mkToggle('Force Full Pass:', 'forceFullPass'));
+    // Vendor naming: Reduce Demand (Calculate over 2 frames) => inverse of forceFullPass
+    try {
+      const row = document.createElement('div');
+      row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '0.5rem';
+      const lbl = createUiElement(basicFormLabel, 'Reduce Demand (Calculate over 2 frames):');
+      const forceFull = !!prefsGet('display.rc', 'forceFullPass', true);
+      const init = forceFull ? 'off' : 'on';
+      const dd = createDropdown({ items: [
+        { label: 'On', value: 'on' },
+        { label: 'Off', value: 'off' },
+      ], value: init, width: '6.5rem', onChange: (v) => {
+        try { const reduce = (v === 'on'); prefsSet('display.rc', 'forceFullPass', !reduce); emitAdvanced(); } catch (_) {}
+      }});
+      row.appendChild(lbl);
+      row.appendChild(dd.el);
+      tgRow2.appendChild(row);
+    } catch (_) {}
     adv.appendChild(tgRow2);
 
     // Sun controls
@@ -940,7 +970,7 @@ export function renderDisplayTab(container) {
       0.0, 6.283, 0.01, Math.max(0.0, Math.min(6.283, Number(prefsGet('display.rc', 'sunAngle', 0.0)) || 0.0)), 'Sun Angle:', {
         attachWheel,
         debugLabel: 'display',
-        toDisplay: (v) => ({ text: toFixed2(v), title: toFixed2(v), derived: { v: Number(v) } }),
+        toDisplay: (v) => ({ text: fmtVendor(v), title: fmtVendor(v), derived: { v: Number(v) } }),
         onChange: (v) => { try { prefsSet('display.rc', 'sunAngle', Number(v) || 0.0); emitAdvanced(); } catch (_) {} }
       }
     );
