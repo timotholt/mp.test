@@ -440,6 +440,55 @@ export async function setupAsciiRenderer() {
             // Briefly log state for dev visibility
             console.log(`[RC] Enhanced mode ${next ? 'ENABLED' : 'DISABLED'}`);
           } catch (_) {}
+        // Enhanced-only debug views (Alt+1..Alt+4)
+        } else if (e.altKey && (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4')) {
+          if (!rc || !rc.enhancedMode) return; // Do nothing unless Enhanced mode is ON
+          // Helper: blit a texture to screen using the overlay pass (no surface compositing)
+          const blit = (tex) => {
+            if (!tex || !rc.overlayUniforms || !rc.overlayRender) return;
+            try {
+              rc.overlayUniforms.inputTexture = tex;
+              rc.overlayUniforms.drawPassTexture = tex;
+              rc.overlayUniforms.showSurface = false;
+              rc.renderer.setRenderTarget(null);
+              rc.overlayRender();
+            } catch (_) {}
+          };
+          // Alt-1: Normal display (full pipeline composite)
+          if (e.key === '1') {
+            // Comment: renders the standard Enhanced output (RC + fog + entities overlay)
+            try { rc.renderPass && rc.renderPass(); } catch (_) {}
+          }
+          // Alt-2: Combined emission surface (floor + entities) used as RC sceneTexture
+          else if (e.key === '2') {
+            // Comment: builds the pre-RC combined surface and blits directly
+            try {
+              if (typeof rc.buildEmissionSurfaceTexture === 'function') {
+                const tex = rc.buildEmissionSurfaceTexture();
+                blit(tex);
+              }
+            } catch (_) {}
+          }
+          // Alt-3: Occlusion texture (entities-only) used to seed JFA/DF
+          else if (e.key === '3') {
+            // Comment: builds the entities-only occlusion texture and blits directly
+            try {
+              if (typeof rc.buildEntityOcclusionTexture === 'function') {
+                const tex = rc.buildEntityOcclusionTexture();
+                blit(tex);
+              }
+            } catch (_) {}
+          }
+          // Alt-4: Distance texture (DF output)
+          else if (e.key === '4') {
+            // Comment: ensures DF is up-to-date, then blits the distance field texture
+            try {
+              // Ensure we have a fresh DF. doRenderPass computes DF before RC
+              if (typeof rc.doRenderPass === 'function') rc.doRenderPass();
+              const tex = rc.distanceFieldTexture;
+              blit(tex);
+            } catch (_) {}
+          }
         }
       } catch (_) {}
     });
