@@ -820,20 +820,33 @@ export function renderDisplayTab(container) {
       return s;
     };
 
-    // Vendor Parity Mode toggle (button). Persists and reloads to apply.
+    // Enhanced Mode toggle (button). Persists and reloads to apply. Back-compat with old '__vendor_parity_mode'.
     try {
       const vpRow = createUiElement(basicToolbarRow, 'div');
-      const vpLbl = createUiElement(basicFormLabel, 'Vendor Parity Mode:');
-      let on = true;
-      try { on = ((localStorage.getItem('__vendor_parity_mode') || 'on') === 'on'); } catch (_) {}
-      try { window.__rcVendorParity = on; } catch (_) {}
-      const btn = createUiElement(basicButton, on ? 'On' : 'Off');
+      const vpLbl = createUiElement(basicFormLabel, 'Enhanced Mode:');
+      // Determine initial state: prefer new key '__enhanced_mode'; fallback to legacy '__vendor_parity_mode'
+      let enhanced = false; // default off -> Vendor parity
+      try {
+        const newKey = localStorage.getItem('__enhanced_mode');
+        if (newKey === 'on') enhanced = true;
+        else if (newKey === 'off') enhanced = false;
+        else {
+          const legacy = localStorage.getItem('__vendor_parity_mode');
+          // legacy 'on' means vendor parity ON -> enhanced=false; 'off' -> enhanced=true
+          if (legacy === 'on') enhanced = false;
+          else if (legacy === 'off') enhanced = true;
+        }
+      } catch (_) {}
+      try { window.__rcVendorParity = !enhanced; } catch (_) {}
+      const btn = createUiElement(basicButton, enhanced ? 'On' : 'Off');
       btn.onclick = () => {
         try {
-          on = !on;
-          btn.textContent = on ? 'On' : 'Off';
-          localStorage.setItem('__vendor_parity_mode', on ? 'on' : 'off');
-          try { window.__rcVendorParity = on; } catch (_) {}
+          enhanced = !enhanced;
+          btn.textContent = enhanced ? 'On' : 'Off';
+          // Persist new key and keep legacy in sync for older code paths
+          localStorage.setItem('__enhanced_mode', enhanced ? 'on' : 'off');
+          localStorage.setItem('__vendor_parity_mode', enhanced ? 'off' : 'on');
+          try { window.__rcVendorParity = !enhanced; } catch (_) {}
           // Reload to fully reinitialize the pipeline under the selected mode
           try { location.reload(); } catch (_) {}
         } catch (_) {}

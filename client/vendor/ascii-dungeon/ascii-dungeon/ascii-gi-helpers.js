@@ -375,9 +375,9 @@ class WebGL2MicroLayer {
         this.gl.uniform1i(location, textureUnit);
 
 
-        // Generate mipmaps only for RC's lastTexture, which is sampled with LOD.
-        // Other samplers are sampled at LOD 0 and don't need mipmaps; skipping avoids stalls/context loss.
-        if (value != null && name === 'lastTexture') {
+        // Generate mipmaps for textures that use mipmap minification filters.
+        // RC samples 'lastTexture' with explicit LOD, and 'sceneTexture' (dungeon) uses a mipmap filter.
+        if (value != null && (name === 'lastTexture' || name === 'sceneTexture')) {
           this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
         break;
@@ -1279,10 +1279,9 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    // Offscreen (GI/DF): use ENTITIES layer for occlusion glyphs (fallback to FLOOR if missing).
-    // This guarantees floors never act as occluders; only entities (e.g., walls) do.
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture || this.asciiViewTexture;
-    // Use occlusion alpha when rendering offscreen for GI/DF
+    // Vendor parity: offscreen (GI/DF) uses the main ASCII view texture (FLOOR+walls) for occlusion.
+    // This matches the original demo where glyph alpha seeds DF/JFA without requiring a separate ENTITIES layer.
+    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
     // Render to the target
