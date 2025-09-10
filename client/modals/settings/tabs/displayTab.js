@@ -881,16 +881,23 @@ export function renderDisplayTab(container) {
     } catch (_) {}
 
     // Base Pixels Between Probes (exponent)
+    let pppEmitTimer = null;
     const { row: pppRow, input: pppRng } = createRangeElement(
       0, 4, 1, Math.max(0, Math.min(4, Number(prefsGet('display.rc', 'basePPExp', 0) || 0))), 'Pixels Between Base Probes:', {
         attachWheel,
         debugLabel: 'display',
         toDisplay: (x) => {
-          const exp = Math.round(Number(x) || 0);
+          const exp = Math.max(0, Math.min(8, Number(x) || 0));
           const val = Math.pow(2, exp);
           return { text: `${val}`, title: `2^${exp} = ${val}`, derived: { exp, val } };
         },
-        onChange: (x) => { try { prefsSet('display.rc', 'basePPExp', Math.round(Number(x) || 0)); emitAdvanced(); } catch (_) {} }
+        onChange: (x) => {
+          try {
+            prefsSet('display.rc', 'basePPExp', Math.round(Number(x) || 0));
+            if (pppEmitTimer) clearTimeout(pppEmitTimer);
+            pppEmitTimer = setTimeout(() => { try { emitAdvanced(); } catch (_) {} }, 80);
+          } catch (_) {}
+        }
       }
     );
     adv.appendChild(pppRow);

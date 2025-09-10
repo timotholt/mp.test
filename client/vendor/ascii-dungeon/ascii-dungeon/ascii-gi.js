@@ -721,8 +721,9 @@ class RC extends DistanceField {
     this.basePixelsBetweenProbes = this.rawBasePixelsBetweenProbes;
     this.radianceInterval = 1.0;
 
-    this.radianceWidth = Math.floor(this.renderWidth / this.basePixelsBetweenProbes);
-    this.radianceHeight = Math.floor(this.renderHeight / this.basePixelsBetweenProbes);
+    // Clamp to avoid zero-size cascade textures at extreme PPP or small windows
+    this.radianceWidth = Math.max(1, Math.floor(this.renderWidth / this.basePixelsBetweenProbes));
+    this.radianceHeight = Math.max(1, Math.floor(this.renderHeight / this.basePixelsBetweenProbes));
 
     if (setUniforms) {
       this.rcUniforms.basePixelsBetweenProbes = this.basePixelsBetweenProbes;

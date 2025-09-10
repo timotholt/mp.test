@@ -235,7 +235,10 @@ class WebGL2MicroLayer {
 
     const texture = this.gl.createTexture();
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, null);
+    // Clamp and integerize dimensions to avoid 0 or fractional sizes
+    const w = Math.max(1, Math.floor(width || 0));
+    const h = Math.max(1, Math.floor(height || 0));
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
 
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, minFilter);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, magFilter);
@@ -245,16 +248,26 @@ class WebGL2MicroLayer {
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
     //this.clear();
 
-    const status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
+    let status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
     if (status !== this.gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error('Framebuffer is not complete: ' + status);
+      // Fallback: if HALF_FLOAT/16F not supported for rendering, retry with RGBA/UNSIGNED_BYTE
+      try {
+        const fallbackIF = this.gl.RGBA;
+        const fallbackFmt = this.gl.RGBA;
+        const fallbackType = this.gl.UNSIGNED_BYTE;
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, fallbackIF, w, h, 0, fallbackFmt, fallbackType, null);
+        status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
+      } catch (_) {}
+      if (status !== this.gl.FRAMEBUFFER_COMPLETE) {
+        throw new Error('Framebuffer is not complete: ' + status);
+      }
     }
 
     // Unbind the frame buffer and texture.
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
-    this.framebuffers.set(renderTargetName, {framebuffer, texture, width, height});
+    this.framebuffers.set(renderTargetName, {framebuffer, texture, width: w, height: h});
     this.renderTargets[renderTargetName] = new RenderTarget(
       this.gl, renderTargetName, texture, framebuffer
     );
