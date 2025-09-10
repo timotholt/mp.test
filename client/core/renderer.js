@@ -127,6 +127,39 @@ export async function setupAsciiRenderer() {
       try { console.log('[DEBUG client] calling rc.load()'); } catch (_) {}
       rc.load();
     }
+    // Ensure vendorParity matches mode semantics:
+    // - Normal: true (match vendor path; no overlay compositing)
+    // - Enhanced: false (allow surface/overlay compositing path)
+    try { rc.vendorParity = !rc.enhancedMode; } catch (_) {}
+
+    // Lightweight debug label (top-left) to display mode / view
+    const ensureDebugLabel = () => {
+      let el = document.getElementById('rc-debug-label');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'rc-debug-label';
+        el.style.position = 'fixed';
+        el.style.left = '8px';
+        el.style.top = '8px';
+        el.style.zIndex = '10000';
+        el.style.padding = '4px 8px';
+        el.style.borderRadius = '4px';
+        el.style.fontFamily = 'var(--ui-font-family, system-ui, sans-serif)';
+        el.style.fontSize = '12px';
+        el.style.letterSpacing = '0.02em';
+        el.style.color = 'rgba(240,240,245,0.92)';
+        el.style.background = 'rgba(0,0,0,0.35)';
+        el.style.backdropFilter = 'blur(3px) saturate(1.2)';
+        el.style.pointerEvents = 'none';
+        document.body.appendChild(el);
+      }
+      return el;
+    };
+    const setDebugLabel = (text) => {
+      try { ensureDebugLabel().textContent = text; } catch (_) {}
+    };
+    // Initialize the label based on current mode if available
+    try { setDebugLabel(`Mode: ${rc.enhancedMode ? 'Enhanced' : 'Normal'}`); } catch (_) {}
 
     // Robust resize handler: updates canvas/container, renderer internals, uniforms, and render targets
     const handleResize = () => {
@@ -430,6 +463,7 @@ export async function setupAsciiRenderer() {
           const current = !!(rc && rc.enhancedMode);
           const next = !current;
           try { rc.enhancedMode = next; } catch (_) {}
+          try { rc.vendorParity = !next; } catch (_) {}
           try { window.__rcEnhanced = next; } catch (_) {}
           try { localStorage.setItem('rc_enhanced_mode', next ? 'on' : 'off'); } catch (_) {}
           // Force a clean pass so seed/scene textures rebuild immediately
@@ -439,6 +473,8 @@ export async function setupAsciiRenderer() {
             rc.renderPass && rc.renderPass();
             // Briefly log state for dev visibility
             console.log(`[RC] Enhanced mode ${next ? 'ENABLED' : 'DISABLED'}`);
+            setDebugLabel(`Mode: ${rc.enhancedMode ? 'Enhanced' : 'Normal'}`);
+            try { window.dispatchEvent(new CustomEvent('ui:rc-mode-changed', { detail: { enhanced: next } })); } catch (_) {}
           } catch (_) {}
         // Enhanced-only debug views (Alt+1..Alt+4)
         } else if (e.altKey && (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4')) {
@@ -457,33 +493,30 @@ export async function setupAsciiRenderer() {
           // Alt-1: Normal display (full pipeline composite)
           if (e.key === '1') {
             // Comment: renders the standard Enhanced output (RC + fog + entities overlay)
-            try { rc.renderPass && rc.renderPass(); } catch (_) {}
+            try { rc.renderPass && rc.renderPass(); setDebugLabel('Mode: Enhanced — View: Composite'); } catch (_) {}
           }
           // Alt-2: Combined emission surface (floor + entities) used as RC sceneTexture
           else if (e.key === '2') {
             // Comment: blit the cached emission surface from the current frame (no rebuild)
             try {
-              let tex = rc.debugEmissionSurfaceTexture;
-              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugEmissionSurfaceTexture; }
-              blit(tex);
+              const tex = rc.debugEmissionSurfaceTexture;
+              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Emission Surface'); }
             } catch (_) {}
           }
           // Alt-3: Occlusion texture (entities-only) used to seed JFA/DF
           else if (e.key === '3') {
             // Comment: blit the cached entities-only occlusion source (no rebuild)
             try {
-              let tex = rc.debugOcclusionTexture;
-              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugOcclusionTexture; }
-              blit(tex);
+              const tex = rc.debugOcclusionTexture;
+              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Occlusion (Entities)'); }
             } catch (_) {}
           }
           // Alt-4: Distance texture (DF output)
           else if (e.key === '4') {
             // Comment: blit the cached DF texture; if missing, run one pass to populate
             try {
-              let tex = rc.debugDistanceTexture;
-              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugDistanceTexture; }
-              blit(tex);
+              const tex = rc.debugDistanceTexture;
+              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Distance Field'); }
             } catch (_) {}
           }
         }

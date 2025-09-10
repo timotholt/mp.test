@@ -90,27 +90,49 @@
       if (rc && typeof rc.setPositionBlockMapFill === 'function' && typeof rc.setEntities === 'function') {
         rc.setPositionBlockMapFill(false); // floors never block
         rc.setEntities(entities);
-        // Apply a non-blinding character color map for the FLOOR layer
+        // Apply FLOOR character color map based on rendering mode:
+        // - Normal (vendor parity): neutral grayscale across all glyphs (no color tint)
+        // - Enhanced: tasteful albedo with optional colors for some glyphs
         if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
-          const charMap = JSON.stringify({
-            '#': [0.36, 0.38, 0.42],  // walls (visual albedo on FLOOR layer)
-            '.': [0.14, 0.14, 0.16],  // floor dots slightly darker for contrast
-            '~': [0.20, 0.40, 0.80],  // water (optional)
-            '+': [0.85, 0.65, 0.20],  // doors (optional)
-            '|': [0.50, 0.52, 0.56],  // divider (optional)
-          });
-          rc.surface.setCharacterColorMap(charMap);
+          const enhanced = !!rc.enhancedMode;
+          let mapObj;
+          if (enhanced) {
+            mapObj = {
+              '#': [0.36, 0.38, 0.42],  // walls
+              '.': [0.14, 0.14, 0.16],  // floor dots
+              '~': [0.20, 0.40, 0.80],  // water (optional)
+              '+': [0.85, 0.65, 0.20],  // doors (optional)
+              '|': [0.50, 0.52, 0.56],  // divider (optional)
+            };
+          } else {
+            // Neutral grayscale for Normal mode (no color). Keep subtle contrast.
+            mapObj = {
+              '#': [0.38, 0.40, 0.42],
+              '.': [0.16, 0.16, 0.16],
+              '~': [0.24, 0.24, 0.24],
+              '+': [0.30, 0.30, 0.30],
+              '|': [0.32, 0.32, 0.32],
+            };
+          }
+          rc.surface.setCharacterColorMap(JSON.stringify(mapObj));
         }
       } else {
         window.__pendingBlockFill = false;
         window.__pendingEntities = entities;
         // Stash the color map until RC is ready
-        window.__pendingCharacterColorMap = JSON.stringify({
+        const enhanced = !!(window.__rcEnhanced);
+        window.__pendingCharacterColorMap = JSON.stringify(enhanced ? {
           '#': [0.36, 0.38, 0.42],
           '.': [0.14, 0.14, 0.16],
           '~': [0.20, 0.40, 0.80],
           '+': [0.85, 0.65, 0.20],
           '|': [0.50, 0.52, 0.56],
+        } : {
+          '#': [0.38, 0.40, 0.42],
+          '.': [0.16, 0.16, 0.16],
+          '~': [0.24, 0.24, 0.24],
+          '+': [0.30, 0.30, 0.30],
+          '|': [0.32, 0.32, 0.32],
         });
       }
     } catch (_) {}
@@ -173,6 +195,14 @@
     const r = (e && e.detail && e.detail.route) || null;
     if (!r) return;
     applyForRoute(r);
+  });
+
+  // Re-apply per-route color map when RC mode changes (F9 toggle)
+  window.addEventListener('ui:rc-mode-changed', () => {
+    try {
+      const current = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null;
+      if (current) applyForRoute(current);
+    } catch (_) {}
   });
 
   // Apply immediately for current route on first load
