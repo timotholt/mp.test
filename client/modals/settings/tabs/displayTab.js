@@ -857,9 +857,11 @@ export function renderDisplayTab(container) {
     } catch (_) {}
 
     // Falloff (srgb exponent) — vendor control; wire into rc-debug change bus
+    // IMPORTANT: hoist input ref so Advanced Reset can access it (avoid block-scope ReferenceError)
+    let fallRng = null;
     try {
       const initFall = (() => { const s = localStorage.getItem('rc_debug_srgb'); const v = parseFloat(s); return Number.isFinite(v) ? Math.max(0.1, Math.min(4.0, v)) : 2.0; })();
-      const { row: fallRow, input: fallRng } = createRangeElement(
+      const { row: fallRow, input } = createRangeElement(
         0.1, 4.0, 0.1, initFall, 'Falloff:', {
           attachWheel,
           debugLabel: 'display',
@@ -877,6 +879,7 @@ export function renderDisplayTab(container) {
           }
         }
       );
+      fallRng = input;
       adv.appendChild(fallRow);
     } catch (_) {}
 
