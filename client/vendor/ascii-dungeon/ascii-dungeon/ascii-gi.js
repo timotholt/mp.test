@@ -569,6 +569,22 @@ class RC extends DistanceField {
       }
     } catch (_) { this.vendorParity = true; }
 
+    // Enhanced Mode: when enabled, we ONLY change two things vs Normal:
+    // 1) Occlusion/DF seeding uses ENTITIES only (no floor),
+    // 2) RC sceneTexture uses a combined FLOOR+ENTITIES surface.
+    // Everything else remains identical to Normal.
+    try {
+      if (typeof window !== 'undefined' && window.__rcEnhanced != null) {
+        this.enhancedMode = !!window.__rcEnhanced;
+      } else {
+        let persisted = null;
+        try { persisted = (localStorage && localStorage.getItem('rc_enhanced_mode')) || null; } catch (_) { persisted = null; }
+        if (persisted === 'on') this.enhancedMode = true;
+        else if (persisted === 'off') this.enhancedMode = false;
+        else this.enhancedMode = false; // Default: Normal mode
+      }
+    } catch (_) { this.enhancedMode = false; }
+
     // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)
     this.srgbFalloff = 2.0; // default, overridden by renderer via ui:rc-debug-changed
     // Enhanced-only gain applied to sceneTexture sampling in RC to match vendor brightness
@@ -843,6 +859,37 @@ class RC extends DistanceField {
     return this.surfaceRenderTarget.texture;
   }
 
+  // Build a high-res occlusion source using ENTITIES ONLY (no floor), used to seed JFA/DF.
+  buildEntityOcclusionTexture() {
+    if (!this.occlusionRenderTarget) {
+      this.occlusionRenderTarget = this.renderer.createRenderTarget(
+        this.width * this.scaling,
+        this.height * this.scaling,
+        {
+          minFilter: this.gl.NEAREST,
+          magFilter: this.gl.NEAREST,
+          internalFormat: this.gl.RGBA,
+          format: this.gl.RGBA,
+          type: this.gl.UNSIGNED_BYTE,
+        }
+      );
+    }
+
+    // Offscreen occlusion render: entities only, seeded alpha.
+    // Disable emission-based seeding so FLOOR cannot leak into occlusion.
+    const prevEmissionThreshold = this.dungeonUniforms.emissionThreshold;
+    this.dungeonUniforms.emissionThreshold = 2.0; // effectively disables emission seeds
+    this.dungeonUniforms.useOcclusionAlpha = 1.0;
+    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES ONLY
+    this.renderer.setRenderTarget(this.occlusionRenderTarget);
+    this.renderer.clear();
+    this.render();
+    // Restore emission threshold
+    this.dungeonUniforms.emissionThreshold = prevEmissionThreshold;
+
+    return this.occlusionRenderTarget.texture;
+  }
+
   triggerDraw() {
     this.renderPass();
   }
@@ -920,7 +967,13 @@ class RC extends DistanceField {
         return;
       }
 
-      let out = this.seedPass(this.dungeonPassTextureHigh);
+      // Seed JFA/DF from the appropriate source
+      // Normal: seed from FLOOR map; Enhanced: seed from ENTITIES only
+      let seedInputTexture = this.enhancedMode
+        ? this.buildEntityOcclusionTexture()
+        : this.dungeonPassTextureHigh;
+
+      let out = this.seedPass(seedInputTexture);
 
       out = this.jfaPass(out);
 
@@ -941,14 +994,14 @@ class RC extends DistanceField {
       }
     }
     let rcTexture = null;
-    if (this.vendorParity) {
-      // Vendor path: use the high-res dungeon draw as the scene texture
-      rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
-    } else {
-      // Enhanced path should look identical: use the same high-res dungeon draw
-      // Occlusion is still driven by DF/JFA, so this does not alter occlusion.
-      rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
-    }
+    // Scene texture selection is independent from vendor parity.
+    // Normal: use FLOOR-only high-res draw. Enhanced: use combined FLOOR+ENTITIES surface.
+    const sceneTexture = this.enhancedMode
+      ? this.buildEmissionSurfaceTexture()
+      : this.dungeonPassTextureHigh;
+    // Apply enhanced scene gain only in Enhanced mode
+    this.rcUniforms.sceneGain = this.enhancedMode ? (this.enhancedSceneGain || 1.0) : 1.0;
+    rcTexture = this.rcPass(this.distanceFieldTexture, sceneTexture);
 
     this.overlayPass(rcTexture, false);
 

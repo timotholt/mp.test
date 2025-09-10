@@ -383,7 +383,7 @@ export async function setupAsciiRenderer() {
       rc.zoomCamera(factor, x, y);
     }, { passive: false });
 
-    // Keyboard helpers: +/- zoom and F8 UI toggle
+    // Keyboard helpers: +/- zoom, F8 UI toggle, F9 Enhanced mode toggle
     window.addEventListener('keydown', (e) => {
       try {
         if (e.key === '+' || e.key === '=') {
@@ -424,6 +424,21 @@ export async function setupAsciiRenderer() {
           // Login modal cards (class)
           try {
             document.querySelectorAll('.login-card').forEach((el) => toggleEl(el));
+          } catch (_) {}
+        } else if (e.key === 'F9') {
+          // Toggle Enhanced rendering mode (Normal vs Enhanced)
+          const current = !!(rc && rc.enhancedMode);
+          const next = !current;
+          try { rc.enhancedMode = next; } catch (_) {}
+          try { window.__rcEnhanced = next; } catch (_) {}
+          try { localStorage.setItem('rc_enhanced_mode', next ? 'on' : 'off'); } catch (_) {}
+          // Force a clean pass so seed/scene textures rebuild immediately
+          try {
+            rc.forceFullPass = true;
+            rc.frame = 0;
+            rc.renderPass && rc.renderPass();
+            // Briefly log state for dev visibility
+            console.log(`[RC] Enhanced mode ${next ? 'ENABLED' : 'DISABLED'}`);
           } catch (_) {}
         }
       } catch (_) {}
