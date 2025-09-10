@@ -461,31 +461,28 @@ export async function setupAsciiRenderer() {
           }
           // Alt-2: Combined emission surface (floor + entities) used as RC sceneTexture
           else if (e.key === '2') {
-            // Comment: builds the pre-RC combined surface and blits directly
+            // Comment: blit the cached emission surface from the current frame (no rebuild)
             try {
-              if (typeof rc.buildEmissionSurfaceTexture === 'function') {
-                const tex = rc.buildEmissionSurfaceTexture();
-                blit(tex);
-              }
+              let tex = rc.debugEmissionSurfaceTexture;
+              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugEmissionSurfaceTexture; }
+              blit(tex);
             } catch (_) {}
           }
           // Alt-3: Occlusion texture (entities-only) used to seed JFA/DF
           else if (e.key === '3') {
-            // Comment: builds the entities-only occlusion texture and blits directly
+            // Comment: blit the cached entities-only occlusion source (no rebuild)
             try {
-              if (typeof rc.buildEntityOcclusionTexture === 'function') {
-                const tex = rc.buildEntityOcclusionTexture();
-                blit(tex);
-              }
+              let tex = rc.debugOcclusionTexture;
+              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugOcclusionTexture; }
+              blit(tex);
             } catch (_) {}
           }
           // Alt-4: Distance texture (DF output)
           else if (e.key === '4') {
-            // Comment: ensures DF is up-to-date, then blits the distance field texture
+            // Comment: blit the cached DF texture; if missing, run one pass to populate
             try {
-              // Ensure we have a fresh DF. doRenderPass computes DF before RC
-              if (typeof rc.doRenderPass === 'function') rc.doRenderPass();
-              const tex = rc.distanceFieldTexture;
+              let tex = rc.debugDistanceTexture;
+              if (!tex && typeof rc.doRenderPass === 'function') { rc.doRenderPass(); tex = rc.debugDistanceTexture; }
               blit(tex);
             } catch (_) {}
           }

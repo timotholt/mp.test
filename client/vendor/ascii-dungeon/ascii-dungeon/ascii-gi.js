@@ -972,6 +972,8 @@ class RC extends DistanceField {
       let seedInputTexture = this.enhancedMode
         ? this.buildEntityOcclusionTexture()
         : this.dungeonPassTextureHigh;
+      // Cache occlusion source used this frame (Enhanced only)
+      this.debugOcclusionTexture = this.enhancedMode ? seedInputTexture : null;
 
       let out = this.seedPass(seedInputTexture);
 
@@ -985,6 +987,8 @@ class RC extends DistanceField {
       }
 
       this.distanceFieldTexture = this.dfPass(out);
+      // Cache DF texture used this frame (Enhanced only)
+      this.debugDistanceTexture = this.enhancedMode ? this.distanceFieldTexture : null;
 
       if (this.stage == 2) {
         this.finishRenderPass();
@@ -999,6 +1003,8 @@ class RC extends DistanceField {
     const sceneTexture = this.enhancedMode
       ? this.buildEmissionSurfaceTexture()
       : this.dungeonPassTextureHigh;
+    // Cache emission surface used this frame (Enhanced only)
+    this.debugEmissionSurfaceTexture = this.enhancedMode ? sceneTexture : null;
     // Apply enhanced scene gain only in Enhanced mode
     this.rcUniforms.sceneGain = this.enhancedMode ? (this.enhancedSceneGain || 1.0) : 1.0;
     rcTexture = this.rcPass(this.distanceFieldTexture, sceneTexture);
