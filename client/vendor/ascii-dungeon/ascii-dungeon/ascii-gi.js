@@ -295,6 +295,7 @@ uniform vec2 resolution;
   uniform bool enableSun;
   uniform float sunAngle;
   uniform float srgb;
+  uniform float sceneGain;
   uniform float firstCascadeIndex;
   uniform float lastCascadeIndex;
   uniform float baseRayCount;
@@ -357,10 +358,12 @@ uniform vec2 resolution;
         sampleLight.rgb = pow(sampleLight.rgb, vec3(srgb));
         // Distance-based attenuation (project extension). Skip work when disabled to match vendor performance.
         if (lightDecay > 0.0001) {
-          float normDist = (dist / max(scale, 1e-6)) * 12.0;
-          float attenuation = exp(-lightDecay * normDist);
+          // Use accumulated ray distance (already in pixel-ish units due to stepping by df*scale)
+          float attenuation = exp(-lightDecay * dist);
           sampleLight.rgb *= attenuation;
         }
+        // Enhanced-only brightness compensation for emission-based scene textures
+        sampleLight.rgb *= sceneGain;
         // Apply threshold/curve at sample time so it participates in accumulation
         if (threshold > 0.0) {
           vec3 shifted = max(sampleLight.rgb - vec3(threshold), vec3(0.0));
@@ -536,7 +539,7 @@ class RC extends DistanceField {
     this.lastRequest = Date.now();
     this.frame = 0;
     this.baseRayCount = 4.0;
-    this.forceFullPass = true;
+    this.forceFullPass = true; // false;
     super.innerInitialize();
     this.activelyDrawing = false;
     this.rawBasePixelsBetweenProbesExponent = 0.0;
@@ -568,6 +571,11 @@ class RC extends DistanceField {
 
     // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)
     this.srgbFalloff = 2.0; // default, overridden by renderer via ui:rc-debug-changed
+    // Enhanced-only gain applied to sceneTexture sampling in RC to match vendor brightness
+    try {
+      const g = parseFloat(localStorage.getItem('rc_enhanced_scene_gain'));
+      this.enhancedSceneGain = Number.isFinite(g) ? Math.max(0.1, Math.min(4.0, g)) : 1.6;
+    } catch (_) { this.enhancedSceneGain = 1.6; }
 
     // Base probe spacing exponent kept; no slider (controlled externally if needed)
 
@@ -605,7 +613,9 @@ class RC extends DistanceField {
         sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
         srgb: this.srgbFalloff,
-        lightDecay: this.vendorParity ? 0.0 : 0.8,
+        sceneGain: 1.0,
+        // Keep identical visuals across modes unless explicitly changed via UI
+        lightDecay: 0.0,
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
@@ -777,8 +787,8 @@ class RC extends DistanceField {
     const frame = this.forceFullPass ? 0 : 1 - this.frame;
 
     if (this.frame == 0 && !this.forceFullPass) {
-      const input = this.overlayRenderTargets[0].texture ?? inputTexture;
-      this.overlayUniforms.inputTexture = input;
+      // On the first frame, always use the fresh RC texture (avoid sampling an uninitialized buffer)
+      this.overlayUniforms.inputTexture = inputTexture;
       this.renderer.setRenderTarget(this.overlayRenderTargets[1]);
       this.overlayRender();
     } else {
@@ -935,9 +945,9 @@ class RC extends DistanceField {
       // Vendor path: use the high-res dungeon draw as the scene texture
       rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
     } else {
-      // Enhanced path: combined FLOOR+ENTITIES emission for GI
-      const emissionTexture = this.buildEmissionSurfaceTexture();
-      rcTexture = this.rcPass(this.distanceFieldTexture, emissionTexture);
+      // Enhanced path should look identical: use the same high-res dungeon draw
+      // Occlusion is still driven by DF/JFA, so this does not alter occlusion.
+      rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
     }
 
     this.overlayPass(rcTexture, false);
