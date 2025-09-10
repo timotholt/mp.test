@@ -133,7 +133,8 @@ export async function setupAsciiRenderer() {
       try {
         const w = Math.max(320, window.innerWidth || 1024);
         const h = Math.max(240, window.innerHeight || 768);
-        const dpr = window.devicePixelRatio || 1;
+        // Vendor runs effectively at 1x; forcing DPR=1.0 keeps parity and avoids stalls at high DPI
+        const dpr = 1.0;
 
         // Ensure container fills viewport
         try {
@@ -649,15 +650,17 @@ try {
       const p = (e && e.detail) || {};
 
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v)));
-      const exp = clamp(p.basePPExp != null ? p.basePPExp : rc.rawBasePixelsBetweenProbesExponent || 0, 0, 8);
+      // Vendor slider is 0..4; clamp to avoid extreme LOD requests on drivers
+      const exp = clamp(p.basePPExp != null ? p.basePPExp : rc.rawBasePixelsBetweenProbesExponent || 0, 0, 4);
       const basePP = Math.pow(2, exp);
       const baseRayCount = (p.baseRayCount != null) ? Number(p.baseRayCount) : (rc.baseRayCount || 4);
       const rayInterval = (p.rayInterval != null) ? Number(p.rayInterval) : (rc.rayIntervalValue || 1.0);
       const intervalOverlap = (p.intervalOverlap != null) ? Number(p.intervalOverlap) : (rc.intervalOverlapValue || 0.1);
 
+      // Rebuild ONLY when baseRayCount changes. Probe spacing updates are lightweight
+      // and should not stall the app.
       let needsReinit = false;
       try {
-        if (Number(rc.rawBasePixelsBetweenProbesExponent) !== exp) needsReinit = true;
         if (Number(rc.baseRayCount) !== Number(baseRayCount)) needsReinit = true;
       } catch (_) {}
 
@@ -668,8 +671,9 @@ try {
       rc.rayIntervalValue = rayInterval;
       rc.intervalOverlapValue = intervalOverlap;
 
+      // Always update derived uniforms; rebuild only if required
+      try { if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true); } catch (_) {}
       if (needsReinit) {
-        try { if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true); } catch (_) {}
         try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
       }
 

@@ -355,10 +355,12 @@ uniform vec2 resolution;
       if (df <= minStepSize) {
         vec4 sampleLight = textureLod(sceneTexture, rayUv, 0.0);
         sampleLight.rgb = pow(sampleLight.rgb, vec3(srgb));
-        // Distance-based attenuation; boost normalized distance so slider has punch
-        float normDist = (dist / max(scale, 1e-6)) * 12.0;
-        float attenuation = exp(-max(lightDecay, 0.0) * normDist);
-        sampleLight.rgb *= attenuation;
+        // Distance-based attenuation (project extension). Skip work when disabled to match vendor performance.
+        if (lightDecay > 0.0001) {
+          float normDist = (dist / max(scale, 1e-6)) * 12.0;
+          float attenuation = exp(-lightDecay * normDist);
+          sampleLight.rgb *= attenuation;
+        }
         // Apply threshold/curve at sample time so it participates in accumulation
         if (threshold > 0.0) {
           vec3 shifted = max(sampleLight.rgb - vec3(threshold), vec3(0.0));
@@ -402,10 +404,14 @@ uniform vec2 resolution;
     // Sample from the next cascade
     vec3 upperSample = vec3(0);
 
+    // Clamp requested LOD to available mip levels to avoid invalid sampling on some drivers
+    float desiredLod = basePixelsBetweenProbes == 1.0 ? 0.0 : log(basePixelsBetweenProbes) / log(2.0);
+    float maxLod = floor(log2(min(resolution.x, resolution.y)));
+    float lod = clamp(desiredLod, 0.0, maxLod);
     upperSample = textureLod(
       lastTexture,
       upperProbePosition,
-      basePixelsBetweenProbes == 1.0 ? 0.0 : log(basePixelsBetweenProbes) / log(2.0)
+      lod
     ).rgb;
 
     // Apply threshold/curve to upper cascade contribution as well

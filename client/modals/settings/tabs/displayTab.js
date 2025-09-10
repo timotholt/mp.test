@@ -846,7 +846,7 @@ export function renderDisplayTab(container) {
     // Falloff (srgb exponent) — vendor control; wire into rc-debug change bus
     try {
       const initFall = (() => { const s = localStorage.getItem('rc_debug_srgb'); const v = parseFloat(s); return Number.isFinite(v) ? Math.max(0.1, Math.min(4.0, v)) : 2.0; })();
-      const { row: fallRow } = createRangeElement(
+      const { row: fallRow, input: fallRng } = createRangeElement(
         0.1, 4.0, 0.1, initFall, 'Falloff:', {
           attachWheel,
           debugLabel: 'display',
@@ -886,7 +886,7 @@ export function renderDisplayTab(container) {
     const brVals = [4, 16, 64];
     const baseRayInit = Number(prefsGet('display.rc', 'baseRayCount', 4)) || 4;
     const initIdx = Math.max(0, brVals.indexOf(baseRayInit));
-    const { row: brRow } = createRangeElement(
+    const { row: brRow, input: brRng } = createRangeElement(
       0, 2, 1, initIdx, 'Base Ray Count:', {
         attachWheel,
         debugLabel: 'display',
@@ -897,7 +897,7 @@ export function renderDisplayTab(container) {
     adv.appendChild(brRow);
 
     // Ray Interval
-    const { row: riRow } = createRangeElement(
+    const { row: riRow, input: riRng } = createRangeElement(
       1.0, 512.0, 0.1, Math.max(1.0, Math.min(512.0, Number(prefsGet('display.rc', 'rayInterval', 1.0)) || 1.0)), 'Interval Length:', {
         attachWheel,
         debugLabel: 'display',
@@ -908,7 +908,7 @@ export function renderDisplayTab(container) {
     adv.appendChild(riRow);
 
     // Interval Overlap
-    const { row: ioRow } = createRangeElement(
+    const { row: ioRow, input: ioRng } = createRangeElement(
       -1.0, 2.0, 0.01, Math.max(-1.0, Math.min(2.0, Number(prefsGet('display.rc', 'intervalOverlap', 0.1)) || 0.1)), 'Interval Overlap %:', {
         attachWheel,
         debugLabel: 'display',
@@ -918,10 +918,9 @@ export function renderDisplayTab(container) {
     );
     adv.appendChild(ioRow);
 
-    // (moved) Distance Attenuation and Emission Threshold controls now live under "Our Enhancements".
-
     // Toggles: Bilinear Fix, Nearest Filtering, Add Noise, Force Full Pass
     const tgRow1 = createUiElement(basicToolbarRow, 'div');
+    const toggleRefs = {};
     const mkToggle = (label, key) => {
       const row = document.createElement('div');
       row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '0.5rem';
@@ -932,7 +931,9 @@ export function renderDisplayTab(container) {
         { label: 'Off', value: 'off' },
       ], value: initVal ? 'on' : 'off', width: '6.5rem', onChange: (v) => {
         try { prefsSet('display.rc', key, v === 'on'); emitAdvanced(); } catch (_) {}
-      }});
+      } });
+      // Keep a handle so Reset can update UI as well as prefs
+      toggleRefs[key] = dd;
       row.appendChild(lbl);
       row.appendChild(dd.el);
       return row;
@@ -944,6 +945,7 @@ export function renderDisplayTab(container) {
     const tgRow2 = createUiElement(basicToolbarRow, 'div');
     tgRow2.appendChild(mkToggle('Add Noise:', 'addNoise'));
     // Vendor naming: Reduce Demand (Calculate over 2 frames) => inverse of forceFullPass
+    let reduceDemandDd = null;
     try {
       const row = document.createElement('div');
       row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '0.5rem';
@@ -958,6 +960,7 @@ export function renderDisplayTab(container) {
       }});
       row.appendChild(lbl);
       row.appendChild(dd.el);
+      reduceDemandDd = dd;
       tgRow2.appendChild(row);
     } catch (_) {}
     adv.appendChild(tgRow2);
@@ -966,7 +969,7 @@ export function renderDisplayTab(container) {
     const sunRow = createUiElement(basicToolbarRow, 'div');
     const sunToggle = mkToggle('Sun:', 'enableSun');
     sunRow.appendChild(sunToggle);
-    const { row: saRow } = createRangeElement(
+    const { row: saRow, input: saRng } = createRangeElement(
       0.0, 6.283, 0.01, Math.max(0.0, Math.min(6.283, Number(prefsGet('display.rc', 'sunAngle', 0.0)) || 0.0)), 'Sun Angle:', {
         attachWheel,
         debugLabel: 'display',
@@ -980,7 +983,36 @@ export function renderDisplayTab(container) {
     // Advanced Reset
     const advToolbar = createUiElement(basicToolbarRow, 'div');
     const advResetBtn = createUiElement(basicButton, 'Reset');
-    advResetBtn.onclick = () => { try { prefsResetAll('display.rc'); emitAdvanced(); } catch (_) {} };
+    advResetBtn.onclick = () => {
+      try {
+        // Reset prefs to vendor-aligned defaults
+        prefsResetAll('display.rc');
+        // Update UI controls to match defaults so users see immediate reset
+        const fire = (el, v) => { try { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} };
+        if (pppRng) fire(pppRng, 0);    // 2^0 => 1
+        if (brRng)  fire(brRng, 0);     // index for 4
+        if (riRng)  fire(riRng, 1.0);
+        if (ioRng)  fire(ioRng, 0.1);
+        if (saRng)  fire(saRng, 0.0);
+        // Falloff reset: UI + storage + debug event so RC uniform updates
+        try {
+          if (fallRng) fire(fallRng, 2.0);
+          localStorage.setItem('rc_debug_srgb', '2.0');
+          const thr = parseFloat(localStorage.getItem('rc_debug_threshold') || '0') || 0;
+          const curve = parseFloat(localStorage.getItem('rc_debug_curve') || '1') || 1;
+          const fogAmount = parseFloat(localStorage.getItem('rc_debug_fog') || '0.8');
+          window.dispatchEvent(new CustomEvent('ui:rc-debug-changed', { detail: { threshold: thr, curve, fogAmount, srgbFalloff: 2.0 } }));
+        } catch (_) {}
+        // Toggles
+        if (toggleRefs.bilinearFix && toggleRefs.bilinearFix.setValue) toggleRefs.bilinearFix.setValue('on');
+        if (toggleRefs.nearestFiltering && toggleRefs.nearestFiltering.setValue) toggleRefs.nearestFiltering.setValue('off');
+        if (toggleRefs.addNoise && toggleRefs.addNoise.setValue) toggleRefs.addNoise.setValue('off');
+        if (toggleRefs.enableSun && toggleRefs.enableSun.setValue) toggleRefs.enableSun.setValue('off');
+        if (reduceDemandDd && reduceDemandDd.setValue) reduceDemandDd.setValue('off'); // off => forceFullPass true
+      } catch (_) {}
+      try { emitAdvanced(); } catch (_) {}
+    };
+
     advToolbar.appendChild(document.createElement('div'));
     advToolbar.appendChild(document.createElement('div'));
     advToolbar.appendChild(advResetBtn);

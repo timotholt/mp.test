@@ -375,12 +375,11 @@ class WebGL2MicroLayer {
         this.gl.uniform1i(location, textureUnit);
 
 
-        // Can we disable this if not using mipmaps?
-        // if (generateMipmaps) {
-        if (value != null) {
+        // Generate mipmaps only for RC's lastTexture, which is sampled with LOD.
+        // Other samplers are sampled at LOD 0 and don't need mipmaps; skipping avoids stalls/context loss.
+        if (value != null && name === 'lastTexture') {
           this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
-        // }
         break;
 
       // Arrays
