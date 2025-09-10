@@ -466,10 +466,23 @@ export async function setupAsciiRenderer() {
           try { rc.vendorParity = !next; } catch (_) {}
           try { window.__rcEnhanced = next; } catch (_) {}
           try { localStorage.setItem('rc_enhanced_mode', next ? 'on' : 'off'); } catch (_) {}
-          // Force a clean pass so seed/scene textures rebuild immediately
+          try { localStorage.setItem('__vendor_parity_mode', (!next) ? 'on' : 'off'); } catch (_) {}
+          // Soft reboot the rendering system so cascades, ping-pong and targets reset cleanly
           try {
+            // Stop animation loop next tick and reset timing
+            rc.animating = false;
+            rc.lastRequest = Date.now();
+            // Reset frame/ping-pong and cached debug views
             rc.forceFullPass = true;
             rc.frame = 0;
+            rc.prev = 0;
+            rc.debugEmissionSurfaceTexture = null;
+            rc.debugOcclusionTexture = null;
+            rc.debugDistanceTexture = null;
+            // Recompute cascade parameters and rebuild RC/overlay pipelines
+            if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true);
+            if (typeof rc.innerInitialize === 'function') rc.innerInitialize();
+            // Run a fresh pass to repopulate all surfaces
             rc.renderPass && rc.renderPass();
             // Briefly log state for dev visibility
             console.log(`[RC] Enhanced mode ${next ? 'ENABLED' : 'DISABLED'}`);

@@ -1042,7 +1042,9 @@ class DungeonRenderer extends BaseSurface {
         data[idx] = Math.floor(color[0] * 255);     // R
         data[idx + 1] = Math.floor(color[1] * 255); // G
         data[idx + 2] = Math.floor(color[2] * 255); // B
-        data[idx + 3] = asciiCode;                  // A - ASCII code
+        // Alpha stores the ASCII code (0..255) for the glyph at this cell.
+        // The dungeon shader reads asciiView.a * 255.0 to index the font atlas.
+        data[idx + 3] = asciiCode;
       }
     }
 

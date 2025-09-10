@@ -669,16 +669,12 @@ class RC extends DistanceField {
         drawPassTexture: null,
         resolution: [this.width, this.height],
         showSurface: true,
-        fogAmount: 0.8,
-        overlayGain: 1.2,
       },
       fragmentShader: `
         uniform sampler2D inputTexture;
         uniform sampler2D drawPassTexture;
         uniform vec2 resolution;
         uniform bool showSurface;
-        uniform float fogAmount; // 0..1, 0 = no fog (pure surface), 1 = full lighting on glyphs
-        uniform float overlayGain; // scales radiance before compositing (haze intensity)
 
         in vec2 vUv;
         out vec4 FragColor;
@@ -687,12 +683,8 @@ class RC extends DistanceField {
           vec4 rc = texture(inputTexture, vUv);
           vec4 d = texture(drawPassTexture, vUv);
 
-          // Screen-style fog: screen(surface, overlayGain*rc) gives additive "haze" feel
-          vec3 surface = d.rgb;
-          vec3 rcScaled = clamp(overlayGain * rc.rgb, 0.0, 1.0);
-          vec3 screenC = 1.0 - (1.0 - surface) * (1.0 - rcScaled);
-          vec3 fogged = mix(surface, screenC, clamp(fogAmount, 0.0, 1.0));
-          FragColor = vec4(d.a > 0.0 && showSurface ? fogged : rc.rgb, 1.0);
+          FragColor = rc;
+          // FragColor = vec4(d.a > 0.0 && showSurface ? d.rgb : rc.rgb, 1.0);
         }`
     });
 
@@ -763,19 +755,38 @@ class RC extends DistanceField {
   }
 
   overlayPass(inputTexture, preRc) {
-    // Vendor parity path: render RC directly to screen; no fog/haze or entities overlay.
-    if (this.vendorParity) {
-      // Ensure both samplers are valid; disable surface show flag
-      this.overlayUniforms.inputTexture = inputTexture;
-      this.overlayUniforms.drawPassTexture = inputTexture;
-      this.overlayUniforms.showSurface = false;
-      this.renderer.setRenderTarget(null);
+    this.overlayUniforms.drawPassTexture = this.dungeonPassTextureHigh;
+
+    if (this.forceFullPass) {
+      this.frame = 0;
+    }
+    const frame = this.forceFullPass ? 0 : 1 - this.frame;
+
+    if (this.frame == 0 && !this.forceFullPass) {
+      const input = this.overlayRenderTargets[0].texture ?? this.dungeonPassTextureHigh;
+      this.overlayUniforms.inputTexture = input;
+      this.renderer.setRenderTarget(this.overlayRenderTargets[1]);
       this.overlayRender();
-      return;
+    } else {
+      this.overlayUniforms.inputTexture = inputTexture;
+      this.renderer.setRenderTarget(this.overlayRenderTargets[0]);
+      this.overlayRender();
     }
 
-    // Current enhanced path: fog on FLOOR, then overlay ENTITIES
-    if (!this.surfaceRenderTarget) {
+    // Render directly to screen
+    this.renderer.setRenderTarget(null);
+    this.overlayRender();
+  }
+
+  // Generic layered builder: compose Emission (visual surface) and Occlusion (seed source)
+  // from an ordered list of map layers. Each layer is an object:
+  // { texture: WebGLTexture, emission: boolean, occlusion: boolean }
+  // opts: { buildEmission: boolean, buildOcclusion: boolean }
+  buildLayeredSurfaces(layers, opts) {
+    const options = Object.assign({ buildEmission: true, buildOcclusion: true }, opts || {});
+
+    // Ensure targets exist
+    if ((options.buildEmission || options.buildOcclusion) && !this.surfaceRenderTarget) {
       this.surfaceRenderTarget = this.renderer.createRenderTarget(
         this.width * this.scaling,
         this.height * this.scaling,
@@ -788,40 +799,74 @@ class RC extends DistanceField {
         }
       );
     }
-
-    this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
-    this.renderer.setRenderTarget(this.surfaceRenderTarget);
-    this.renderer.clear();
-    this.render();
-
-    this.overlayUniforms.drawPassTexture = this.surfaceRenderTarget.texture;
-
-    if (this.forceFullPass) {
-      this.frame = 0;
+    if (options.buildOcclusion && !this.occlusionRenderTarget) {
+      this.occlusionRenderTarget = this.renderer.createRenderTarget(
+        this.width * this.scaling,
+        this.height * this.scaling,
+        {
+          minFilter: this.gl.NEAREST,
+          magFilter: this.gl.NEAREST,
+          internalFormat: this.gl.RGBA,
+          format: this.gl.RGBA,
+          type: this.gl.UNSIGNED_BYTE,
+        }
+      );
     }
-    const frame = this.forceFullPass ? 0 : 1 - this.frame;
-
-    if (this.frame == 0 && !this.forceFullPass) {
-      // On the first frame, always use the fresh RC texture (avoid sampling an uninitialized buffer)
-      this.overlayUniforms.inputTexture = inputTexture;
-      this.renderer.setRenderTarget(this.overlayRenderTargets[1]);
-      this.overlayRender();
-    } else {
-      this.overlayUniforms.inputTexture = inputTexture;
-      this.renderer.setRenderTarget(this.overlayRenderTargets[0]);
-      this.overlayRender();
-    }
-
-    this.renderer.setRenderTarget(null);
-    this.overlayRender();
 
     const gl = this.gl;
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
-    this.render();
-    gl.disable(gl.BLEND);
+    let emissionTexture = null;
+    let occlusionTexture = null;
+
+    // Emission surface: draw first emission layer opaque, subsequent with alpha
+    if (options.buildEmission) {
+      let first = true;
+      this.renderer.setRenderTarget(this.surfaceRenderTarget);
+      this.renderer.clear();
+      for (let i = 0; i < layers.length; i++) {
+        const L = layers[i];
+        if (!L || !L.emission || !L.texture) continue;
+        if (first) {
+          gl.disable(gl.BLEND);
+          first = false;
+        } else {
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual draw
+        this.dungeonUniforms.asciiViewTexture = L.texture;
+        this.render();
+      }
+      gl.disable(gl.BLEND);
+      emissionTexture = this.surfaceRenderTarget.texture;
+    }
+
+    // Occlusion source: draw all occlusion layers with alpha into occlusion target
+    if (options.buildOcclusion) {
+      const prevEmissionThreshold = this.dungeonUniforms.emissionThreshold;
+      this.dungeonUniforms.emissionThreshold = 2.0; // prevent emission seeding leakage
+      let firstOcc = true;
+      this.renderer.setRenderTarget(this.occlusionRenderTarget);
+      this.renderer.clear();
+      for (let i = 0; i < layers.length; i++) {
+        const L = layers[i];
+        if (!L || !L.occlusion || !L.texture) continue;
+        if (firstOcc) {
+          gl.disable(gl.BLEND);
+          firstOcc = false;
+        } else {
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        this.dungeonUniforms.useOcclusionAlpha = 1.0; // seed alpha for DF/JFA
+        this.dungeonUniforms.asciiViewTexture = L.texture;
+        this.render();
+      }
+      gl.disable(gl.BLEND);
+      this.dungeonUniforms.emissionThreshold = prevEmissionThreshold;
+      occlusionTexture = this.occlusionRenderTarget.texture;
+    }
+
+    return { emissionTexture, occlusionTexture };
   }
 
   // Build a combined high-res emission surface (FLOOR first, then overlay ENTITIES)
@@ -967,15 +1012,8 @@ class RC extends DistanceField {
         return;
       }
 
-      // Seed JFA/DF from the appropriate source
-      // Normal: seed from FLOOR map; Enhanced: seed from ENTITIES only
-      let seedInputTexture = this.enhancedMode
-        ? this.buildEntityOcclusionTexture()
-        : this.dungeonPassTextureHigh;
-      // Cache occlusion source used this frame (Enhanced only)
-      this.debugOcclusionTexture = this.enhancedMode ? seedInputTexture : null;
-
-      let out = this.seedPass(seedInputTexture);
+      // Vendor-safe path: seed -> JFA -> DF from the dungeon pass texture
+      let out = this.seedPass(this.dungeonPassTextureHigh);
 
       out = this.jfaPass(out);
 
@@ -987,8 +1025,6 @@ class RC extends DistanceField {
       }
 
       this.distanceFieldTexture = this.dfPass(out);
-      // Cache DF texture used this frame (Enhanced only)
-      this.debugDistanceTexture = this.enhancedMode ? this.distanceFieldTexture : null;
 
       if (this.stage == 2) {
         this.finishRenderPass();
@@ -997,17 +1033,8 @@ class RC extends DistanceField {
         return;
       }
     }
-    let rcTexture = null;
-    // Scene texture selection is independent from vendor parity.
-    // Normal: use FLOOR-only high-res draw. Enhanced: use combined FLOOR+ENTITIES surface.
-    const sceneTexture = this.enhancedMode
-      ? this.buildEmissionSurfaceTexture()
-      : this.dungeonPassTextureHigh;
-    // Cache emission surface used this frame (Enhanced only)
-    this.debugEmissionSurfaceTexture = this.enhancedMode ? sceneTexture : null;
-    // Apply enhanced scene gain only in Enhanced mode
-    this.rcUniforms.sceneGain = this.enhancedMode ? (this.enhancedSceneGain || 1.0) : 1.0;
-    rcTexture = this.rcPass(this.distanceFieldTexture, sceneTexture);
+
+    let rcTexture = this.rcPass(this.distanceFieldTexture, this.dungeonPassTextureHigh);
 
     this.overlayPass(rcTexture, false);
 

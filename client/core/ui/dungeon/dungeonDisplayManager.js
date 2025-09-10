@@ -88,7 +88,9 @@
         }
       } catch (_) {}
       if (rc && typeof rc.setPositionBlockMapFill === 'function' && typeof rc.setEntities === 'function') {
-        rc.setPositionBlockMapFill(false); // floors never block
+        // In Normal (vendor parity) floors should block to seed DF/JFA; in Enhanced floors do not block
+        const floorsBlock = !!rc.vendorParity; // true in Normal, false in Enhanced
+        rc.setPositionBlockMapFill(floorsBlock);
         rc.setEntities(entities);
         // Apply FLOOR character color map based on rendering mode:
         // - Normal (vendor parity): neutral grayscale across all glyphs (no color tint)
