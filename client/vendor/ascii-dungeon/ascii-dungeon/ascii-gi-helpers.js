@@ -682,6 +682,7 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform sampler2D asciiViewTexture;  // The texture mapping dungeon cells to ASCII codes
   uniform sampler2D positionBlockMap;  // Map-sized mask: 1.0 blocks, 0.0 does not
   uniform float useOcclusionAlpha;     // 1.0 for offscreen (GI/DF), 0.0 for on-screen
+  uniform float occlusionWriteMask;    // NEW: 1.0 to write occlusion, 0.0 to skip (visual alpha unaffected)
   uniform vec2 gridSize;               // Number of visible grid cells in x,y directions
   uniform vec2 tileSize;               // Size of each character tile in the atlas (e.g. 8x8)
   uniform vec2 atlasSize;              // Size of the atlas grid (e.g. 16x16)
@@ -758,8 +759,8 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     float posBlock = texture(positionBlockMap, viewTexCoord).r; // 0..1
     // Pixel-accurate occlusion uses glyph alpha gated by position flag
     float occAlpha = char.a * posBlock;
-    // On-screen visuals should remain opaque where glyph exists; GI uses occAlpha
-    float outA = mix(char.a, occAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
+    // On-screen visuals remain opaque (char.a); GI uses occAlpha gated by occlusionWriteMask
+    float outA = mix(char.a, occlusionWriteMask * occAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
 
     // Output the character with the color from asciiViewTexture
     if (char.a > 0.0 || outA > 0.0) {
@@ -789,6 +790,8 @@ class DungeonRenderer extends BaseSurface {
         asciiViewTexture: null,
         positionBlockMap: null,
         useOcclusionAlpha: 1.0,
+        // NEW: compositor control — default to writing occlusion for legacy behavior
+        occlusionWriteMask: 1.0,
         gridSize: [0, 0],                           // Will be calculated based on camera and viewport
         tileSize: TILE_SIZE,
         atlasSize: [16, 16],
@@ -815,6 +818,9 @@ class DungeonRenderer extends BaseSurface {
     this.dungeonStage = props.stage;
     this.dungeonUniforms = props.uniforms;
     this.dungeonUniforms.asciiTexture = this.renderer.font;
+
+    // NEW: Gate to enable the poor-man's compositor; default is off for back-compat
+    this.enhanced = this.enhanced || false;
 
     // Initialize a positionBlockMap texture (will be resized with the map)
     this.positionBlockMapTexture = this.gl.createTexture();
@@ -1194,17 +1200,50 @@ class DungeonRenderer extends BaseSurface {
   }
 
   // This is the critical method that renders the dungeon
-  dungeonPass() {
-    // Make sure the ASCII texture and view texture are set
+  // Option A: when `enhanced` and `layers` are provided, composite them offscreen with alpha blending
+  dungeonPass(layers) {
+    // Ensure font is bound for glyph sampling (legacy behavior)
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
-    // Use occlusion alpha when rendering offscreen for GI/DF
+
+    // Helper: bind a layer's ascii view and occlusion flag
+    const bindLayer = (layer) => {
+      // Allow caller to pass a prebuilt texture or a raw map string. If mapString is used,
+      // this will overwrite asciiViewTexture/mapSize (acceptable for first step).
+      if (layer && layer.mapString) {
+        this.updateAsciiViewTexture(layer.mapString);
+      } else if (layer && layer.asciiViewTexture) {
+        this.dungeonUniforms.asciiViewTexture = layer.asciiViewTexture;
+      } else {
+        this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+      }
+      // NEW: gate occlusion writes per-layer
+      const write = !!(layer && layer.writeToOcclusionBuffer);
+      this.dungeonUniforms.occlusionWriteMask = write ? 1.0 : 0.0;
+    };
+
+    // Offscreen (GI/DF seed) uses occlusion alpha
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
-    // Render to the target
+    // Choose target and clear before composing
     this.renderIndex = 1 - this.renderIndex;
     this.renderer.setRenderTarget(this.renderTargets[this.renderIndex]);
-    this.render();
+
+    if (this.enhanced && Array.isArray(layers) && layers.length > 0) {
+      // NEW: enhanced compositor — alpha-blend N layers into the same target
+      this.gl.enable(this.gl.BLEND);
+      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+      this.renderer.clear(); // clear to transparent (default)
+      for (let i = 0; i < layers.length; i++) {
+        bindLayer(layers[i]);
+        this.render();
+      }
+      this.gl.disable(this.gl.BLEND);
+    } else {
+      // Legacy: single map draw
+      this.dungeonUniforms.occlusionWriteMask = 1.0; // preserve original occlusion semantics
+      this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+      this.render();
+    }
 
     let dungeonTexture = this.renderTargets[this.renderIndex].texture;
 
@@ -1212,7 +1251,21 @@ class DungeonRenderer extends BaseSurface {
     if (this.upscaleSurface) {
       this.renderIndexHigh = 1 - this.renderIndexHigh;
       this.renderer.setRenderTarget(this.renderTargetsHigh[this.renderIndexHigh]);
-      this.render();
+
+      if (this.enhanced && Array.isArray(layers) && layers.length > 0) {
+        // NEW: repeat compositor at HiDPI target
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        this.renderer.clear();
+        for (let i = 0; i < layers.length; i++) {
+          bindLayer(layers[i]);
+          this.render();
+        }
+        this.gl.disable(this.gl.BLEND);
+      } else {
+        this.render();
+      }
+
       this.dungeonPassTextureHigh = this.renderTargetsHigh[this.renderIndexHigh].texture;
     } else {
       this.dungeonPassTextureHigh = dungeonTexture;
@@ -1221,14 +1274,40 @@ class DungeonRenderer extends BaseSurface {
     return dungeonTexture;
   }
 
-  renderPass() {
-    // Run the dungeon render pass
-    this.dungeonPass();
+  renderPass(layers) {
+    // Run the dungeon render pass (offscreen) — includes compositor if enabled
+    this.dungeonPass(layers);
 
     // Render to screen
     this.renderer.setRenderTarget(null);
-    // Visual pass: disable occlusion alpha so glyph visuals remain unchanged
-    this.dungeonUniforms.useOcclusionAlpha = 0.0;
-    this.render();
+
+    if (this.enhanced && Array.isArray(layers) && layers.length > 0) {
+      // NEW: composite layers directly to screen for visual pass (no occlusion writes)
+      this.dungeonUniforms.useOcclusionAlpha = 0.0;
+      this.gl.enable(this.gl.BLEND);
+      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+      // Clear screen output for a fresh composite frame
+      this.renderer.clear();
+      for (let i = 0; i < layers.length; i++) {
+        // Visual alpha does not use occlusion mask, but we keep it set for symmetry
+        const layer = layers[i] || {};
+        if (layer && layer.mapString) {
+          this.updateAsciiViewTexture(layer.mapString);
+        } else if (layer && layer.asciiViewTexture) {
+          this.dungeonUniforms.asciiViewTexture = layer.asciiViewTexture;
+        } else {
+          this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+        }
+        this.dungeonUniforms.occlusionWriteMask = layer.writeToOcclusionBuffer ? 1.0 : 0.0;
+        this.render();
+      }
+      this.gl.disable(this.gl.BLEND);
+    } else {
+      // Legacy: single draw to screen with visuals-only alpha
+      this.dungeonUniforms.useOcclusionAlpha = 0.0;
+      this.dungeonUniforms.occlusionWriteMask = 1.0;
+      this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+      this.render();
+    }
   }
 }
