@@ -82,6 +82,11 @@ export function setRoute(route, payload = {}) {
     try { if (typeof window.stopLobbyPolling === 'function') window.stopLobbyPolling(); } catch (_) {}
   }
 
+  // If we left the LOGIN route, stop the login scenario helper (if running)
+  if (route !== APP_STATES.LOGIN) {
+    try { if (typeof window.stopLoginScenario === 'function') window.stopLoginScenario(); } catch (_) {}
+  }
+
   // Broadcast route change for systems that react to global app state (e.g., dungeon display manager)
   try { window.dispatchEvent(new CustomEvent('route:changed', { detail: { route } })); } catch (_) {}
 }

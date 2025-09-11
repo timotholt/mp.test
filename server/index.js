@@ -12,6 +12,7 @@ const { Server } = require('colyseus');
 const { WebSocketTransport } = require('@colyseus/ws-transport');
 const { NethackRoom } = require('./rooms/NethackRoom');
 const { LobbyRoom } = require('./rooms/LobbyRoom');
+const { LoginScenarioRoom } = require('./rooms/LoginScenarioRoom');
 // Initialize presence hub (singleton starts its sweep on require)
 require('./presence/PresenceHub');
 // Optional safemode/boot prompt
@@ -104,6 +105,13 @@ async function startServer() {
   gameServer.define('nethack', NethackRoom).filterBy(['gameId']);
   // Real-time lobby room broadcasting available rooms and lobby players
   gameServer.define('lobby', LobbyRoom);
+  // Shared login scenario room (movement-only, full-visibility stub)
+  if ((process.env.LOGIN_SCENARIO_ENABLED ?? 'true') !== 'false') {
+    gameServer.define('login', LoginScenarioRoom);
+    try { console.log('[boot] LoginScenarioRoom enabled'); } catch (_) {}
+  } else {
+    try { console.log('[boot] LoginScenarioRoom disabled via env'); } catch (_) {}
+  }
 
   httpServer.listen(PORT, () => {
     console.log(`Colyseus listening on ws://localhost:${PORT}`);
