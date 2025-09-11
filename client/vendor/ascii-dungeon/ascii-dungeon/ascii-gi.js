@@ -295,7 +295,6 @@ uniform vec2 resolution;
   uniform bool enableSun;
   uniform float sunAngle;
   uniform float srgb;
-  uniform float sceneGain;
   uniform float firstCascadeIndex;
   uniform float lastCascadeIndex;
   uniform float baseRayCount;
@@ -303,8 +302,6 @@ uniform vec2 resolution;
   // Debug uniforms
   uniform float threshold;
   uniform float curve;
-  // New: distance attenuation for ray samples
-  uniform float lightDecay; // per-screen-unit decay, applied as exp(-lightDecay * distance)
 
   in vec2 vUv;
   out vec3 FragColor;
@@ -356,14 +353,6 @@ uniform vec2 resolution;
       if (df <= minStepSize) {
         vec4 sampleLight = textureLod(sceneTexture, rayUv, 0.0);
         sampleLight.rgb = pow(sampleLight.rgb, vec3(srgb));
-        // Distance-based attenuation (project extension). Skip work when disabled to match vendor performance.
-        if (lightDecay > 0.0001) {
-          // Use accumulated ray distance (already in pixel-ish units due to stepping by df*scale)
-          float attenuation = exp(-lightDecay * dist);
-          sampleLight.rgb *= attenuation;
-        }
-        // Enhanced-only brightness compensation for emission-based scene textures
-        sampleLight.rgb *= sceneGain;
         // Apply threshold/curve at sample time so it participates in accumulation
         if (threshold > 0.0) {
           vec3 shifted = max(sampleLight.rgb - vec3(threshold), vec3(0.0));
@@ -407,14 +396,10 @@ uniform vec2 resolution;
     // Sample from the next cascade
     vec3 upperSample = vec3(0);
 
-    // Clamp requested LOD to available mip levels to avoid invalid sampling on some drivers
-    float desiredLod = basePixelsBetweenProbes == 1.0 ? 0.0 : log(basePixelsBetweenProbes) / log(2.0);
-    float maxLod = floor(log2(min(resolution.x, resolution.y)));
-    float lod = clamp(desiredLod, 0.0, maxLod);
     upperSample = textureLod(
       lastTexture,
       upperProbePosition,
-      lod
+      basePixelsBetweenProbes == 1.0 ? 0.0 : log(basePixelsBetweenProbes) / log(2.0)
     ).rgb;
 
     // Apply threshold/curve to upper cascade contribution as well
@@ -539,7 +524,7 @@ class RC extends DistanceField {
     this.lastRequest = Date.now();
     this.frame = 0;
     this.baseRayCount = 4.0;
-    this.forceFullPass = true; // false;
+    this.forceFullPass = true;
     super.innerInitialize();
     this.activelyDrawing = false;
     this.rawBasePixelsBetweenProbesExponent = 0.0;
@@ -555,51 +540,58 @@ class RC extends DistanceField {
       this.sunAngleSlider.disabled = true;
     }
 
-    // Vendor Parity Mode: when enabled, we mimic the vendor pipeline and parameter behavior.
-    // Toggle via window.__rcVendorParity or persisted localStorage '__vendor_parity_mode' (default: true)
-    try {
-      if (typeof window !== 'undefined' && window.__rcVendorParity != null) {
-        this.vendorParity = !!window.__rcVendorParity;
-      } else {
-        let persisted = null;
-        try { persisted = (localStorage && localStorage.getItem('__vendor_parity_mode')) || null; } catch (_) { persisted = null; }
-        if (persisted === 'on') this.vendorParity = true;
-        else if (persisted === 'off') this.vendorParity = false;
-        else this.vendorParity = true;
-      }
-    } catch (_) { this.vendorParity = true; }
+    this.falloffSlider = addSlider({
+      id: "falloff-slider-container",
+      name: "Falloff",
+      onUpdate: (value) => {
+        this.rcUniforms.srgb = value;
+        this.renderPass();
+        return value;
+      },
+      options: {min: 0.0, max: 3.0, value: 2.0, step: 0.1},
+    });
 
-    // Enhanced Mode: when enabled, we ONLY change two things vs Normal:
-    // 1) Occlusion/DF seeding uses ENTITIES only (no floor),
-    // 2) RC sceneTexture uses a combined FLOOR+ENTITIES surface.
-    // Everything else remains identical to Normal.
-    try {
-      if (typeof window !== 'undefined' && window.__rcEnhanced != null) {
-        this.enhancedMode = !!window.__rcEnhanced;
-      } else {
-        let persisted = null;
-        try { persisted = (localStorage && localStorage.getItem('rc_enhanced_mode')) || null; } catch (_) { persisted = null; }
-        if (persisted === 'on') this.enhancedMode = true;
-        else if (persisted === 'off') this.enhancedMode = false;
-        else this.enhancedMode = false; // Default: Normal mode
-      }
-    } catch (_) { this.enhancedMode = false; }
+    this.pixelsBetweenProbes = addSlider({
+      id: "radius-slider-container",
+      name: "Pixels Between Base Probes",
+      onUpdate: (value) => {
+        this.rawBasePixelsBetweenProbes = Math.pow(2, value);
+        this.initializeParameters(true);
+        this.renderPass();
+        return Math.pow(2, value);
+      },
+      options: {min: 0, max: 4, value: this.rawBasePixelsBetweenProbesExponent, step: 1},
+      initialSpanValue: this.rawBasePixelsBetweenProbes,
+    });
 
-    // Vendor debug sliders are disabled; values are controlled via app UI (Display->Debug)
-    this.srgbFalloff = 2.0; // default, overridden by renderer via ui:rc-debug-changed
-    // Enhanced-only gain applied to sceneTexture sampling in RC to match vendor brightness
-    try {
-      const g = parseFloat(localStorage.getItem('rc_enhanced_scene_gain'));
-      this.enhancedSceneGain = Number.isFinite(g) ? Math.max(0.1, Math.min(4.0, g)) : 1.6;
-    } catch (_) { this.enhancedSceneGain = 1.6; }
+    this.rayIntervalSlider = addSlider({
+      id: "radius-slider-container", name: "Interval Length", onUpdate: (value) => {
+        this.rcUniforms.rayInterval = value;
+        this.renderPass();
+        return value;
+      },
+      options: {min: 1.0, max: 512.0, step: 0.1, value: 1.0},
+    });
 
-    // Base probe spacing exponent kept; no slider (controlled externally if needed)
+    this.baseRayCountSlider = addSlider({
+      id: "radius-slider-container", name: "Base Ray Count", onUpdate: (value) => {
+        this.rcUniforms.baseRayCount = Math.pow(4.0, value);
+        this.baseRayCount = Math.pow(4.0, value);
+        this.initializeParameters();
+        this.renderPass();
+        return Math.pow(4.0, value);
+      },
+      options: {min: 1.0, max: 3.0, step: 1.0, value: 1.0},
+    });
 
-    this.rayIntervalValue = 1.0;
-
-    // Base ray count controlled by this.baseRayCount (default 4.0); no slider here
-
-    this.intervalOverlapValue = 0.1;
+    this.intervalOverlapSlider = addSlider({
+      id: "radius-slider-container", name: "Interval Overlap %", onUpdate: (value) => {
+        this.rcUniforms.intervalOverlap = value;
+        this.renderPass();
+        return value;
+      },
+      options: {min: -1.0, max: 2.0, step: 0.01, value: 0.1},
+    });
 
     this.initializeParameters();
 
@@ -622,36 +614,64 @@ class RC extends DistanceField {
         cascadeIndex: 0.0,
         basePixelsBetweenProbes: this.basePixelsBetweenProbes,
         cascadeInterval: this.radianceInterval,
-        rayInterval: this.rayIntervalValue,
-        intervalOverlap: this.intervalOverlapValue,
-        baseRayCount: this.baseRayCount,
+        rayInterval: this.rayIntervalSlider.value,
+        intervalOverlap: this.intervalOverlapSlider.value,
+        baseRayCount: Math.pow(4.0, this.baseRayCountSlider.value),
         // If the sun angle slider isn't present, default to 0.0
         sunAngle: this.sunAngleSlider ? this.sunAngleSlider.value : 0.0,
         time: 0.1,
-        srgb: this.srgbFalloff,
-        sceneGain: 1.0,
-        // Keep identical visuals across modes unless explicitly changed via UI
-        lightDecay: 0.0,
+        srgb: this.falloffSlider.value,
         enableSun: false,
         firstCascadeIndex: 0,
         bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
         // Debug defaults
-        threshold: this.vendorParity ? 0.0 : 0.0,
-        curve: this.vendorParity ? 1.0 : 1.0,
+        threshold: 0.0,
+        curve: 1.0,
       },
       fragmentShader: rcFragmentShader,
     });
 
-    // No vendor slider: span display disabled
+    this.baseRayCountSlider.setSpan(Math.pow(4.0, this.baseRayCountSlider.value));
 
     this.firstLayer = this.radianceCascades - 1;
     this.lastLayer = 0;
 
-    // Layer selection slider removed; keep defaults via firstLayer/lastLayer
+    this.lastLayerSlider = addSlider({
+      id: "radius-slider-container",
+      name: "(RC) Layer to Render",
+      onUpdate: (value) => {
+        this.rcUniforms.firstCascadeIndex = value;
+        this.overlayUniforms.showSurface = value == 0;
+        this.lastLayer = value;
+        this.renderPass();
+        return value;
+      },
+      options: {min: 0, max: this.radianceCascades - 1, value: 0, step: 1},
+    });
 
-    // Cascade count slider removed; defaults set in initializeParameters()
+    this.firstLayerSlider = addSlider({
+      id: "radius-slider-container",
+      name: "(RC) Layer Count",
+      onUpdate: (value) => {
+        this.rcUniforms.cascadeCount = value;
+        this.firstLayer = value - 1;
+        this.renderPass();
+        return value;
+      },
+      options: {min: 1, max: this.radianceCascades, value: this.radianceCascades, step: 1},
+    });
 
-    this.stage = 3; // no vendor stage slider
+    this.stage = 3;
+    this.stageToRender = addSlider({
+      id: "radius-slider-container",
+      name: "Stage To Render",
+      onUpdate: (value) => {
+        this.stage = value;
+        this.renderPass();
+        return value;
+      },
+      options: {min: 0, max: 3, value: 3, step: 1},
+    });
 
     const {
       stage: overlayStage,
@@ -698,8 +718,6 @@ class RC extends DistanceField {
     this.overlayUniforms = overlayUniforms;
     this.overlayRender = overlayRender;
     this.overlayRenderTargets = overlayRenderTargets;
-
-    // Fog amount controlled by Display->Debug; no vendor slider
   }
 
   // Key parameters we care about
@@ -739,9 +757,8 @@ class RC extends DistanceField {
     this.basePixelsBetweenProbes = this.rawBasePixelsBetweenProbes;
     this.radianceInterval = 1.0;
 
-    // Clamp to avoid zero-size cascade textures at extreme PPP or small windows
-    this.radianceWidth = Math.max(1, Math.floor(this.renderWidth / this.basePixelsBetweenProbes));
-    this.radianceHeight = Math.max(1, Math.floor(this.renderHeight / this.basePixelsBetweenProbes));
+    this.radianceWidth = Math.floor(this.renderWidth / this.basePixelsBetweenProbes);
+    this.radianceHeight = Math.floor(this.renderHeight / this.basePixelsBetweenProbes);
 
     if (setUniforms) {
       this.rcUniforms.basePixelsBetweenProbes = this.basePixelsBetweenProbes;
@@ -776,163 +793,6 @@ class RC extends DistanceField {
     // Render directly to screen
     this.renderer.setRenderTarget(null);
     this.overlayRender();
-  }
-
-  // Generic layered builder: compose Emission (visual surface) and Occlusion (seed source)
-  // from an ordered list of map layers. Each layer is an object:
-  // { texture: WebGLTexture, emission: boolean, occlusion: boolean }
-  // opts: { buildEmission: boolean, buildOcclusion: boolean }
-  buildLayeredSurfaces(layers, opts) {
-    const options = Object.assign({ buildEmission: true, buildOcclusion: true }, opts || {});
-
-    // Ensure targets exist
-    if ((options.buildEmission || options.buildOcclusion) && !this.surfaceRenderTarget) {
-      this.surfaceRenderTarget = this.renderer.createRenderTarget(
-        this.width * this.scaling,
-        this.height * this.scaling,
-        {
-          minFilter: this.gl.NEAREST,
-          magFilter: this.gl.NEAREST,
-          internalFormat: this.gl.RGBA,
-          format: this.gl.RGBA,
-          type: this.gl.UNSIGNED_BYTE,
-        }
-      );
-    }
-    if (options.buildOcclusion && !this.occlusionRenderTarget) {
-      this.occlusionRenderTarget = this.renderer.createRenderTarget(
-        this.width * this.scaling,
-        this.height * this.scaling,
-        {
-          minFilter: this.gl.NEAREST,
-          magFilter: this.gl.NEAREST,
-          internalFormat: this.gl.RGBA,
-          format: this.gl.RGBA,
-          type: this.gl.UNSIGNED_BYTE,
-        }
-      );
-    }
-
-    const gl = this.gl;
-    let emissionTexture = null;
-    let occlusionTexture = null;
-
-    // Emission surface: draw first emission layer opaque, subsequent with alpha
-    if (options.buildEmission) {
-      let first = true;
-      this.renderer.setRenderTarget(this.surfaceRenderTarget);
-      this.renderer.clear();
-      for (let i = 0; i < layers.length; i++) {
-        const L = layers[i];
-        if (!L || !L.emission || !L.texture) continue;
-        if (first) {
-          gl.disable(gl.BLEND);
-          first = false;
-        } else {
-          gl.enable(gl.BLEND);
-          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        }
-        this.dungeonUniforms.useOcclusionAlpha = 0.0; // visual draw
-        this.dungeonUniforms.asciiViewTexture = L.texture;
-        this.render();
-      }
-      gl.disable(gl.BLEND);
-      emissionTexture = this.surfaceRenderTarget.texture;
-    }
-
-    // Occlusion source: draw all occlusion layers with alpha into occlusion target
-    if (options.buildOcclusion) {
-      const prevEmissionThreshold = this.dungeonUniforms.emissionThreshold;
-      this.dungeonUniforms.emissionThreshold = 2.0; // prevent emission seeding leakage
-      let firstOcc = true;
-      this.renderer.setRenderTarget(this.occlusionRenderTarget);
-      this.renderer.clear();
-      for (let i = 0; i < layers.length; i++) {
-        const L = layers[i];
-        if (!L || !L.occlusion || !L.texture) continue;
-        if (firstOcc) {
-          gl.disable(gl.BLEND);
-          firstOcc = false;
-        } else {
-          gl.enable(gl.BLEND);
-          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        }
-        this.dungeonUniforms.useOcclusionAlpha = 1.0; // seed alpha for DF/JFA
-        this.dungeonUniforms.asciiViewTexture = L.texture;
-        this.render();
-      }
-      gl.disable(gl.BLEND);
-      this.dungeonUniforms.emissionThreshold = prevEmissionThreshold;
-      occlusionTexture = this.occlusionRenderTarget.texture;
-    }
-
-    return { emissionTexture, occlusionTexture };
-  }
-
-  // Build a combined high-res emission surface (FLOOR first, then overlay ENTITIES)
-  // to be used as the GI sceneTexture. This lets non-blocking floor emitters glow.
-  buildEmissionSurfaceTexture() {
-    if (!this.surfaceRenderTarget) {
-      this.surfaceRenderTarget = this.renderer.createRenderTarget(
-        this.width * this.scaling,
-        this.height * this.scaling,
-        {
-          minFilter: this.gl.NEAREST,
-          magFilter: this.gl.NEAREST,
-          internalFormat: this.gl.RGBA,
-          format: this.gl.RGBA,
-          type: this.gl.UNSIGNED_BYTE,
-        }
-      );
-    }
-
-    // Render FLOOR first (no occlusion alpha)
-    this.dungeonUniforms.useOcclusionAlpha = 0.0;
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
-    this.renderer.setRenderTarget(this.surfaceRenderTarget);
-    this.renderer.clear();
-    this.render();
-
-    // Overlay ENTITIES into the same target so both contribute emission
-    const gl = this.gl;
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES
-    this.render();
-    gl.disable(gl.BLEND);
-
-    return this.surfaceRenderTarget.texture;
-  }
-
-  // Build a high-res occlusion source using ENTITIES ONLY (no floor), used to seed JFA/DF.
-  buildEntityOcclusionTexture() {
-    if (!this.occlusionRenderTarget) {
-      this.occlusionRenderTarget = this.renderer.createRenderTarget(
-        this.width * this.scaling,
-        this.height * this.scaling,
-        {
-          minFilter: this.gl.NEAREST,
-          magFilter: this.gl.NEAREST,
-          internalFormat: this.gl.RGBA,
-          format: this.gl.RGBA,
-          type: this.gl.UNSIGNED_BYTE,
-        }
-      );
-    }
-
-    // Offscreen occlusion render: entities only, seeded alpha.
-    // Disable emission-based seeding so FLOOR cannot leak into occlusion.
-    const prevEmissionThreshold = this.dungeonUniforms.emissionThreshold;
-    this.dungeonUniforms.emissionThreshold = 2.0; // effectively disables emission seeds
-    this.dungeonUniforms.useOcclusionAlpha = 1.0;
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture; // ENTITIES ONLY
-    this.renderer.setRenderTarget(this.occlusionRenderTarget);
-    this.renderer.clear();
-    this.render();
-    // Restore emission threshold
-    this.dungeonUniforms.emissionThreshold = prevEmissionThreshold;
-
-    return this.occlusionRenderTarget.texture;
   }
 
   triggerDraw() {
@@ -973,12 +833,6 @@ class RC extends DistanceField {
   }
 
   rcPass(distanceFieldTexture, dungeonTexture) {
-    // Enforce vendor parity core params regardless of UI state
-    if (this.vendorParity && this.rcUniforms) {
-      this.rcUniforms.threshold = 0.0;
-      this.rcUniforms.curve = 1.0;
-      this.rcUniforms.lightDecay = 0.0;
-    }
     this.rcUniforms.distanceTexture = distanceFieldTexture;
     this.rcUniforms.sceneTexture = dungeonTexture;
     this.rcUniforms.cascadeIndex = 0;
@@ -1012,7 +866,6 @@ class RC extends DistanceField {
         return;
       }
 
-      // Vendor-safe path: seed -> JFA -> DF from the dungeon pass texture
       let out = this.seedPass(this.dungeonPassTextureHigh);
 
       out = this.jfaPass(out);

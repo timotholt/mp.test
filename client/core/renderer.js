@@ -127,47 +127,13 @@ export async function setupAsciiRenderer() {
       try { console.log('[DEBUG client] calling rc.load()'); } catch (_) {}
       rc.load();
     }
-    // Ensure vendorParity matches mode semantics:
-    // - Normal: true (match vendor path; no overlay compositing)
-    // - Enhanced: false (allow surface/overlay compositing path)
-    try { rc.vendorParity = !rc.enhancedMode; } catch (_) {}
-
-    // Lightweight debug label (top-left) to display mode / view
-    const ensureDebugLabel = () => {
-      let el = document.getElementById('rc-debug-label');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'rc-debug-label';
-        el.style.position = 'fixed';
-        el.style.left = '8px';
-        el.style.top = '8px';
-        el.style.zIndex = '10000';
-        el.style.padding = '4px 8px';
-        el.style.borderRadius = '4px';
-        el.style.fontFamily = 'var(--ui-font-family, system-ui, sans-serif)';
-        el.style.fontSize = '12px';
-        el.style.letterSpacing = '0.02em';
-        el.style.color = 'rgba(240,240,245,0.92)';
-        el.style.background = 'rgba(0,0,0,0.35)';
-        el.style.backdropFilter = 'blur(3px) saturate(1.2)';
-        el.style.pointerEvents = 'none';
-        document.body.appendChild(el);
-      }
-      return el;
-    };
-    const setDebugLabel = (text) => {
-      try { ensureDebugLabel().textContent = text; } catch (_) {}
-    };
-    // Initialize the label based on current mode if available
-    try { setDebugLabel(`Mode: ${rc.enhancedMode ? 'Enhanced' : 'Normal'}`); } catch (_) {}
 
     // Robust resize handler: updates canvas/container, renderer internals, uniforms, and render targets
     const handleResize = () => {
       try {
         const w = Math.max(320, window.innerWidth || 1024);
         const h = Math.max(240, window.innerHeight || 768);
-        // Vendor runs effectively at 1x; forcing DPR=1.0 keeps parity and avoids stalls at high DPI
-        const dpr = 1.0;
+        const dpr = window.devicePixelRatio || 1;
 
         // Ensure container fills viewport
         try {
@@ -347,22 +313,6 @@ export async function setupAsciiRenderer() {
       window.__pendingPositionColorMap = undefined;
     }
 
-    // New: apply pending PositionBlockMap fill and Entities (layered rendering)
-    if (typeof window.__pendingBlockFill !== 'undefined' && typeof rc.setPositionBlockMapFill === 'function') {
-      try {
-        console.log('[DEBUG client] applying pending block-fill', window.__pendingBlockFill);
-        rc.setPositionBlockMapFill(window.__pendingBlockFill);
-      } catch (_) {}
-      window.__pendingBlockFill = undefined;
-    }
-    if (window.__pendingEntities && typeof rc.setEntities === 'function') {
-      try {
-        console.log('[DEBUG client] applying pending entities', window.__pendingEntities?.length || 0);
-        rc.setEntities(window.__pendingEntities);
-      } catch (_) {}
-      window.__pendingEntities = undefined;
-    }
-
     // Minimal camera controls (mouse): pan + wheel zoom
     const canvas = rc.canvas;
     let dragging = false;
@@ -380,7 +330,7 @@ export async function setupAsciiRenderer() {
       if (!dragging) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
-      const zoomFactor = 1.0 / (rc.camera.zoomLevel || 1.0);
+      const zoomFactor = 1.0 / Math.sqrt(rc.camera.zoomLevel || 1.0);
       rc.panCamera(-dx * zoomFactor, -dy * zoomFactor);
       lastX = e.clientX;
       lastY = e.clientY;
@@ -416,7 +366,7 @@ export async function setupAsciiRenderer() {
       rc.zoomCamera(factor, x, y);
     }, { passive: false });
 
-    // Keyboard helpers: +/- zoom, F8 UI toggle, F9 Enhanced mode toggle
+    // Keyboard helpers: +/- zoom and F8 UI toggle
     window.addEventListener('keydown', (e) => {
       try {
         if (e.key === '+' || e.key === '=') {
@@ -458,80 +408,6 @@ export async function setupAsciiRenderer() {
           try {
             document.querySelectorAll('.login-card').forEach((el) => toggleEl(el));
           } catch (_) {}
-        } else if (e.key === 'F9') {
-          // Toggle Enhanced rendering mode (Normal vs Enhanced)
-          const current = !!(rc && rc.enhancedMode);
-          const next = !current;
-          try { rc.enhancedMode = next; } catch (_) {}
-          try { rc.vendorParity = !next; } catch (_) {}
-          try { window.__rcEnhanced = next; } catch (_) {}
-          try { localStorage.setItem('rc_enhanced_mode', next ? 'on' : 'off'); } catch (_) {}
-          try { localStorage.setItem('__vendor_parity_mode', (!next) ? 'on' : 'off'); } catch (_) {}
-          // Soft reboot the rendering system so cascades, ping-pong and targets reset cleanly
-          try {
-            // Stop animation loop next tick and reset timing
-            rc.animating = false;
-            rc.lastRequest = Date.now();
-            // Reset frame/ping-pong and cached debug views
-            rc.forceFullPass = true;
-            rc.frame = 0;
-            rc.prev = 0;
-            rc.debugEmissionSurfaceTexture = null;
-            rc.debugOcclusionTexture = null;
-            rc.debugDistanceTexture = null;
-            // Recompute cascade parameters and rebuild RC/overlay pipelines
-            if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true);
-            if (typeof rc.innerInitialize === 'function') rc.innerInitialize();
-            // Run a fresh pass to repopulate all surfaces
-            rc.renderPass && rc.renderPass();
-            // Briefly log state for dev visibility
-            console.log(`[RC] Enhanced mode ${next ? 'ENABLED' : 'DISABLED'}`);
-            setDebugLabel(`Mode: ${rc.enhancedMode ? 'Enhanced' : 'Normal'}`);
-            try { window.dispatchEvent(new CustomEvent('ui:rc-mode-changed', { detail: { enhanced: next } })); } catch (_) {}
-          } catch (_) {}
-        // Enhanced-only debug views (Alt+1..Alt+4)
-        } else if (e.altKey && (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4')) {
-          if (!rc || !rc.enhancedMode) return; // Do nothing unless Enhanced mode is ON
-          // Helper: blit a texture to screen using the overlay pass (no surface compositing)
-          const blit = (tex) => {
-            if (!tex || !rc.overlayUniforms || !rc.overlayRender) return;
-            try {
-              rc.overlayUniforms.inputTexture = tex;
-              rc.overlayUniforms.drawPassTexture = tex;
-              rc.overlayUniforms.showSurface = false;
-              rc.renderer.setRenderTarget(null);
-              rc.overlayRender();
-            } catch (_) {}
-          };
-          // Alt-1: Normal display (full pipeline composite)
-          if (e.key === '1') {
-            // Comment: renders the standard Enhanced output (RC + fog + entities overlay)
-            try { rc.renderPass && rc.renderPass(); setDebugLabel('Mode: Enhanced — View: Composite'); } catch (_) {}
-          }
-          // Alt-2: Combined emission surface (floor + entities) used as RC sceneTexture
-          else if (e.key === '2') {
-            // Comment: blit the cached emission surface from the current frame (no rebuild)
-            try {
-              const tex = rc.debugEmissionSurfaceTexture;
-              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Emission Surface'); }
-            } catch (_) {}
-          }
-          // Alt-3: Occlusion texture (entities-only) used to seed JFA/DF
-          else if (e.key === '3') {
-            // Comment: blit the cached entities-only occlusion source (no rebuild)
-            try {
-              const tex = rc.debugOcclusionTexture;
-              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Occlusion (Entities)'); }
-            } catch (_) {}
-          }
-          // Alt-4: Distance texture (DF output)
-          else if (e.key === '4') {
-            // Comment: blit the cached DF texture; if missing, run one pass to populate
-            try {
-              const tex = rc.debugDistanceTexture;
-              if (tex) { blit(tex); setDebugLabel('Mode: Enhanced — View: Distance Field'); }
-            } catch (_) {}
-          }
         }
       } catch (_) {}
     });
@@ -605,14 +481,6 @@ export async function setupAsciiRenderer() {
           applySelectedFont();
         }
       })();
-    } catch (_) {}
-
-    // Apply advanced GI preferences at boot if available (vendor defaults via Prefs)
-    try {
-      if (window.Prefs && typeof window.Prefs.loadAll === 'function') {
-        const adv = window.Prefs.loadAll('display.rc');
-        window.dispatchEvent(new CustomEvent('ui:rc-advanced-changed', { detail: adv }));
-      }
     } catch (_) {}
   } catch (e) {
     console.error('[ASCII renderer] setup failed:', e);
@@ -731,96 +599,10 @@ try {
       const d = (e && e.detail) || {};
       const threshold = Number(d.threshold) || 0;
       const curve = Number(d.curve) || 1;
-      const fogAmount = (d.fogAmount != null) ? Math.max(0, Math.min(1, Number(d.fogAmount))) : null;
-      const srgbGamma = (d.srgbFalloff != null) ? Math.max(0, Math.min(3, Number(d.srgbFalloff))) : null;
-      const overlayGain = (d.overlayGain != null) ? Math.max(0, Math.min(3, Number(d.overlayGain))) : null;
-      const emissionThreshold = (d.emissionThreshold != null) ? Math.max(0, Math.min(1, Number(d.emissionThreshold))) : null;
       rc.rcUniforms.threshold = threshold;
       rc.rcUniforms.curve = curve;
-      // Map Falloff slider to SRGB gamma (vendor uses 'srgb' exponent)
-      if (srgbGamma != null) rc.rcUniforms.srgb = srgbGamma;
-      if (rc.overlayUniforms && fogAmount != null) rc.overlayUniforms.fogAmount = fogAmount;
-      if (rc.overlayUniforms && overlayGain != null) rc.overlayUniforms.overlayGain = overlayGain;
-      // DF emission seeding threshold (floors + entities), if provided
-      if (rc.dungeonUniforms && emissionThreshold != null) rc.dungeonUniforms.emissionThreshold = emissionThreshold;
       rc.renderPass && rc.renderPass();
     } catch (_) {}
-  });
-} catch (_) {}
-
-// Advanced GI/Renderer preferences listener
-try {
-  window.addEventListener('ui:rc-advanced-changed', (e) => {
-    try {
-      const rc = window.radianceCascades;
-      if (!rc) return;
-      const p = (e && e.detail) || {};
-
-      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v)));
-      // Vendor slider is 0..4; clamp to avoid extreme LOD requests on drivers
-      const exp = clamp(p.basePPExp != null ? p.basePPExp : rc.rawBasePixelsBetweenProbesExponent || 0, 0, 4);
-      const basePP = Math.pow(2, exp);
-      const baseRayCount = (p.baseRayCount != null) ? Number(p.baseRayCount) : (rc.baseRayCount || 4);
-      const rayInterval = (p.rayInterval != null) ? Number(p.rayInterval) : (rc.rayIntervalValue || 1.0);
-      const intervalOverlap = (p.intervalOverlap != null) ? Number(p.intervalOverlap) : (rc.intervalOverlapValue || 0.1);
-
-      // Rebuild ONLY when baseRayCount changes. Probe spacing updates are lightweight
-      // and should not stall the app.
-      let needsReinit = false;
-      try {
-        if (Number(rc.baseRayCount) !== Number(baseRayCount)) needsReinit = true;
-      } catch (_) {}
-
-      // Apply base fields
-      rc.rawBasePixelsBetweenProbesExponent = exp;
-      rc.rawBasePixelsBetweenProbes = basePP;
-      rc.baseRayCount = baseRayCount;
-      rc.rayIntervalValue = rayInterval;
-      rc.intervalOverlapValue = intervalOverlap;
-
-      // Always update derived uniforms; rebuild only if required
-      try { if (typeof rc.initializeParameters === 'function') rc.initializeParameters(true); } catch (_) {}
-      if (needsReinit) {
-        try { if (typeof rc.innerInitialize === 'function') rc.innerInitialize(); } catch (_) {}
-      }
-
-      // Uniform updates (safe after potential reinit)
-      try {
-        if (rc.rcUniforms) {
-          rc.rcUniforms.rayInterval = rc.rayIntervalValue;
-          rc.rcUniforms.intervalOverlap = rc.intervalOverlapValue;
-          if (p.distanceAttenuation != null) rc.rcUniforms.lightDecay = clamp(p.distanceAttenuation, 0, 3);
-          if (p.bilinearFix != null) rc.rcUniforms.bilinearFixEnabled = !!p.bilinearFix;
-          if (p.addNoise != null) rc.rcUniforms.addNoise = !!p.addNoise;
-          if (p.enableSun != null) rc.rcUniforms.enableSun = !!p.enableSun;
-          if (p.sunAngle != null) rc.rcUniforms.sunAngle = Number(p.sunAngle) || 0.0;
-        }
-        if (rc.dungeonUniforms && p.emissionThreshold != null) {
-          rc.dungeonUniforms.emissionThreshold = clamp(p.emissionThreshold, 0, 1);
-        }
-      } catch (_) {}
-
-      // Filtering toggle for RC render targets (vendor parity)
-      try {
-        if (Array.isArray(rc.rcRenderTargets) && p.nearestFiltering != null) {
-          rc.rcRenderTargets.forEach((r) => {
-            if (!r || !r.updateFilters) return;
-            if (p.nearestFiltering) {
-              r.updateFilters({ minFilter: rc.gl.NEAREST_MIPMAP_NEAREST, magFilter: rc.gl.NEAREST });
-            } else {
-              r.updateFilters({ minFilter: rc.gl.LINEAR_MIPMAP_LINEAR, magFilter: rc.gl.LINEAR });
-            }
-          });
-        }
-      } catch (_) {}
-
-      // Force full pass toggle
-      try { if (p.forceFullPass != null) rc.forceFullPass = !!p.forceFullPass; } catch (_) {}
-
-      try { rc.renderPass && rc.renderPass(); } catch (_) {}
-    } catch (err) {
-      try { console.warn('[ui:rc-advanced-changed] handler error', err); } catch (_) {}
-    }
   });
 } catch (_) {}
 

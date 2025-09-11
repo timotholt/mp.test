@@ -67,7 +67,8 @@ const { startLobby, leaveRoomToLobby, afterJoin } = createSessionHandlers({
 
 // Register screens
 
-// (Login route registered after client is created so it can auto-join the login scenario)
+// Register LOGIN route via extracted module
+registerLoginRoute({ makeScreen, APP_STATES });
 
 // LOBBY route moved to './routes/lobby.js' and registered after client is created
 
@@ -129,8 +130,7 @@ window.ensureBanner = ensureBanner;
 
 const endpoint = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:2567`;
 const client = new Colyseus.Client(endpoint);
-// Register LOGIN and LOBBY routes (both need client now)
-registerLoginRoute({ makeScreen, APP_STATES, client });
+// Register LOBBY route via extracted module (needs client)
 registerLobbyRoute({ makeScreen, APP_STATES, client, afterJoin });
 // Back-compat global
 try { window.stopLobbyPolling = stopLobbyPollingExport; } catch (_) {}

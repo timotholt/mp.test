@@ -235,10 +235,7 @@ class WebGL2MicroLayer {
 
     const texture = this.gl.createTexture();
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    // Clamp and integerize dimensions to avoid 0 or fractional sizes
-    const w = Math.max(1, Math.floor(width || 0));
-    const h = Math.max(1, Math.floor(height || 0));
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, null);
 
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, minFilter);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, magFilter);
@@ -248,26 +245,16 @@ class WebGL2MicroLayer {
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
     //this.clear();
 
-    let status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
+    const status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
     if (status !== this.gl.FRAMEBUFFER_COMPLETE) {
-      // Fallback: if HALF_FLOAT/16F not supported for rendering, retry with RGBA/UNSIGNED_BYTE
-      try {
-        const fallbackIF = this.gl.RGBA;
-        const fallbackFmt = this.gl.RGBA;
-        const fallbackType = this.gl.UNSIGNED_BYTE;
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, fallbackIF, w, h, 0, fallbackFmt, fallbackType, null);
-        status = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
-      } catch (_) {}
-      if (status !== this.gl.FRAMEBUFFER_COMPLETE) {
-        throw new Error('Framebuffer is not complete: ' + status);
-      }
+      throw new Error('Framebuffer is not complete: ' + status);
     }
 
     // Unbind the frame buffer and texture.
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
-    this.framebuffers.set(renderTargetName, {framebuffer, texture, width: w, height: h});
+    this.framebuffers.set(renderTargetName, {framebuffer, texture, width, height});
     this.renderTargets[renderTargetName] = new RenderTarget(
       this.gl, renderTargetName, texture, framebuffer
     );
@@ -388,11 +375,12 @@ class WebGL2MicroLayer {
         this.gl.uniform1i(location, textureUnit);
 
 
-        // Generate mipmaps for textures that use mipmap minification filters.
-        // RC samples 'lastTexture' with explicit LOD, and 'sceneTexture' (dungeon) uses a mipmap filter.
-        if (value != null && (name === 'lastTexture' || name === 'sceneTexture')) {
+        // Can we disable this if not using mipmaps?
+        // if (generateMipmaps) {
+        if (value != null) {
           this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
+        // }
         break;
 
       // Arrays
@@ -660,11 +648,7 @@ class BaseSurface {
   }
 
   canvasModifications() {
-    return {
-      setPositionBlockMapFill: (v) => this.setPositionBlockMapFill(v),
-      setBlockAt: (x, y, isBlocking) => this.setBlockAt(x, y, isBlocking),
-      setEntities: (list) => this.setEntities(list),
-    };
+    return {};
   }
 
   observe() {
@@ -709,10 +693,6 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
   uniform vec2 viewportSize;           // Viewport size in pixels
   uniform vec2 mapSize;                // Map size in characters
   uniform vec2 cameraPosition;         // Camera position in world coordinates
-
-  // Emission-based DF seeding (floors + entities can glow without occluding)
-  uniform sampler2D emissionFloorViewTexture; // FLOOR layer RGBA (map-sized)
-  uniform float emissionThreshold;            // Luma threshold for emission seeding
 
   in vec2 vUv;
   out vec4 FragColor;
@@ -771,41 +751,15 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     float yInTile = (flipTileY > 0.5) ? (tileSize.y - 1.0 - charPos.y) : charPos.y;
     vec2 atlasUv = (vec2(col, rowIndex) * tileSize + vec2(charPos.x, yInTile)) / atlasTextureSize;
 
-    // Sample the character (current layer) from the atlas
+    // Sample the character from the atlas
     vec4 char = texture(asciiTexture, atlasUv);
 
     // Position-level blocking flag (tile granularity)
     float posBlock = texture(positionBlockMap, viewTexCoord).r; // 0..1
     // Pixel-accurate occlusion uses glyph alpha gated by position flag
     float occAlpha = char.a * posBlock;
-
-    // Emission luminance from FLOOR and current layer (entities or floor), gated by glyph alpha
-    // Sample floor cell color and compute its glyph alpha from the atlas using the floor's ASCII code
-    vec4 floorAsciiView = texture(emissionFloorViewTexture, viewTexCoord);
-    float floorCharCode = floor(floorAsciiView.a * 255.0 + 0.5);
-    float fcol = mod(floorCharCode, atlasSize.x);
-    float frow = floor(floorCharCode / atlasSize.x);
-    float frowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - frow) : frow;
-    float fyInTile = (flipTileY > 0.5) ? (tileSize.y - 1.0 - charPos.y) : charPos.y;
-    vec2 floorAtlasUv = (vec2(fcol, frowIndex) * tileSize + vec2(charPos.x, fyInTile)) / atlasTextureSize;
-    vec4 floorChar = texture(asciiTexture, floorAtlasUv);
-
-    vec3 floorRgb = floorAsciiView.rgb;
-    float floorLum = dot(floorRgb, vec3(0.2126, 0.7152, 0.0722)) * floorChar.a;
-    float entityLum = dot(asciiView.rgb, vec3(0.2126, 0.7152, 0.0722)) * char.a;
-    float emissionLum = max(floorLum, entityLum);
-    // Seed only near glyph centers to avoid flooding the DF with large solid areas
-    float cx = tileSize.x * 0.5;
-    float cy = tileSize.y * 0.5;
-    float r = max(1.0, min(tileSize.x, tileSize.y) * 0.2); // ~20% of tile size
-    float inCenter = (abs(charPos.x - cx) <= r && abs(charPos.y - cy) <= r) ? 1.0 : 0.0;
-    // Soft threshold for natural look
-    float soft = smoothstep(emissionThreshold, emissionThreshold + 0.25, emissionLum);
-    float emissionSeed = soft * inCenter;
-
-    // On-screen visuals should remain opaque where glyph exists; GI uses seeded alpha
-    float seedAlpha = max(occAlpha, emissionSeed);
-    float outA = mix(char.a, seedAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
+    // On-screen visuals should remain opaque where glyph exists; GI uses occAlpha
+    float outA = mix(char.a, occAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
 
     // Output the character with the color from asciiViewTexture
     if (char.a > 0.0 || outA > 0.0) {
@@ -845,9 +799,6 @@ class DungeonRenderer extends BaseSurface {
         viewportSize: [this.width, this.height],    // Current viewport size in pixels
         mapSize: [0, 0],                            // Will be set in updateAsciiViewTexture
         cameraPosition: [0, 0],                     // Camera position
-        // Emission-based DF seeding uniforms
-        emissionFloorViewTexture: null,
-        emissionThreshold: 0.35,
       },
       renderTargetOverrides: {
         minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
@@ -897,25 +848,14 @@ class DungeonRenderer extends BaseSurface {
     this.camera.y -= zoomScaledDeltaY; // Y is flipped in the coordinate system
 
     // Calculate subtile offset from the fractional part of camera position
-    // This is only for shader display purposes. In Vendor Parity Mode we force 0 to
-    // match the original demo behavior (uniform not used for fractional scroll).
-    const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
-    if (vp) {
-      this.camera.subtileOffsetX = 0.0;
-      this.camera.subtileOffsetY = 0.0;
-    } else {
-      this.camera.subtileOffsetX = this.camera.x - Math.floor(this.camera.x);
-      this.camera.subtileOffsetY = this.camera.y - Math.floor(this.camera.y);
-      if (this.camera.subtileOffsetX < 0) this.camera.subtileOffsetX += 1;
-      if (this.camera.subtileOffsetY < 0) this.camera.subtileOffsetY += 1;
-    }
+    // This is only for shader display purposes
+    this.camera.subtileOffsetX = this.camera.x - Math.floor(this.camera.x);
+    this.camera.subtileOffsetY = this.camera.y - Math.floor(this.camera.y);
 
-    // In Vendor Parity Mode, prevent sub-tile offset artifacts during zoom by
-    // forcing offsets to zero before updating uniforms.
-    try {
-      const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
-      if (vp) { this.camera.subtileOffsetX = 0.0; this.camera.subtileOffsetY = 0.0; }
-    } catch (_) {}
+    // Ensure subtile offsets are in [0,1) range
+    if (this.camera.subtileOffsetX < 0) this.camera.subtileOffsetX += 1;
+    if (this.camera.subtileOffsetY < 0) this.camera.subtileOffsetY += 1;
+
     this.updateCameraUniforms();
     this.renderPass();
   }
@@ -965,13 +905,10 @@ class DungeonRenderer extends BaseSurface {
   updateCameraUniforms() {
     if (this.dungeonUniforms) {
       this.dungeonUniforms.cameraPosition = [this.camera.x, this.camera.y];
-      // Strict Vendor Parity: always send [0,0] for subTileOffset when enabled.
-      try {
-        const vp = (typeof window !== 'undefined' && !!window.__rcVendorParity);
-        if (vp) {
-          this.dungeonUniforms.subTileOffset = [0.0, 0.0];
-        }
-      } catch (_) {}
+      // this.dungeonUniforms.subTileOffset = [
+      //   this.camera.subtileOffsetX,
+      //   this.camera.subtileOffsetY
+      // ];
       this.updateGridSize();
     }
   }
@@ -1009,7 +946,7 @@ class DungeonRenderer extends BaseSurface {
       console.log('[DEBUG renderer] updateAsciiViewTexture', { mapWidth, mapHeight, padding });
     } catch (_) {}
 
-    // Create a Uint8Array to hold RGBA data for each cell (FLOOR layer)
+    // Create a Uint8Array to hold RGBA data for each cell
     const data = new Uint8Array(mapWidth * mapHeight * 4);
 
     // Fill the texture data for the entire map
@@ -1042,13 +979,11 @@ class DungeonRenderer extends BaseSurface {
         data[idx] = Math.floor(color[0] * 255);     // R
         data[idx + 1] = Math.floor(color[1] * 255); // G
         data[idx + 2] = Math.floor(color[2] * 255); // B
-        // Alpha stores the ASCII code (0..255) for the glyph at this cell.
-        // The dungeon shader reads asciiView.a * 255.0 to index the font atlas.
-        data[idx + 3] = asciiCode;
+        data[idx + 3] = asciiCode;                  // A - ASCII code
       }
     }
 
-    // Create and initialize the FLOOR texture if it doesn't exist
+    // Create and initialize the texture if it doesn't exist
     if (!this.asciiViewTexture) {
       this.asciiViewTexture = this.gl.createTexture();
     }
@@ -1061,39 +996,10 @@ class DungeonRenderer extends BaseSurface {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
 
-    // Upload the data to the FLOOR texture
+    // Upload the data to the texture
     this.gl.texImage2D(
       this.gl.TEXTURE_2D, 0, this.gl.RGBA8, mapWidth, mapHeight, 0,
       this.gl.RGBA, this.gl.UNSIGNED_BYTE, data
-    );
-    // Ensure emission-floor uniform points at the FLOOR texture for DF seeding
-    if (this.dungeonUniforms) {
-      this.dungeonUniforms.emissionFloorViewTexture = this.asciiViewTexture;
-    }
-
-    // Ensure an ENTITIES layer exists (separate from FLOOR). This layer is used as the
-    // occlusion source in offscreen passes so floors stay non-blocking.
-    // Allocate or resize the entity buffer/texture to match the map.
-    if (!this.entityViewTexture) {
-      this.entityViewTexture = this.gl.createTexture();
-    }
-    const needsEntityResize = (!this._entityW || !this._entityH || this._entityW !== mapWidth || this._entityH !== mapHeight);
-    if (!this.entityData || needsEntityResize) {
-      this._entityW = mapWidth;
-      this._entityH = mapHeight;
-      // RGBA per cell: rgb=color, a=ASCII code for the glyph (0 means empty)
-      this.entityData = new Uint8Array(this._entityW * this._entityH * 4);
-      this.entityData.fill(0); // start with no entities
-    }
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
-    // Upload current (possibly empty) entity data
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D, 0, this.gl.RGBA8, this._entityW, this._entityH, 0,
-      this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData
     );
 
     let pbw = this._positionBlockWidth;
@@ -1145,13 +1051,10 @@ class DungeonRenderer extends BaseSurface {
     this.canvas = canvas;
     this.render = render;
     this.renderTargets = renderTargets;
-    const {container, setHex, setDungeonMap, setPositionBlockMapFill, setBlockAt, setEntities} = this.buildCanvas();
+    const {container, setHex, setDungeonMap} = this.buildCanvas();
     this.container = container;
     this.setHex = setHex;
     this.setDungeonMap = setDungeonMap;
-    if (typeof setPositionBlockMapFill === 'function') this.setPositionBlockMapFill = setPositionBlockMapFill;
-    if (typeof setBlockAt === 'function') this.setBlockAt = setBlockAt;
-    if (typeof setEntities === 'function') this.setEntities = setEntities;
     this.renderIndex = 0;
 
     // Initial calculation of grid size
@@ -1294,9 +1197,8 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    // Vendor parity: offscreen (GI/DF) uses the main ASCII view texture (FLOOR+walls) for occlusion.
-    // This matches the original demo where glyph alpha seeds DF/JFA without requiring a separate ENTITIES layer.
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
+    // Use occlusion alpha when rendering offscreen for GI/DF
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
     // Render to the target
@@ -1325,77 +1227,8 @@ class DungeonRenderer extends BaseSurface {
 
     // Render to screen
     this.renderer.setRenderTarget(null);
-    // Visual pass: draw FLOOR first (no occlusion alpha), then overlay ENTITIES
+    // Visual pass: disable occlusion alpha so glyph visuals remain unchanged
     this.dungeonUniforms.useOcclusionAlpha = 0.0;
-    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture;
     this.render();
-    // Overlay entities
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
-    this.render();
-  }
-
-  // API: Fill the entire PositionBlockMap with 0 or 255
-  setPositionBlockMapFill(value) {
-    const v = value ? 255 : 0;
-    if (!this.positionBlockData) return;
-    this.positionBlockData.fill(v);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this._positionBlockWidth, this._positionBlockHeight, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.positionBlockData);
-    try { this.renderPass(); } catch(_) {}
-  }
-
-  // API: Set one cell blocking/non-blocking
-  setBlockAt(x, y, isBlocking) {
-    if (!this.positionBlockData) return;
-    const padding = 2;
-    const mx = x + padding;
-    const my = y + padding;
-    if (mx < 0 || my < 0 || mx >= this._positionBlockWidth || my >= this._positionBlockHeight) return;
-    const idx = my * this._positionBlockWidth + mx;
-    this.positionBlockData[idx] = isBlocking ? 255 : 0;
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
-    this.gl.texSubImage2D(this.gl.TEXTURE_2D, 0, mx, my, 1, 1, this.gl.RED, this.gl.UNSIGNED_BYTE, new Uint8Array([this.positionBlockData[idx]]));
-    try { this.renderPass(); } catch(_) {}
-  }
-
-  // API: Draw entities over floor visually and optionally block light per cell
-  setEntities(list) {
-    if (!this.entityData) return;
-    const padding = 2;
-    const W = this._entityW, H = this._entityH;
-    // Clear entity texture to empty
-    this.entityData.fill(0);
-    // We do not clear PositionBlockMap here; caller should set fill(0) first for floor semantics
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e) continue;
-      const mx = (e.x|0) + padding;
-      const my = (e.y|0) + padding;
-      if (mx < 0 || my < 0 || mx >= W || my >= H) continue;
-      const idx4 = ((H - my - 1) * W + mx) * 4;
-      const color = e.color && e.color.length === 3 ? e.color : [0,0,0];
-      this.entityData[idx4 + 0] = Math.max(0, Math.min(255, Math.floor(color[0] * 255)));
-      this.entityData[idx4 + 1] = Math.max(0, Math.min(255, Math.floor(color[1] * 255)));
-      this.entityData[idx4 + 2] = Math.max(0, Math.min(255, Math.floor(color[2] * 255)));
-      let code = 32;
-      if (Number.isFinite(e.charCode)) {
-        code = (e.charCode & 0xFF);
-      } else if (typeof e.char === 'string' && e.char.length > 0) {
-        // Fallback: map Unicode char to byte by low 8 bits (works for ASCII <128)
-        code = (e.char.codePointAt(0) & 0xFF);
-      }
-      this.entityData[idx4 + 3] = code;
-      if (e.blocking) {
-        const bIdx = my * this._positionBlockWidth + mx;
-        this.positionBlockData[bIdx] = 255;
-      }
-    }
-    // Upload entity texture
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.entityViewTexture);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, W, H, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.entityData);
-    // Upload updated block map (full upload keeps it simple)
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.positionBlockMapTexture);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this._positionBlockWidth, this._positionBlockHeight, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.positionBlockData);
-    try { this.renderPass(); } catch(_) {}
   }
 }
