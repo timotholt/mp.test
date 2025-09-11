@@ -165,32 +165,9 @@
     } catch (_) {}
   }
 
-  // Attempt to load shared generator (CommonJS) and override fallbacks
-  try {
-    import('@shared/dungeon/generator.js')
-      .then((mod) => {
-        try {
-          const g = (mod && (mod.default || mod)) || null;
-          let nextLogin = null;
-          let nextLobby = null;
-          if (g && typeof g.generateDungeon === 'function') {
-            nextLogin = g.generateDungeon({ variant: 'login' });
-            nextLobby = g.generateDungeon({ variant: 'lobby' });
-          } else if (g && typeof g.getLoginBackgroundMap === 'function') {
-            nextLogin = g.getLoginBackgroundMap();
-            nextLobby = g.getLobbyBackgroundMap();
-          }
-          if (typeof nextLogin === 'string' && nextLogin) LOGIN_MAP = nextLogin;
-          if (typeof nextLobby === 'string' && nextLobby) LOBBY_MAP = nextLobby;
-          // Re-apply for current route to reflect updates
-          try {
-            const current = (typeof window.__getCurrentRoute === 'function') ? window.__getCurrentRoute() : null;
-            if (current) applyForRoute(current);
-          } catch (_) {}
-        } catch (_) {}
-      })
-      .catch(() => {});
-  } catch (_) {}
+  // Note: No shared generator import. The server owns dungeon generation.
+  // The client only uses static fallback maps for non-gameplay routes (LOGIN/LOBBY)
+  // and applies server-driven maps during gameplay via wireRoomEvents.
 
   // Respond to future route changes
   window.addEventListener('route:changed', (e) => {

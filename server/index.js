@@ -10,9 +10,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const { Server } = require('colyseus');
 const { WebSocketTransport } = require('@colyseus/ws-transport');
-const { NethackRoom } = require('./rooms/NethackRoom');
-const { LobbyRoom } = require('./rooms/LobbyRoom');
-const { LoginScenarioRoom } = require('./rooms/LoginScenarioRoom');
+const { NethackRoom } = require('./gamecode/gameRoom');
+const { LobbyRoom } = require('./gamecode/lobbyRoom');
+const { LoginScenarioRoom } = require('./gamecode/loginRoom');
 // Initialize presence hub (singleton starts its sweep on require)
 require('./presence/PresenceHub');
 // Optional safemode/boot prompt

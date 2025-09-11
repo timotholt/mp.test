@@ -1,4 +1,0 @@
-threshold 0.01
-curve 0.95
-fog amount: 0.45
-falloff: 0.60
