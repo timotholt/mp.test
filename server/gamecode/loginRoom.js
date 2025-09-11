@@ -130,6 +130,12 @@ class LoginScenarioRoom extends Room {
     try {
       const overlay = calculateFOV({ currentLocation: { level: 0 } }, this.dungeonMap, { players: this.players, level: 0 });
       client.send('dungeonMap', overlay);
+      // Send compiled floor layers once per snapshot (client may cache)
+      try {
+        if (this._roomCompiled && Array.isArray(this._roomCompiled.floorLayers)) {
+          client.send('floorLayers', this._roomCompiled.floorLayers);
+        }
+      } catch (_) {}
       const pcm = buildPositionColorMap(this.players, this.playerColors, 0);
       client.send('positionColorMap', JSON.stringify(pcm));
     } catch (_) {}
