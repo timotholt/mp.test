@@ -2,7 +2,11 @@
 // Plain JS (CommonJS). No persistence. Accepts unauthenticated clients.
 
 const { Room } = require('colyseus');
+// Procedural levels API (kept for future variants)
 const { generateDungeon } = require('./engine/gameMaster/levels');
+// Hand-authored spec compiler + login spec
+const { compileRoomSpec } = require('./engine/compiler/compileRoomSpec');
+const { roomSpec: loginRoomSpec } = require('./engine/gameMaster/scenarios/login/roomSpec');
 const { calculateFOV } = require('./engine/fov');
 const { buildPositionColorMap } = require('./engine/render');
 const { isWalkable } = require('./engine/collision');
@@ -27,8 +31,18 @@ class LoginScenarioRoom extends Room {
     this.players = new Map(); // id -> { currentLocation: { x,y,level } }
     this.playerColors = new Map(); // id -> [r,g,b]
 
-    // Deterministic 60x40 level (spaceport_login)
-    this.dungeonMap = generateDungeon({ variant: 'login', width: 60, height: 40 });
+    // Deterministic 60x40 level (spaceport_login) compiled from RoomSpec
+    // Supports single '#' and double walls '|' (vertical) and '=' (horizontal)
+    // Note: you can swap back to generateDungeon({ variant:'login' }) anytime.
+    try {
+      const compiled = compileRoomSpec(loginRoomSpec);
+      this.dungeonMap = compiled.map;
+      // Optionally keep metadata for future (colors/lights/entities)
+      this._roomCompiled = compiled;
+    } catch (e) {
+      // Fallback to generator if spec fails
+      this.dungeonMap = generateDungeon({ variant: 'login', width: 60, height: 40 });
+    }
 
     // Simple movement input (dx,dy)
     this.onMessage('move', (client, payload) => {

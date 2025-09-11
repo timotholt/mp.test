@@ -15,8 +15,9 @@ function tileAt(dungeonMap, x, y) {
 
 function isWalkableTile(ch) {
   if (!ch) return false;
-  // Simple rule: walls '#' are blocked. Everything else walkable for now.
-  return ch !== '#';
+  // Treat single and double walls as blocked. Everything else walkable for now.
+  // '#': single wall, '|': vertical double wall, '=': horizontal double wall
+  return ch !== '#' && ch !== '|' && ch !== '=';
 }
 
 function isWalkable(dungeonMap, x, y) {
