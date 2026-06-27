@@ -34,8 +34,24 @@ export function wireRoomEvents(r, deps) {
 
   // Maps & colors
   r.onMessage('dungeonMap', (mapString) => {
-    if (window.radianceCascades && typeof window.radianceCascades.setDungeonMap === 'function') {
-      window.radianceCascades.setDungeonMap(mapString);
+    const rc = window.radianceCascades;
+    if (rc && typeof rc.setDungeonMap === 'function') {
+      rc.setDungeonMap(mapString);
+      // Derive wall entities from map so GI seed pass has occluders
+      if (typeof rc.setPositionBlockMapFill === 'function' && typeof rc.setEntities === 'function') {
+        rc.setPositionBlockMapFill(false);
+        const entities = [];
+        const rows = String(mapString || '').split('\n');
+        for (let y = 0; y < rows.length; y++) {
+          const row = rows[y];
+          for (let x = 0; x < row.length; x++) {
+            if (row[x] === '#') {
+              entities.push({ x, y, char: '█', charCode: 219, color: [0.06, 0.07, 0.08], blocking: true });
+            }
+          }
+        }
+        rc.setEntities(entities);
+      }
     } else { window.__pendingDungeonMap = mapString; }
   });
   r.onMessage('positionColorMap', (mapString) => {

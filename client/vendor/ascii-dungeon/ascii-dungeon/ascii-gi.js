@@ -588,7 +588,7 @@ class RC extends DistanceField {
         lightDecay: 0.8,
         enableSun: false,
         firstCascadeIndex: 0,
-        bilinearFixEnabled: this.bilinearFix ? this.bilinearFix.checked : false,
+        bilinearFixEnabled: false,
         // Debug defaults
         threshold: 0.0,
         curve: 1.0,
@@ -917,6 +917,7 @@ class RC extends DistanceField {
   }
 
   renderPass() {
+    this.lastRequest = Date.now();
     this.dungeonPassTextureHigh = this.dungeonPass();
 
     if (!this.animating) {

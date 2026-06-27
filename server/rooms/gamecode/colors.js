@@ -9,6 +9,7 @@ function getDefaultCharacterColorMap() {
     '~': [0.20, 0.40, 1.00],
     '+': [0.90, 0.75, 0.20],
     '=': [0.85, 0.55, 0.15],
+    '@': [1.00, 0.80, 0.40],  // player — warm bright glow, acts as a light source
   };
 }
 

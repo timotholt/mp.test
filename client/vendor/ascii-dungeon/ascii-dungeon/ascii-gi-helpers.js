@@ -727,8 +727,8 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Check if the current position is within the map bounds
     if (mapGridPos.x < 0.0 || mapGridPos.x >= mapSize.x ||
         mapGridPos.y < 0.0 || mapGridPos.y >= mapSize.y) {
-      // Outside the map bounds, render nothing (transparent)
-      FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+      // Visual pass: transparent. GI seed pass: fully blocking so light can't leak through the void.
+      FragColor = vec4(0.0, 0.0, 0.0, clamp(useOcclusionAlpha, 0.0, 1.0));
       return;
     }
 
@@ -767,32 +767,13 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     // Pixel-accurate occlusion uses glyph alpha gated by position flag
     float occAlpha = char.a * posBlock;
 
-    // Emission luminance from FLOOR and current layer (entities or floor), gated by glyph alpha
-    // Sample floor cell color and compute its glyph alpha from the atlas using the floor's ASCII code
-    vec4 floorAsciiView = texture(emissionFloorViewTexture, viewTexCoord);
-    float floorCharCode = floor(floorAsciiView.a * 255.0 + 0.5);
-    float fcol = mod(floorCharCode, atlasSize.x);
-    float frow = floor(floorCharCode / atlasSize.x);
-    float frowIndex = (flipRow > 0.5) ? (atlasSize.y - 1.0 - frow) : frow;
-    float fyInTile = (flipTileY > 0.5) ? (tileSize.y - 1.0 - charPos.y) : charPos.y;
-    vec2 floorAtlasUv = (vec2(fcol, frowIndex) * tileSize + vec2(charPos.x, fyInTile)) / atlasTextureSize;
-    vec4 floorChar = texture(asciiTexture, floorAtlasUv);
-
-    vec3 floorRgb = floorAsciiView.rgb;
-    float floorLum = dot(floorRgb, vec3(0.2126, 0.7152, 0.0722)) * floorChar.a;
-    float entityLum = dot(asciiView.rgb, vec3(0.2126, 0.7152, 0.0722)) * char.a;
-    float emissionLum = max(floorLum, entityLum);
-    // Seed only near glyph centers to avoid flooding the DF with large solid areas
-    float cx = tileSize.x * 0.5;
-    float cy = tileSize.y * 0.5;
-    float r = max(1.0, min(tileSize.x, tileSize.y) * 0.2); // ~20% of tile size
-    float inCenter = (abs(charPos.x - cx) <= r && abs(charPos.y - cy) <= r) ? 1.0 : 0.0;
-    // Soft threshold for natural look
+    // Emission: seed based on tile luminance alone (NOT per-pixel glyph alpha).
+    // Multiplying by char.a caused sub-pixel camera drift to change how many glyph-edge pixels
+    // exceeded the threshold, making light output vary with scroll/zoom position.
+    // Using tile luma only, every pixel in an emitter tile seeds uniformly regardless of position.
+    float emissionLum = dot(asciiView.rgb, vec3(0.2126, 0.7152, 0.0722));
     float soft = smoothstep(emissionThreshold, emissionThreshold + 0.25, emissionLum);
-    float emissionSeed = soft * inCenter;
-
-    // On-screen visuals should remain opaque where glyph exists; GI uses seeded alpha
-    float seedAlpha = max(occAlpha, emissionSeed);
+    float seedAlpha = max(occAlpha, soft);
     float outA = mix(char.a, seedAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
 
     // Output the character with the color from asciiViewTexture
@@ -1006,7 +987,7 @@ class DungeonRenderer extends BaseSurface {
         } else if (this.surface.characterColorMap && this.surface.characterColorMap[char]) {
           color = this.surface.characterColorMap[char];
         } else {
-          color = [1.0, 1.0, 1.0]; // Default to white for visibility
+          color = [0x20/255, 0x20/255, 0x20/255]; // Default: dark gray (white caused GI over-emission)
         }
 
         // Calculate index in data array
@@ -1266,16 +1247,25 @@ class DungeonRenderer extends BaseSurface {
   dungeonPass() {
     // Make sure the ASCII texture and view texture are set
     this.dungeonUniforms.asciiTexture = this.renderer.font;
-    // Offscreen (GI/DF): use ENTITIES layer for occlusion glyphs (fallback to FLOOR if missing).
-    // This guarantees floors never act as occluders; only entities (e.g., walls) do.
-    this.dungeonUniforms.asciiViewTexture = this.entityViewTexture || this.asciiViewTexture;
-    // Use occlusion alpha when rendering offscreen for GI/DF
     this.dungeonUniforms.useOcclusionAlpha = 1.0;
 
-    // Render to the target
+    // GI seed pass: render FLOOR first so floor emitters (e.g. player '@') can seed GI.
+    // Then overlay ENTITIES (walls as blockers) on top.
+    // Previously only the entity layer was used, so player '@' on the floor map never emitted.
     this.renderIndex = 1 - this.renderIndex;
     this.renderer.setRenderTarget(this.renderTargets[this.renderIndex]);
+    this.renderer.clear();
+    this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
     this.render();
+    // Overlay entities (walls, blocking entities) with alpha blending
+    if (this.entityViewTexture) {
+      const gl = this.gl;
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
+      this.render();
+      gl.disable(gl.BLEND);
+    }
 
     let dungeonTexture = this.renderTargets[this.renderIndex].texture;
 
@@ -1283,7 +1273,17 @@ class DungeonRenderer extends BaseSurface {
     if (this.upscaleSurface) {
       this.renderIndexHigh = 1 - this.renderIndexHigh;
       this.renderer.setRenderTarget(this.renderTargetsHigh[this.renderIndexHigh]);
+      this.renderer.clear();
+      this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
       this.render();
+      if (this.entityViewTexture) {
+        const gl = this.gl;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        this.dungeonUniforms.asciiViewTexture = this.entityViewTexture;
+        this.render();
+        gl.disable(gl.BLEND);
+      }
       this.dungeonPassTextureHigh = this.renderTargetsHigh[this.renderIndexHigh].texture;
     } else {
       this.dungeonPassTextureHigh = dungeonTexture;

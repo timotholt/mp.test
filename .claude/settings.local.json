@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(tree -L 3 -d /c/Users/timot/CascadeProjects/mp.test --ignore 'node_modules')",
+      "Skill(update-config)",
+      "Bash(claude mcp:*)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__restore_project",
+      "mcp__supabase__get_cost",
+      "mcp__supabase__confirm_cost",
+      "mcp__supabase__create_project",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "mcp__supabase__execute_sql",
+      "WebFetch(domain:api.anthropic.com)",
+      "WebFetch(domain:chromewebstore.google.com)",
+      "WebSearch",
+      "Bash(npm run:*)",
+      "Bash(grep -r \"diagonal\\\\|NE\\\\|NW\\\\|SE\\\\|SW\" /c/Users/timot/CascadeProjects/mp.test/client --include=*.js)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /IM node.exe)"
+    ]
+  }
+}

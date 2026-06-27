@@ -6,32 +6,13 @@ import { createClient } from '@supabase/supabase-js';
 let supabase = null;
 let inited = false;
 
+const SUPABASE_URL = 'https://rfqtvecikzimvhaxchzy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmcXR2ZWNpa3ppbXZoYXhjaHp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNzY1NjgsImV4cCI6MjA4OTY1MjU2OH0.D5wXu5gS9s2L6K-jqdP0X3TW3QU9azh7FqdLKUAPKj0';
+
 export function initSupabase() {
   if (inited && supabase) return supabase;
-  // Prefer Vite env, then window, then localStorage, then prompt (dev-only) to avoid committing secrets
-  let url = import.meta?.env?.VITE_SUPABASE_URL || window.VITE_SUPABASE_URL || localStorage.getItem('VITE_SUPABASE_URL') || '';
-  let anon = import.meta?.env?.VITE_SUPABASE_ANON_KEY || window.VITE_SUPABASE_ANON_KEY || localStorage.getItem('VITE_SUPABASE_ANON_KEY') || '';
-  // If still missing, prompt once and persist to localStorage (public anon key is safe in client)
-  if (!url || !anon) {
-    try {
-      if (!url) {
-        const u = prompt('Enter Supabase URL (https://<project>.supabase.co)');
-        if (u) { url = u.trim(); localStorage.setItem('VITE_SUPABASE_URL', url); }
-      }
-      if (!anon) {
-        const a = prompt('Enter Supabase ANON key (public)');
-        if (a) { anon = a.trim(); localStorage.setItem('VITE_SUPABASE_ANON_KEY', anon); }
-      }
-    } catch (_) {}
-  }
-  // Debug: print env-derived values to help diagnose configuration
-  try {
-    console.log('[auth] VITE_SUPABASE_URL =', url);
-    console.log('[auth] VITE_SUPABASE_ANON_KEY =', anon);
-  } catch (_) {}
-  if (!url || !anon) {
-    console.warn('[auth] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
-  }
+  const url = import.meta?.env?.VITE_SUPABASE_URL || SUPABASE_URL;
+  const anon = import.meta?.env?.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
   supabase = createClient(url, anon, {
     auth: {
       autoRefreshToken: true,
