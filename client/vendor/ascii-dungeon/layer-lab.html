@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASCII Renderer Layer Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b0f;
+      --panel: #121722;
+      --panel-2: #171f2d;
+      --border: #314057;
+      --text: #e6edf7;
+      --muted: #94a3b8;
+      --accent: #73d6ff;
+      --warn: #f6c177;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #shell {
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 320px;
+      min-height: 100vh;
+    }
+
+    #stage {
+      position: relative;
+      min-height: 100vh;
+      background: #050608;
+      overflow: hidden;
+    }
+
+    #rc-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    #rc-canvas canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: auto;
+      cursor: grab;
+    }
+
+    #rc-canvas canvas:active {
+      cursor: grabbing;
+    }
+
+    #hud {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      min-width: 280px;
+      padding: 10px 12px;
+      border: 1px solid rgba(115, 214, 255, 0.42);
+      background: rgba(8, 12, 18, 0.84);
+      font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      pointer-events: none;
+    }
+
+    #hud .label {
+      color: var(--muted);
+    }
+
+    #hud .value {
+      text-align: right;
+      color: var(--accent);
+    }
+
+    #panel {
+      border-left: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel), #0c1018);
+      padding: 16px;
+      overflow: auto;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    h2 {
+      margin: 18px 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    button, select {
+      min-height: 32px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 4px;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 8px 0;
+    }
+
+    .row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .row input[type="range"] {
+      width: 140px;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 170px;
+      resize: vertical;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #080b11;
+      color: var(--text);
+      font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .wide {
+      width: 100%;
+    }
+
+    @media (max-width: 840px) {
+      #shell {
+        grid-template-columns: 1fr;
+      }
+
+      #stage {
+        min-height: 60vh;
+      }
+
+      #panel {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="shell">
+    <main id="stage">
+      <div id="rc-canvas"></div>
+      <div id="hud" aria-live="polite">
+        <div class="label">Browser FPS</div><div class="value" id="browserFps">--</div>
+        <div class="label">Renderer FPS</div><div class="value" id="rendererFps">--</div>
+        <div class="label">Last Render</div><div class="value" id="renderMs">-- ms</div>
+        <div class="label">Player</div><div class="value" id="playerPos">--,--</div>
+      </div>
+    </main>
+
+    <aside id="panel">
+      <h1>Renderer Layer Lab</h1>
+
+      <h2>Move @</h2>
+      <div class="grid3">
+        <button data-dx="-1" data-dy="-1">NW</button>
+        <button data-dx="0" data-dy="-1">N</button>
+        <button data-dx="1" data-dy="-1">NE</button>
+        <button data-dx="-1" data-dy="0">W</button>
+        <button id="resetPlayer">Reset</button>
+        <button data-dx="1" data-dy="0">E</button>
+        <button data-dx="-1" data-dy="1">SW</button>
+        <button data-dx="0" data-dy="1">S</button>
+        <button data-dx="1" data-dy="1">SE</button>
+      </div>
+      <p class="hint">Keyboard: arrows, WASD, or QEZC diagonals. This page moves the test @ without Colyseus.</p>
+
+      <h2>Layers</h2>
+      <div class="row"><label><input id="floorToggle" type="checkbox" checked> Floor map</label></div>
+      <div class="row"><label><input id="entityToggle" type="checkbox" checked> Entity layer</label></div>
+      <div class="row"><label><input id="blockingToggle" type="checkbox" checked> Entity blocking</label></div>
+      <div class="row">
+        <label for="fogSlider">Fog</label>
+        <input id="fogSlider" type="range" min="0" max="1" step="0.05" value="0.8">
+      </div>
+      <div class="row">
+        <label for="hazeSlider">Haze</label>
+        <input id="hazeSlider" type="range" min="0" max="3" step="0.05" value="1.2">
+      </div>
+
+      <h2>Stress</h2>
+      <div class="row">
+        <label for="mapSelect">Map</label>
+        <select id="mapSelect">
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="stress">Stress</option>
+        </select>
+      </div>
+      <button id="burstBtn" class="wide">Burst 60 Moves</button>
+
+      <h2>Current Map</h2>
+      <textarea id="mapText" spellcheck="false"></textarea>
+    </aside>
+  </div>
+
+  <script src="./ascii-dungeon/interactivity-setup.js?v=4"></script>
+  <script src="./ascii-dungeon/ascii-texture.js?v=4"></script>
+  <script src="./ascii-dungeon/ascii-gi-helpers.js?v=4"></script>
+  <script src="./ascii-dungeon/ascii-gi.js?v=4"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const dp = Number(urlParams.get('pixelRatio') || 1);
+    const rcScale = Number(urlParams.get('rcScale') || dp || 1);
+    const initialWidth = Math.max(320, parseInt(urlParams.get('width'), 10) || 900);
+    const initialHeight = Math.max(240, parseInt(urlParams.get('height'), 10) || 600);
+
+    const maps = {
+      small: [
+        '############################',
+        '#..........#...............#',
+        '#..@.......#.......*.......#',
+        '#..........+...............#',
+        '#..........#.....#####.....#',
+        '#..........#.....#...#.....#',
+        '#................#...#.....#',
+        '#..........#.....#####.....#',
+        '#..........#...............#',
+        '############################'
+      ],
+      medium: [
+        '################################################',
+        '#............#.................#...............#',
+        '#..@.........#.................#.......*.......#',
+        '#............+.................+...............#',
+        '#............#.....########....#...............#',
+        '#............#.....#......#....#....#####......#',
+        '#..................#......#.........#...#......#',
+        '#............#.....#......#....#....#...#......#',
+        '#............#.....########....#....#####......#',
+        '#............#.................#...............#',
+        '#............#.................#...............#',
+        '################################################'
+      ],
+      stress: buildStressMap()
+    };
+
+    let rc = null;
+    let currentMapKey = 'small';
+    let player = { x: 3, y: 2 };
+    let baseRows = maps[currentMapKey].map((row) => row.replace('@', '.').split(''));
+    let stats = { browserFrames: 0, renderFrames: 0, lastRenderMs: 0 };
+
+    function buildStressMap() {
+      const width = 76;
+      const height = 34;
+      const rows = [];
+      for (let y = 0; y < height; y++) {
+        let row = '';
+        for (let x = 0; x < width; x++) {
+          const edge = x === 0 || y === 0 || x === width - 1 || y === height - 1;
+          const wall = edge || (x % 13 === 0 && y % 5 !== 0) || (y % 9 === 0 && x % 7 !== 0);
+          row += wall ? '#' : ((x + y) % 29 === 0 ? '*' : '.');
+        }
+        rows.push(row);
+      }
+      rows[2] = rows[2].slice(0, 3) + '@' + rows[2].slice(4);
+      return rows;
+    }
+
+    function findPlayer(rows) {
+      for (let y = 0; y < rows.length; y++) {
+        const x = rows[y].indexOf('@');
+        if (x >= 0) return { x, y };
+      }
+      return { x: 1, y: 1 };
+    }
+
+    function setMap(key) {
+      currentMapKey = key;
+      baseRows = maps[key].map((row) => row.replace('@', '.').split(''));
+      player = findPlayer(maps[key]);
+      applyScene();
+    }
+
+    function floorRows() {
+      const showFloor = document.getElementById('floorToggle').checked;
+      const rows = baseRows.map((row) => row.slice());
+      if (showFloor) {
+        rows[player.y][player.x] = '@';
+        return rows;
+      }
+      return rows.map((row) => row.map(() => ' '));
+    }
+
+    function mapStringFromRows(rows) {
+      return rows.map((row) => row.join('')).join('\n');
+    }
+
+    function buildEntities() {
+      if (!document.getElementById('entityToggle').checked) return [];
+      const blocking = document.getElementById('blockingToggle').checked;
+      const entities = [];
+      for (let y = 0; y < baseRows.length; y++) {
+        for (let x = 0; x < baseRows[y].length; x++) {
+          const ch = baseRows[y][x];
+          if (ch === '#') {
+            entities.push({ x, y, char: '#', charCode: 219, color: [0.06, 0.07, 0.08], blocking });
+          } else if (ch === '*') {
+            entities.push({ x, y, char: '*', charCode: 42, color: [1.0, 0.65, 0.18], blocking: false });
+          }
+        }
+      }
+      entities.push({ x: player.x, y: player.y, char: '@', charCode: 64, color: [1.0, 0.9, 0.25], blocking: false });
+      return entities;
+    }
+
+    function isWalkable(x, y) {
+      if (y < 0 || y >= baseRows.length) return false;
+      if (x < 0 || x >= baseRows[y].length) return false;
+      return baseRows[y][x] !== '#';
+    }
+
+    function movePlayer(dx, dy) {
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      if (!isWalkable(nx, ny)) return;
+      player = { x: nx, y: ny };
+      applyScene();
+    }
+
+    function withBatchedRender(work) {
+      if (!rc || typeof rc.renderPass !== 'function') {
+        work();
+        return;
+      }
+      const originalRenderPass = rc.renderPass;
+      let dirty = false;
+      rc.renderPass = function batchedRenderPass() {
+        dirty = true;
+      };
+      try {
+        work();
+      } finally {
+        rc.renderPass = originalRenderPass;
+      }
+      if (dirty) {
+        rc.renderPass();
+      }
+    }
+
+    function centerCameraOnPlayer() {
+      if (!rc || !rc.camera || !rc.mapHeight) return;
+      const tileSize = (rc.dungeonUniforms && rc.dungeonUniforms.tileSize) || [8, 8];
+      const tileW = tileSize[0];
+      const tileH = tileSize[1];
+      // The renderer pads the map texture on all sides; recover the pad from the size delta.
+      const padding = Math.max(0, Math.round((rc.mapHeight - baseRows.length) / 2));
+      const zoom = rc.camera.zoomLevel;
+      const visibleCellsX = rc.width / (zoom * tileW);
+      const visibleCellsY = rc.height / (zoom * tileH);
+      // Camera position is in world pixels; camera y-axis points up while map rows count down.
+      rc.camera.x = (player.x + padding + 0.5 - visibleCellsX / 2) * tileW;
+      rc.camera.y = (rc.mapHeight - player.y - padding - 0.5 - visibleCellsY / 2) * tileH;
+      rc.updateCameraUniforms();
+      rc.renderPass();
+    }
+
+    function applyScene() {
+      if (!rc) return;
+      const mapString = mapStringFromRows(floorRows());
+      document.getElementById('mapText').value = mapString;
+      document.getElementById('playerPos').textContent = `${player.x},${player.y}`;
+
+      withBatchedRender(() => {
+        rc.setDungeonMap(mapString);
+        if (rc.surface && typeof rc.surface.setCharacterColorMap === 'function') {
+          rc.surface.setCharacterColorMap(JSON.stringify({
+            '#': [0.30, 0.32, 0.36],
+            '.': [0.13, 0.13, 0.15],
+            '+': [0.75, 0.55, 0.18],
+            '*': [1.00, 0.65, 0.18],
+            '@': [1.00, 0.88, 0.20]
+          }));
+        }
+        if (typeof rc.setPositionBlockMapFill === 'function') {
+          rc.setPositionBlockMapFill(false);
+        }
+        if (typeof rc.setEntities === 'function') {
+          rc.setEntities(buildEntities());
+        }
+      });
+      centerCameraOnPlayer();
+    }
+
+    function patchStats(target) {
+      if (!target || typeof target.doRenderPass !== 'function') return;
+      const original = target.doRenderPass.bind(target);
+      target.doRenderPass = function patchedDoRenderPass() {
+        const start = performance.now();
+        try {
+          return original();
+        } finally {
+          stats.renderFrames += 1;
+          stats.lastRenderMs = performance.now() - start;
+        }
+      };
+    }
+
+    function updateRendererUniforms() {
+      if (!rc || !rc.overlayUniforms) return;
+      rc.overlayUniforms.fogAmount = Number(document.getElementById('fogSlider').value);
+      rc.overlayUniforms.overlayGain = Number(document.getElementById('hazeSlider').value);
+      if (typeof rc.renderPass === 'function') rc.renderPass();
+    }
+
+    function installCameraControls() {
+      const canvas = rc && rc.canvas;
+      if (!canvas) return;
+      canvas.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const factor = event.deltaY > 0 ? 0.9 : 1.1;
+        // Zoom stays locked on the player: adjust zoom, then re-center.
+        rc.camera.zoomLevel = Math.max(0.1, Math.min(5.0, rc.camera.zoomLevel * factor));
+        centerCameraOnPlayer();
+      }, { passive: false });
+    }
+
+    function installUi() {
+      document.querySelectorAll('[data-dx][data-dy]').forEach((button) => {
+        button.addEventListener('click', () => {
+          movePlayer(Number(button.dataset.dx), Number(button.dataset.dy));
+        });
+      });
+      document.getElementById('resetPlayer').addEventListener('click', () => setMap(currentMapKey));
+      document.getElementById('mapSelect').addEventListener('change', (event) => setMap(event.target.value));
+      document.getElementById('floorToggle').addEventListener('change', applyScene);
+      document.getElementById('entityToggle').addEventListener('change', applyScene);
+      document.getElementById('blockingToggle').addEventListener('change', applyScene);
+      document.getElementById('fogSlider').addEventListener('input', updateRendererUniforms);
+      document.getElementById('hazeSlider').addEventListener('input', updateRendererUniforms);
+      document.getElementById('burstBtn').addEventListener('click', () => {
+        const moves = [[1,0], [1,0], [0,1], [0,1], [-1,0], [-1,0], [0,-1], [0,-1]];
+        for (let i = 0; i < 60; i++) {
+          const move = moves[i % moves.length];
+          movePlayer(move[0], move[1]);
+        }
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.target && /input|textarea|select/i.test(event.target.tagName)) return;
+        const k = event.key.toLowerCase();
+        const map = {
+          arrowup: [0, -1], w: [0, -1],
+          arrowdown: [0, 1], s: [0, 1],
+          arrowleft: [-1, 0], a: [-1, 0],
+          arrowright: [1, 0], d: [1, 0],
+          q: [-1, -1], e: [1, -1], z: [-1, 1], c: [1, 1]
+        };
+        if (!map[k]) return;
+        event.preventDefault();
+        movePlayer(map[k][0], map[k][1]);
+      });
+    }
+
+    function startStatsLoop() {
+      let last = performance.now();
+      let lastBrowserFrames = 0;
+      let lastRenderFrames = 0;
+      function frame(now) {
+        stats.browserFrames += 1;
+        if (now - last >= 500) {
+          const seconds = (now - last) / 1000;
+          const browserFps = (stats.browserFrames - lastBrowserFrames) / seconds;
+          const rendererFps = (stats.renderFrames - lastRenderFrames) / seconds;
+          document.getElementById('browserFps').textContent = browserFps.toFixed(1);
+          document.getElementById('rendererFps').textContent = rendererFps.toFixed(1);
+          document.getElementById('renderMs').textContent = `${stats.lastRenderMs.toFixed(2)} ms`;
+          last = now;
+          lastBrowserFrames = stats.browserFrames;
+          lastRenderFrames = stats.renderFrames;
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function boot() {
+      const initialMapString = mapStringFromRows(floorRows());
+      document.getElementById('mapText').value = initialMapString;
+      document.getElementById('playerPos').textContent = `${player.x},${player.y}`;
+
+      rc = new RC({
+        id: 'rc-canvas',
+        width: dp * initialWidth / rcScale,
+        height: dp * initialHeight / rcScale,
+        dpr: rcScale,
+        canvasScale: rcScale / dp
+      });
+      window.radianceCascades = rc;
+      patchStats(rc);
+      if (rc.surface) {
+        rc.surface.dungeonMap = initialMapString;
+      }
+      rc.load();
+      installCameraControls();
+      installUi();
+      (function waitForReady(tries) {
+        if (rc.initialized && rc.asciiViewTexture) {
+          applyScene();
+          updateRendererUniforms();
+          return;
+        }
+        if (tries > 120) {
+          applyScene();
+          updateRendererUniforms();
+          return;
+        }
+        setTimeout(() => waitForReady(tries + 1), 50);
+      })(0);
+      startStatsLoop();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+  </script>
+</body>
+</html>

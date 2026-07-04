@@ -789,8 +789,12 @@ class RC extends DistanceField {
       );
     }
 
-    // Render FLOOR first (no occlusion alpha)
-    this.dungeonUniforms.useOcclusionAlpha = 0.0;
+    // Render in GI-seed mode (occlusion alpha on): emitter tiles output their tile color from
+    // every pixel, matching the uniform seedAlpha used to build the distance field. Rendering
+    // this surface visually (occlusion alpha off) leaves the non-glyph pixels of an emitter tile
+    // black, so rays terminating on the tile boundary sample zero radiance and lights self-shadow
+    // into dark rings/crescents.
+    this.dungeonUniforms.useOcclusionAlpha = 1.0;
     this.dungeonUniforms.asciiViewTexture = this.asciiViewTexture; // FLOOR
     this.renderer.setRenderTarget(this.surfaceRenderTarget);
     this.renderer.clear();
@@ -820,7 +824,9 @@ class RC extends DistanceField {
           e.currentTarget.setAttribute("selected", "true");
         }
         const current = this.rcUniforms.enableSun;
-        this.sunAngleSlider.disabled = current;
+        if (this.sunAngleSlider) {
+          this.sunAngleSlider.disabled = current;
+        }
         this.rcUniforms.enableSun = !current;
         this.renderPass();
       },

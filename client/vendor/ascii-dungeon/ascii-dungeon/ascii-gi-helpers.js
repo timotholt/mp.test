@@ -776,9 +776,23 @@ const dungeonShader = `uniform sampler2D asciiTexture;      // The ASCII font te
     float seedAlpha = max(occAlpha, soft);
     float outA = mix(char.a, seedAlpha, clamp(useOcclusionAlpha, 0.0, 1.0));
 
+    // GI seed pass: emitter tiles must radiate their tile color from EVERY pixel, not just
+    // glyph-stroke pixels. The uniform seedAlpha makes the whole tile an occupied region in the
+    // distance field, so rays terminate at the tile boundary; if boundary texels stay black
+    // (glyph-masked rgb), rays arriving from those directions sample zero radiance and the light
+    // self-shadows into dark rings/crescents around emitters.
+    vec3 outRgb = char.rgb * asciiView.rgb;
+    if (useOcclusionAlpha > 0.5 && soft > 0.0) {
+      // Radial falloff inside the tile keeps the on-screen core round instead of a hard square,
+      // while the floor (0.45) guarantees boundary texels still emit in every direction.
+      vec2 tileCenterOffset = charPos / tileSize - 0.5;
+      float radial = 1.0 - smoothstep(0.2, 0.9, length(tileCenterOffset) * 2.0);
+      outRgb = max(outRgb, asciiView.rgb * (soft * mix(0.45, 1.0, radial)));
+    }
+
     // Output the character with the color from asciiViewTexture
     if (char.a > 0.0 || outA > 0.0) {
-      FragColor = vec4(char.rgb * asciiView.rgb, outA);
+      FragColor = vec4(outRgb, outA);
     } else {
       FragColor = vec4(0.0, 0.0, 0.0, 0.0);
     }
