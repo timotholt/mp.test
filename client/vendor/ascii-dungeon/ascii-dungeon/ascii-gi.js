@@ -561,7 +561,7 @@ class RC extends DistanceField {
 
     const {stage: rcStage, uniforms: rcUniforms, render: rcRender, renderTargets: rcRenderTargets} = this.initWebGL2({
       renderTargetOverrides: {
-        minFilter: this.gl.LINEAR_MIPMAP_LINEAR,
+        minFilter: this.gl.LINEAR,
         magFilter: this.gl.LINEAR,
         internalFormat: this.gl.R11F_G11F_B10F,
         format: this.gl.RGB,
@@ -972,12 +972,12 @@ class RC extends DistanceField {
         this.rcRenderTargets.forEach((r) => {
           if (this.enableNearest.checked) {
             r.updateFilters({
-              minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+              minFilter: this.gl.NEAREST,
               magFilter: this.gl.NEAREST,
             });
           } else {
             r.updateFilters({
-              minFilter: this.gl.LINEAR_MIPMAP_LINEAR,
+              minFilter: this.gl.LINEAR,
               magFilter: this.gl.LINEAR,
             });
           }

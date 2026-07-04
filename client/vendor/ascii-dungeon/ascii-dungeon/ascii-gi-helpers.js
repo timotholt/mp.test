@@ -375,12 +375,11 @@ class WebGL2MicroLayer {
         this.gl.uniform1i(location, textureUnit);
 
 
-        // Can we disable this if not using mipmaps?
-        // if (generateMipmaps) {
-        if (value != null) {
-          this.gl.generateMipmap(this.gl.TEXTURE_2D);
-        }
-        // }
+        // Mipmap regeneration removed: it ran for EVERY sampler bind on EVERY pass, which
+        // dominated frame time at large viewports (~300ms/frame at 4K). All render targets now
+        // use non-mipmap filters and every shader samples lod 0 (basePixelsBetweenProbes == 1).
+        // If probe spacing > 1 is ever reintroduced, regenerate mips explicitly for the RC
+        // targets after rendering instead of here.
         break;
 
       // Arrays
@@ -833,7 +832,7 @@ class DungeonRenderer extends BaseSurface {
         emissionThreshold: 0.35,
       },
       renderTargetOverrides: {
-        minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+        minFilter: this.gl.NEAREST,
         magFilter: this.gl.NEAREST,
         internalFormat: this.gl.RGBA,
         format: this.gl.RGBA,
@@ -1130,7 +1129,7 @@ class DungeonRenderer extends BaseSurface {
 
     // Create high-resolution render targets for upscaling
     this.drawRenderTargetHighA = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
-      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      minFilter: this.gl.NEAREST,
       magFilter: this.gl.NEAREST,
       internalFormat: this.gl.RGBA,
       format: this.gl.RGBA,
@@ -1138,7 +1137,7 @@ class DungeonRenderer extends BaseSurface {
     });
 
     this.drawRenderTargetHighB = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
-      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      minFilter: this.gl.NEAREST,
       magFilter: this.gl.NEAREST,
       internalFormat: this.gl.RGBA,
       format: this.gl.RGBA,
@@ -1172,7 +1171,7 @@ class DungeonRenderer extends BaseSurface {
 
     // Recreate high-resolution upscaling targets
     this.drawRenderTargetHighA = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
-      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      minFilter: this.gl.NEAREST,
       magFilter: this.gl.NEAREST,
       internalFormat: this.gl.RGBA,
       format: this.gl.RGBA,
@@ -1180,7 +1179,7 @@ class DungeonRenderer extends BaseSurface {
     });
 
     this.drawRenderTargetHighB = this.renderer.createRenderTarget(this.width * scaling, this.height * scaling, {
-      minFilter: this.gl.NEAREST_MIPMAP_NEAREST,
+      minFilter: this.gl.NEAREST,
       magFilter: this.gl.NEAREST,
       internalFormat: this.gl.RGBA,
       format: this.gl.RGBA,
